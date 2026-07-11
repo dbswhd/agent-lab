@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal
 
 from agent_lab.runtime.events import RuntimeEvent
 from agent_lab.runtime.import_graph import OrchestrationLane
@@ -117,6 +117,7 @@ def _applicable_rows(
 def transition_entry_reason(
     run: RunStateLike,
     event: RuntimeEvent,
+    payload: dict[str, Any] | None = None,
 ) -> tuple[bool, str, str, tuple[RuntimeTransition, ...]]:
     from agent_lab.mission.loop import get_mission_loop
 
@@ -136,16 +137,7 @@ def transition_entry_reason(
         return True, "standalone_scribe", phase, ()
 
     if event in _PLAN_WORKFLOW_EVENTS:
-        from agent_lab.plan.workflow_state import is_plan_workflow_active, plan_workflow_phase
-
-        if not is_plan_workflow_active(run):
-            return False, "plan_workflow_inactive", phase, ()
-        pw_phase = str(plan_workflow_phase(run) or "").upper()
-        if event == RuntimeEvent.PLAN_WORKFLOW_TICK:
-            if pw_phase == "APPROVED":
-                return False, "plan_workflow_approved", phase, ()
-            return True, "plan_workflow_tick", phase, ()
-        return True, "plan_workflow_advance", phase, ()
+        return _plan_substate_transition_entry_reason(run, event, payload)
 
     if event in _PHASE_FREE_EVENTS:
         return True, "phase_free_event", phase, ()
@@ -508,6 +500,101 @@ _PLAN_WORKFLOW_EVENTS: frozenset[RuntimeEvent] = frozenset(
         RuntimeEvent.PLAN_WORKFLOW_ADVANCE,
     }
 )
+
+_PLAN_TICK_FROM_PHASES = frozenset({"INTAKE", "CLARIFY", "DRAFT", "PEER_REVIEW", "REFINE", "HUMAN_PENDING"})
+
+
+def _build_plan_substate_transition_table() -> tuple[RuntimeTransition, ...]:
+    from agent_lab.plan.workflow_state import MCP_ADVANCE_TARGETS, PLAN_FSM_ORDER
+
+    tick_rows = [
+        RuntimeTransition(
+            RuntimeEvent.PLAN_WORKFLOW_TICK,
+            frozenset({phase}),
+            phase,
+            "agent_lab.runtime.plan_lane:handle_plan_workflow_tick",
+            OrchestrationLane.PLAN,
+            notes="Plan substate tick; handler may advance substate",
+        )
+        for phase in sorted(_PLAN_TICK_FROM_PHASES)
+    ]
+    order = list(PLAN_FSM_ORDER)
+    advance_rows: list[RuntimeTransition] = []
+    for from_phase in order:
+        if from_phase not in order:
+            continue
+        from_idx = order.index(from_phase)
+        for to_phase in order:
+            if to_phase not in MCP_ADVANCE_TARGETS:
+                continue
+            if order.index(to_phase) <= from_idx:
+                continue
+            advance_rows.append(
+                RuntimeTransition(
+                    RuntimeEvent.PLAN_WORKFLOW_ADVANCE,
+                    frozenset({from_phase}),
+                    to_phase,
+                    "agent_lab.runtime.plan_lane:handle_plan_workflow_advance",
+                    OrchestrationLane.PLAN,
+                    notes=f"MCP forward advance {from_phase}->{to_phase}",
+                )
+            )
+    return tuple(tick_rows + advance_rows)
+
+
+PLAN_SUBSTATE_TRANSITION_TABLE: tuple[RuntimeTransition, ...] = _build_plan_substate_transition_table()
+
+
+def plan_substate_transition_rows_for(
+    event: RuntimeEvent,
+    from_phase: str,
+    *,
+    to_phase: str | None = None,
+) -> tuple[RuntimeTransition, ...]:
+    phase = str(from_phase or "").strip().upper()
+    rows = tuple(row for row in PLAN_SUBSTATE_TRANSITION_TABLE if row.event == event and phase in row.from_phases)
+    if to_phase is None:
+        return rows
+    target = str(to_phase).strip().upper()
+    return tuple(row for row in rows if row.to_phase == target)
+
+
+def _plan_substate_transition_entry_reason(
+    run: RunStateLike,
+    event: RuntimeEvent,
+    payload: dict[str, Any] | None,
+) -> tuple[bool, str, str, tuple[RuntimeTransition, ...]]:
+    from agent_lab.plan.workflow_state import (
+        MCP_ADVANCE_TARGETS,
+        is_plan_workflow_active,
+        plan_workflow_phase,
+    )
+
+    if not is_plan_workflow_active(run):
+        return False, "plan_workflow_inactive", "", ()
+
+    pw_phase = str(plan_workflow_phase(run) or "INTAKE").strip().upper()
+
+    if event == RuntimeEvent.PLAN_WORKFLOW_TICK:
+        if pw_phase == "APPROVED":
+            return False, "plan_workflow_approved", pw_phase, ()
+        rows = plan_substate_transition_rows_for(event, pw_phase)
+        if rows:
+            return True, "plan_substate_table", pw_phase, rows
+        return False, "invalid_plan_substate", pw_phase, ()
+
+    target = str((payload or {}).get("target_phase") or "").strip().upper()
+    if target not in MCP_ADVANCE_TARGETS:
+        allowed = ", ".join(sorted(MCP_ADVANCE_TARGETS))
+        return False, f"target_phase must be one of: {allowed}", pw_phase, ()
+
+    rows = plan_substate_transition_rows_for(event, pw_phase, to_phase=target)
+    if rows:
+        return True, "plan_substate_table", pw_phase, rows
+    if plan_substate_transition_rows_for(event, pw_phase):
+        return False, "forward advance only", pw_phase, ()
+    return False, "invalid_plan_workflow_phase", pw_phase, ()
+
 
 _PHASE_FREE_EVENTS: frozenset[RuntimeEvent] = frozenset(
     {

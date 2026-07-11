@@ -49,6 +49,7 @@ class OrchestrationState(TypedDict):
     mission_enabled: bool
     phase_drift: bool
     phase_drift_reason: str | None
+    reconcile_hint: str | None
 
 
 def plan_substate_to_orchestration_phase(plan_phase: str | None) -> str:
@@ -93,6 +94,28 @@ def detect_phase_drift(run: RunStateLike) -> str | None:
     return None
 
 
+def reconcile_hint_for_drift(
+    drift_reason: str | None,
+    *,
+    plan_substate: str | None,
+    mission_phase: str | None,
+) -> str | None:
+    """Suggest which lane should catch up when plan substate and mission phase drift."""
+    if not drift_reason:
+        return None
+    plan = str(plan_substate or "").upper()
+    mission = str(mission_phase or "").upper()
+    if drift_reason.startswith("plan_approved_vs_mission_"):
+        return "advance_mission_past_plan_gate"
+    if plan in _PLAN_CLARIFY and mission in {"DISCUSS", "PLAN_GATE"}:
+        return "advance_plan_substate_or_rewind_mission_to_clarify"
+    if plan in _PLAN_DONE and mission in {"MISSION_DEFINE", "CLARIFY", "DISCUSS", "PLAN_GATE", "PLAN_REJECT"}:
+        return "advance_mission_to_execute_queue"
+    if plan in _PLAN_DISCUSS | _PLAN_GATE and mission in _EXECUTE_MISSION_PHASES:
+        return "approve_plan_or_align_mission_to_discuss"
+    return "align_plan_substate_with_mission_phase"
+
+
 def derive_orchestration_state(run: RunStateLike) -> OrchestrationState:
     """Single read-model for orchestration phase authority."""
     from agent_lab.mission.loop import get_mission_loop
@@ -121,6 +144,11 @@ def derive_orchestration_state(run: RunStateLike) -> OrchestrationState:
         "mission_enabled": mission_enabled,
         "phase_drift": drift_reason is not None,
         "phase_drift_reason": drift_reason,
+        "reconcile_hint": reconcile_hint_for_drift(
+            drift_reason,
+            plan_substate=plan_substate,
+            mission_phase=mission_phase,
+        ),
     }
 
 
@@ -160,6 +188,7 @@ def stamp_orchestration_on_folder(folder: Path) -> OrchestrationState:
                     "phase": orch.get("phase"),
                     "plan_substate": orch.get("plan_substate"),
                     "mission_phase": orch.get("mission_phase"),
+                    "reconcile_hint": orch.get("reconcile_hint"),
                 },
             )
         except Exception:

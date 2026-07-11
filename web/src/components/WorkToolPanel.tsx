@@ -8,6 +8,7 @@ import {
 import type { RoomTasksPayload } from "../api/client";
 import type { PlanMetaView } from "../utils/planMeta";
 import { workPlanMetaLine } from "../utils/planMeta";
+import { workPhaseMetaLine } from "../utils/orchestrationDrift";
 import { buildWorkDecisionSummary } from "../utils/workDecisionSummary";
 import type { WorkDecisionActionId } from "../utils/workDecisionTypes";
 import {
@@ -137,6 +138,10 @@ export function WorkToolPanel({
       pendingAgreement: Boolean(planMeta.pendingAgreement),
       latestExecution,
     });
+  const workPhaseMeta = workPhaseMetaLine(
+    runtime?.orchestration,
+    workPlanMetaLine(planMeta),
+  );
   const decisionSummary = useMemo(
     () =>
       buildWorkDecisionSummary({
@@ -255,7 +260,7 @@ export function WorkToolPanel({
             />
             <WorkStatusBar
               phase={workPhase}
-              metaLine={workPlanMetaLine(planMeta)}
+              metaLine={workPhaseMeta}
               hasPlan={hasPlan}
             />
             <GjcExternalHandoffStrip execution={latestExecution} />
@@ -291,7 +296,7 @@ export function WorkToolPanel({
           />
           <WorkStatusBar
             phase={workPhase}
-            metaLine={workPlanMetaLine(planMeta)}
+            metaLine={workPhaseMeta}
             hasPlan={hasPlan}
           />
           <GjcExternalHandoffStrip execution={latestExecution} />

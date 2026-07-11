@@ -179,6 +179,18 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         default="10",
     ),
     FlagDef(
+        "AGENT_LAB_ORCHESTRATION_DRIFT_RECONCILE",
+        "feature",
+        "Auto-align plan substate and mission phase when orchestration drift is detected (default on)",
+        default="1",
+    ),
+    FlagDef(
+        "AGENT_LAB_ORCHESTRATION_DRIFT_ESCALATE_AFTER",
+        "feature",
+        "Consecutive unreconciled orchestration drift stamps before Human Inbox escalation",
+        default="3",
+    ),
+    FlagDef(
         "AGENT_LAB_MISSION_BUDGET_USD",
         "feature",
         "Mission cumulative USD ceiling; over → circuit-breaker pause (empty=unlimited)",

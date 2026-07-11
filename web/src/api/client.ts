@@ -700,12 +700,24 @@ export type RuntimeWorkPhase =
   | "merge_verify"
   | "done";
 
+export type RuntimeOrchestration = {
+  phase: string;
+  plan_substate?: string | null;
+  mission_phase?: string | null;
+  mission_enabled?: boolean;
+  phase_drift?: boolean;
+  phase_drift_reason?: string | null;
+  reconcile_hint?: string | null;
+  alert?: string | null;
+};
+
 export type RuntimeSnapshot = {
   ok: boolean;
   session_id: string;
   mode: "standalone" | "mission";
   has_plan: boolean;
   work_phase: RuntimeWorkPhase;
+  orchestration?: RuntimeOrchestration;
   mission: {
     enabled: boolean;
     phase: string;

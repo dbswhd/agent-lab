@@ -438,6 +438,14 @@ def plan_workflow_public(run: RunStateLike | None) -> dict[str, Any]:
 
 
 def resolve_work_phase_from_plan_workflow(phase: str | None) -> str | None:
+    """Deprecated — use ``derive_orchestration_state`` + ``orchestration_work_phase``."""
+    import warnings
+
+    warnings.warn(
+        "resolve_work_phase_from_plan_workflow is deprecated; use runtime orchestration read model",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     if phase is None or not phase.strip():
         return None
     p = phase.strip().upper()

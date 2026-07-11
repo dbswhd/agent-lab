@@ -21,6 +21,7 @@ import {
 import { useSessionRuntime } from "../hooks/useSessionRuntime";
 import { resolveWorkPhase } from "../utils/workStatusPhase";
 import { workPlanMetaLine } from "../utils/planMeta";
+import { workPhaseMetaLine } from "../utils/orchestrationDrift";
 import {
   hasPlanWorkflowClarifyNotice,
   hasPlanWorkflowClarifySurface,
@@ -398,7 +399,10 @@ export function ComposerEventStack({
             (!planWorkflow?.enabled || workflowPhase === "APPROVED") ? (
               <WorkPhaseChip
                 phase={workPhase}
-                metaLine={workPlanMetaLine(planMeta)}
+                metaLine={workPhaseMetaLine(
+                  runtime?.orchestration,
+                  workPlanMetaLine(planMeta),
+                )}
               />
             ) : null}
           </div>

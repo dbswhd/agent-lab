@@ -177,6 +177,17 @@ def stamp_orchestration_on_folder(folder: Path) -> OrchestrationState:
     orch = stamped if stamped else derive_orchestration_state(read_run_meta(folder))
     if orch.get("phase_drift"):
         try:
+            from agent_lab.runtime.orchestration_reconcile import maybe_reconcile_orchestration_drift
+
+            reconcile_out = maybe_reconcile_orchestration_drift(folder, orch=orch)
+            if reconcile_out and reconcile_out.get("applied"):
+                run_after = read_run_meta(folder)
+                orch = derive_orchestration_state(run_after)
+                stamped.update(orch)
+        except Exception:
+            pass
+    if orch.get("phase_drift"):
+        try:
             from agent_lab.trace_recorder import record_control_span
 
             record_control_span(
@@ -230,6 +241,14 @@ def orchestration_work_phase(
     if phase in {"EXECUTE_QUEUE", "DRY_RUN", "REPAIR"}:
         return "execute_pending"
     if phase in {"CLARIFY", "DISCUSS", "PLAN_GATE", "MISSION_DEFINE"}:
+        if not orchestration.get("mission_enabled"):
+            return resolve_work_phase_standalone(
+                has_plan=has_plan,
+                has_pending_execution=has_pending_execution,
+                has_dry_run_diff=has_dry_run_diff,
+                pending_agreement=pending_agreement,
+                latest_execution=latest_execution,
+            )
         return "plan_draft"
 
     return resolve_work_phase_standalone(

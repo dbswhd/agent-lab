@@ -91,42 +91,23 @@ def resolve_work_phase(
     latest_execution: dict[str, Any] | None,
     run: RunStateLike | None = None,
 ) -> WorkPhase:
+    """Resolve Work tab phase — orchestration SSOT when ``run`` is provided."""
     if run is not None:
         from agent_lab.runtime.orchestration import derive_orchestration_state, orchestration_work_phase
 
         orch = run.get("orchestration")
         if not isinstance(orch, dict) or not orch.get("phase"):
             orch = derive_orchestration_state(run)
-        if orch.get("plan_substate") or orch.get("mission_enabled"):
-            return orchestration_work_phase(
-                orch,  # type: ignore[arg-type]
-                has_plan=has_plan,
-                has_pending_execution=has_pending_execution,
-                has_dry_run_diff=has_dry_run_diff,
-                pending_agreement=pending_agreement,
-                latest_execution=latest_execution,
-                resume_phase=resume_phase,
-            )
-
-    if plan_workflow_enabled:
-        from agent_lab.plan.workflow import resolve_work_phase_from_plan_workflow
-
-        from_plan = resolve_work_phase_from_plan_workflow(plan_workflow_phase)
-        if from_plan is not None and from_plan != "execute_pending":
-            return from_plan  # type: ignore[return-value]
-    if mission_enabled:
-        from_mission = resolve_work_phase_from_mission(
-            mission_phase,
+        return orchestration_work_phase(
+            orch,  # type: ignore[arg-type]
+            has_plan=has_plan,
+            has_pending_execution=has_pending_execution,
+            has_dry_run_diff=has_dry_run_diff,
+            pending_agreement=pending_agreement,
+            latest_execution=latest_execution,
             resume_phase=resume_phase,
         )
-        if from_mission is not None:
-            return from_mission
-    if plan_workflow_enabled:
-        from agent_lab.plan.workflow import resolve_work_phase_from_plan_workflow
 
-        from_plan = resolve_work_phase_from_plan_workflow(plan_workflow_phase)
-        if from_plan == "execute_pending":
-            return from_plan  # type: ignore[return-value]
     return resolve_work_phase_standalone(
         has_plan=has_plan,
         has_pending_execution=has_pending_execution,

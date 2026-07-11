@@ -140,7 +140,9 @@ def test_fast_bucket_collection_budget():
     # 2026-07-11: raised 2994 -> 3024 for dual FSM orchestration + plan_lane tests.
     # 2026-07-12: raised 3024 -> 3029 for dual FSM slice D orchestration tests.
     # 2026-07-12: raised 3029 -> 3039 for plan substate transition table tests.
-    assert count <= 3039, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-12: raised 3039 -> 3046 for orchestration drift auto-reconcile tests.
+    # 2026-07-12: raised 3046 -> 3050 for orchestration work_phase unify tests.
+    assert count <= 3050, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

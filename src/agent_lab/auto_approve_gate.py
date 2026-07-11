@@ -40,7 +40,6 @@ def auto_approve_timeout_sec() -> int:
         return 30
 
 
-
 @dataclass
 class AutoApproveDecision:
     eligible: bool

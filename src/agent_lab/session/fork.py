@@ -29,7 +29,6 @@ _COPY_RUN_KEYS = (
 _DEFAULT_CHAT_TAIL = 80
 
 
-
 def _read_topic(folder: Path) -> str:
     path = folder / "topic.txt"
     if not path.is_file():

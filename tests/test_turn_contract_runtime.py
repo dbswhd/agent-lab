@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+
 def test_roles_contract_applies_quick_roster_and_round_controls(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

@@ -852,12 +852,7 @@ def scenario_x3_verify_repair(entry: dict[str, Any], base: Path) -> dict[str, An
     run = read_run_meta(folder)
     ml = run.get("mission_loop") or {}
     notepad_ok = learnings.is_file() and len(learnings.read_text(encoding="utf-8")) >= 200
-    ok = (
-        ml.get("phase") == "MISSION_DONE"
-        and repairs_after_fail >= 1
-        and not ml.get("circuit_breaker")
-        and notepad_ok
-    )
+    ok = ml.get("phase") == "MISSION_DONE" and repairs_after_fail >= 1 and not ml.get("circuit_breaker") and notepad_ok
     return {
         "ok": ok,
         "detail": (

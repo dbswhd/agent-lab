@@ -18,6 +18,7 @@ GATE_IDS: tuple[str, ...] = (
     "cleanup",
 )
 
+
 def _gate(
     gate: str,
     *,

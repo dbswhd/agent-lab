@@ -63,7 +63,11 @@ function modeIcon(mode: RightPanelMode) {
  *  in one click (Apricot Glass, web/DESIGN.md). */
 export function WorkbenchModeTabs({ active, open, locale, onSelect }: Props) {
   return (
-    <div className="workbench-mode-tabs" role="tablist" aria-label="Workbench panel">
+    <div
+      className="workbench-mode-tabs"
+      role="tablist"
+      aria-label="Workbench panel"
+    >
       {MODES.map((mode) => {
         const label = workbenchModeLabel(mode, locale);
         const isActive = open && active === mode;

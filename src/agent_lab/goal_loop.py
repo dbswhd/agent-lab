@@ -237,4 +237,3 @@ def _read_chat(session_folder: Path) -> list[dict[str, Any]]:
         if isinstance(row, dict):
             rows.append(row)
     return rows
-

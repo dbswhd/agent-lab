@@ -58,6 +58,7 @@ DEFAULT_ROOM_TIMEOUT = float(os.environ.get("AGENT_LAB_X2_ROOM_TIMEOUT", "5400")
 DEFAULT_EXECUTE_TIMEOUT = float(os.environ.get("AGENT_LAB_X2_EXECUTE_TIMEOUT", "1200"))
 DEFAULT_PLAN_WAIT_TIMEOUT = float(os.environ.get("AGENT_LAB_X2_PLAN_WAIT_TIMEOUT", "300"))
 
+
 def _default_room_composition() -> list[str]:
     """The operator's own saved roster (~/.agent-lab/room_models /
     AGENT_LAB_ROOM_MODELS), read explicitly rather than omitted.
@@ -80,7 +81,9 @@ def _default_room_composition() -> list[str]:
 
 # Resolution order: explicit env override > operator's saved default composition
 # (sent explicitly so it isn't Expert-Pool-subsetted) > empty (server picks).
-AGENTS = [a.strip() for a in os.environ.get("AGENT_LAB_X2_AGENTS", "").split(",") if a.strip()] or _default_room_composition()
+AGENTS = [
+    a.strip() for a in os.environ.get("AGENT_LAB_X2_AGENTS", "").split(",") if a.strip()
+] or _default_room_composition()
 PERMS = {
     "cursor": {"tools": True, "local_agent_lab": True, "local_pipeline": True},
     "codex": {"cli": True},

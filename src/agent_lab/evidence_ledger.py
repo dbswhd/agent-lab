@@ -12,7 +12,6 @@ from agent_lab.mission.notepad import mission_notepad_dir
 DEFAULT_TAIL_LIMIT = 50
 
 
-
 def evidence_path(folder: Path) -> Path:
     return mission_notepad_dir(folder) / "evidence.jsonl"
 

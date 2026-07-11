@@ -14,7 +14,6 @@ _AGENT_IDS = frozenset({"cursor", "codex", "claude"})
 _AT_AGENT_RE = re.compile(r"^@?(cursor|codex|claude)$", re.I)
 
 
-
 def _new_mail_id() -> str:
     return f"mb-{uuid.uuid4().hex[:10]}"
 

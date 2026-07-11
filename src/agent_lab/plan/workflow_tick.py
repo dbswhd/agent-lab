@@ -11,8 +11,8 @@ from agent_lab.plan.workflow_clarify import clarity_gate_questions, open_plan_ob
 from agent_lab.plan.workflow_state import (
     DEFAULT_MAX_CLARIFY_ROUNDS,
     PLAN_CLARIFY_PHASES,
-    _mirror_verified_loop_status,
     _round_cap,
+    apply_plan_substate_patch,
     derive_loop_goal_from_plan,
     effective_max_peer_review_rounds,
     get_plan_workflow,
@@ -35,7 +35,40 @@ def tick_plan_workflow_after_turn(
     has_pending_inbox_question: bool,
     turn_policy_advance: bool = False,
 ) -> dict[str, Any]:
-    """Advance FSM after a room turn; returns hints for follow-up automation."""
+    """Advance FSM after a room turn via runtime ``plan.workflow.tick``."""
+    from agent_lab.runtime.events import RuntimeEvent
+    from agent_lab.runtime.runtime import dispatch
+
+    out = dispatch(
+        folder,
+        RuntimeEvent.PLAN_WORKFLOW_TICK,
+        {
+            "synthesize": synthesize,
+            "cancelled": cancelled,
+            "plan_md": plan_md,
+            "plan_before": plan_before,
+            "has_pending_inbox_question": has_pending_inbox_question,
+            "turn_policy_advance": turn_policy_advance,
+        },
+    )
+    if out.skipped:
+        return {"handled": False, "reason": out.reason or "plan_workflow_tick_skipped"}
+    if isinstance(out.result, dict):
+        return out.result
+    return {"handled": out.handled}
+
+
+def _execute_plan_workflow_tick(
+    folder: Path,
+    *,
+    synthesize: bool,
+    cancelled: bool,
+    plan_md: str,
+    plan_before: str,
+    has_pending_inbox_question: bool,
+    turn_policy_advance: bool = False,
+) -> dict[str, Any]:
+    """Internal plan FSM tick body (invoked by plan_lane handler)."""
     run = read_run_meta(folder)
     if not is_plan_workflow_active(run) or cancelled:
         return {"handled": False}
@@ -61,13 +94,12 @@ def tick_plan_workflow_after_turn(
             if clarify_round > max_clarify:
 
                 def _clarify_done_cap(run_in: dict[str, Any]) -> dict[str, Any]:
-                    cur = get_plan_workflow(run_in)
-                    cur["clarify_round"] = clarify_round
-                    cur["phase"] = "DRAFT"
-                    cur["notice"] = "clarify_cap_reached"
-                    run_in["plan_workflow"] = cur
-                    _mirror_verified_loop_status(run_in, cur)
-                    return run_in
+                    return apply_plan_substate_patch(
+                        run_in,
+                        phase="DRAFT",
+                        clarify_round=clarify_round,
+                        notice="clarify_cap_reached",
+                    )
 
                 patch_run_meta(folder, _clarify_done_cap)
                 out["clarify_cap_reached"] = True
@@ -81,13 +113,12 @@ def tick_plan_workflow_after_turn(
             if clarity_threshold_met(read_run_meta(folder)):
 
                 def _clarify_done_met(run_in: dict[str, Any]) -> dict[str, Any]:
-                    cur = get_plan_workflow(run_in)
-                    cur["clarify_round"] = clarify_round
-                    cur["phase"] = "DRAFT"
-                    cur["notice"] = "skill_first_clarity_met"
-                    run_in["plan_workflow"] = cur
-                    _mirror_verified_loop_status(run_in, cur)
-                    return run_in
+                    return apply_plan_substate_patch(
+                        run_in,
+                        phase="DRAFT",
+                        clarify_round=clarify_round,
+                        notice="skill_first_clarity_met",
+                    )
 
                 patch_run_meta(folder, _clarify_done_met)
                 out["advance"] = "DRAFT"
@@ -96,13 +127,12 @@ def tick_plan_workflow_after_turn(
                 return out
 
             def _skill_first_hold(run_in: dict[str, Any]) -> dict[str, Any]:
-                cur = get_plan_workflow(run_in)
-                cur["clarify_round"] = clarify_round
-                cur["phase"] = "CLARIFY"
-                cur["notice"] = "skill_first_hold"
-                run_in["plan_workflow"] = cur
-                _mirror_verified_loop_status(run_in, cur)
-                return run_in
+                return apply_plan_substate_patch(
+                    run_in,
+                    phase="CLARIFY",
+                    clarify_round=clarify_round,
+                    notice="skill_first_hold",
+                )
 
             patch_run_meta(folder, _skill_first_hold)
             out["phase"] = "CLARIFY"
@@ -119,21 +149,17 @@ def tick_plan_workflow_after_turn(
                 out.update(clarity_hold)
 
         def _clarify_done(run_in: dict[str, Any]) -> dict[str, Any]:
-            cur = get_plan_workflow(run_in)
-            cur["clarify_round"] = clarify_round
-            cur["phase"] = "DRAFT"
-            run_in["plan_workflow"] = cur
-            _mirror_verified_loop_status(run_in, cur)
-            return run_in
+            return apply_plan_substate_patch(
+                run_in,
+                phase="DRAFT",
+                clarify_round=clarify_round,
+            )
 
         patch_run_meta(folder, _clarify_done)
         if clarify_round > max_clarify:
 
             def _clarify_cap(run_in: dict[str, Any]) -> dict[str, Any]:
-                cur = get_plan_workflow(run_in)
-                cur["notice"] = "clarify_cap_reached"
-                run_in["plan_workflow"] = cur
-                return run_in
+                return apply_plan_substate_patch(run_in, notice="clarify_cap_reached")
 
             patch_run_meta(folder, _clarify_cap)
             out["clarify_cap_reached"] = True
@@ -164,12 +190,11 @@ def tick_plan_workflow_after_turn(
         if evaluation.get("status") == "reject" and peer_round < max_peer:
 
             def _refine_gate(run_in: dict[str, Any]) -> dict[str, Any]:
-                cur = get_plan_workflow(run_in)
-                cur["phase"] = "REFINE"
-                cur["last_plan_gate"] = evaluation
-                run_in["plan_workflow"] = cur
-                _mirror_verified_loop_status(run_in, cur)
-                return run_in
+                return apply_plan_substate_patch(
+                    run_in,
+                    phase="REFINE",
+                    last_plan_gate=evaluation,
+                )
 
             patch_run_meta(folder, _refine_gate)
             out["plan_gate"] = evaluation
@@ -183,13 +208,17 @@ def tick_plan_workflow_after_turn(
             pending_notices.append("plan_gate_cap_reached")
 
         def _human_pending(run_in: dict[str, Any]) -> dict[str, Any]:
-            cur = get_plan_workflow(run_in)
-            cur["phase"] = "HUMAN_PENDING"
+            patch_kwargs: dict[str, Any] = {}
             if pending_notices:
-                cur["notice"] = pending_notices[-1]
+                patch_kwargs["notice"] = pending_notices[-1]
             if evaluation.get("status") == "reject":
-                cur["last_plan_gate"] = evaluation
-            run_in["plan_workflow"] = cur
+                patch_kwargs["last_plan_gate"] = evaluation
+            run_in = apply_plan_substate_patch(
+                run_in,
+                phase="HUMAN_PENDING",
+                stamp_orchestration=False,
+                **patch_kwargs,
+            )
             proposed = derive_loop_goal_from_plan(plan_md)
             loop = dict(run_in.get("verified_loop") or {})
             loop["proposed"] = {
@@ -199,7 +228,9 @@ def tick_plan_workflow_after_turn(
             }
             loop["status"] = "pending_approval"
             run_in["verified_loop"] = loop
-            return run_in
+            from agent_lab.runtime.orchestration import stamp_orchestration_state
+
+            return stamp_orchestration_state(run_in)
 
         patch_run_meta(folder, _human_pending)
         out["phase"] = "HUMAN_PENDING"
@@ -211,13 +242,12 @@ def tick_plan_workflow_after_turn(
 
             def _inc_peer(run_in: dict[str, Any]) -> dict[str, Any]:
                 cur = get_plan_workflow(run_in)
-                cur["peer_review_round"] = int(cur.get("peer_review_round") or 0) + 1
-                cur["phase"] = "PEER_REVIEW"
-                cur.pop("last_plan_gate", None)
-                cur.pop("last_peer_verdict", None)
-                run_in["plan_workflow"] = cur
-                _mirror_verified_loop_status(run_in, cur)
-                return run_in
+                return apply_plan_substate_patch(
+                    run_in,
+                    phase="PEER_REVIEW",
+                    peer_review_round=int(cur.get("peer_review_round") or 0) + 1,
+                    pop_fields=("last_plan_gate", "last_peer_verdict"),
+                )
 
             patch_run_meta(folder, _inc_peer)
             out["phase"] = "PEER_REVIEW"

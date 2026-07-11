@@ -24,7 +24,6 @@ def skill_drafts_enabled() -> bool:
     )
 
 
-
 def _new_draft_id() -> str:
     return f"skdraft-{uuid.uuid4().hex[:12]}"
 

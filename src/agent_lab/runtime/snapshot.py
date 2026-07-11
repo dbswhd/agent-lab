@@ -157,6 +157,7 @@ def build_runtime_snapshot(
         has_dry_run_diff=has_dry_run_diff(run),
         pending_agreement=pending_agreement,
         latest_execution=latest_exec,
+        run=run,
     )
 
     mission_paused = mission_phase == "MISSION_PAUSED" or bool(ml.get("circuit_breaker"))
@@ -165,11 +166,16 @@ def build_runtime_snapshot(
     if boulder and boulder.get("resume_phase") and not resume_phase:
         resume_phase = boulder.get("resume_phase")
 
+    from agent_lab.runtime.orchestration import derive_orchestration_state
+
+    orchestration = derive_orchestration_state(run)
+
     return {
         "session_id": folder.name,
         "mode": mode,
         "has_plan": has_plan,
         "work_phase": work_phase,
+        "orchestration": orchestration,
         "plan_workflow": {
             "enabled": plan_workflow_enabled,
             "phase": plan_workflow_phase,

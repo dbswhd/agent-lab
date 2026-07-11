@@ -111,7 +111,6 @@ def harness_proposer_enabled() -> bool:
     return env_bool("AGENT_LAB_HARNESS_PROPOSER")
 
 
-
 # ---------------------------------------------------------------------------
 # manifest.json — SSOT (HS3-2)
 # ---------------------------------------------------------------------------

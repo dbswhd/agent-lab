@@ -61,7 +61,6 @@ def playbook_path(root: Path | None = None) -> Path:
     return agent_lab_project_root(root) / ".agent-lab" / "wisdom" / "playbook.jsonl"
 
 
-
 def _bullet_id(pattern_id: str) -> str:
     """Deterministic from pattern_id so repeated appends for the same pattern
     fold to the same bullet on read (see module docstring)."""

@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "agent_lab_root_py_files": 132,
+  "agent_lab_root_py_files": 134,
   "agent_lab_subpackages": [
     "agent",
     "agents",
@@ -111,7 +111,7 @@
     },
     {
       "path": "web/src/hooks/useRoomChatInteractions.ts",
-      "lines": 715
+      "lines": 717
     },
     {
       "path": "web/src/hooks/useRoomChatPresentation.ts",
@@ -119,7 +119,7 @@
     }
   ],
   "f11_run_meta_dict_signatures": 0,
-  "f11_run_dict_signatures": 148,
+  "f11_run_dict_signatures": 155,
   "notes": {
     "pycache": "tracked_pycache_files counts git-tracked __pycache__/*.pyc only; local __pycache__ dirs are ignored by .gitignore and are not repo debt.",
     "makefile_targets": "Counted as Makefile lines matching ^target:",

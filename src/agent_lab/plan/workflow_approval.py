@@ -12,7 +12,7 @@ from agent_lab.plan.pending import plan_content_hash
 from agent_lab.plan.workflow_state import (
     PlanWorkflowNotApproved,
     PlanWorkflowPhase,
-    _mirror_verified_loop_status,
+    apply_plan_substate_patch,
     derive_loop_goal_from_plan,
     get_plan_workflow,
     is_plan_workflow_active,
@@ -38,12 +38,11 @@ def ensure_plan_workflow_approved(folder: Path) -> None:
         return
 
     def _invalidate(current: dict[str, Any]) -> dict[str, Any]:
-        current_workflow = get_plan_workflow(current)
-        current_workflow["phase"] = "HUMAN_PENDING"
-        current_workflow["notice"] = "plan_changed_after_approval"
-        current["plan_workflow"] = current_workflow
-        _mirror_verified_loop_status(current, current_workflow)
-        return current
+        return apply_plan_substate_patch(
+            current,
+            phase="HUMAN_PENDING",
+            notice="plan_changed_after_approval",
+        )
 
     patch_run_meta(folder, _invalidate)
     raise PlanWorkflowNotApproved(phase, "plan_workflow_plan_changed")
@@ -130,16 +129,16 @@ def _finalize_plan_approval(
     start_execute_loop = approval_starts_execute_loop(run_before)
 
     def _approve(current: dict[str, Any]) -> dict[str, Any]:
-        current_pw = get_plan_workflow(current)
-        if enable_workflow or not current_pw.get("enabled"):
-            current_pw["enabled"] = True
-        current_pw["phase"] = "APPROVED"
-        current_pw["plan_hash_at_approval"] = plan_hash
-        current_pw["approved_at"] = now
-        current_pw["approved_by"] = approved_by
-        current_pw.pop("notice", None)
-        current_pw.pop("last_plan_gate", None)
-        current["plan_workflow"] = current_pw
+        current = apply_plan_substate_patch(
+            current,
+            phase="APPROVED",
+            plan_hash_at_approval=plan_hash,
+            approved_at=now,
+            approved_by=approved_by,
+            pop_fields=("notice", "last_plan_gate"),
+            stamp_orchestration=False,
+            mirror_verified_loop=False,
+        )
 
         if start_execute_loop:
             current_loop = dict(current.get("verified_loop") or {})
@@ -163,7 +162,9 @@ def _finalize_plan_approval(
                 "max_checks": 5,
                 "checks": [],
             }
-        return current
+        from agent_lab.runtime.orchestration import stamp_orchestration_state
+
+        return stamp_orchestration_state(current)
 
     updated = patch_run_meta(session_folder, _approve)
 
@@ -178,6 +179,11 @@ def _finalize_plan_approval(
         after_plan_scribe(session_folder, md)
         start_mission_autonomous_segment(session_folder)
         updated = read_run_meta(session_folder)
+
+    from agent_lab.runtime.orchestration import stamp_orchestration_on_folder
+
+    stamp_orchestration_on_folder(session_folder)
+    updated = read_run_meta(session_folder)
 
     pw_out = get_plan_workflow(updated)
     loop_out = dict(updated.get("verified_loop") or {})
@@ -201,17 +207,22 @@ def reject_plan(
     phase = target_phase if target_phase in allowed else "CLARIFY"
 
     def _reject(run: RunState) -> RunState:
-        pw = get_plan_workflow(run)
-        pw["phase"] = phase
-        pw.pop("notice", None)
-        pw.pop("last_plan_gate", None)
+        patch_kwargs: dict[str, Any] = {}
         if note.strip():
-            pw["last_reject_note"] = note.strip()[:500]
-        run["plan_workflow"] = pw
-        loop = dict(run.get("verified_loop") or {})
+            patch_kwargs["last_reject_note"] = note.strip()[:500]
+        run_out = apply_plan_substate_patch(  # type: ignore[assignment]
+            run,
+            phase=phase,
+            pop_fields=("notice", "last_plan_gate"),
+            stamp_orchestration=False,
+            **patch_kwargs,
+        )
+        loop = dict(run_out.get("verified_loop") or {})
         loop["status"] = "proposing"
-        run["verified_loop"] = loop
-        return run
+        run_out["verified_loop"] = loop
+        from agent_lab.runtime.orchestration import stamp_orchestration_state
+
+        return stamp_orchestration_state(run_out)  # type: ignore[return-value]
 
     patch_run_meta(session_folder, _reject)
     return get_plan_workflow(read_run_meta(session_folder))

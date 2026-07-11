@@ -23,7 +23,6 @@ DEFAULT_TEAM_LEAD = "cursor"
 MAX_CLAIMS_PER_AGENT_PER_TURN = 1
 
 
-
 def _new_task_id() -> str:
     return f"t-{uuid.uuid4().hex[:10]}"
 

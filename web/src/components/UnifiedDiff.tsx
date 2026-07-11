@@ -26,7 +26,8 @@ export function UnifiedDiff({ diff, activeHunkId }: Props) {
     <div className="exec-diff exec-diff--unified">
       <div ref={bodyRef} className="exec-diff__body exec-diff__body--unified">
         {rows.map((row) => {
-          const isActiveHunk = Boolean(activeHunkId) && row.hunkId === activeHunkId;
+          const isActiveHunk =
+            Boolean(activeHunkId) && row.hunkId === activeHunkId;
 
           if (row.kind === "meta" || row.kind === "header") {
             return (
@@ -58,7 +59,9 @@ export function UnifiedDiff({ diff, activeHunkId }: Props) {
                   {row.leftSegments.map((segment, index) => (
                     <span
                       key={index}
-                      className={segment.changed ? "diff-word diff-word--del" : undefined}
+                      className={
+                        segment.changed ? "diff-word diff-word--del" : undefined
+                      }
                     >
                       {segment.text}
                     </span>
@@ -69,7 +72,9 @@ export function UnifiedDiff({ diff, activeHunkId }: Props) {
                   {row.rightSegments.map((segment, index) => (
                     <span
                       key={index}
-                      className={segment.changed ? "diff-word diff-word--add" : undefined}
+                      className={
+                        segment.changed ? "diff-word diff-word--add" : undefined
+                      }
                     >
                       {segment.text}
                     </span>
@@ -80,7 +85,11 @@ export function UnifiedDiff({ diff, activeHunkId }: Props) {
           }
 
           const content =
-            row.kind === "add" ? row.right : row.kind === "del" ? row.left : row.left;
+            row.kind === "add"
+              ? row.right
+              : row.kind === "del"
+                ? row.left
+                : row.left;
 
           return (
             <pre

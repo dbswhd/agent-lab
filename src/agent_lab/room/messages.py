@@ -68,7 +68,6 @@ class ChatMessage:
         return d
 
 
-
 def format_thread(topic: str, messages: list[ChatMessage]) -> str:
     lines = [f"Human topic:\n{topic.strip()}\n"]
     for m in messages:

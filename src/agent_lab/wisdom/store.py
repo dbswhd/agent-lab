@@ -39,7 +39,6 @@ def wisdom_index_path() -> Path:
     return project_root() / ".agent-lab" / "wisdom.jsonl"
 
 
-
 def _entry_id(ts: str, content: str) -> str:
     return "w-" + hashlib.sha1(f"{ts}:{content[:64]}".encode()).hexdigest()[:12]
 

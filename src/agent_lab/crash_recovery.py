@@ -36,7 +36,6 @@ def crash_recovery_enabled() -> bool:
     return env_bool("AGENT_LAB_CRASH_RECOVERY", default=True)
 
 
-
 def _git(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         ["git", "-C", str(cwd), *args],

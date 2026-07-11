@@ -35,7 +35,6 @@ _DEFAULT_COUNTERS: dict[str, Any] = {
 }
 
 
-
 def _hour_bucket() -> str:
     return utc_now().strftime("%Y-%m-%dT%H")
 

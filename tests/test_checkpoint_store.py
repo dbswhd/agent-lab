@@ -210,13 +210,13 @@ def test_ac8_crash_recovery_module_unchanged_import() -> None:
 
 
 def test_ac10_phase_setters_route_through_patch_run_meta() -> None:
-    # Source guard: plan_workflow.set_plan_workflow_phase uses patch_run_meta (not a bare
+    # Source guard: plan_workflow transitions use patch_run_meta (not a bare
     # write_run_meta), so the chokepoint sees plan-workflow transitions.
     import inspect
 
-    from agent_lab.plan import workflow as plan_workflow
+    from agent_lab.plan.workflow_state import transition_plan_substate
 
-    src = inspect.getsource(plan_workflow.set_plan_workflow_phase)
+    src = inspect.getsource(transition_plan_substate)
     assert "patch_run_meta" in src
     assert "write_run_meta" not in src
 

@@ -337,7 +337,6 @@ def sync_session_meta(
     prev_frozen = bool(meta.get("layout_frozen"))
     frozen = prev_frozen or detect_layout_freeze(messages, topic)
     if frozen and not prev_frozen:
-        
         meta["layout_frozen_at"] = utc_now_iso()
     meta["layout_frozen"] = frozen
     meta["session_phase"] = infer_session_phase(

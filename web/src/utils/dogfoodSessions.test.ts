@@ -8,15 +8,15 @@ function session(overrides: Partial<SessionSummary>): SessionSummary {
 
 describe("isDogfoodSession", () => {
   it("matches topics mentioning dogfood", () => {
-    expect(
-      isDogfoodSession(session({ topic: "N4 dogfood 세션 시작" })),
-    ).toBe(true);
+    expect(isDogfoodSession(session({ topic: "N4 dogfood 세션 시작" }))).toBe(
+      true,
+    );
   });
 
   it("matches x2-lift topics regardless of separator", () => {
-    expect(isDogfoodSession(session({ topic: "x2 lift execute fixture" }))).toBe(
-      true,
-    );
+    expect(
+      isDogfoodSession(session({ topic: "x2 lift execute fixture" })),
+    ).toBe(true);
     expect(isDogfoodSession(session({ topic: "x2lift retry" }))).toBe(true);
   });
 

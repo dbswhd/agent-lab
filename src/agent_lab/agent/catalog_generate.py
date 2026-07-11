@@ -32,7 +32,6 @@ _MODEL_PATCH_KEYS = frozenset(
 )
 
 
-
 def _read_json(path: Path) -> dict[str, Any]:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))

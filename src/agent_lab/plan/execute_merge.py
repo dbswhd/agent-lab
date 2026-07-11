@@ -213,7 +213,6 @@ def archive_executed_diff(
     return dest
 
 
-
 def merge_exec_branch(
     ew: ExecWorktree,
     *,

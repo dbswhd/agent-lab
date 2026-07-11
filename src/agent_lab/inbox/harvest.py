@@ -528,7 +528,6 @@ def _supersede_legacy_verified_build_items(run_meta: RunStateLike) -> None:
         stamp_run_meta(run_meta, inbox_pending=compute_inbox_pending(run_meta))
 
 
-
 # --- sync pause (M4) — pending Human-direction question pauses debate rounds ----
 
 DISCUSS_PAUSE_TRIGGERS = frozenset({"T-Q0", "T-Q2"})

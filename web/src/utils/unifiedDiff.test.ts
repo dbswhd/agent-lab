@@ -3,7 +3,8 @@ import { parseUnifiedDiff, wordDiffSegments } from "./unifiedDiff";
 
 describe("wordDiffSegments", () => {
   it("highlights only the token that changed, reconstructing the original text exactly", () => {
-    const left = "  background: linear-gradient(180deg, #ffdedf 0%, #fb4fbc 100%);";
+    const left =
+      "  background: linear-gradient(180deg, #ffdedf 0%, #fb4fbc 100%);";
     const right = "  background: var(--agent-critic);";
     const { leftSegments, rightSegments } = wordDiffSegments(left, right);
     expect(leftSegments.map((s) => s.text).join("")).toBe(left);
@@ -18,7 +19,10 @@ describe("wordDiffSegments", () => {
   });
 
   it("marks identical strings as fully unchanged", () => {
-    const { leftSegments, rightSegments } = wordDiffSegments("foo bar", "foo bar");
+    const { leftSegments, rightSegments } = wordDiffSegments(
+      "foo bar",
+      "foo bar",
+    );
     expect(leftSegments.every((s) => !s.changed)).toBe(true);
     expect(rightSegments.every((s) => !s.changed)).toBe(true);
   });

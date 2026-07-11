@@ -93,9 +93,7 @@ def test_merge_checks_monitor_dedup(tmp_path: Path) -> None:
     assert read_run_meta(folder).get("monitor_merge_checks_fp")
 
 
-def test_fork_session_copies_plan_not_executions(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_fork_session_copies_plan_not_executions(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "agent_lab.session.fork.active_sessions_dir",
         lambda: tmp_path,
@@ -133,12 +131,8 @@ def test_wave2_frontend_surfaces_exist() -> None:
     view = (ROOT / "web/src/components/RoomChatView.tsx").read_text(encoding="utf-8")
     assert "SessionStatusLine" in view
     assert "notifyNeedsInputIfBackground" in view
-    menu = (ROOT / "web/src/components/SessionContextMenu.tsx").read_text(
-        encoding="utf-8"
-    )
+    menu = (ROOT / "web/src/components/SessionContextMenu.tsx").read_text(encoding="utf-8")
     assert "fork" in menu
     assert "session-menu-fork" in menu
-    timeline = (ROOT / "web/src/components/EvidenceTimeline.tsx").read_text(
-        encoding="utf-8"
-    )
+    timeline = (ROOT / "web/src/components/EvidenceTimeline.tsx").read_text(encoding="utf-8")
     assert "MONITOR" in timeline

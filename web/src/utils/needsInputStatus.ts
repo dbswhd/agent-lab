@@ -1,7 +1,4 @@
-import type {
-  PlanWorkflowRecord,
-  RuntimeSnapshot,
-} from "../api/client";
+import type { PlanWorkflowRecord, RuntimeSnapshot } from "../api/client";
 import type { ComposerStackLane } from "./composerStackLane";
 import {
   buildHumanDecisionLanes,
@@ -78,7 +75,10 @@ export function buildNeedsInputStatus(
   }
 
   if (input.inboxPendingQuestions > 0 || input.discussPaused) {
-    const n = Math.max(input.inboxPendingQuestions, input.discussPaused ? 1 : 0);
+    const n = Math.max(
+      input.inboxPendingQuestions,
+      input.discussPaused ? 1 : 0,
+    );
     return {
       active: true,
       label: ko ? "입력 필요" : "Needs input",

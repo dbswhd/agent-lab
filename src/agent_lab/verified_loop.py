@@ -660,4 +660,3 @@ def _messages_text(
         if text:
             rows.append(text)
     return "\n".join(rows)
-

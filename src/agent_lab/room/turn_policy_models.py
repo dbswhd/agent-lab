@@ -124,6 +124,7 @@ class TurnSignals:
     ) -> TurnSignals:
         from agent_lab.consensus_agreements import pending_consensus_agreements
         from agent_lab.plan.workflow import is_plan_workflow_active, plan_workflow_phase
+
         run = run_meta or {}
         preset = (room_preset or run.get("room_preset") or "").strip().lower() or None
         active = is_plan_workflow_active(run)

@@ -65,7 +65,6 @@ class PlanWorkflowNotApproved(Exception):
         super().__init__(reason)
 
 
-
 def plan_workflow_env_disabled() -> bool:
     raw = (os.getenv("AGENT_LAB_PLAN_WORKFLOW") or "").strip().lower()
     return raw in ("0", "false", "no", "off")
@@ -299,17 +298,62 @@ def _mirror_verified_loop_status(run: RunStateLike, pw: dict[str, Any]) -> None:
     run["verified_loop"] = loop
 
 
-def set_plan_workflow_phase(folder: Path, phase: PlanWorkflowPhase) -> dict[str, Any]:
-    def _set(run: RunState) -> RunState:
-        pw = get_plan_workflow(run)
-        pw["enabled"] = True
-        pw["phase"] = phase
-        run["plan_workflow"] = pw
-        _mirror_verified_loop_status(run, pw)
-        return run
+def apply_plan_substate_patch(
+    run: dict[str, Any],
+    *,
+    phase: str | None = None,
+    stamp_orchestration: bool = True,
+    mirror_verified_loop: bool = True,
+    pop_fields: tuple[str, ...] = (),
+    **pw_fields: Any,
+) -> dict[str, Any]:
+    """Single write path for plan_workflow substate (Slice C SSOT)."""
+    from agent_lab.runtime.orchestration import stamp_orchestration_state
 
-    patch_run_meta(folder, _set)
+    pw = get_plan_workflow(run)
+    pw["enabled"] = True
+    if phase is not None:
+        pw["phase"] = phase
+    for key, value in pw_fields.items():
+        if value is not None:
+            pw[key] = value
+    for key in pop_fields:
+        pw.pop(key, None)
+    run["plan_workflow"] = pw
+    if mirror_verified_loop:
+        _mirror_verified_loop_status(run, pw)
+    if stamp_orchestration:
+        stamp_orchestration_state(run)
+    return run
+
+
+def transition_plan_substate(
+    folder: Path,
+    *,
+    phase: PlanWorkflowPhase | None = None,
+    stamp_orchestration: bool = True,
+    mirror_verified_loop: bool = True,
+    pop_fields: tuple[str, ...] = (),
+    **pw_fields: Any,
+) -> dict[str, Any]:
+    """Patch run.json plan_workflow via centralized substate transition."""
+
+    def _apply(run: RunState) -> RunState:
+        return apply_plan_substate_patch(  # type: ignore[return-value]
+            run,
+            phase=phase,
+            stamp_orchestration=stamp_orchestration,
+            mirror_verified_loop=mirror_verified_loop,
+            pop_fields=pop_fields,
+            **pw_fields,
+        )
+
+    patch_run_meta(folder, _apply)
     return get_plan_workflow(read_run_meta(folder))
+
+
+def set_plan_workflow_phase(folder: Path, phase: PlanWorkflowPhase) -> dict[str, Any]:
+    return transition_plan_substate(folder, phase=phase)
 
 
 def derive_loop_goal_from_plan(plan_md: str) -> dict[str, str]:

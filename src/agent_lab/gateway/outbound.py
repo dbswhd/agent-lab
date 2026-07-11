@@ -18,7 +18,6 @@ _log = logging.getLogger(__name__)
 OutboundEvent = str
 
 
-
 def _sign_body(secret: str, body: bytes) -> str:
     digest = hmac.new(secret.encode("utf-8"), body, hashlib.sha256).hexdigest()
     return f"sha256={digest}"

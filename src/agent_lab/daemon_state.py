@@ -16,7 +16,6 @@ def daemon_state_path() -> Path:
     return Path(raw).expanduser() if raw else _DEFAULT_PATH
 
 
-
 def load_daemon_state() -> dict[str, Any]:
     path = daemon_state_path()
     if not path.is_file():

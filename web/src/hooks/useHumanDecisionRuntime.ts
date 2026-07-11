@@ -11,7 +11,10 @@ export function useHumanDecisionRuntime(
   reloadKey: number,
   discussPaused: boolean,
 ) {
-  const { runtime } = useSessionRuntime(sessionId, { reloadKey, enabled: true });
+  const { runtime } = useSessionRuntime(sessionId, {
+    reloadKey,
+    enabled: true,
+  });
 
   const lanes = useMemo(
     () => buildHumanDecisionLanes(runtime, discussPaused),

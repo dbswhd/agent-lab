@@ -7,7 +7,6 @@ from typing import Any
 
 from agent_lab.core.execution_status_scopes import (
     OPEN_MERGE_PENDING_STATUSES as OPEN_PENDING_STATUSES,
-    PENDING_STATUS,
     find_open_merge_pending_execution,
 )
 

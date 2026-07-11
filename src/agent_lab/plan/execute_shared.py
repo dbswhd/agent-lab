@@ -30,7 +30,6 @@ import agent_lab.plan.execute as plan_execute
 
 MAX_DIFF_CHARS = 120_000
 MAX_VERIFY_RETRIES = 2
-from agent_lab.core.execution_status_scopes import PENDING_STATUS
 
 
 def _exec_id() -> str:

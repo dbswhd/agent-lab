@@ -12,7 +12,7 @@ from agent_lab.env_flags import is_truthy
 from agent_lab.run.state import RunStateLike
 import json
 import os
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 

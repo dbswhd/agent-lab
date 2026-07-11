@@ -603,7 +603,9 @@ export function useRoomChatInteractions(bootstrap: Bootstrap) {
   }
 
   const steerEligible = Boolean(
-    sessionId && (running || runBusy) && !planShell.planWorkflowAwaitingApproval,
+    sessionId &&
+    (running || runBusy) &&
+    !planShell.planWorkflowAwaitingApproval,
   );
 
   const handleSteer = useCallback(() => {

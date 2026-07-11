@@ -26,11 +26,7 @@ export function notifyNeedsInputIfBackground(opts: {
 }): boolean {
   const { sessionId, status, locale = "ko", macPush, force = false } = opts;
   if (!status.active || !sessionId) return false;
-  if (
-    !force &&
-    typeof document !== "undefined" &&
-    !document.hidden
-  ) {
+  if (!force && typeof document !== "undefined" && !document.hidden) {
     return false;
   }
 

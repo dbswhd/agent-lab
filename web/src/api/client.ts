@@ -2689,7 +2689,11 @@ export async function steerSession(
   sessionId: string,
   text: string,
   target: "any" | "room" | "execute" = "any",
-): Promise<{ ok: boolean; queued: number; entry?: { id: string; text: string } }> {
+): Promise<{
+  ok: boolean;
+  queued: number;
+  entry?: { id: string; text: string };
+}> {
   return json(`/api/sessions/${encodeURIComponent(sessionId)}/steer`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

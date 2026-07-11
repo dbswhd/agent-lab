@@ -51,15 +51,11 @@ describe("cycleMenuIndex", () => {
 
 describe("pageSlashHighlight", () => {
   it("jumps by page size within bounds", () => {
-    expect(
-      pageSlashHighlight(0, 20, SLASH_PAGE_SIZE, "down"),
-    ).toBe(SLASH_PAGE_SIZE);
-    expect(
-      pageSlashHighlight(15, 20, SLASH_PAGE_SIZE, "down"),
-    ).toBe(19);
-    expect(
-      pageSlashHighlight(15, 20, SLASH_PAGE_SIZE, "up"),
-    ).toBe(5);
+    expect(pageSlashHighlight(0, 20, SLASH_PAGE_SIZE, "down")).toBe(
+      SLASH_PAGE_SIZE,
+    );
+    expect(pageSlashHighlight(15, 20, SLASH_PAGE_SIZE, "down")).toBe(19);
+    expect(pageSlashHighlight(15, 20, SLASH_PAGE_SIZE, "up")).toBe(5);
   });
 });
 

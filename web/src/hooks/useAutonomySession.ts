@@ -1,8 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import {
-  patchSessionAutonomy,
-  type RuntimeSnapshot,
-} from "../api/client";
+import { patchSessionAutonomy, type RuntimeSnapshot } from "../api/client";
 import { useLocale } from "../i18n/useLocale";
 import { useSessionRuntime } from "./useSessionRuntime";
 import {

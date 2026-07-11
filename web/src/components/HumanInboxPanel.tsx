@@ -734,62 +734,62 @@ export function HumanInboxPanel({
   const multi = visiblePending.length > 1;
 
   return (
-      <div
-        className={[
-          "human-inbox human-inbox--composer composer-dock-card composer-dock-card--composer",
-          composerExpanded ? "" : "composer-dock-card--collapsed",
-        ]
-          .filter(Boolean)
-          .join(" ")}
-        role="region"
-        aria-label={ko ? "Human gate" : "Human gate"}
+    <div
+      className={[
+        "human-inbox human-inbox--composer composer-dock-card composer-dock-card--composer",
+        composerExpanded ? "" : "composer-dock-card--collapsed",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      role="region"
+      aria-label={ko ? "Human gate" : "Human gate"}
+    >
+      <button
+        type="button"
+        className="human-inbox__composer-toggle"
+        aria-expanded={composerExpanded}
+        onClick={() => setComposerExpanded((open) => !open)}
       >
-        <button
-          type="button"
-          className="human-inbox__composer-toggle"
-          aria-expanded={composerExpanded}
-          onClick={() => setComposerExpanded((open) => !open)}
-        >
-          {lead ? <Avatar role={inboxAgent(lead)} size={20} /> : null}
-          <span className="human-inbox__composer-headline composer-dock-card__headline">
-            <span className="human-inbox__composer-subject composer-dock-card__subject">
-              {leadSubject}
-            </span>
-            {!composerExpanded && multi ? (
-              <span className="human-inbox__composer-meta composer-dock-card__meta">
-                {ko
-                  ? `외 ${visiblePending.length - 1}건`
-                  : `+${visiblePending.length - 1} more`}
-              </span>
-            ) : null}
+        {lead ? <Avatar role={inboxAgent(lead)} size={20} /> : null}
+        <span className="human-inbox__composer-headline composer-dock-card__headline">
+          <span className="human-inbox__composer-subject composer-dock-card__subject">
+            {leadSubject}
           </span>
-          <span
-            className={[
-              "human-inbox__chevron",
-              composerExpanded ? "human-inbox__chevron--open" : "",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-            aria-hidden
-          />
-        </button>
-        {composerExpanded ? (
-          <>
-            {error ? <div className="human-inbox__error">{error}</div> : null}
-            <div className="human-inbox__items composer-dock-card__body">
-              {visiblePending.map((item) => (
-                <InboxRow
-                  key={item.id}
-                  item={item}
-                  {...rowProps}
-                  onRefClick={onRefClick}
-                  hideHead={!multi && item.kind === "question"}
-                  flat
-                />
-              ))}
-            </div>
-          </>
-        ) : null}
-      </div>
-    );
+          {!composerExpanded && multi ? (
+            <span className="human-inbox__composer-meta composer-dock-card__meta">
+              {ko
+                ? `외 ${visiblePending.length - 1}건`
+                : `+${visiblePending.length - 1} more`}
+            </span>
+          ) : null}
+        </span>
+        <span
+          className={[
+            "human-inbox__chevron",
+            composerExpanded ? "human-inbox__chevron--open" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+          aria-hidden
+        />
+      </button>
+      {composerExpanded ? (
+        <>
+          {error ? <div className="human-inbox__error">{error}</div> : null}
+          <div className="human-inbox__items composer-dock-card__body">
+            {visiblePending.map((item) => (
+              <InboxRow
+                key={item.id}
+                item={item}
+                {...rowProps}
+                onRefClick={onRefClick}
+                hideHead={!multi && item.kind === "question"}
+                flat
+              />
+            ))}
+          </div>
+        </>
+      ) : null}
+    </div>
+  );
 }

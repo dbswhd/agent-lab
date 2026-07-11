@@ -61,22 +61,38 @@
    never reach .avatar--orb; only planner/critic/scribe/you do. */
 .avatar--orb.avatar--planner {
   background:
-    radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.35) 0%, transparent 60%),
+    radial-gradient(
+      circle at 32% 28%,
+      rgba(255, 255, 255, 0.35) 0%,
+      transparent 60%
+    ),
     var(--agent-planner);
 }
 .avatar--orb.avatar--critic {
   background:
-    radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.35) 0%, transparent 60%),
+    radial-gradient(
+      circle at 32% 28%,
+      rgba(255, 255, 255, 0.35) 0%,
+      transparent 60%
+    ),
     var(--agent-critic);
 }
 .avatar--orb.avatar--scribe {
   background:
-    radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.35) 0%, transparent 60%),
+    radial-gradient(
+      circle at 32% 28%,
+      rgba(255, 255, 255, 0.35) 0%,
+      transparent 60%
+    ),
     var(--agent-scribe);
 }
 .avatar--orb.avatar--you {
   background:
-    radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.5) 0%, transparent 60%),
+    radial-gradient(
+      circle at 32% 28%,
+      rgba(255, 255, 255, 0.5) 0%,
+      transparent 60%
+    ),
     var(--agent-you);
   color: var(--label-inverse);
 }

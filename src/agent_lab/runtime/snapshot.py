@@ -90,6 +90,23 @@ def _next_action(
     return "Draft or refine plan"
 
 
+def _public_turn_contract_shadow(run: dict[str, Any]) -> dict[str, Any] | None:
+    contract = run.get("turn_contract")
+    if not isinstance(contract, dict) or not contract:
+        return None
+    from agent_lab.room.turn_contract import contract_runtime_applied, turn_contract_mode
+
+    mode = turn_contract_mode()
+    return {
+        "mode": mode,
+        "contract_id": contract.get("contract_id"),
+        "source": contract.get("source"),
+        "runtime_applied": contract_runtime_applied(mode, contract),
+        "safety_floor": contract.get("safety_floor"),
+        "task_kind": contract.get("task_kind"),
+    }
+
+
 def build_runtime_snapshot(
     folder: Path,
     *,
@@ -227,6 +244,7 @@ def build_runtime_snapshot(
         "wisdom_index": _public_wisdom_index(folder),
         "codex_proxy": _public_codex_proxy(),
         "autonomy": _public_autonomy(folder),
+        "turn_contract": _public_turn_contract_shadow(run),
         "status_line": _public_status_line(run, pending_exec=pending_exec, latest_exec=latest_exec),
         "cost_quarter": _public_cost_quarter(),
     }

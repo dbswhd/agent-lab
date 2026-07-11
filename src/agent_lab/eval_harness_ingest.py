@@ -48,3 +48,9 @@ def score_pytest_junit(
     result_map = parse_junit_xml_path(junit_path)
     scored = score_instance(result_map, f2p_ids, p2p_ids, status=status)
     return {"result_map": result_map, "score": scored}
+
+
+def score_execute_outcome(verdict: str) -> dict[str, Any]:
+    from agent_lab.eval_harness import score_outcome_verdict
+
+    return score_outcome_verdict(verdict)

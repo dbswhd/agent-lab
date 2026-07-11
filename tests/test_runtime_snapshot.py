@@ -138,6 +138,22 @@ def test_runtime_snapshot_plan_workflow_human_pending(tmp_path: Path) -> None:
     assert snap["work_phase"] == "review_needed"
 
 
+def test_runtime_snapshot_includes_turn_contract_shadow(tmp_path: Path) -> None:
+    folder = tmp_path / "tc-runtime"
+    folder.mkdir()
+    (folder / "run.json").write_text(
+        '{"turn_contract":{"contract_id":"guarded_plan","source":"shadow","safety_floor":"guarded_plan","task_kind":"build"}}',
+        encoding="utf-8",
+    )
+    snap = build_runtime_snapshot(folder)
+    tc = snap["turn_contract"]
+    assert tc is not None
+    assert tc["contract_id"] == "guarded_plan"
+    assert tc["source"] == "shadow"
+    assert tc["mode"] == "shadow"
+    assert tc["runtime_applied"] is False
+
+
 def test_get_runtime_api(session_folder: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from app.server.main import app
 

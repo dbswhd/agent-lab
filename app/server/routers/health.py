@@ -108,6 +108,13 @@ def health_flags(
     return build_flags_payload(category=category, profile=profile)
 
 
+@router.get("/health/harness")
+def health_harness() -> dict[str, Any]:
+    from agent_lab.harness_hygiene import build_harness_hygiene_report
+
+    return build_harness_hygiene_report()
+
+
 @router.get("/profiles")
 def run_profiles() -> dict[str, Any]:
     """Run profile catalog — four named flag presets (fast|balanced|thorough|autonomous)."""

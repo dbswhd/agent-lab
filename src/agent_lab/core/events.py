@@ -32,6 +32,7 @@ class RuntimeEvent(StrEnum):
     EXECUTE_VERIFY_FAIL = "execute.verify.fail"
     EXECUTE_REPAIR_START = "execute.repair.start"
     EXECUTE_REPAIR_COMPLETE = "execute.repair.complete"
+    EXECUTE_REPAIR_VERIFY = "execute.repair.verify"
     EXECUTE_STRUCTURAL_FAIL = "execute.structural.fail"
 
     # --- Mission conductor (mission_loop.py) ---

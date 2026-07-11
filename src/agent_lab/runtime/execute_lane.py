@@ -156,6 +156,36 @@ def handle_execute_structural_fail(folder: Path, payload: dict[str, Any]) -> Dis
     )
 
 
+def handle_execute_repair_verify(folder: Path, payload: dict[str, Any]) -> DispatchResult:
+    from agent_lab.mission.advance import on_merge_confirm
+
+    execution_id = str(payload.get("execution_id") or "").strip()
+    if not execution_id:
+        return DispatchResult(handled=False, reason="missing execution_id")
+    result = on_merge_confirm(folder, execution_id=execution_id)
+    if result is None:
+        return DispatchResult(handled=True, skipped=True, reason="mission_loop_disabled")
+    return DispatchResult(
+        handled=True,
+        result=result,
+        phase=str(result.get("phase") or ""),
+    )
+
+
+def handle_execute_repair_complete(folder: Path, payload: dict[str, Any]) -> DispatchResult:
+    from agent_lab.mission.advance import maybe_advance_mission
+
+    result = maybe_advance_mission(
+        folder,
+        permissions=payload.get("permissions") if isinstance(payload.get("permissions"), dict) else None,
+        executor=str(payload.get("executor")).strip() if payload.get("executor") is not None else None,
+    )
+    if isinstance(result, dict) and result.get("skipped"):
+        return _skipped(result)
+    phase = str(result.get("phase") or "") if isinstance(result, dict) else ""
+    return DispatchResult(handled=True, result=result, phase=phase)
+
+
 _EXECUTE_HANDLERS = {
     RuntimeEvent.EXECUTE_DRY_RUN_START: handle_execute_dry_run_start,
     RuntimeEvent.EXECUTE_DRY_RUN_COMPLETE: handle_execute_dry_run_complete,
@@ -164,6 +194,8 @@ _EXECUTE_HANDLERS = {
     RuntimeEvent.EXECUTE_MERGE_REJECTED: handle_execute_merge_rejected,
     RuntimeEvent.EXECUTE_VERIFY_PASS: handle_execute_verify_result,
     RuntimeEvent.EXECUTE_VERIFY_FAIL: handle_execute_verify_result,
+    RuntimeEvent.EXECUTE_REPAIR_VERIFY: handle_execute_repair_verify,
+    RuntimeEvent.EXECUTE_REPAIR_COMPLETE: handle_execute_repair_complete,
     RuntimeEvent.EXECUTE_STRUCTURAL_FAIL: handle_execute_structural_fail,
 }
 

@@ -168,19 +168,15 @@ def _finalize_plan_approval(
     updated = patch_run_meta(session_folder, _approve)
 
     if start_execute_loop:
-        from agent_lab.mission.loop import after_plan_scribe, enable_mission_loop
+        from agent_lab.mission.loop import (
+            after_plan_scribe,
+            enable_mission_loop,
+            start_mission_autonomous_segment,
+        )
 
         enable_mission_loop(session_folder)
         after_plan_scribe(session_folder, md)
-
-        from agent_lab.runtime.events import RuntimeEvent
-        from agent_lab.runtime.runtime import dispatch
-
-        dispatch(
-            session_folder,
-            RuntimeEvent.MISSION_ENABLE,
-            {"start_autonomous": True},
-        )
+        start_mission_autonomous_segment(session_folder)
         updated = read_run_meta(session_folder)
 
     pw_out = get_plan_workflow(updated)

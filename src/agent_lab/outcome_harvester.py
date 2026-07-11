@@ -307,6 +307,11 @@ def _build_execute_outcome_record(
     advisor = advisor or _advisor_fields_for_execute(run, last_turn)
     topic = _topic_text(folder, run)
     verdict = _execution_verdict(execution)
+    evaluation = None
+    if verdict:
+        from agent_lab.eval_harness_ingest import score_execute_outcome
+
+        evaluation = score_execute_outcome(verdict)
     contract_raw = run.get("turn_contract")
     contract = contract_raw if isinstance(contract_raw, dict) else {}
     from agent_lab.room.turn_contract import derive_route_regrets
@@ -343,6 +348,9 @@ def _build_execute_outcome_record(
         "escalated": bool(category.get("escalated_from")),
         "execution_id": str(execution.get("id") or ""),
         "final_verdict": verdict or None,
+        "harness_resolved": evaluation["resolved"] if evaluation else None,
+        "harness_attribution": evaluation["attribution"] if evaluation else None,
+        "harness_reason": evaluation["reason"] if evaluation else None,
         "repair_attempts": len(execution.get("repair_history") or []),
         "objection_summary": {},
         "objection_resolution": {},

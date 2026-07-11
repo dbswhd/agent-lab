@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from agent_lab.human_inbox import create_inbox_item, resolve_inbox_item
+from agent_lab.mission.loop import get_mission_loop
 from agent_lab.session.clarifier import record_clarifier_answers
 from agent_lab.plan.workflow import (
     PlanWorkflowNotApproved,
@@ -19,6 +20,8 @@ from agent_lab.plan.workflow import (
     tick_plan_workflow_after_turn,
 )
 from agent_lab.run.meta import patch_run_meta, read_run_meta
+from agent_lab.runtime.events import RuntimeEvent
+from agent_lab.runtime.runtime import dispatch
 
 
 @pytest.fixture(autouse=True)
@@ -148,6 +151,42 @@ def test_inbox_resolve_advances_clarify_to_draft(tmp_path: Path) -> None:
 
     resolve_inbox_item(folder, item["id"], selected=["a"])
     assert get_plan_workflow(read_run_meta(folder))["phase"] == "DRAFT"
+
+
+def test_approve_plan_mission_loop_e2e(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """HUMAN_PENDING + plan_intent=loop → mission enabled, autonomous, EXECUTE_QUEUE."""
+    monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
+    monkeypatch.setenv("AGENT_LAB_MISSION_LOOP", "1")
+    folder = tmp_path / "sess"
+    folder.mkdir()
+    (folder / "plan.md").write_text(SAMPLE_PLAN, encoding="utf-8")
+    (folder / "run.json").write_text(
+        '{"plan_intent":"loop","user_mode":"loop","verified_loop":{"status":"pending_approval"}}',
+        encoding="utf-8",
+    )
+    set_plan_workflow_phase(folder, "HUMAN_PENDING")
+
+    mission_enable_dispatches: list[str] = []
+    real_dispatch = dispatch
+
+    def _spy_dispatch(session_folder: Path, event: RuntimeEvent | str, payload=None):
+        if str(event) in {RuntimeEvent.MISSION_ENABLE.value, "mission.enable"}:
+            mission_enable_dispatches.append(str(event))
+        return real_dispatch(session_folder, event, payload)
+
+    monkeypatch.setattr("agent_lab.runtime.runtime.dispatch", _spy_dispatch)
+
+    result = approve_plan(folder)
+    run = read_run_meta(folder)
+    ml = get_mission_loop(run)
+
+    assert result["execute_loop_started"] is True
+    assert run["verified_loop"]["status"] == "running"
+    assert ml["enabled"] is True
+    assert ml["autonomous_segment"]["active"] is True
+    assert ml["phase"] == "EXECUTE_QUEUE"
+    assert mission_enable_dispatches == []
+    ensure_plan_workflow_approved(folder)
 
 
 def test_e2e_clarify_draft_approve_execute_gate(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

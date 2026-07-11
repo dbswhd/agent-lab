@@ -17,6 +17,7 @@ from __future__ import annotations
 from agent_lab.time_utils import utc_now_iso
 from agent_lab.env_flags import env_bool
 from agent_lab.run.state import RunStateLike
+from agent_lab.trace_episode import episode_fields
 import json
 import time
 from pathlib import Path
@@ -48,6 +49,7 @@ class TraceRecorder:
         self._run_meta = run_meta
         self._inner = inner
         self._trace_id = f"t{human_turn}"
+        self._human_turn = human_turn
         self._path = (folder / "trace.jsonl") if folder is not None else None
         self._n = 0
         self._agents: dict[tuple[str, Any], dict[str, Any]] = {}
@@ -81,6 +83,7 @@ class TraceRecorder:
         if self._path is None:
             return
         try:
+            span.update(episode_fields(self._folder, self._human_turn))
             with self._path.open("a", encoding="utf-8") as f:
                 f.write(json.dumps(span, ensure_ascii=False) + "\n")
         except Exception:
@@ -251,6 +254,26 @@ def record_agent_span(
     )
 
 
+def record_control_span(
+    folder: Path | None,
+    *,
+    name: str,
+    status: str,
+    human_turn: int | None = None,
+    data: dict[str, str | int | float | bool | None] | None = None,
+) -> None:
+    _append_standalone_span(
+        folder,
+        kind="control",
+        name=name,
+        dur_ms=0.0,
+        status=status,
+        data=data,
+        trace_id="control",
+        human_turn=human_turn,
+    )
+
+
 def _append_standalone_span(
     folder: Path | None,
     *,
@@ -263,6 +286,7 @@ def _append_standalone_span(
     tokens_in: int = 0,
     tokens_out: int = 0,
     usd: float = 0.0,
+    human_turn: int | None = None,
 ) -> None:
     if not trace_enabled() or folder is None:
         return
@@ -280,6 +304,7 @@ def _append_standalone_span(
             "dur_ms": round(dur_ms, 1) if dur_ms is not None else None,
             "status": status,
         }
+        span.update(episode_fields(folder, human_turn))
         if tokens_in or tokens_out:
             span["tokens_in"] = tokens_in
             span["tokens_out"] = tokens_out

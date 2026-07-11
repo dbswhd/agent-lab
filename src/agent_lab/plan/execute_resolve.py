@@ -344,6 +344,19 @@ def resolve_execution(
                 return _append_execution_approval(run, approval)
 
             patch_run_meta(folder, _update_retry)
+            from agent_lab.trace_recorder import record_control_span
+
+            record_control_span(
+                folder,
+                name="execution_approval",
+                status=vote_norm,
+                data={
+                    "execution_id": execution_id,
+                    "approved_by": approved_by,
+                    "auto_merge": approved_by == "auto",
+                    "retry_merge": True,
+                },
+            )
             return {
                 "ok": True,
                 "execution": target,
@@ -415,6 +428,19 @@ def resolve_execution(
         return _append_execution_approval(run, approval)
 
     patch_run_meta(folder, _update)
+
+    from agent_lab.trace_recorder import record_control_span
+
+    record_control_span(
+        folder,
+        name="execution_approval",
+        status=vote_norm,
+        data={
+            "execution_id": execution_id,
+            "approved_by": approved_by,
+            "auto_merge": approved_by == "auto",
+        },
+    )
 
     if vote_norm == "approve" and execution_allows_task_complete(target):
 

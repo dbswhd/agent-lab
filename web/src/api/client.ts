@@ -183,7 +183,11 @@ export type GoalLoopRecord = {
 };
 
 export type ResponseContractPreset =
-  "concise" | "evidence_first" | "plan_ready" | "review_only" | "build_handoff";
+  | "concise"
+  | "evidence_first"
+  | "plan_ready"
+  | "review_only"
+  | "build_handoff";
 
 export type ResponseContractRecord = {
   preset?: ResponseContractPreset | string;
@@ -495,7 +499,11 @@ export type CredentialsResponse = {
 };
 
 export type ProviderAuthState =
-  "logged_in" | "logged_out" | "unavailable" | "checking" | "error";
+  | "logged_in"
+  | "logged_out"
+  | "unavailable"
+  | "checking"
+  | "error";
 
 export type ProviderAuthRow = {
   id: string;
@@ -686,7 +694,11 @@ export type MissionLoopResponse = {
 };
 
 export type RuntimeWorkPhase =
-  "plan_draft" | "review_needed" | "execute_pending" | "merge_verify" | "done";
+  | "plan_draft"
+  | "review_needed"
+  | "execute_pending"
+  | "merge_verify"
+  | "done";
 
 export type RuntimeOrchestration = {
   phase: string;
@@ -973,10 +985,18 @@ export function fetchDiagnostics() {
 }
 
 export type VerificationLaneId =
-  "fast" | "integration" | "bridge" | "ci_full" | "live";
+  | "fast"
+  | "integration"
+  | "bridge"
+  | "ci_full"
+  | "live";
 
 export type VerificationStatus =
-  "passed" | "failed" | "not_run" | "running" | "unknown";
+  | "passed"
+  | "failed"
+  | "not_run"
+  | "running"
+  | "unknown";
 
 export type VerificationLaneReport = {
   readonly lane: VerificationLaneId;
@@ -2616,7 +2636,12 @@ export type HumanInboxItem = {
   source?: string;
   caller_agent?: string | null;
   status:
-    "pending" | "resolved" | "deferred" | "superseded" | "rejected" | "timeout";
+    | "pending"
+    | "resolved"
+    | "deferred"
+    | "superseded"
+    | "rejected"
+    | "timeout";
   prompt: string;
   summary?: string | null;
   options?: HumanInboxOption[];

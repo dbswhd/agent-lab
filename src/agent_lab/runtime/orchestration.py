@@ -241,6 +241,14 @@ def orchestration_work_phase(
     if phase in {"EXECUTE_QUEUE", "DRY_RUN", "REPAIR"}:
         return "execute_pending"
     if phase in {"CLARIFY", "DISCUSS", "PLAN_GATE", "MISSION_DEFINE"}:
+        if not orchestration.get("mission_enabled"):
+            return resolve_work_phase_standalone(
+                has_plan=has_plan,
+                has_pending_execution=has_pending_execution,
+                has_dry_run_diff=has_dry_run_diff,
+                pending_agreement=pending_agreement,
+                latest_execution=latest_execution,
+            )
         return "plan_draft"
 
     return resolve_work_phase_standalone(

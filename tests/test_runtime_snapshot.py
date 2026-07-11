@@ -121,6 +121,7 @@ def test_snapshot_matches_legacy_work_phase_resolver(session_folder: Path) -> No
         has_dry_run_diff=False,
         pending_agreement=False,
         latest_execution=None,
+        run=run,
     )
     assert snap["work_phase"] == legacy == "review_needed"
 

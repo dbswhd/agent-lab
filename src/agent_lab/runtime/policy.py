@@ -71,6 +71,16 @@ class PolicyEngine:
                 source="open_objection",
                 gate_snapshot=snap,
             )
+        from agent_lab.consensus_gate import consensus_action_block_reason
+
+        consensus_reason = consensus_action_block_reason(run_meta or {}, action_index, action_kind)
+        if consensus_reason:
+            return PolicyResult(
+                allowed=False,
+                reason=consensus_reason,
+                source="consensus_completeness",
+                gate_snapshot=snap,
+            )
         if not (snap.get("gates") or {}).get("execute", {}).get("open", True):
             return PolicyResult(
                 allowed=False,

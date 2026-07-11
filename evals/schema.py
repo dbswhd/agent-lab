@@ -10,6 +10,7 @@ class MockRun(TypedDict, total=False):
     topic: str
     turn_profile: str
     consensus_mode: bool
+    turn_contract_mode: str
 
 
 TraceProfile: TypeAlias = Literal["discuss_only", "plan_only", "execute_path", "full_path"]
@@ -192,12 +193,15 @@ def parse_eval_case(value: object) -> EvalCase | None:
         topic = mock_run.get("topic")
         turn_profile = mock_run.get("turn_profile")
         consensus_mode = mock_run.get("consensus_mode")
+        turn_contract_mode = mock_run.get("turn_contract_mode")
         if isinstance(topic, str):
             parsed_mock["topic"] = topic
         if isinstance(turn_profile, str):
             parsed_mock["turn_profile"] = turn_profile
         if isinstance(consensus_mode, bool):
             parsed_mock["consensus_mode"] = consensus_mode
+        if isinstance(turn_contract_mode, str):
+            parsed_mock["turn_contract_mode"] = turn_contract_mode
         case["mock_run"] = parsed_mock
 
     trace_profile = obj.get("trace_profile")

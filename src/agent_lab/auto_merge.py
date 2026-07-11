@@ -12,7 +12,7 @@ from agent_lab.run.meta import read_run_meta
 from agent_lab.trust_budget import get_trust_budget
 
 
-from agent_lab.plan.execution_status_scopes import find_open_merge_pending_execution
+from agent_lab.core.execution_status_scopes import find_open_merge_pending_execution
 
 
 def _pending_execution(run: dict[str, Any]) -> dict[str, Any] | None:

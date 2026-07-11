@@ -8,12 +8,13 @@ from typing import TypedDict
 
 class ContractOutcome(TypedDict, total=False):
     contract_id: str
+    phase: str | None
     final_verdict: str | None
     repair_attempts: int
     escalated: bool
     task_kind: str | None
     risk: str | None
-    execute_intent: bool
+    execute_intent: bool | None
 
 
 def _explore_rate() -> float:
@@ -45,13 +46,21 @@ def contract_history_scores(
     totals: dict[str, float] = {}
     counts: dict[str, int] = {}
     for row in history:
+        phase = row.get("phase")
+        if phase != "execute":
+            continue
         if not _context_match(row, task_kind=task_kind, risk=risk, execute_intent=execute_intent):
             continue
         contract_id = str(row.get("contract_id") or "")
         if not contract_id:
             continue
         verdict = str(row.get("final_verdict") or "").lower()
-        repair_attempts = int(row.get("repair_attempts") or 0)
+        if verdict not in {"pass", "fail"}:
+            continue
+        try:
+            repair_attempts = max(0, int(row.get("repair_attempts") or 0))
+        except (TypeError, ValueError):
+            continue
         score = 1.0 if verdict == "pass" and repair_attempts == 0 else 0.5 if verdict == "pass" else -1.0
         if repair_attempts > 0:
             score -= 0.5

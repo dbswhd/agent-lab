@@ -56,6 +56,8 @@ def test_record_execute_outcome_writes_verdict_row(tmp_path, monkeypatch) -> Non
     row = rows[0]
     assert row["phase"] == "execute"
     assert row["final_verdict"] == "pass"
+    assert row["harness_attribution"] == "model"
+    assert row["harness_reason"] == "resolved"
     assert row["execution_id"] == "exec-1"
     assert row["repair_attempts"] == 0
     # episode-key context (S2) borrowed from the last Room turn
@@ -108,6 +110,8 @@ def test_record_execute_outcome_tags_harness_infra_on_skipped_verdict(tmp_path, 
     row = json.loads(outcomes_path().read_text(encoding="utf-8").splitlines()[0])
     assert row["failure_tags"] == ["harness_infra"]
     assert row["primary_tag"] == "harness_infra"
+    assert row["harness_attribution"] == "harness"
+    assert row["harness_reason"] == "missing_verify_criterion"
 
 
 def test_record_execute_outcome_no_failure_tags_on_evidenced_pass(tmp_path, monkeypatch) -> None:

@@ -11,7 +11,7 @@ from agent_lab.mission.loop import sync_mission_phase_from_run
 from agent_lab.runtime.policy import PolicyEngine
 from agent_lab.run.meta import read_run_meta
 
-from agent_lab.plan.execution_status_scopes import (
+from agent_lab.core.execution_status_scopes import (
     execution_rows as _execution_rows,
     find_pending_approval_execution,
 )
@@ -88,6 +88,23 @@ def _next_action(
     if work_phase == "done":
         return "Work complete"
     return "Draft or refine plan"
+
+
+def _public_turn_contract_shadow(run: dict[str, Any]) -> dict[str, Any] | None:
+    contract = run.get("turn_contract")
+    if not isinstance(contract, dict) or not contract:
+        return None
+    from agent_lab.room.turn_contract import contract_runtime_applied, turn_contract_mode
+
+    mode = turn_contract_mode()
+    return {
+        "mode": mode,
+        "contract_id": contract.get("contract_id"),
+        "source": contract.get("source"),
+        "runtime_applied": contract_runtime_applied(mode, contract),
+        "safety_floor": contract.get("safety_floor"),
+        "task_kind": contract.get("task_kind"),
+    }
 
 
 def build_runtime_snapshot(
@@ -227,6 +244,7 @@ def build_runtime_snapshot(
         "wisdom_index": _public_wisdom_index(folder),
         "codex_proxy": _public_codex_proxy(),
         "autonomy": _public_autonomy(folder),
+        "turn_contract": _public_turn_contract_shadow(run),
         "status_line": _public_status_line(run, pending_exec=pending_exec, latest_exec=latest_exec),
         "cost_quarter": _public_cost_quarter(),
     }

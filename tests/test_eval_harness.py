@@ -230,12 +230,12 @@ def test_ac13_flag_default_on(monkeypatch):
     assert eh.eval_harness_enabled() is True
 
 
-def test_ac13_n2_wired_through_ingest_only():
+def test_ac13_n2_wired_through_declared_ingest_boundaries():
     # HS0-2 wires ``feedback_report.py`` to eval_harness (harness_attribution over
     # the outcome ledger) — a designated integration point, not an accidental import.
     # This guard now enforces "only these named modules", not "zero call sites".
     src = Path(__file__).resolve().parent.parent / "src" / "agent_lab"
-    allowed = {"eval_harness.py", "eval_harness_ingest.py", "feedback_report.py"}
+    allowed = {"eval_harness.py", "eval_harness_ingest.py", "feedback_report.py", "outcome_harvester.py"}
     offenders = []
     for py in src.glob("*.py"):
         if py.name in allowed:

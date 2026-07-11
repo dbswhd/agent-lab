@@ -364,6 +364,38 @@ def test_prepare_turn_policy_persists_shadow_turn_contract(
     assert contract.get("contract_id") == "critical_review"
     assert contract.get("source") == "bootstrap"
     assert "candidates" in contract
+    assert contract.get("rollout_mode") == "shadow"
+    assert contract.get("applied") is False
+    assert contract.get("runtime_controls") == {
+        "agent_limit": None,
+        "max_rounds": 2,
+        "consensus": True,
+    }
+
+
+def test_prepare_turn_policy_off_does_not_read_history_or_leave_contract(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from agent_lab.room.turn_policy import prepare_turn_policy_before_agent_round
+    from agent_lab.run.meta import read_run_meta
+
+    monkeypatch.setenv("AGENT_LAB_TURN_POLICY", "1")
+    monkeypatch.setenv("AGENT_LAB_TURN_CONTRACT_MODE", "off")
+
+    def _unexpected_history_read() -> list[dict[str, str | int | bool | None]]:
+        raise AssertionError("contract history must not be read in off mode")
+
+    monkeypatch.setattr("agent_lab.room.turn_policy._contract_history_from_outcome_rows", _unexpected_history_read)
+    folder = tmp_path / "sess"
+    folder.mkdir()
+    (folder / "run.json").write_text('{"turn_contract": {"contract_id": "quick_read"}}', encoding="utf-8")
+    run_meta = read_run_meta(folder)
+
+    prepare_turn_policy_before_agent_round(folder, run_meta, human_turn=1, topic="짧은 확인")
+
+    assert "turn_contract" not in run_meta
+    assert "turn_contract" not in read_run_meta(folder)
 
 
 def test_supervisor_draft_phase_scribes() -> None:

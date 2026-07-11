@@ -175,11 +175,31 @@ def _record_verify_after_merge(
         exec_id = str(target.get("id") or "")
         if exec_id:
             archive_executed_diff(folder, execution_id=exec_id, execution=target)
-    from agent_lab.runtime.runtime import dispatch_verify_result
+    from agent_lab.core.mission_loop import get_mission_loop
+    from agent_lab.run.meta import read_run_meta
+    from agent_lab.runtime.runtime import dispatch_prepare_verify, dispatch_verify_result
+
+    exec_id = str(target.get("id") or "")
+    if exec_id:
+        phase = str(get_mission_loop(read_run_meta(folder)).get("phase") or "")
+        if phase in {"MERGE_REVIEW", "REPAIR"}:
+            dispatch_prepare_verify(folder, execution_id=exec_id)
 
     idx = int(target.get("action_index") or 0)
     verdict = str((oracle.get("verdict") or evidence.get("status") or "")).lower()
     reason = str(oracle.get("detail") or oracle.get("feedback") or oracle.get("reason") or "")
+    from agent_lab.trace_recorder import record_control_span
+
+    record_control_span(
+        folder,
+        name="oracle_verify",
+        status=verdict or "unknown",
+        data={
+            "execution_id": str(target.get("id") or ""),
+            "source": evidence.get("source"),
+            "retries": retries,
+        },
+    )
     dispatch_verify_result(
         folder,
         action_index=idx,

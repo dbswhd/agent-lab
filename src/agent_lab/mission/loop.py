@@ -380,6 +380,37 @@ def enable_mission_loop(
     return get_mission_loop(read_run_meta(folder))
 
 
+def start_mission_autonomous_segment(folder: Path) -> dict[str, Any]:
+    """Activate autonomous segment after plan approval without re-bootstrap."""
+
+    def _start(run: dict[str, Any]) -> dict[str, Any]:
+        ml = get_mission_loop(run)
+        if not ml.get("enabled"):
+            return run
+        ml["autonomous_segment"] = {
+            "active": True,
+            "started_at": _now_iso(),
+            "ends_on": list(AUTONOMOUS_ENDS),
+        }
+        run["mission_loop"] = ml
+        return run
+
+    patch_run_meta(folder, _start)
+
+    plan_path = folder / "plan.md"
+    plan_md = plan_path.read_text(encoding="utf-8") if plan_path.is_file() else ""
+    from agent_lab.drift_audit import snapshot_drift_baseline
+    from agent_lab.room.messages import _human_turn_count
+    from agent_lab.room.session_persist import load_session_messages
+
+    try:
+        human_turn = _human_turn_count(load_session_messages(folder))
+    except Exception:
+        human_turn = 0
+    snapshot_drift_baseline(folder, plan_md or "", human_turn)
+    return get_mission_loop(read_run_meta(folder))
+
+
 def run_plan_gate(folder: Path, plan_md: str) -> dict[str, Any]:
     """Phase 2: evaluate plan, update momus_round, enqueue or reject."""
     run = read_run_meta(folder)
@@ -655,7 +686,7 @@ def run_mission_discuss_recovery(
 
     from agent_lab.agents.registry import available_agents
     from agent_lab.runtime.invoke_discuss import continue_room_round
-    from agent_lab.run.control import run_guard
+    from agent_lab.run.control import RoomRunCancelled, run_guard
 
     ready = set(available_agents())
     agents = [str(a) for a in ("codex", "claude") if a in ready]
@@ -683,9 +714,37 @@ def run_mission_discuss_recovery(
                 research_mode=True,
                 on_event=on_event,
             )
+        except RoomRunCancelled:
+            raise
         except Exception as exc:
-            messages, plan_md = [], ""
-            append_wisdom_note(folder, line=f"discuss recovery round failed: {exc}")
+            error_type = type(exc).__name__
+
+            def _recovery_failed(run_in: dict[str, Any]) -> dict[str, Any]:
+                m = get_mission_loop(run_in)
+                dr = dict(m.get("discuss_recovery") or {})
+                dr["pending"] = True
+                dr["completed_at"] = None
+                dr["last_error_type"] = error_type
+                dr["last_failed_at"] = _now_iso()
+                m["phase"] = "DISCUSS"
+                m["discuss_recovery"] = dr
+                run_in["mission_loop"] = m
+                return run_in
+
+            patch_run_meta(folder, _recovery_failed)
+            append_wisdom_note(
+                folder,
+                line=f"discuss recovery round failed ({error_type}); pending retained",
+            )
+            out = get_mission_loop(read_run_meta(folder))
+            return {
+                "status": "discuss_recovery_failed",
+                "skipped": True,
+                "reason": "recovery_round_failed",
+                "error_type": error_type,
+                "phase": out.get("phase"),
+                "discuss_recovery": out.get("discuss_recovery"),
+            }
 
     fallback_plan = folder / "plan.md"
     if not (plan_md or "").strip() and fallback_plan.is_file():

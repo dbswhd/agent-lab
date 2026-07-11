@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from agent_lab.plan.execution_status_scopes import (
+from agent_lab.core.execution_status_scopes import (
     CANCELLABLE_EXECUTION_STATUSES,
     EVIDENCE_PENDING_STATUSES,
     OPEN_MERGE_PENDING_STATUSES,

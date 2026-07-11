@@ -1,0 +1,13 @@
+ src/agent_lab/core/events.py            |   1 +
+ src/agent_lab/mission/loop.py           |  65 ++++++++++-
+ src/agent_lab/plan/execute_verify.py    |  10 +-
+ src/agent_lab/plan/workflow_approval.py |  16 +--
+ src/agent_lab/runtime/execute_lane.py   |  32 ++++++
+ src/agent_lab/runtime/runtime.py        |  40 +++++++
+ src/agent_lab/runtime/transitions.py    | 188 +++++++++++++++++++++++++++++++-
+ tests/test_mission_loop.py              |  19 ++++
+ tests/test_plan_workflow.py             |   1 +
+ tests/test_plan_workflow_e2e.py         |  39 +++++++
+ tests/test_runtime_dispatch.py          |  83 +++++++++++++-
+ tests/test_runtime_mission_dispatch.py  |   9 ++
+ 12 files changed, 484 insertions(+), 19 deletions(-)

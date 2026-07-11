@@ -7,6 +7,7 @@ from typing import Literal
 
 from agent_lab.runtime.events import RuntimeEvent
 from agent_lab.runtime.import_graph import OrchestrationLane
+from agent_lab.run.state import RunStateLike
 
 GuardKind = Literal[
     "always",
@@ -41,6 +42,117 @@ class RuntimeTransition:
     notes: str = ""
 
 
+def transition_rows_for(
+    event: RuntimeEvent,
+    phase: str,
+) -> tuple[RuntimeTransition, ...]:
+    return tuple(
+        row for row in TRANSITION_TABLE if row.event == event and phase in row.from_phases
+    )
+
+
+# Handler-time branching guards: entry allows the event; handler picks the row outcome.
+_OUTCOME_GUARDS: frozenset[GuardKind] = frozenset(
+    {
+        "plan_gate_ok",
+        "plan_gate_reject_under_cap",
+        "plan_gate_reject_cap",
+        "verify_pass_has_pending",
+        "verify_pass_no_pending",
+        "verify_fail_under_repair_cap",
+        "verify_fail_repair_cap",
+        "verify_fail_structural",
+    }
+)
+
+
+def transition_guard_satisfied(run: RunStateLike, guard: GuardKind) -> bool:
+    """Evaluate a transition-table guard against current run state."""
+    if guard == "always" or guard in _OUTCOME_GUARDS:
+        return True
+
+    from agent_lab.mission.loop import (
+        get_mission_loop,
+        mission_autorun_enabled,
+        mission_define_ready,
+        open_block_reason,
+    )
+
+    mission = get_mission_loop(run)
+
+    if guard == "mission_enabled":
+        return bool(mission.get("enabled"))
+    if guard == "mission_define_ready":
+        if not mission_define_ready(run):
+            return False
+        from agent_lab.mode_router import resolve_mission_bootstrap_phase
+
+        return resolve_mission_bootstrap_phase(run) == "DISCUSS"
+    if guard == "mission_define_ready_pipeline":
+        if not mission_define_ready(run):
+            return False
+        from agent_lab.mode_router import resolve_mission_bootstrap_phase
+
+        return resolve_mission_bootstrap_phase(run) == "CLARIFY"
+    if guard == "clarity_met":
+        from agent_lab.clarity import clarity_threshold_met
+
+        return clarity_threshold_met(run)
+    if guard == "discuss_recovery_pending":
+        return bool((mission.get("discuss_recovery") or {}).get("pending"))
+    if guard == "autorun_enabled":
+        return mission_autorun_enabled(mission)
+    if guard == "open_block":
+        return open_block_reason(run) is None
+    return False
+
+
+def _applicable_rows(
+    run: RunStateLike,
+    event: RuntimeEvent,
+    phase: str,
+) -> tuple[RuntimeTransition, ...]:
+    rows = transition_rows_for(event, phase)
+    return tuple(row for row in rows if transition_guard_satisfied(run, row.guard))
+
+
+def transition_entry_reason(
+    run: RunStateLike,
+    event: RuntimeEvent,
+) -> tuple[bool, str, str, tuple[RuntimeTransition, ...]]:
+    from agent_lab.mission.loop import get_mission_loop
+
+    mission = get_mission_loop(run)
+    phase = str(mission.get("phase") or "MISSION_DEFINE")
+    enabled = bool(mission.get("enabled"))
+
+    if event == RuntimeEvent.MISSION_ENABLE:
+        applicable = _applicable_rows(run, event, phase)
+        if applicable:
+            return True, "mission_enable", phase, applicable
+        if transition_rows_for(event, phase):
+            return False, "guard_blocked", phase, ()
+        return False, "invalid_transition", phase, ()
+
+    if event == RuntimeEvent.SCRIBE_COMPLETE and not enabled:
+        return True, "standalone_scribe", phase, ()
+
+    if event in _PHASE_FREE_EVENTS:
+        return True, "phase_free_event", phase, ()
+
+    if not enabled:
+        if event in STANDALONE_EVENTS:
+            return True, "standalone_event", phase, ()
+        return False, "mission_disabled", phase, ()
+
+    applicable = _applicable_rows(run, event, phase)
+    if applicable:
+        return True, "table_edge", phase, applicable
+    if transition_rows_for(event, phase):
+        return False, "guard_blocked", phase, ()
+    return False, "invalid_transition", phase, ()
+
+
 # Wildcard: any phase listed explicitly; ``*`` means all mission phases for pause.
 _W = frozenset
 
@@ -64,6 +176,30 @@ TRANSITION_TABLE: tuple[RuntimeTransition, ...] = (
         OrchestrationLane.MISSION,
         guard="mission_define_ready_pipeline",
         notes="Bootstrap via resolve_mission_bootstrap_phase (clarity + plan_workflow dedup)",
+    ),
+    RuntimeTransition(
+        RuntimeEvent.MISSION_PLAN_GATE,
+        _W({"MISSION_DEFINE"}),
+        "EXECUTE_QUEUE",
+        "agent_lab.mission.loop:run_plan_gate",
+        OrchestrationLane.MISSION,
+        guard="plan_gate_ok",
+    ),
+    RuntimeTransition(
+        RuntimeEvent.MISSION_PLAN_GATE,
+        _W({"MISSION_DEFINE"}),
+        "PLAN_REJECT",
+        "agent_lab.mission.loop:run_plan_gate",
+        OrchestrationLane.MISSION,
+        guard="plan_gate_reject_under_cap",
+    ),
+    RuntimeTransition(
+        RuntimeEvent.MISSION_CIRCUIT_BREAKER,
+        _W({"MISSION_DEFINE"}),
+        "MISSION_PAUSED",
+        "agent_lab.mission.loop:trigger_circuit_breaker",
+        OrchestrationLane.MISSION,
+        guard="mission_enabled",
     ),
     # CLARIFY → DISCUSS once clarity threshold is met (maybe_advance_mission).
     RuntimeTransition(
@@ -148,6 +284,14 @@ TRANSITION_TABLE: tuple[RuntimeTransition, ...] = (
         OrchestrationLane.MISSION,
         guard="mission_enabled",
     ),
+    RuntimeTransition(
+        RuntimeEvent.EXECUTE_DRY_RUN_CANCEL,
+        _W({"DRY_RUN"}),
+        "MISSION_PAUSED",
+        "agent_lab.runtime.execute_lane:handle_execute_dry_run_cancel",
+        OrchestrationLane.EXECUTE,
+        guard="mission_enabled",
+    ),
     # --- Merge review → verify or discuss ---
     RuntimeTransition(
         RuntimeEvent.EXECUTE_MERGE_APPROVED,
@@ -211,6 +355,14 @@ TRANSITION_TABLE: tuple[RuntimeTransition, ...] = (
         guard="verify_fail_structural",
         notes="Structural fail after repair cap",
     ),
+    RuntimeTransition(
+        RuntimeEvent.MISSION_CIRCUIT_BREAKER,
+        _W({"DISCUSS"}),
+        "MISSION_PAUSED",
+        "agent_lab.mission.loop:trigger_circuit_breaker",
+        OrchestrationLane.MISSION,
+        guard="mission_enabled",
+    ),
     # --- Repair → dry-run again (same action index) ---
     RuntimeTransition(
         RuntimeEvent.MISSION_ADVANCE,
@@ -222,13 +374,22 @@ TRANSITION_TABLE: tuple[RuntimeTransition, ...] = (
         notes="Via _advance_repair → reverify_merged_execution",
     ),
     RuntimeTransition(
+        RuntimeEvent.EXECUTE_REPAIR_VERIFY,
+        _W({"REPAIR"}),
+        "VERIFY",
+        "agent_lab.mission.advance:on_merge_confirm",
+        OrchestrationLane.MISSION,
+        guard="mission_enabled",
+        notes="Re-verify merged execution after repair",
+    ),
+    RuntimeTransition(
         RuntimeEvent.EXECUTE_REPAIR_COMPLETE,
         _W({"REPAIR"}),
         "MERGE_REVIEW",
-        "agent_lab.mission.loop:maybe_advance_mission",
-        OrchestrationLane.MISSION,
+        "agent_lab.runtime.execute_lane:handle_execute_repair_complete",
+        OrchestrationLane.EXECUTE,
         guard="autorun_enabled",
-        notes="Repair re-merge path ends at merge review",
+        notes="Autorun repair advance via maybe_advance_mission",
     ),
     # --- Structural execution failure ---
     RuntimeTransition(
@@ -328,5 +489,26 @@ STANDALONE_EVENTS: frozenset[RuntimeEvent] = frozenset(
         RuntimeEvent.HUMAN_BUILD_GO,
         RuntimeEvent.HUMAN_ASK,
         RuntimeEvent.GOAL_CHECK,
+    }
+)
+
+_PHASE_FREE_EVENTS: frozenset[RuntimeEvent] = frozenset(
+    {
+        RuntimeEvent.TURN_START,
+        RuntimeEvent.TURN_COMPLETE,
+        RuntimeEvent.TURN_PARTIAL,
+        RuntimeEvent.TURN_FAILED,
+        RuntimeEvent.TURN_CANCELLED,
+        RuntimeEvent.CLARIFIER_PROMPT,
+        RuntimeEvent.AGENT_START,
+        RuntimeEvent.AGENT_DONE,
+        RuntimeEvent.CONSENSUS_ROUND,
+        RuntimeEvent.SCRIBE_START,
+        RuntimeEvent.HUMAN_INBOX_CREATED,
+        RuntimeEvent.HUMAN_INBOX_RESOLVED,
+        RuntimeEvent.HUMAN_BUILD_GO,
+        RuntimeEvent.HUMAN_ASK,
+        RuntimeEvent.GOAL_CHECK,
+        RuntimeEvent.RUN_CANCEL,
     }
 )

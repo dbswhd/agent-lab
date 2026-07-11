@@ -1,10 +1,10 @@
 # External refs plan — traceability matrix
 
-Maps items in [`EXTERNAL-REFS-PLAN.md`](EXTERNAL-REFS-PLAN.md) to **shipped code**, **regression/smoke evidence**, or **future fixture tickets**.  
+Maps items in [`EXTERNAL-REFS-PLAN.md`](archive/rfcs/EXTERNAL-REFS-PLAN.md) to **shipped code**, **regression/smoke evidence**, or **future fixture tickets**.
 This document is the hub for **plan vs reality**. It does not explain *why* an item was adopted — see PLAN §anchor for that context.
 
 **Status legend:** ✅ shipped · 🔶 partial · ⬜ future · ❌ dropped  
-**Related:** [EXTERNAL-REFS-PLAN.md](EXTERNAL-REFS-PLAN.md) (why/what) · [MD-WRITING-PLAN.md](MD-WRITING-PLAN.md) (MD authoring guide)  
+**Related:** [EXTERNAL-REFS-PLAN.md](archive/rfcs/EXTERNAL-REFS-PLAN.md) (why/what) · [MD-WRITING-PLAN.md](MD-WRITING-PLAN.md) (MD authoring guide)
 **Dev-tool cross-ref:** `CC-CLAUDE` is tracked in [§Dev-tool](#dev-tool--prompt-layer-md-writing-plan-items) only (not duplicated in the runtime table below).
 
 ---
@@ -31,7 +31,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 | F-R3 | Room | Asymmetric `capability_cwd` | ✅ | `sessions/_regression/specialist_asymmetric_cwd/`, `topic_router` topology + `seed_capabilities_for_route`, `scripts/smoke_room.py` | Route-driven producer_reviewer (Settings 분업 UI 퇴출) |
 | RO-P1 | Fugu / Harness | Role orchestration (topic_router + role_plan) | ✅ | `role_plan.py`, `topic_router.py`, `room/turn_routing.py`, `sessions/_regression/producer-reviewer-roles/`, `tests/test_role_plan.py`, `tests/test_turn_routing.py` | Composer preset fast/supervisor only; topology data not preset id |
 | H-P1 | H4 | score_session CI | ✅ | `scripts/score_session.py`, `tests/test_session_score_ci.py`, `.github/workflows/ci.yml` | |
-| H-P2 | Room | Benchmark catalog + delegate replay | ✅ | `sessions/_benchmark/`, `tests/test_benchmark_catalog.py`, `tests/test_room_delegate_replay.py` | Offline R1–R5 catalog; PLAN Phase 3; see [ROOM-REINFORCEMENT.md](ROOM-REINFORCEMENT.md) |
+| H-P2 | Room | Benchmark catalog + delegate replay | ✅ | `sessions/_benchmark/`, `tests/test_benchmark_catalog.py`, `tests/test_room_delegate_replay.py` | Offline R1–R5 catalog; PLAN Phase 3; see [archive/rfcs/ROOM-REINFORCEMENT.md](archive/rfcs/ROOM-REINFORCEMENT.md) |
 | H4-weekly | H4 | Weekly KPI + M4 gates | ✅ | `scripts/score_sessions_weekly.py`, `src/agent_lab/session_score_weekly.py` | |
 | H4-ops | H4 | Weekly ops artifact | ✅ | `format_weekly_report_markdown`, `make score-weekly`, `sessions/_reports/` | gitignored artifacts |
 | H4-ops-live | H4 | Last live check in weekly | ✅ | `discover_live_ops_reports`, `tests/test_weekly_live_ops_summary.py` | Tier B/C JSON scan |
@@ -48,10 +48,10 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 | CMD-fanout | Fable fusion | Parallel scoped worker fan-out | ✅ | `room_dispatch.py`, `AGENT_LAB_DISPATCH_MAX_FANOUT`, `sessions/_regression/dispatch_parallel_explore/` | Cap independent of LC-router (EM-P2) |
 | UX-P2 | Room | Objection resolve UX | ✅ | `PlanExecutePanel.tsx`, `RoomTaskBar.tsx` | |
 | Bridge | Room | Cursor bridge degraded | ✅ | `sessions/_regression/bridge_degraded_health/`, H-P3 tests | |
-| CENT-env | Centaur | Subprocess env allowlist | ✅ | `src/agent_lab/subprocess_env.py`, `claude_cli.py`, `codex_cli.py`, `cursor_bridge.py`, `tests/test_subprocess_env.py` | [PLAN §3.2](EXTERNAL-REFS-PLAN.md#32-subprocess-credential-분리) |
+| CENT-env | Centaur | Subprocess env allowlist | ✅ | `src/agent_lab/subprocess_env.py`, `claude_cli.py`, `codex_cli.py`, `cursor_bridge.py`, `tests/test_subprocess_env.py` | [PLAN §3.2](archive/rfcs/EXTERNAL-REFS-PLAN.md#32-subprocess-credential-분리) |
 | LC-L4 | LazyCodex | Adversarial gate (mock + UI) | ✅ | `adversarial_gate.py`, `PlanExecutePanel.tsx`, `docs/LC-L4-ADVERSARIAL-LIVE.md`, `sessions/_regression/adversarial_gate_lgtm/` | Mock default; live opt-in in LC-L4 doc |
-| LC-L5 | LazyCodex | Goal-driven session loop | ✅ | `goal_loop.py`, `RoomChat.tsx`, `docs/GOAL-LOOP.md`, `sessions/_regression/goal_loop_achieved/`, `tests/test_goal_loop.py` | Human goal + mock-first Oracle; legacy when plan workflow ON — [PLAN-WORKFLOW.md](PLAN-WORKFLOW.md) |
-| PW-1 | 4C / Merge Verified | Plan-First workflow FSM | ✅ | `plan_workflow.py`, `app/server/routers/plan_workflow.py`, `PlanApprovalPanel.tsx`, `docs/PLAN-WORKFLOW.md`, `sessions/_regression/plan_workflow_approved/`, `tests/test_plan_workflow.py` | Clarify inbox → scribe → peer review → Human plan approve → mission/execute |
+| LC-L5 | LazyCodex | Goal-driven session loop | ✅ | `goal_loop.py`, `RoomChat.tsx`, `docs/GOAL-LOOP.md`, `sessions/_regression/goal_loop_achieved/`, `tests/test_goal_loop.py` | Human goal + mock-first Oracle; legacy when plan workflow ON — [archive/rfcs/PLAN-WORKFLOW.md](archive/rfcs/PLAN-WORKFLOW.md) |
+| PW-1 | 4C / Merge Verified | Plan-First workflow FSM | ✅ | `plan_workflow.py`, `app/server/routers/plan_workflow.py`, `PlanApprovalPanel.tsx`, `docs/archive/rfcs/PLAN-WORKFLOW.md`, `sessions/_regression/plan_workflow_approved/`, `tests/test_plan_workflow.py` | Clarify inbox → scribe → peer review → Human plan approve → mission/execute |
 | CENT-durable | Centaur | Durable completed_steps resume | ✅ | `run_meta.py`, `room.py`, `sessions/_regression/durable_completed_steps/` | |
 | MD-PROJECT | Prompt | PROJECT.md + per-dir AGENTS hierarchy | ✅ | `session_guidance.py`, `workspace_md.py:resolve_agents_md_for_guidance()`, `repo_tree_context.py` | root flat fallback; plan path → ancestor chain in `session_guidance` |
 | MD-PLATFORM | Prompt | PLATFORM.md protocol injection | ✅ | `.agent-lab/PLATFORM.md`, `platform_md.py`, `tests/test_platform_md.py` | inject cap 500 chars |
@@ -89,7 +89,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 | RT-H5 | Runtime | Engine adapters — execute + discuss transport | ✅ | `runtime/adapters/`, `tests/test_runtime_adapters.py` | H5 adapters |
 | RT-H6 | Runtime | Boulder/resume — `last_failure` + checkpoint snapshot | ✅ | `runtime/boulder.py`, `tests/test_runtime_boulder.py` | H6 boulder |
 | RT-H7 | Runtime | External runner — `tools.yaml` opt-in + allowlist | ✅ | `runtime/external_runner.py`, `tests/test_external_runner.py` | H7 external runner |
-| GJC-MAP | GJC | Workflow pipeline ↔ agent-lab integration map | ✅ | [GJC-WORKFLOW-PIPELINE.md](GJC-WORKFLOW-PIPELINE.md), Learn AI `notes/05-agent-lab/gajae-code-workflow-pipeline.md` | Doc only; adoption backlog AL-009…011 |
+| GJC-MAP | GJC | Workflow pipeline ↔ agent-lab integration map | ✅ | [archive/rfcs/GJC-WORKFLOW-PIPELINE.md](archive/rfcs/GJC-WORKFLOW-PIPELINE.md), Learn AI `notes/05-agent-lab/gajae-code-workflow-pipeline.md` | Doc only; adoption backlog AL-009…011 |
 | GJC-AUTH | Gajae-code v0.5.4 | Provider picker 기반 CLI 로그인 UX | ✅ | `provider_registry.py`, `auth_runs.py`, `routers/auth.py`, `AuthFlowPanel.tsx`, `ProviderStatusPanel.tsx`, `tests/test_auth_runs.py` | 공식 Codex·Claude·Cursor CLI credential을 source of truth로 사용 |
 | PLAN-UX | Gajae Code · Cursor · Claude Code · Codex | 단일 Plan 검토·승인 surface | ✅ | `PlanApprovalPanel.tsx`, `WorkToolPanel.tsx`, `plan_pending.py`, `web/e2e/plan-approval.spec.ts` | HUMAN_PENDING에서 primary CTA 하나; whole-plan hash로 action snapshot 중복 승인 제거; execute·merge·Oracle gate 유지 |
 | MCP-INBOX | Human Inbox MCP-first (harvest off, lead/single-flight, source badge) | ✅ | [MCP-FIRST-INBOX.md](MCP-FIRST-INBOX.md), `inbox_mcp_policy.py`, `HumanInboxPanel.tsx`, `tests/test_mcp_first_inbox.py` | Phase A–E; legacy `AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST=1` |
@@ -146,8 +146,8 @@ Mission Board backlog (MB-9…MB-11) is **shipped** — see [MISSION-BOARD-ADOPT
 ## Related docs
 
 - [Documentation index (README)](README.md)
-- [External refs plan (ideas)](EXTERNAL-REFS-PLAN.md)
+- [External refs plan (ideas)](archive/rfcs/EXTERNAL-REFS-PLAN.md)
 - [Hook · Communicate reform](HOOK-COMMUNICATE-REFORM.md)
-- [Room reinforcement](ROOM-REINFORCEMENT.md)
+- [Room reinforcement](archive/rfcs/ROOM-REINFORCEMENT.md)
 - [Ops runbook](OPS-RUNBOOK.md)
-- [Execute worktree reform](EXECUTE-WORKTREE-REFORM.md)
+- [Execute worktree reform](archive/rfcs/EXECUTE-WORKTREE-REFORM.md)

@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "agent_lab_root_py_files": 129,
+  "agent_lab_root_py_files": 132,
   "agent_lab_subpackages": [
     "agent",
     "agents",
@@ -46,20 +46,20 @@
     "claude_": 0
   },
   "tracked_pycache_files": 0,
-  "makefile_lines": 485,
-  "makefile_targets": 99,
+  "makefile_lines": 542,
+  "makefile_targets": 112,
   "large_tsx_files": [
     {
-      "path": "web/src/components/HumanInboxPanel.tsx",
-      "lines": 1060
+      "path": "web/src/components/ChatComposer.tsx",
+      "lines": 830
     },
     {
       "path": "web/src/App.tsx",
-      "lines": 767
+      "lines": 829
     },
     {
-      "path": "web/src/components/ChatComposer.tsx",
-      "lines": 757
+      "path": "web/src/components/HumanInboxPanel.tsx",
+      "lines": 795
     },
     {
       "path": "web/src/components/WorkspaceFilesPanel.tsx",
@@ -99,7 +99,7 @@
     },
     {
       "path": "web/src/components/RoomChatView.tsx",
-      "lines": 220
+      "lines": 292
     },
     {
       "path": "web/src/hooks/useRoomChat.ts",
@@ -107,19 +107,19 @@
     },
     {
       "path": "web/src/hooks/useRoomChatBootstrap.ts",
-      "lines": 478
+      "lines": 484
     },
     {
       "path": "web/src/hooks/useRoomChatInteractions.ts",
-      "lines": 689
+      "lines": 715
     },
     {
       "path": "web/src/hooks/useRoomChatPresentation.ts",
-      "lines": 406
+      "lines": 418
     }
   ],
   "f11_run_meta_dict_signatures": 0,
-  "f11_run_dict_signatures": 144,
+  "f11_run_dict_signatures": 148,
   "notes": {
     "pycache": "tracked_pycache_files counts git-tracked __pycache__/*.pyc only; local __pycache__ dirs are ignored by .gitignore and are not repo debt.",
     "makefile_targets": "Counted as Makefile lines matching ^target:",

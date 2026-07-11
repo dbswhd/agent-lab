@@ -399,7 +399,7 @@ SSOT: `work_phase` from runtime API — UI와 백엔드 동기화.
 
 ### 6.6 알려진 UI gap
 
-→ [UI-MIGRATION-GAPS.md](./UI-MIGRATION-GAPS.md) · USER-GUIDE §27
+→ [UI-MIGRATION-GAPS.md](./archive/legacy/UI-MIGRATION-GAPS.md) · USER-GUIDE §27
 
 ---
 
@@ -443,7 +443,9 @@ Mission evidence: `.agent-lab/missions/<id>/evidence.jsonl`
 | 기능·동작 전체 | [USER-GUIDE.md](./USER-GUIDE.md) |
 | shipped 여부 | [EXTERNAL-REFS-TRACEABILITY.md](./EXTERNAL-REFS-TRACEABILITY.md) |
 | Mission OS 방향 | [MISSION-OS-DIRECTION.md](./MISSION-OS-DIRECTION.md) |
-| Plan workflow | [PLAN-WORKFLOW.md](./PLAN-WORKFLOW.md) |
+| Plan workflow | [PLAN-WORKFLOW.md](./archive/rfcs/PLAN-WORKFLOW.md) |
 | UI productization | [CONSOLE-PRODUCTIZATION.md](./CONSOLE-PRODUCTIZATION.md) |
 | Ops / live | [OPS-RUNBOOK.md](./OPS-RUNBOOK.md) |
 | 문서 전체 인덱스 | [README.md](./README.md) |
+
+운영 hygiene surface: `GET /api/health/harness`가 authoritative 문서 링크, profile flag ownership, trace schema를 함께 점검한다.

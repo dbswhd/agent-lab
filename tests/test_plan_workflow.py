@@ -227,6 +227,7 @@ def test_approve_plan_execute_loop_gated_by_plan_intent(
     loop_run = read_run_meta(folder)
     assert loop_result["execute_loop_started"] is True
     assert loop_run["verified_loop"]["status"] == "running"
+    assert loop_run["mission_loop"]["autonomous_segment"]["active"] is True
 
     (folder / "run.json").write_text(
         '{"plan_intent":"plan_only","user_mode":"team"}',

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from agent_lab.plan.execution_status_scopes import WORK_PHASE_MERGE_VERIFY_STATUSES
+from agent_lab.core.execution_status_scopes import WORK_PHASE_MERGE_VERIFY_STATUSES
 
 WorkPhase = Literal[
     "plan_draft",

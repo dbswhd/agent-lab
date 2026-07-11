@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from evals.trace_export import FIXED_SPAN_NAMES
+from evals.trace_export import FIXED_SPAN_NAMES, execution_oracle_verdict
 
 TRACE_PROFILE_SPANS: dict[str, tuple[str, ...]] = {
     "discuss_only": ("route", "role_plan", "room_round", "objection"),
@@ -184,6 +184,53 @@ def session_contract(trace: dict[str, Any], case: dict[str, Any]) -> dict[str, A
     )
 
 
+def turn_contract_runtime(trace: dict[str, Any], case: dict[str, Any]) -> dict[str, Any] | None:
+    expected = (case.get("expected") or {}).get("turn_contract_runtime")
+    if not isinstance(expected, dict):
+        return None
+
+    artifacts = trace.get("artifacts") or {}
+    turn_contract = artifacts.get("turn_contract") or {}
+    runtime_controls = turn_contract.get("runtime_controls") if isinstance(turn_contract, dict) else None
+    turn_agents = artifacts.get("turn_agents")
+    observed_agents = [agent for agent in turn_agents if isinstance(agent, str)] if isinstance(turn_agents, list) else []
+    observed_rounds = _int_or_default(artifacts.get("agent_parallel_rounds"), 0)
+    observed_consensus = artifacts.get("turn_consensus_mode")
+    if not isinstance(observed_consensus, bool) and isinstance(runtime_controls, dict):
+        candidate_consensus = runtime_controls.get("consensus")
+        if isinstance(candidate_consensus, bool):
+            observed_consensus = candidate_consensus
+    failures: list[str] = []
+    evidence = [
+        f"turn_agents={observed_agents}",
+        f"agent_parallel_rounds={observed_rounds}",
+        f"turn_consensus_mode={observed_consensus!r}",
+    ]
+
+    if "agent_count" in expected:
+        wanted = expected["agent_count"]
+        if len(observed_agents) != wanted:
+            failures.append(f"agent_count={len(observed_agents)} expected={wanted}")
+    if "max_rounds" in expected:
+        wanted = expected["max_rounds"]
+        if observed_rounds > wanted:
+            failures.append(f"agent_parallel_rounds={observed_rounds} > max={wanted}")
+    if "consensus" in expected:
+        wanted = expected["consensus"]
+        if observed_consensus != wanted:
+            failures.append(f"consensus={observed_consensus!r} expected={wanted!r}")
+
+    return _result(
+        "turn_contract_runtime",
+        trace,
+        case,
+        passed=not failures,
+        score=1.0 if not failures else 0.0,
+        reason="; ".join(failures),
+        evidence=evidence,
+    )
+
+
 def generated_mock_quality(trace: dict[str, Any], case: dict[str, Any]) -> dict[str, Any] | None:
     expected = case.get("expected") or {}
     quality = expected.get("generated_mock_quality")
@@ -342,7 +389,7 @@ def oracle_coverage(trace: dict[str, Any], case: dict[str, Any]) -> dict[str, An
     executions = trace.get("artifacts", {}).get("executions") or []
     if not executions:
         return None
-    with_verdict = [e for e in executions if (e.get("oracle") or {}).get("verdict")]
+    with_verdict = [e for e in executions if isinstance(e, dict) and execution_oracle_verdict(e)]
     coverage = len(with_verdict) / len(executions)
     ok = True
     reason_parts: list[str] = []
@@ -387,6 +434,7 @@ def trace_completeness(trace: dict[str, Any], case: dict[str, Any]) -> dict[str,
 GRADERS = (
     routing_contract,
     session_contract,
+    turn_contract_runtime,
     generated_mock_quality,
     gate_integrity,
     objection_flow,

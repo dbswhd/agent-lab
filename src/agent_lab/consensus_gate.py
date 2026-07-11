@@ -117,6 +117,37 @@ def consensus_gate_met(run: dict[str, Any]) -> bool:
     return endorse >= policy.min_endorse_agents
 
 
+def consensus_action_block_reason(
+    run: dict[str, Any],
+    action_index: int,
+    action_kind: Any = None,
+) -> str | None:
+    if not (run.get("_active_consensus") or run.get("consensus_mode")):
+        return None
+    signal = _consensus_signal(run)
+    if (signal.get("status") or signal.get("consensus_status")) != "reached":
+        return "consensus_not_reached"
+    anchor = signal.get("anchor")
+    if not isinstance(anchor, dict) or not all(str(anchor.get(key) or "").strip() for key in ("id", "agent", "excerpt")):
+        return "consensus_anchor_incomplete"
+    active = [str(agent).strip().lower() for agent in (run.get("agents") or []) if str(agent).strip()]
+    required = int(effective_consensus(active).get("required_endorsements") or 0)
+    consented = signal.get("agents_consented")
+    if required and (not isinstance(consented, list) or len({str(agent).strip().lower() for agent in consented}) < required):
+        return "consensus_endorsements_incomplete"
+    from agent_lab.room.objections import execute_block_reason_for_action
+
+    objection_reason = execute_block_reason_for_action(run, action_index, action_kind)
+    if objection_reason:
+        return objection_reason
+    from agent_lab.room.tasks import consensus_tasks_ready
+
+    tasks_ready, _blockers = consensus_tasks_ready(run, active)
+    if not tasks_ready:
+        return "consensus_tasks_incomplete"
+    return None
+
+
 # --- Dynamic resilient room: role allocation + degradation-aware consensus floor ---
 # Pure additive helpers operating on the LIVE roster ids (never static default
 # names). They build on default_consensus_policy (min_endorse_agents == floor 2).

@@ -1,0 +1,7 @@
+{"scenario": "invalid_dry_run_from_mission_define", "event": "execute.dry_run.start", "phase_before": "MISSION_DEFINE", "expected": "invalid_transition", "test": "tests/test_runtime_dispatch.py::test_dispatch_dry_run_start_requires_execute_queue"}
+{"scenario": "merge_review_to_verify", "event": "execute.merge.approved", "phase_before": "MERGE_REVIEW", "expected": "VERIFY", "test": "tests/test_runtime_dispatch.py (merge approved path via dispatch_prepare_verify)"}
+{"scenario": "repair_to_verify", "event": "execute.repair.verify", "phase_before": "REPAIR", "expected": "VERIFY", "test": "tests/test_runtime_dispatch.py::test_dispatch_repair_verify_enters_verify"}
+{"scenario": "dry_run_cancel", "event": "execute.dry_run.cancel", "phase_before": "DRY_RUN", "expected": "MISSION_PAUSED", "test": "tests/test_runtime_dispatch.py::test_dispatch_dry_run_cancel_from_dry_run"}
+{"scenario": "approve_plan_autonomous_segment", "event": "plan.approve", "expected": "autonomous_segment.active=true, phase=EXECUTE_QUEUE", "test": "tests/test_plan_workflow_e2e.py::test_approve_plan_mission_loop_e2e"}
+{"scenario": "guard_clarify_without_clarity", "event": "mission.advance", "phase_before": "CLARIFY", "expected": "guard_blocked", "test": "tests/test_runtime_transition_guards.py::test_mission_advance_clarify_blocked_without_clarity"}
+{"scenario": "guard_mission_enable_without_goal", "event": "mission.enable", "phase_before": "MISSION_DEFINE", "expected": "guard_blocked", "test": "tests/test_runtime_transition_guards.py::test_mission_enable_blocked_without_define_ready"}

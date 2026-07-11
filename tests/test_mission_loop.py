@@ -372,6 +372,25 @@ def test_run_mission_discuss_recovery_mock(
     run = read_run_meta(session_folder)
     assert run["mission_loop"]["discuss_recovery"]["pending"] is False
     assert run["mission_loop"]["phase"] == "EXECUTE_QUEUE"
+    patch_run_meta(session_folder, _pending)
+
+    def _raise_provider_failure(*args: object, **kwargs: object) -> tuple[list[object], str]:
+        raise RuntimeError("provider unavailable")
+
+    monkeypatch.setattr(
+        "agent_lab.room.continue_room_round",
+        _raise_provider_failure,
+    )
+
+    failure = run_mission_discuss_recovery(session_folder)
+    run = read_run_meta(session_folder)
+
+    assert failure["status"] == "discuss_recovery_failed"
+    assert failure["skipped"] is True
+    assert run["mission_loop"]["phase"] == "DISCUSS"
+    recovery = run["mission_loop"]["discuss_recovery"]
+    assert recovery["pending"] is True
+    assert recovery["last_error_type"] == "RuntimeError"
 
 
 def test_is_structural_verify_fail() -> None:

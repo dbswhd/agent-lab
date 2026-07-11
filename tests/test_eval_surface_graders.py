@@ -13,6 +13,7 @@ from evals.graders import (
     routing_contract,
     run_graders,
     session_contract,
+    turn_contract_runtime,
     trace_completeness,
 )
 
@@ -105,6 +106,28 @@ def test_routing_contract_checks_turn_contract_snapshot() -> None:
     case = {"case_id": "T", "expected": {"turn_contract": {"contract_id": "guarded_plan", "source": "bootstrap"}}}
     result = _result(routing_contract(trace, case))
     assert result["pass"] is True
+
+
+def test_turn_contract_runtime_checks_applied_controls() -> None:
+    trace = _trace(
+        turn_agents=["cursor", "codex", "claude"],
+        agent_parallel_rounds=2,
+        turn_consensus_mode=True,
+    )
+    case = {
+        "case_id": "S4",
+        "expected": {"turn_contract_runtime": {"agent_count": 3, "max_rounds": 2, "consensus": True}},
+    }
+    result = _result(turn_contract_runtime(trace, case))
+    assert result["pass"] is True
+
+
+def test_turn_contract_runtime_fails_when_round_cap_is_exceeded() -> None:
+    trace = _trace(turn_agents=["cursor"], agent_parallel_rounds=3, turn_consensus_mode=False)
+    case = {"case_id": "S1", "expected": {"turn_contract_runtime": {"agent_count": 1, "max_rounds": 1}}}
+    result = _result(turn_contract_runtime(trace, case))
+    assert result["pass"] is False
+    assert "max=1" in result["reason"]
 
 
 # --- session_contract ---------------------------------------------------------
@@ -319,6 +342,14 @@ def test_oracle_coverage_skips_without_executions() -> None:
 
 def test_oracle_coverage_pass_on_matching_final_verdict() -> None:
     trace = _trace(executions=[{"id": "e1", "oracle": {"verdict": "pass"}}])
+    trace["outcome"]["final_oracle_verdict"] = "pass"
+    case = {"case_id": "T", "expected": {"final_oracle_verdict": "pass"}}
+    result = _result(oracle_coverage(trace, case))
+    assert result["pass"] is True
+
+
+def test_oracle_coverage_accepts_verify_after_merge_shape() -> None:
+    trace = _trace(executions=[{"id": "e1", "verify_after_merge": {"oracle": {"verdict": "pass"}}}])
     trace["outcome"]["final_oracle_verdict"] = "pass"
     case = {"case_id": "T", "expected": {"final_oracle_verdict": "pass"}}
     result = _result(oracle_coverage(trace, case))

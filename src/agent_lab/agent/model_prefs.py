@@ -40,7 +40,7 @@ _PROVIDER_PICKER_ORDER: tuple[str, ...] = ("codex", "claude", "cursor", "kimi")
 def _cursor_row(base_id: str) -> dict[str, Any] | None:
     entry = model_catalog.provider_catalog("cursor") or {}
     for row in entry.get("models") or []:
-        if str(row.get("id") or "") == base_id:
+        if isinstance(row, dict) and str(row.get("id") or "") == base_id:
             return row
     return None
 

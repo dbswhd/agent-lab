@@ -123,6 +123,16 @@ def run_consensus_agent_rounds(
 
     cap_rounds, cap_calls = apply_loop_budget_caps(run_meta, cap_rounds, cap_calls)
 
+    def _apply_contract_round_cap(rounds: int) -> int:
+        contract = (run_meta or {}).get("turn_contract")
+        if not isinstance(contract, dict) or not contract.get("applied"):
+            return rounds
+        controls = contract.get("runtime_controls")
+        max_rounds = controls.get("max_rounds") if isinstance(controls, dict) else None
+        return min(rounds, int(max_rounds)) if isinstance(max_rounds, int) and max_rounds > 0 else rounds
+
+    cap_rounds = _apply_contract_round_cap(cap_rounds)
+
     _routing_hint = None
     if run_meta is not None:
         from agent_lab.room.turn_routing import finalize_turn_routing
@@ -139,6 +149,7 @@ def run_consensus_agent_rounds(
         )
         route = _routing.route
         active = as_agent_ids(_routing.active)
+        cap_rounds = _apply_contract_round_cap(min(cap_rounds, route.max_rounds))
 
     def _harvest_discuss_objections(thread: list[ChatMessage]) -> None:
         """충돌을 상태로 — discuss CHALLENGE/BLOCK을 run.json objections에 등록 (P3)."""
@@ -169,6 +180,7 @@ def run_consensus_agent_rounds(
             return
         route = escalated
         cap_rounds, cap_calls = route.max_rounds, route.max_calls
+        cap_rounds = _apply_contract_round_cap(cap_rounds)
         # 에스컬레이션 시 subset 해제 → 전체 에이전트로 복원
         if prev_subset and route.agent_subset is None:
             full = list(agents or available_agents())[:MAX_AGENTS_PER_ROUND]
@@ -257,7 +269,7 @@ def run_consensus_agent_rounds(
         working = messages + all_replies
         last_debate = route_debate_last(route)
         r = 2
-        while r <= last_debate:
+        while r <= min(last_debate, cap_rounds):
             if calls >= cap_calls:
                 break
             check_cancelled()
@@ -394,7 +406,7 @@ def run_consensus_agent_rounds(
         # P4 재조합 라운드 — debate 종료 → pick_anchor 사이의 명시적 합성(crossover).
         recomb_meta: dict[str, Any] | None = None
         recomb_rounds = 0
-        if route.recombination != "off" and len(active) >= 2:
+        if route.recombination != "off" and len(active) >= 2 and last_debate < cap_rounds:
             skip_reason = ""
             substantive_proposers = _distinct_substantive_proposers(all_replies)
             turn_state = (run_meta or {}).get("turn_state")
@@ -500,6 +512,7 @@ def run_consensus_agent_rounds(
             and debate_conflicts == 0
             and len(active) >= 2
             and calls < cap_calls
+            and last_debate + recomb_rounds < cap_rounds
         ):
             check_cancelled()
             from agent_lab.role_plan import resolve_review_advocate

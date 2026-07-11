@@ -38,12 +38,21 @@ def _bad_plan() -> str:
 
 
 def test_dispatch_mission_enable(session_folder: Path) -> None:
+    def _ready(run: dict) -> dict:
+        run["verified_loop"] = {
+            "status": "running",
+            "loop_goal": {"text": "fix src/auth.py JWT validation"},
+        }
+        return run
+
+    patch_run_meta(session_folder, _ready)
     out = dispatch(
         session_folder,
         RuntimeEvent.MISSION_ENABLE,
         {"start_autonomous": False},
     )
     assert out.handled is True
+    assert out.skipped is False
     ml = get_mission_loop(read_run_meta(session_folder))
     assert ml.get("enabled") is True
 

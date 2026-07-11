@@ -1,0 +1,59 @@
+{
+  "report_id": "orchestration-enforcement-gate-rerun",
+  "generated_at": "2026-07-11T22:15:00+09:00",
+  "worktree": "/Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-orchestration-enforcement",
+  "branch": "codex/orchestration-enforcement",
+  "baseline_commit": "f98a1da4431d02ee466a3d45b899c5f6760123bc",
+  "reviewed_diff_sha256": "084e56a721fadd22c982d3a3016fe4026980e4c8d777adcc95fda725b7c04d9b",
+  "note": "Includes untracked tests/test_runtime_transition_guards.py; tracked diff is 11 files / +475 -19.",
+  "scenarios": [
+    {
+      "id": "invalid_transition",
+      "description": "EXECUTE_DRY_RUN_START rejected outside EXECUTE_QUEUE",
+      "status": "pass",
+      "evidence": "tests/test_runtime_dispatch.py::test_dispatch_dry_run_start_requires_execute_queue"
+    },
+    {
+      "id": "merge_review_verify",
+      "description": "MERGE_REVIEW enters VERIFY via dispatch_prepare_verify",
+      "status": "pass",
+      "evidence": "tests/test_runtime_dispatch.py::test_dispatch_repair_verify_enters_verify + execute_verify runtime bridge"
+    },
+    {
+      "id": "repair_verify",
+      "description": "REPAIR enters VERIFY on EXECUTE_REPAIR_VERIFY",
+      "status": "pass",
+      "evidence": "tests/test_runtime_dispatch.py::test_dispatch_repair_verify_enters_verify"
+    },
+    {
+      "id": "dry_run_cancel",
+      "description": "DRY_RUN cancel pauses mission",
+      "status": "pass",
+      "evidence": "tests/test_runtime_dispatch.py::test_dispatch_dry_run_cancel_from_dry_run"
+    },
+    {
+      "id": "approve_plan_e2e",
+      "description": "approve_plan with plan_intent=loop starts verified_loop, autonomous segment, EXECUTE_QUEUE without MISSION_ENABLE redispatch",
+      "status": "pass",
+      "evidence": "tests/test_plan_workflow_e2e.py::test_approve_plan_mission_loop_e2e"
+    },
+    {
+      "id": "transition_guards",
+      "description": "RuntimeTransition.guard preconditions evaluated at dispatch entry",
+      "status": "pass",
+      "evidence": "tests/test_runtime_transition_guards.py (6 cases)"
+    },
+    {
+      "id": "discuss_recovery_pending",
+      "description": "RoomRunCancelled re-raised; provider failure keeps discuss_recovery.pending",
+      "status": "pass",
+      "evidence": "tests/test_mission_loop.py recovery failure test"
+    }
+  ],
+  "commands": {
+    "targeted_pytest": "PYTHONPATH=src AGENT_LAB_MOCK_AGENTS=1 pytest tests/test_runtime_transition_guards.py tests/test_runtime_dispatch.py tests/test_mission_loop.py tests/test_plan_workflow.py tests/test_plan_workflow_e2e.py tests/test_mission_scheduled_repair_e2e.py -q",
+    "targeted_result": "87 passed",
+    "full_mock_pytest": "PYTHONPATH=src AGENT_LAB_MOCK_AGENTS=1 pytest -q -m 'not live and not integration'",
+    "full_mock_result": "2991 passed, 12 failed (pre-existing baseline; 1 orchestration-adjacent test_dispatch_mission_enable fixed in tests/test_runtime_mission_dispatch.py)"
+  }
+}

@@ -9,7 +9,7 @@ from typing import Any
 import pytest
 
 from agent_lab.run.observability import observability_snapshot, trace_tail
-from agent_lab.trace_recorder import TraceRecorder, install_tracer
+from agent_lab.trace_recorder import TraceRecorder, install_tracer, record_control_span
 
 
 def _spans(folder: Path) -> list[dict[str, Any]]:
@@ -27,7 +27,25 @@ def test_agent_span_recorded_with_duration(tmp_path: Path) -> None:
     assert span["kind"] == "agent" and span["name"] == "claude"
     assert span["status"] == "ok"
     assert span["trace_id"] == "t1"
+    assert span["trace_schema_version"] == 2
+    assert span["episode_id"] == tmp_path.name
+    assert span["attempt_id"] == f"{tmp_path.name}:turn:1"
     assert "dur_ms" in span and span["dur_ms"] >= 0
+
+
+def test_control_span_joins_episode_trace(tmp_path: Path) -> None:
+    record_control_span(
+        tmp_path,
+        name="human_approval",
+        status="approved",
+        human_turn=3,
+        data={"action_key": "now:1"},
+    )
+    span = _spans(tmp_path)[0]
+    assert span["kind"] == "control"
+    assert span["episode_id"] == tmp_path.name
+    assert span["attempt_id"] == f"{tmp_path.name}:turn:3"
+    assert span["data"] == {"action_key": "now:1"}
 
 
 def test_tool_span_parented_to_agent(tmp_path: Path) -> None:

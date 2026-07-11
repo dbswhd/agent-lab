@@ -40,6 +40,8 @@ def generate_mock_session(case: EvalCase, generated_dir: Path) -> Path:
             "AGENT_LAB_MOCK_AGENTS": "1",
             "AGENT_LAB_CLARIFIER": "0",
             "AGENT_LAB_INBOX_MODE": "soft",
+            "AGENT_LAB_OUTCOMES_ROOT": str(generated_dir),
+            "AGENT_LAB_TURN_CONTRACT_MODE": mock_run.get("turn_contract_mode", "shadow"),
         }
     ):
         folder, _messages, _plan = room.run_room(

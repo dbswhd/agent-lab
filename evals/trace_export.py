@@ -50,6 +50,19 @@ def _as_int(value: object) -> int:
     return value if isinstance(value, int) else 0
 
 
+def execution_oracle_verdict(execution: dict[str, Any]) -> str | None:
+    oracle = execution.get("oracle")
+    if isinstance(oracle, dict) and isinstance(oracle.get("verdict"), str):
+        return oracle["verdict"]
+    oracle_verdict = execution.get("oracle_verdict")
+    if isinstance(oracle_verdict, str):
+        return oracle_verdict
+    verify_after_merge = _as_dict(execution.get("verify_after_merge"))
+    verify_oracle = _as_dict(verify_after_merge.get("oracle"))
+    verdict = verify_oracle.get("verdict")
+    return verdict if isinstance(verdict, str) else None
+
+
 def _load_jsonl(path: Path) -> list[dict[str, Any]]:
     if not path.is_file():
         return []
@@ -239,17 +252,7 @@ def export_session_trace(session_dir: Path, *, case_id: str = "") -> dict[str, A
 
     final_oracle_verdict = None
     if executions and isinstance(executions[-1], dict):
-        last_execution = executions[-1]
-        oracle = last_execution.get("oracle")
-        if isinstance(oracle, dict):
-            final_oracle_verdict = oracle.get("verdict")
-        elif isinstance(last_execution.get("oracle_verdict"), str):
-            final_oracle_verdict = last_execution.get("oracle_verdict")
-        else:
-            verify_after_merge = _as_dict(last_execution.get("verify_after_merge"))
-            verify_oracle = _as_dict(verify_after_merge.get("oracle"))
-            if isinstance(verify_oracle.get("verdict"), str):
-                final_oracle_verdict = verify_oracle.get("verdict")
+        final_oracle_verdict = execution_oracle_verdict(executions[-1])
 
     return {
         "case_id": case_id,
@@ -266,9 +269,13 @@ def export_session_trace(session_dir: Path, *, case_id: str = "") -> dict[str, A
             "approvals": approvals,
             "executions": executions,
             "agents": agents,
+            "turn_agents": _as_list(last_turn.get("agents")),
             "succeeded_agents": succeeded_agents,
             "message_count": message_count,
             "agent_parallel_rounds": agent_parallel_rounds,
+            "turn_consensus_mode": last_turn.get("consensus_mode")
+            if isinstance(last_turn.get("consensus_mode"), bool)
+            else None,
             "agent_reply_count": agent_reply_count,
             "envelope_parse_error_count": envelope_parse_error_count,
             "reply_policy": reply_meta,

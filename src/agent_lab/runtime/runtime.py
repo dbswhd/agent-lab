@@ -60,7 +60,7 @@ def dispatch(
     if isinstance(event, str):
         event = RuntimeEvent(event)
     run = read_run_meta(folder)
-    allowed, reason, phase, _rows = transition_entry_reason(run, event)
+    allowed, reason, phase, _rows = transition_entry_reason(run, event, payload)
     if not allowed:
         result = DispatchResult(
             handled=True,

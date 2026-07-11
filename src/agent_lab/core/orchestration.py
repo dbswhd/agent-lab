@@ -10,6 +10,7 @@ class OrchestrationLane(StrEnum):
     DISCUSS = "discuss"
     EXECUTE = "execute"
     MISSION = "mission"
+    PLAN = "plan"
     RUNTIME = "runtime"
     VERIFY = "verify"
     HUMAN = "human"

@@ -227,22 +227,21 @@ def plan_workflow_completed_clarify(run: RunStateLike | None) -> bool:
     return plan_workflow_phase(run) not in PLAN_CLARIFY_PHASES
 
 
-def _reset_plan_workflow_state(pw: dict[str, Any]) -> dict[str, Any]:
-    pw = dict(pw)
-    pw["enabled"] = True
-    pw["phase"] = "CLARIFY"
-    pw["clarify_round"] = 0
-    pw["peer_review_round"] = 0
-    pw["max_peer_review_rounds"] = resolved_max_peer_review_rounds()
-    for key in (
-        "plan_hash_at_approval",
-        "approved_at",
-        "approved_by",
-        "notice",
-        "last_plan_gate",
-    ):
-        pw.pop(key, None)
-    return pw
+def _reset_plan_workflow_state(run: RunState) -> RunState:
+    return apply_plan_substate_patch(  # type: ignore[return-value]
+        run,
+        phase="CLARIFY",
+        clarify_round=0,
+        peer_review_round=0,
+        max_peer_review_rounds=resolved_max_peer_review_rounds(),
+        pop_fields=(
+            "plan_hash_at_approval",
+            "approved_at",
+            "approved_by",
+            "notice",
+            "last_plan_gate",
+        ),
+    )
 
 
 def init_plan_workflow_on_plan_send(folder: Path) -> dict[str, Any]:
@@ -254,31 +253,28 @@ def init_plan_workflow_on_plan_send(folder: Path) -> dict[str, Any]:
 
         if pw.get("enabled") and phase == "APPROVED":
             begin_session_plan_cycle(folder, run)
-            pw = _reset_plan_workflow_state(get_plan_workflow(run))
-            run["plan_workflow"] = pw
-            _mirror_verified_loop_status(run, pw)
-            return run
+            return _reset_plan_workflow_state(run)
 
         if pw.get("enabled") and phase in PLAN_PRE_APPROVAL:
-            pw["enabled"] = True
-            pw.setdefault("max_peer_review_rounds", resolved_max_peer_review_rounds())
-            run["plan_workflow"] = pw
-            _mirror_verified_loop_status(run, pw)
-            return run
+            return apply_plan_substate_patch(  # type: ignore[return-value]
+                run,
+                max_peer_review_rounds=pw.get("max_peer_review_rounds") or resolved_max_peer_review_rounds(),
+            )
 
         if not pw.get("enabled"):
             begin_session_plan_cycle(folder, run)
 
         pw = get_plan_workflow(run)
-        pw["enabled"] = True
-        pw["max_peer_review_rounds"] = resolved_max_peer_review_rounds()
+        phase_patch: PlanWorkflowPhase | None = None
         if pw.get("phase") not in PLAN_PRE_APPROVAL and pw.get("phase") != "APPROVED":
-            pw["phase"] = "CLARIFY"
+            phase_patch = "CLARIFY"
         elif pw.get("phase") == "INTAKE":
-            pw["phase"] = "CLARIFY"
-        run["plan_workflow"] = pw
-        _mirror_verified_loop_status(run, pw)
-        return run
+            phase_patch = "CLARIFY"
+        return apply_plan_substate_patch(  # type: ignore[return-value]
+            run,
+            phase=phase_patch,
+            max_peer_review_rounds=resolved_max_peer_review_rounds(),
+        )
 
     patch_run_meta(folder, _init)
     return get_plan_workflow(read_run_meta(folder))
@@ -426,11 +422,19 @@ def emit_plan_workflow_phase_if_changed(
 
 
 def plan_workflow_public(run: RunStateLike | None) -> dict[str, Any]:
+    from agent_lab.runtime.orchestration import derive_orchestration_state
+
     pw = get_plan_workflow(run)
-    return {
+    out: dict[str, Any] = {
         "plan_workflow": pw,
         "plan_workflow_pending_approval": pw.get("enabled") and pw.get("phase") == "HUMAN_PENDING",
     }
+    if run is not None:
+        orch = run.get("orchestration") if isinstance(run.get("orchestration"), dict) else None
+        if not orch:
+            orch = derive_orchestration_state(run)
+        out["orchestration"] = orch
+    return out
 
 
 def resolve_work_phase_from_plan_workflow(phase: str | None) -> str | None:

@@ -53,7 +53,7 @@ def handle_plan_workflow_advance(folder: Path, payload: dict[str, Any]) -> Dispa
     target = str(payload.get("target_phase") or "").strip().upper()
     if target not in MCP_ADVANCE_TARGETS:
         allowed = ", ".join(sorted(MCP_ADVANCE_TARGETS))
-        return DispatchResult(handled=True, skipped=True, reason=f"invalid_target:{allowed}")
+        return DispatchResult(handled=True, skipped=True, reason=f"target_phase must be one of: {allowed}")
 
     run = read_run_meta(folder)
     current = plan_workflow_phase(run)
@@ -61,7 +61,7 @@ def handle_plan_workflow_advance(folder: Path, payload: dict[str, Any]) -> Dispa
     if current not in order or target not in order:
         return DispatchResult(handled=True, skipped=True, reason="invalid_plan_workflow_phase")
     if order.index(target) <= order.index(current):
-        return DispatchResult(handled=True, skipped=True, reason="forward_advance_only")
+        return DispatchResult(handled=True, skipped=True, reason="forward advance only")
 
     set_plan_workflow_phase(folder, target)  # type: ignore[arg-type]
     if turn_policy_enabled() and target in {"DRAFT", "REFINE", "HUMAN_PENDING"}:

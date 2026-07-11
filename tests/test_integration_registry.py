@@ -137,7 +137,8 @@ def test_fast_bucket_collection_budget():
     # 2026-07-11: raised 2890 -> 2994 for TurnIntent observer extraction
     # (test_turn_contract_runtime.py + expanded test_turn_contract.py/
     # test_turn_policy.py/test_eval_surface_graders.py coverage).
-    assert count <= 2994, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-11: raised 2994 -> 3024 for dual FSM orchestration + plan_lane tests.
+    assert count <= 3024, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

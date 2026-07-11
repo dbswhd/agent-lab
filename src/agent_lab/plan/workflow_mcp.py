@@ -5,12 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from agent_lab.plan.workflow_state import (
-    MCP_ADVANCE_TARGETS,
-    PLAN_FSM_ORDER,
-    plan_workflow_phase,
-    set_plan_workflow_phase,
-)
+from agent_lab.plan.workflow_state import plan_workflow_phase
 from agent_lab.run.meta import read_run_meta
 
 
@@ -21,37 +16,24 @@ def mcp_advance_plan_workflow_phase(
     reason: str | None = None,
     caller_agent: str | None = None,
 ) -> dict[str, Any]:
-    """Skill/MCP authority — forward-only FSM advance; Human approve unchanged."""
-    from agent_lab.inbox.mcp_policy import enforce_mcp_plan_phase_advance_policy
-    from agent_lab.room.turn_policy import stamp_pending_skill_intent, turn_policy_enabled
+    """Skill/MCP authority — forward-only FSM advance via runtime dispatch."""
+    from agent_lab.runtime.events import RuntimeEvent
+    from agent_lab.runtime.runtime import dispatch
 
-    enforce_mcp_plan_phase_advance_policy(folder, caller_agent=caller_agent)
-    target = str(target_phase or "").strip().upper()
-    if target not in MCP_ADVANCE_TARGETS:
-        allowed = ", ".join(sorted(MCP_ADVANCE_TARGETS))
-        raise ValueError(f"target_phase must be one of: {allowed}")
-    if target == "APPROVED":
-        raise ValueError("APPROVED requires Human plan approve — not plan_phase_advance")
-
-    run = read_run_meta(folder)
-    current = plan_workflow_phase(run)
-    order = list(PLAN_FSM_ORDER)
-    if current not in order or target not in order:
-        raise ValueError("invalid plan workflow phase")
-    if order.index(target) <= order.index(current):
-        raise ValueError(f"forward advance only (current={current}, target={target})")
-
-    set_plan_workflow_phase(folder, target)  # type: ignore[arg-type]
-    if turn_policy_enabled() and target in {"DRAFT", "REFINE", "HUMAN_PENDING"}:
-        stamp_pending_skill_intent(folder, "plan_draft")
-    payload: dict[str, Any] = {
-        "ok": True,
-        "previous_phase": current,
-        "phase": target,
-    }
-    if reason and str(reason).strip():
-        payload["reason"] = str(reason).strip()[:500]
-    return payload
+    out = dispatch(
+        folder,
+        RuntimeEvent.PLAN_WORKFLOW_ADVANCE,
+        {
+            "target_phase": target_phase,
+            "reason": reason,
+            "caller_agent": caller_agent,
+        },
+    )
+    if out.skipped:
+        raise ValueError(str(out.reason or "plan_workflow_advance_blocked"))
+    if isinstance(out.result, dict):
+        return out.result
+    return {"ok": out.handled}
 
 
 def mcp_run_clarity_interview(

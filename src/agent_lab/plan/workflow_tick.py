@@ -35,7 +35,40 @@ def tick_plan_workflow_after_turn(
     has_pending_inbox_question: bool,
     turn_policy_advance: bool = False,
 ) -> dict[str, Any]:
-    """Advance FSM after a room turn; returns hints for follow-up automation."""
+    """Advance FSM after a room turn via runtime ``plan.workflow.tick``."""
+    from agent_lab.runtime.events import RuntimeEvent
+    from agent_lab.runtime.runtime import dispatch
+
+    out = dispatch(
+        folder,
+        RuntimeEvent.PLAN_WORKFLOW_TICK,
+        {
+            "synthesize": synthesize,
+            "cancelled": cancelled,
+            "plan_md": plan_md,
+            "plan_before": plan_before,
+            "has_pending_inbox_question": has_pending_inbox_question,
+            "turn_policy_advance": turn_policy_advance,
+        },
+    )
+    if out.skipped:
+        return {"handled": False, "reason": out.reason or "plan_workflow_tick_skipped"}
+    if isinstance(out.result, dict):
+        return out.result
+    return {"handled": out.handled}
+
+
+def _execute_plan_workflow_tick(
+    folder: Path,
+    *,
+    synthesize: bool,
+    cancelled: bool,
+    plan_md: str,
+    plan_before: str,
+    has_pending_inbox_question: bool,
+    turn_policy_advance: bool = False,
+) -> dict[str, Any]:
+    """Internal plan FSM tick body (invoked by plan_lane handler)."""
     run = read_run_meta(folder)
     if not is_plan_workflow_active(run) or cancelled:
         return {"handled": False}

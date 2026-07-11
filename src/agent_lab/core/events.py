@@ -22,6 +22,10 @@ class RuntimeEvent(StrEnum):
     SCRIBE_COMPLETE = "scribe.complete"
     GOAL_CHECK = "goal.check"
 
+    # --- Plan workflow FSM (plan/workflow_tick.py) ---
+    PLAN_WORKFLOW_TICK = "plan.workflow.tick"
+    PLAN_WORKFLOW_ADVANCE = "plan.workflow.advance"
+
     # --- Execute lane (plan_execute.py) ---
     EXECUTE_DRY_RUN_START = "execute.dry_run.start"
     EXECUTE_DRY_RUN_COMPLETE = "execute.dry_run.complete"

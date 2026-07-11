@@ -179,6 +179,11 @@ def _finalize_plan_approval(
         start_mission_autonomous_segment(session_folder)
         updated = read_run_meta(session_folder)
 
+    from agent_lab.runtime.orchestration import stamp_orchestration_state
+
+    patch_run_meta(session_folder, stamp_orchestration_state)
+    updated = read_run_meta(session_folder)
+
     pw_out = get_plan_workflow(updated)
     loop_out = dict(updated.get("verified_loop") or {})
     return {

@@ -85,6 +85,10 @@ def dispatch(
         result = dispatch_discuss_event(folder, event, payload)
     elif event.value.startswith("mission."):
         result = dispatch_mission_event(folder, event, payload)
+    elif event.value.startswith("plan."):
+        from agent_lab.runtime.plan_lane import dispatch_plan_event
+
+        result = dispatch_plan_event(folder, event, payload)
     elif event == RuntimeEvent.RUN_CANCEL:
         result = dispatch_control_event(folder, event, payload)
     else:

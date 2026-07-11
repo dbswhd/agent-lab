@@ -137,6 +137,18 @@ def transition_entry_reason(
     if event == RuntimeEvent.SCRIBE_COMPLETE and not enabled:
         return True, "standalone_scribe", phase, ()
 
+    if event in _PLAN_WORKFLOW_EVENTS:
+        from agent_lab.plan.workflow_state import is_plan_workflow_active, plan_workflow_phase
+
+        if not is_plan_workflow_active(run):
+            return False, "plan_workflow_inactive", phase, ()
+        pw_phase = str(plan_workflow_phase(run) or "").upper()
+        if event == RuntimeEvent.PLAN_WORKFLOW_TICK:
+            if pw_phase == "APPROVED":
+                return False, "plan_workflow_approved", phase, ()
+            return True, "plan_workflow_tick", phase, ()
+        return True, "plan_workflow_advance", phase, ()
+
     if event in _PHASE_FREE_EVENTS:
         return True, "phase_free_event", phase, ()
 
@@ -489,6 +501,13 @@ STANDALONE_EVENTS: frozenset[RuntimeEvent] = frozenset(
         RuntimeEvent.HUMAN_BUILD_GO,
         RuntimeEvent.HUMAN_ASK,
         RuntimeEvent.GOAL_CHECK,
+    }
+)
+
+_PLAN_WORKFLOW_EVENTS: frozenset[RuntimeEvent] = frozenset(
+    {
+        RuntimeEvent.PLAN_WORKFLOW_TICK,
+        RuntimeEvent.PLAN_WORKFLOW_ADVANCE,
     }
 )
 

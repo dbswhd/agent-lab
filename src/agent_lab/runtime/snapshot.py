@@ -165,11 +165,16 @@ def build_runtime_snapshot(
     if boulder and boulder.get("resume_phase") and not resume_phase:
         resume_phase = boulder.get("resume_phase")
 
+    from agent_lab.runtime.orchestration import derive_orchestration_state
+
+    orchestration = derive_orchestration_state(run)
+
     return {
         "session_id": folder.name,
         "mode": mode,
         "has_plan": has_plan,
         "work_phase": work_phase,
+        "orchestration": orchestration,
         "plan_workflow": {
             "enabled": plan_workflow_enabled,
             "phase": plan_workflow_phase,

@@ -5,8 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from agent_lab.plan.workflow_state import (
-    _mirror_verified_loop_status,
-    get_plan_workflow,
+    apply_plan_substate_patch,
     plan_workflow_wants_inbox_mcp,
     plan_fsm_skill_first_enabled,
 )
@@ -259,12 +258,7 @@ def clarity_gate_questions(folder: Path, run: RunStateLike) -> dict[str, Any] | 
     def _harvest(run_in: dict[str, Any]) -> dict[str, Any]:
         rows = [q for q in (actual.get("questions") or []) if isinstance(q, dict)]
         harvest_clarifier_questions(run_in, prompts, question_rows=rows)
-        cur = get_plan_workflow(run_in)
-        cur["phase"] = "CLARIFY"
-        cur["notice"] = "clarity_pending"
-        run_in["plan_workflow"] = cur
-        _mirror_verified_loop_status(run_in, cur)
-        return run_in
+        return apply_plan_substate_patch(run_in, phase="CLARIFY", notice="clarity_pending")
 
     patch_run_meta(folder, _harvest)
 

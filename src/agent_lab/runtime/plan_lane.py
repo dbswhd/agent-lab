@@ -11,8 +11,7 @@ from agent_lab.runtime.events import RuntimeEvent
 
 def handle_plan_workflow_tick(folder: Path, payload: dict[str, Any]) -> DispatchResult:
     from agent_lab.plan.workflow_tick import _execute_plan_workflow_tick
-    from agent_lab.run.meta import patch_run_meta
-    from agent_lab.runtime.orchestration import stamp_orchestration_state
+    from agent_lab.runtime.orchestration import stamp_orchestration_on_folder
 
     result = _execute_plan_workflow_tick(
         folder,
@@ -24,10 +23,7 @@ def handle_plan_workflow_tick(folder: Path, payload: dict[str, Any]) -> Dispatch
         turn_policy_advance=bool(payload.get("turn_policy_advance")),
     )
 
-    def _stamp(run: dict[str, Any]) -> dict[str, Any]:
-        return stamp_orchestration_state(run)
-
-    patch_run_meta(folder, _stamp)
+    stamp_orchestration_on_folder(folder)
     phase = str(result.get("phase") or "") if isinstance(result, dict) else None
     skipped = bool(isinstance(result, dict) and result.get("handled") is False)
     return DispatchResult(
@@ -48,8 +44,8 @@ def handle_plan_workflow_advance(folder: Path, payload: dict[str, Any]) -> Dispa
         set_plan_workflow_phase,
     )
     from agent_lab.room.turn_policy import stamp_pending_skill_intent, turn_policy_enabled
-    from agent_lab.run.meta import patch_run_meta, read_run_meta
-    from agent_lab.runtime.orchestration import stamp_orchestration_state
+    from agent_lab.run.meta import read_run_meta
+    from agent_lab.runtime.orchestration import stamp_orchestration_on_folder
 
     caller_agent = payload.get("caller_agent")
     enforce_mcp_plan_phase_advance_policy(folder, caller_agent=caller_agent if isinstance(caller_agent, str) else None)
@@ -71,10 +67,7 @@ def handle_plan_workflow_advance(folder: Path, payload: dict[str, Any]) -> Dispa
     if turn_policy_enabled() and target in {"DRAFT", "REFINE", "HUMAN_PENDING"}:
         stamp_pending_skill_intent(folder, "plan_draft")
 
-    def _stamp(run_in: dict[str, Any]) -> dict[str, Any]:
-        return stamp_orchestration_state(run_in)
-
-    patch_run_meta(folder, _stamp)
+    stamp_orchestration_on_folder(folder)
 
     body: dict[str, Any] = {
         "ok": True,

@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, Literal
 
 from agent_lab.core.execution_status_scopes import WORK_PHASE_MERGE_VERIFY_STATUSES
+from agent_lab.run.state import RunStateLike
 
 WorkPhase = Literal[
     "plan_draft",
@@ -90,7 +91,25 @@ def resolve_work_phase(
     has_dry_run_diff: bool,
     pending_agreement: bool,
     latest_execution: dict[str, Any] | None,
+    run: RunStateLike | None = None,
 ) -> WorkPhase:
+    if run is not None:
+        from agent_lab.runtime.orchestration import derive_orchestration_state, orchestration_work_phase
+
+        orch = run.get("orchestration")
+        if not isinstance(orch, dict) or not orch.get("phase"):
+            orch = derive_orchestration_state(run)
+        if orch.get("plan_substate") or orch.get("mission_enabled"):
+            return orchestration_work_phase(
+                orch,  # type: ignore[arg-type]
+                has_plan=has_plan,
+                has_pending_execution=has_pending_execution,
+                has_dry_run_diff=has_dry_run_diff,
+                pending_agreement=pending_agreement,
+                latest_execution=latest_execution,
+                resume_phase=resume_phase,
+            )
+
     if plan_workflow_enabled:
         from agent_lab.plan.workflow import resolve_work_phase_from_plan_workflow
 

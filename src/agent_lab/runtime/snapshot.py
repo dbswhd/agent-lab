@@ -157,6 +157,7 @@ def build_runtime_snapshot(
         has_dry_run_diff=has_dry_run_diff(run),
         pending_agreement=pending_agreement,
         latest_execution=latest_exec,
+        run=run,
     )
 
     mission_paused = mission_phase == "MISSION_PAUSED" or bool(ml.get("circuit_breaker"))

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, TypedDict
 
+from pathlib import Path
+
 from agent_lab.run.state import RunStateLike
 
 _PLAN_CLARIFY = frozenset({"INTAKE", "CLARIFY"})
@@ -124,5 +126,87 @@ def derive_orchestration_state(run: RunStateLike) -> OrchestrationState:
 
 def stamp_orchestration_state(run: dict[str, Any]) -> dict[str, Any]:
     """Persist derived orchestration snapshot on run.json (observability)."""
-    run["orchestration"] = derive_orchestration_state(run)
+    orch = derive_orchestration_state(run)
+    if orch["phase_drift"] and orch.get("phase_drift_reason"):
+        orch = dict(orch)
+        orch["alert"] = orch["phase_drift_reason"]
+    run["orchestration"] = orch
     return run
+
+
+def stamp_orchestration_on_folder(folder: Path) -> OrchestrationState:
+    """Patch run.json orchestration snapshot and emit drift control span when needed."""
+    from agent_lab.run.meta import patch_run_meta, read_run_meta
+
+    stamped: dict[str, Any] = {}
+
+    def _stamp(run: dict[str, Any]) -> dict[str, Any]:
+        updated = stamp_orchestration_state(run)
+        stamped.update(updated.get("orchestration") or {})
+        return updated
+
+    patch_run_meta(folder, _stamp)
+    orch = stamped if stamped else derive_orchestration_state(read_run_meta(folder))
+    if orch.get("phase_drift"):
+        try:
+            from agent_lab.trace_recorder import record_control_span
+
+            record_control_span(
+                folder,
+                name="orchestration_phase_drift",
+                status="alert",
+                data={
+                    "reason": orch.get("phase_drift_reason"),
+                    "phase": orch.get("phase"),
+                    "plan_substate": orch.get("plan_substate"),
+                    "mission_phase": orch.get("mission_phase"),
+                },
+            )
+        except Exception:
+            pass
+    return orch  # type: ignore[return-value]
+
+
+def orchestration_work_phase(
+    orchestration: OrchestrationState,
+    *,
+    has_plan: bool,
+    has_pending_execution: bool,
+    has_dry_run_diff: bool,
+    pending_agreement: bool,
+    latest_execution: dict[str, Any] | None,
+    resume_phase: str | None = None,
+) -> str:
+    """Map unified orchestration state to Work tab phase."""
+    from agent_lab.runtime.work_phase import resolve_work_phase_from_mission, resolve_work_phase_standalone
+
+    plan_sub = str(orchestration.get("plan_substate") or "").upper()
+    if plan_sub == "HUMAN_PENDING":
+        return "review_needed"
+    if plan_sub == "APPROVED":
+        return "execute_pending"
+
+    phase = str(orchestration.get("phase") or "MISSION_DEFINE").upper()
+    if orchestration.get("mission_enabled"):
+        mapped = resolve_work_phase_from_mission(phase, resume_phase=resume_phase)
+        if mapped is not None:
+            return mapped
+
+    if phase == "MISSION_DONE":
+        return "done"
+    if phase in {"MERGE_REVIEW", "PLAN_REJECT"}:
+        return "review_needed"
+    if phase == "VERIFY":
+        return "merge_verify"
+    if phase in {"EXECUTE_QUEUE", "DRY_RUN", "REPAIR"}:
+        return "execute_pending"
+    if phase in {"CLARIFY", "DISCUSS", "PLAN_GATE", "MISSION_DEFINE"}:
+        return "plan_draft"
+
+    return resolve_work_phase_standalone(
+        has_plan=has_plan,
+        has_pending_execution=has_pending_execution,
+        has_dry_run_diff=has_dry_run_diff,
+        pending_agreement=pending_agreement,
+        latest_execution=latest_execution,
+    )

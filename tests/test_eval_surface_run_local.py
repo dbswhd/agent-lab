@@ -15,25 +15,27 @@ from evals.schema import EvalCase
 _CASES_PATH = Path(__file__).resolve().parents[1] / "evals" / "cases.jsonl"
 
 
-def test_v1_cases_load_and_all_ten_are_present() -> None:
+def test_v1_cases_load_and_all_twelve_are_present() -> None:
     cases = load_cases(_CASES_PATH)
-    assert {c["case_id"] for c in cases} == {"S1", "S2", "S3", "M3", "M4", "M5", "L1", "L2", "L3", "X2"}
+    assert {c["case_id"] for c in cases} == {
+        "S1", "S2", "S3", "S4", "M3", "M4", "M5", "M6", "L1", "L2", "L3", "X2"
+    }
 
 
 def test_build_report_against_real_fixtures_all_pass() -> None:
     cases = load_cases(_CASES_PATH)
     report = build_report(cases, regression_dir=REGRESSION_DIR)
     assert report["summary"]["failed"] == []
-    assert report["summary"]["total"] == 10
+    assert report["summary"]["total"] == 12
     assert report["summary"]["skipped"] == 0
-    assert report["summary"]["graded"] == 10
+    assert report["summary"]["graded"] == 12
 
 
 def test_generated_cases_are_graded_not_skipped() -> None:
     cases = load_cases(_CASES_PATH)
     report = build_report(cases, regression_dir=REGRESSION_DIR)
     generated = {c["case_id"]: c for c in report["cases"] if c["session_source"] == "generated_mock"}
-    assert set(generated) == {"S1", "S2", "S3"}
+    assert set(generated) == {"S1", "S2", "S3", "S4", "M6"}
     for result in generated.values():
         assert result["status"] == "graded"
         assert result["pass"] is True

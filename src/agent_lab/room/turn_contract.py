@@ -3,9 +3,17 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from enum import StrEnum
 import os
-from typing import Final, Literal, TypedDict, cast
+from collections.abc import Iterator
+from typing import Literal, NotRequired, TypedDict, cast
 
 from agent_lab.run.state import RunStateLike
+from agent_lab.room.turn_intent import (
+    Confidence,
+    RiskLevel,
+    TaskKind,
+    TurnIntent,
+    observe_turn_intent,
+)
 from agent_lab.room.turn_contract_feedback import (
     ContractOutcome,
     contract_history_scores,
@@ -16,23 +24,25 @@ from agent_lab.room.turn_contract_feedback import (
 __all__ = [
     "ContractOutcome",
     "ContractSnapshot",
+    "ContractRuntimeControls",
     "RouteCandidate",
     "TurnContract",
     "TurnContractId",
     "TurnContractMode",
     "TurnObservation",
+    "RiskLevel",
+    "TaskKind",
     "build_turn_contract",
     "derive_route_regrets",
     "deterministic_explore_contract",
     "observe_turn",
     "turn_contract_mode",
     "contract_runtime_controls",
+    "contract_runtime_applied",
 ]
 
-RiskLevel = Literal["low", "medium", "high"]
-Confidence = Literal["low", "medium", "high"]
-TaskKind = Literal["read", "code", "review", "general"]
 TurnContractMode = Literal["off", "shadow", "roles", "adaptive"]
+TurnObservation = TurnIntent
 
 
 class TurnContractId(StrEnum):
@@ -40,6 +50,28 @@ class TurnContractId(StrEnum):
     STANDARD_COLLAB = "standard_collab"
     GUARDED_PLAN = "guarded_plan"
     CRITICAL_REVIEW = "critical_review"
+
+
+@dataclass(frozen=True, slots=True)
+class ContractRuntimeControls:
+    agent_limit: int | None
+    max_rounds: int
+    consensus: bool
+
+    def __iter__(self) -> Iterator[int | bool | None]:
+        yield self.agent_limit
+        yield self.max_rounds
+        yield self.consensus
+
+
+def contract_runtime_applied(mode: TurnContractMode, snapshot: ContractSnapshot) -> bool:
+    if mode == "roles":
+        return True
+    if mode != "adaptive":
+        return False
+    source = snapshot.get("source")
+    safety_floor = snapshot.get("safety_floor")
+    return source in {"history", "explore"} or safety_floor in {"guarded_plan", "critical_review"}
 
 
 class CandidateSnapshot(TypedDict):
@@ -61,16 +93,9 @@ class ContractSnapshot(TypedDict):
     ambiguity: str
     evidence: list[str]
     candidates: list[CandidateSnapshot]
-
-
-@dataclass(frozen=True, slots=True)
-class TurnObservation:
-    task_kind: TaskKind
-    write_intent: bool
-    execute_intent: bool
-    ambiguity: Confidence
-    risk: RiskLevel
-    evidence: tuple[str, ...]
+    rollout_mode: NotRequired[str]
+    applied: NotRequired[bool]
+    runtime_controls: NotRequired[dict[str, bool | int | None]]
 
 
 @dataclass(frozen=True, slots=True)
@@ -114,95 +139,8 @@ class TurnContract:
         }
 
 
-_HIGH_RISK_MARKERS: Final[tuple[str, ...]] = (
-    "결제",
-    "금전",
-    "거래",
-    "payment",
-    "financial",
-    "finance",
-    "security",
-    "보안",
-    "production",
-    "프로덕션",
-    "삭제",
-    "drop table",
-    "migration",
-    "마이그레이션",
-    "credential",
-    "시크릿",
-)
-_EXECUTE_MARKERS: Final[tuple[str, ...]] = (
-    "반영",
-    "실제 코드",
-    "실행",
-    "merge",
-    "worktree",
-    "execute",
-    "apply",
-    "고쳐줘",
-    "수정해줘",
-)
-_READ_MARKERS: Final[tuple[str, ...]] = (
-    "검토",
-    "분석",
-    "설명",
-    "확인",
-    "review",
-    "analyze",
-    "explain",
-    "어디에",
-    "뭐야",
-)
-_QUICK_MARKERS: Final[tuple[str, ...]] = (
-    "오타",
-    "한 줄",
-    "짧게",
-    "단답",
-    "확인만",
-    "typo",
-    "rename",
-)
-
-
-def _has_marker(text: str, markers: tuple[str, ...]) -> bool:
-    return any(marker in text for marker in markers)
-
-
 def observe_turn(topic: str, run_meta: RunStateLike) -> TurnObservation:
-    text = (topic or "").strip().lower()
-    risk: RiskLevel = "high" if _has_marker(text, _HIGH_RISK_MARKERS) else "low"
-    quick_intent = _has_marker(text, _QUICK_MARKERS)
-    execute_intent = _has_marker(text, _EXECUTE_MARKERS) and not quick_intent
-    write_intent = execute_intent or any(
-        marker in text for marker in ("구현", "추가", "작성", "fix", "build", "patch")
-    )
-    read_intent = _has_marker(text, _READ_MARKERS)
-    task_kind: TaskKind = "review" if read_intent else "code" if write_intent else "general"
-    evidence: list[str] = []
-    if risk == "high":
-        evidence.append("high_risk_marker")
-        if _has_marker(text, ("금전", "거래", "payment", "financial", "finance")):
-            evidence.append("financial_domain")
-    if execute_intent:
-        evidence.append("execute_intent")
-    if write_intent:
-        evidence.append("write_intent")
-    if quick_intent:
-        evidence.append("quick_marker")
-    if read_intent:
-        evidence.append("review_intent")
-    if isinstance(run_meta.get("plan_workflow"), dict):
-        evidence.append("plan_workflow_state")
-    ambiguity: Confidence = "low" if quick_intent or execute_intent else "medium"
-    return TurnObservation(
-        task_kind=task_kind,
-        write_intent=write_intent,
-        execute_intent=execute_intent,
-        ambiguity=ambiguity,
-        risk=risk,
-        evidence=tuple(evidence),
-    )
+    return observe_turn_intent(topic, run_meta)
 
 
 def turn_contract_mode() -> TurnContractMode:
@@ -212,12 +150,12 @@ def turn_contract_mode() -> TurnContractMode:
     return "shadow"
 
 
-def contract_runtime_controls(contract_id: str) -> tuple[int, int, bool]:
+def contract_runtime_controls(contract_id: str) -> ContractRuntimeControls:
     if contract_id == TurnContractId.QUICK_READ.value:
-        return 1, 1, False
+        return ContractRuntimeControls(agent_limit=1, max_rounds=1, consensus=False)
     if contract_id in {TurnContractId.GUARDED_PLAN.value, TurnContractId.CRITICAL_REVIEW.value}:
-        return 99, 2, True
-    return 99, 1, False
+        return ContractRuntimeControls(agent_limit=None, max_rounds=2, consensus=True)
+    return ContractRuntimeControls(agent_limit=None, max_rounds=1, consensus=False)
 
 
 def _candidate_score(contract_id: TurnContractId, observation: TurnObservation) -> float:
@@ -237,6 +175,8 @@ def _candidate_score(contract_id: TurnContractId, observation: TurnObservation) 
         score += 0.35
     if observation.task_kind == "review" and contract_id is TurnContractId.STANDARD_COLLAB:
         score += 0.20
+    if observation.quick_intent and contract_id is TurnContractId.QUICK_READ:
+        score += 0.60
     return score
 
 

@@ -237,6 +237,34 @@ export function ChatComposer({
   const rootClass = ["composer", className].filter(Boolean).join(" ");
   const inputLocked = disabled;
   const sendLocked = sendDisabled ?? disabled;
+  const copy =
+    locale === "ko"
+      ? {
+          attach: "파일 첨부",
+          mention: "에이전트 또는 파일 멘션 (@)",
+          slash: "슬래시 명령",
+          input: "메시지 입력",
+          model: "모델 선택",
+          steer: "지시 반영",
+          steerBusy: "반영 중…",
+          steerTitle: "실행 중 지시 (다음 에이전트 단계에 반영)",
+          stop: "답변 중지",
+          send: "전송",
+          removeAttachment: "첨부 제거",
+        }
+      : {
+          attach: "Attach file",
+          mention: "Mention an agent or file (@)",
+          slash: "Slash commands",
+          input: "Message",
+          model: "Choose model",
+          steer: "Steer",
+          steerBusy: "Applying…",
+          steerTitle: "Steer while running (applied at next agent step)",
+          stop: "Stop response",
+          send: "Send",
+          removeAttachment: "Remove attachment",
+        };
   const primaryModel = activeModels[0] ?? null;
   const hiddenModelCount = Math.max(activeModels.length - 1, 0);
   const resolvedModeChipHint = resolveModeChipHint({
@@ -244,6 +272,7 @@ export function ChatComposer({
     showModeChipHint,
     isNewSession,
     modeChipVariant,
+    locale,
   });
   const ModeChipIcon = modeChipVariant
     ? MODE_CHIP_ICONS[modeChipVariant]
@@ -284,7 +313,7 @@ export function ChatComposer({
                 type="button"
                 className="attachment-chip__remove"
                 onClick={() => onFileRemove(f.id)}
-                aria-label="첨부 제거"
+                aria-label={copy.removeAttachment}
               >
                 ×
               </button>
@@ -426,6 +455,7 @@ export function ChatComposer({
                       syncInputMirrorScroll();
                     }}
                     placeholder={placeholder}
+                    aria-label={copy.input}
                     disabled={inputLocked}
                     rows={1}
                     onKeyDown={(e) => {
@@ -516,8 +546,8 @@ export function ChatComposer({
                       className="btn-attach"
                       disabled={inputLocked}
                       onClick={() => fileInputRef.current?.click()}
-                      aria-label="파일 첨부"
-                      title="파일 첨부"
+                      aria-label={copy.attach}
+                      title={copy.attach}
                     >
                       <PaperclipIcon />
                     </button>
@@ -538,8 +568,8 @@ export function ChatComposer({
                   className="btn-attach"
                   disabled={inputLocked}
                   onClick={openMentionStart}
-                  aria-label="멘션"
-                  title="에이전트 또는 파일 멘션 (@)"
+                  aria-label={copy.mention}
+                  title={copy.mention}
                 >
                   <AtIcon />
                 </button>
@@ -548,8 +578,8 @@ export function ChatComposer({
                   className="composer-command-shortcut"
                   disabled={inputLocked}
                   onClick={openSlashStart}
-                  aria-label="Slash command"
-                  title="Slash command"
+                  aria-label={copy.slash}
+                  title={copy.slash}
                 >
                   <span className="shortcut-key">/</span>
                   <span>commands</span>
@@ -563,6 +593,9 @@ export function ChatComposer({
                       className="composer-model-select"
                       onClick={onOpenModelPicker}
                       disabled={!onOpenModelPicker}
+                      aria-label={copy.model}
+                      aria-haspopup="dialog"
+                      aria-expanded={Boolean(modelPopover)}
                       title={`${primaryModel.label} · ${formatAgentModelName(
                         primaryModel.model,
                         primaryModel.id,
@@ -602,23 +635,20 @@ export function ChatComposer({
                         className="btn-send btn-send--steer"
                         disabled={steerBusy || !value.trim()}
                         onClick={onSteer}
-                        aria-label="Steer"
-                        title={
-                          locale === "ko"
-                            ? "실행 중 지시 (다음 에이전트 단계에 반영)"
-                            : "Steer while running (applied at next agent step)"
-                        }
+                        aria-label={steerBusy ? copy.steerBusy : copy.steer}
+                        aria-busy={steerBusy}
+                        title={copy.steerTitle}
                         data-testid="composer-steer"
                       >
-                        Steer
+                        {steerBusy ? copy.steerBusy : copy.steer}
                       </button>
                     ) : null}
                     <button
                       type="button"
                       className="btn-stop"
                       onClick={onStop}
-                      aria-label="답변 중지"
-                      title="답변 중지"
+                      aria-label={copy.stop}
+                      title={copy.stop}
                     >
                       <span className="btn-stop__square" aria-hidden />
                     </button>
@@ -629,7 +659,7 @@ export function ChatComposer({
                     className="btn-send"
                     disabled={sendLocked || !value.trim()}
                     onClick={onSend}
-                    aria-label="전송"
+                    aria-label={copy.send}
                   >
                     <SendIcon />
                   </button>
@@ -658,12 +688,19 @@ function resolveModeChipHint(opts: {
   showModeChipHint: boolean;
   isNewSession: boolean;
   modeChipVariant?: "discuss" | "plan" | "consensus";
+  locale: Locale;
 }): string | null {
   if (opts.modeChipHint) return opts.modeChipHint;
   if (!opts.showModeChipHint) return null;
-  if (opts.isNewSession) return "모든 턴 후 plan.md 자동 갱신";
+  if (opts.isNewSession) {
+    return opts.locale === "ko"
+      ? "모든 턴 후 plan.md 자동 갱신"
+      : "plan.md updates after each turn";
+  }
   if (opts.modeChipVariant === "plan") {
-    return "Supervisor — plan.md는 TurnPolicy로 갱신";
+    return opts.locale === "ko"
+      ? "Supervisor — plan.md는 TurnPolicy로 갱신"
+      : "Supervisor — plan.md updates via TurnPolicy";
   }
   return null;
 }

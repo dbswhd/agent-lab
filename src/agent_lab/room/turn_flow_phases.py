@@ -106,7 +106,7 @@ def prepare_turn_routing_phase(
         stamp_active_skill_intent,
         turn_policy_enabled,
     )
-    from agent_lab.room.turn_contract import turn_contract_mode
+    from agent_lab.room.turn_contract import ContractRuntimeControls, contract_runtime_applied, turn_contract_mode
     from agent_lab.room.team_orchestration import resolve_turn_lead
     from agent_lab.session.clarifier import sync_clarifier_answers_from_inbox
 
@@ -153,7 +153,7 @@ def prepare_turn_routing_phase(
         consensus_mode=consensus_mode,
         folder=folder,
     )
-    contract_controls: tuple[int, int, bool] | None = None
+    contract_controls: ContractRuntimeControls | None = None
 
     _set_active_turn_flags(
         run_meta,
@@ -174,11 +174,8 @@ def prepare_turn_routing_phase(
             _bind_session_to_run_meta(run_meta, folder)
             contract_mode = turn_contract_mode()
             contract_snapshot = run_meta.get("turn_contract")
-            contract_source = str(contract_snapshot.get("source") or "") if isinstance(contract_snapshot, dict) else ""
             contract_id = str(contract_snapshot.get("contract_id") or "") if isinstance(contract_snapshot, dict) else ""
-            apply_contract = contract_mode == "roles" or (
-                contract_mode == "adaptive" and contract_source in {"history", "explore"}
-            )
+            apply_contract = isinstance(contract_snapshot, dict) and contract_runtime_applied(contract_mode, contract_snapshot)
             if apply_contract and contract_id:
                 from agent_lab.room.turn_contract import contract_runtime_controls
 
@@ -200,10 +197,16 @@ def prepare_turn_routing_phase(
         research_mode=research_mode,
     )
     if contract_controls is not None:
-        agent_limit, contract_rounds, contract_consensus = contract_controls
-        active_agents = active_agents[:agent_limit]
-        parallel_rounds = contract_rounds
-        consensus_mode = contract_consensus
+        if contract_controls.agent_limit is not None:
+            active_agents = active_agents[: contract_controls.agent_limit]
+        parallel_rounds = contract_controls.max_rounds
+        consensus_mode = contract_controls.consensus
+        _set_active_turn_flags(
+            run_meta,
+            mode=mode,
+            synthesize=active_synthesize,
+            consensus_mode=consensus_mode,
+        )
 
     if folder is not None:
         sync_clarifier_answers_from_inbox(folder)

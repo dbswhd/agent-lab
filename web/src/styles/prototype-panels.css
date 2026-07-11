@@ -541,6 +541,7 @@
 .human-inbox--composer .inbox-row__body {
   font-size: var(--text-footnote);
   line-height: 1.5;
+  word-break: keep-all;
 }
 
 .human-inbox--composer .inbox-row__answer--question {
@@ -795,6 +796,7 @@
   font-size: var(--text-body);
   font-weight: var(--weight-semibold);
   line-height: 1.4;
+  word-break: keep-all;
 }
 
 .human-inbox--composer .inbox-row__meta-inline {

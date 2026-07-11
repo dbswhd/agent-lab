@@ -26,6 +26,13 @@ def test_high_risk_semantics_raise_safety_floor_without_exact_keyword() -> None:
     assert contract.safety_floor == "critical_review"
 
 
+def test_sensitive_english_markers_raise_safety_floor() -> None:
+    for topic in ("delete user records", "rotate secret keys", "API token revoke"):
+        observation = observe_turn(topic, {"room_preset": "supervisor"})
+        assert observation.risk == "high", topic
+        assert build_turn_contract(observation).contract_id is TurnContractId.CRITICAL_REVIEW
+
+
 def test_cold_start_defaults_to_standard_for_ambiguous_review() -> None:
     observation = observe_turn(
         "TurnPolicy의 정적성을 검토해봐",
@@ -47,6 +54,30 @@ def test_execute_intent_cannot_select_read_only_contract() -> None:
 
     assert observation.execute_intent is True
     assert build_turn_contract(observation).contract_id is TurnContractId.GUARDED_PLAN
+
+
+def test_execute_intent_matches_turn_policy_for_execute_lane_topic() -> None:
+    topic = "docs 오타 1건 수정 plan action을 만들어 dry-run 승인 merge Oracle PASS까지"
+    observation = observe_turn(topic, {"room_preset": "supervisor"})
+
+    assert observation.write_intent is True
+    assert observation.execute_intent is True
+    assert build_turn_contract(observation).contract_id is TurnContractId.GUARDED_PLAN
+
+
+def test_explicit_execute_verbs_select_guarded_plan() -> None:
+    for topic in ("execute the change", "merge this branch", "apply this patch"):
+        observation = observe_turn(topic, {"room_preset": "supervisor"})
+        assert observation.execute_intent is True, topic
+        assert build_turn_contract(observation).contract_id is TurnContractId.GUARDED_PLAN
+
+
+def test_small_write_with_quick_marker_stays_quick_read() -> None:
+    observation = observe_turn("오타 하나만 고쳐줘", {"room_preset": "supervisor"})
+
+    assert observation.write_intent is True
+    assert observation.execute_intent is False
+    assert build_turn_contract(observation).contract_id is TurnContractId.QUICK_READ
 
 
 def test_contract_snapshot_is_json_compatible_and_explains_choice() -> None:
@@ -121,10 +152,10 @@ def test_history_exploitation_adjusts_only_eligible_candidates() -> None:
         {"room_preset": "supervisor", "agents": ["cursor", "codex", "claude"]},
     )
     history: list[ContractOutcome] = [
-        {"contract_id": "standard_collab", "final_verdict": "pass", "repair_attempts": 0}
+        {"contract_id": "standard_collab", "phase": "execute", "final_verdict": "pass", "repair_attempts": 0}
         for _ in range(10)
     ] + [
-        {"contract_id": "quick_read", "final_verdict": "fail", "repair_attempts": 1}
+        {"contract_id": "quick_read", "phase": "execute", "final_verdict": "fail", "repair_attempts": 1}
         for _ in range(10)
     ]
 
@@ -133,6 +164,82 @@ def test_history_exploitation_adjusts_only_eligible_candidates() -> None:
     assert contract.source == "history"
     assert contract.contract_id is TurnContractId.STANDARD_COLLAB
     assert "history_n=20" in contract.observation.evidence
+
+
+def test_history_ignores_turn_rows_and_missing_verdicts() -> None:
+    observation = observe_turn(
+        "TurnPolicy의 정적성을 검토해봐",
+        {"room_preset": "supervisor", "agents": ["cursor", "codex", "claude"]},
+    )
+    history = [
+        {
+            "contract_id": "quick_read",
+            "phase": "turn",
+            "final_verdict": None,
+            "task_kind": "review",
+            "risk": "low",
+            "execute_intent": False,
+        }
+        for _ in range(20)
+    ] + [
+        {
+            "contract_id": "standard_collab",
+            "phase": "execute",
+            "final_verdict": None,
+            "task_kind": "review",
+            "risk": "low",
+            "execute_intent": False,
+        }
+        for _ in range(20)
+    ]
+
+    contract = build_turn_contract(observation, history=history)
+
+    assert contract.source == "bootstrap"
+    assert "history_n=" not in " ".join(contract.observation.evidence)
+
+
+def test_history_ignores_legacy_rows_without_execute_phase() -> None:
+    observation = observe_turn(
+        "TurnPolicy의 정적성을 검토해봐",
+        {"room_preset": "supervisor", "agents": ["cursor", "codex", "claude"]},
+    )
+    history: list[ContractOutcome] = [
+        {
+            "contract_id": "standard_collab",
+            "final_verdict": "pass",
+            "task_kind": "review",
+            "risk": "low",
+            "execute_intent": False,
+        }
+        for _ in range(20)
+    ]
+
+    contract = build_turn_contract(observation, history=history)
+
+    assert contract.source == "bootstrap"
+
+
+def test_history_skips_malformed_repair_attempts() -> None:
+    observation = observe_turn(
+        "TurnPolicy의 정적성을 검토해봐",
+        {"room_preset": "supervisor", "agents": ["cursor", "codex", "claude"]},
+    )
+    history: list[ContractOutcome] = [
+        {
+            "contract_id": "standard_collab",
+            "phase": "execute",
+            "final_verdict": "pass",
+            "repair_attempts": "not-an-int",
+            "task_kind": "review",
+            "risk": "low",
+            "execute_intent": False,
+        }
+    ]
+
+    contract = build_turn_contract(observation, history=history)
+
+    assert contract.source == "bootstrap"
 
 
 def test_history_cannot_lower_high_risk_safety_floor() -> None:
@@ -158,7 +265,7 @@ def test_deterministic_exploration_uses_unseen_safe_candidate(monkeypatch) -> No
         {"room_preset": "supervisor", "agents": ["cursor", "codex", "claude"]},
     )
     history: list[ContractOutcome] = [
-        {"contract_id": "standard_collab", "final_verdict": "pass", "repair_attempts": 0}
+        {"contract_id": "standard_collab", "phase": "execute", "final_verdict": "pass", "repair_attempts": 0}
         for _ in range(10)
     ]
 
@@ -176,4 +283,17 @@ def test_turn_contract_mode_defaults_to_shadow_and_rejects_unknown(monkeypatch) 
 
 
 def test_quick_contract_runtime_controls_limit_roster_and_rounds() -> None:
-    assert contract_runtime_controls("quick_read") == (1, 1, False)
+    controls = contract_runtime_controls("quick_read")
+
+    assert controls.agent_limit == 1
+    assert controls.max_rounds == 1
+    assert controls.consensus is False
+
+
+def test_collaboration_contract_uses_full_roster_without_magic_limit() -> None:
+    controls = contract_runtime_controls("guarded_plan")
+
+    assert controls.agent_limit is None
+    assert controls.max_rounds == 2
+    assert controls.consensus is True
+    assert tuple(controls) == (None, 2, True)

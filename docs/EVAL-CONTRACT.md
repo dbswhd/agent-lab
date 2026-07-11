@@ -1,8 +1,8 @@
 # Eval Contract — 측정·trace·판정 SSOT
 
 > **Status:** canonical · current behavior
-> **Last verified:** 2026-07-10
-> **Code SSOT:** `src/agent_lab/feedback_report.py` · `evals/schema.py` · `trace_export.py` · `graders.py` · `report.py`
+> **Last verified:** 2026-07-11
+> **Code SSOT:** `src/agent_lab/feedback_report.py` · `evals/schema.py` · `evals/trace_export.py` · `evals/graders.py` · `evals/report.py`
 > **History:** [EVAL-SURFACE-SUPER-SAMPLE-PLAN.md](./EVAL-SURFACE-SUPER-SAMPLE-PLAN.md) · [EVAL-SURFACE-V1-PLAN.md](./EVAL-SURFACE-V1-PLAN.md)
 
 이 문서는 outcome ledger와 local eval surface에서 사용하는 단어·분모·trace·grader·T0~T2 판정을 정의한다. 구현 계획과 완료 이력은 history 문서가 소유한다.
@@ -85,6 +85,7 @@ Legacy fixture는 literal trace가 없을 수 있으므로 `run.json`, `chat.jso
 |--------|------|
 | `routing_contract` | category, TurnPolicy routing snapshot, TurnContract snapshot |
 | `session_contract` | profile, workflow, spans, subset, role plan |
+| `turn_contract_runtime` | applied TurnContract agent count, round cap, consensus |
 | `generated_mock_quality` | generated S-case 품질 |
 | `gate_integrity` | unresolved BLOCK 이후 execute 금지 |
 | `objection_flow` | challenge/amend/block 기대 |
@@ -92,7 +93,7 @@ Legacy fixture는 literal trace가 없을 수 있으므로 `run.json`, `chat.jso
 | `oracle_coverage` | execution verdict coverage |
 | `trace_completeness` | profile별 span 비율 |
 
-`gate_integrity`와 `trace_completeness`는 항상 실행한다. 나머지는 case의 `expected`가 해당 계약을 선언할 때 실행한다. v1은 LLM judge를 사용하지 않는다.
+`gate_integrity`와 `trace_completeness`는 항상 실행한다. 나머지는 case의 `expected`가 해당 계약을 선언할 때 실행한다. `turn_contract_runtime`는 `turn_contract.runtime_controls`를 fallback으로 사용해 legacy mock에 없는 `consensus_mode`도 판정한다. Oracle verdict는 `oracle.verdict`, `oracle_verdict`, `verify_after_merge.oracle.verdict` 세 저장 형태를 동일하게 정규화한다. v1은 LLM judge를 사용하지 않는다.
 
 ## 5. Supersample 판정
 

@@ -331,15 +331,18 @@ def apply_loop_budget_caps(
     cap_rounds: int,
     cap_calls: int,
 ) -> tuple[int, int]:
-    if not run_meta or str(run_meta.get("plan_intent") or "") != "loop":
-        return cap_rounds, cap_calls
-    budget = run_meta.get("loop_budget")
-    if not isinstance(budget, dict):
-        return cap_rounds, cap_calls
-    if budget.get("max_rounds"):
-        cap_rounds = min(cap_rounds, int(budget["max_rounds"]))
-    if budget.get("max_calls"):
-        cap_calls = min(cap_calls, int(budget["max_calls"]))
+    if run_meta and str(run_meta.get("plan_intent") or "") == "loop":
+        budget = run_meta.get("loop_budget")
+        if isinstance(budget, dict):
+            if budget.get("max_rounds"):
+                cap_rounds = min(cap_rounds, int(budget["max_rounds"]))
+            if budget.get("max_calls"):
+                cap_calls = min(cap_calls, int(budget["max_calls"]))
+    contract = run_meta.get("turn_contract") if run_meta else None
+    if isinstance(contract, dict) and contract.get("applied"):
+        controls = contract.get("runtime_controls")
+        if isinstance(controls, dict) and controls.get("max_rounds"):
+            cap_rounds = min(cap_rounds, int(controls["max_rounds"]))
     return cap_rounds, cap_calls
 
 

@@ -7,22 +7,21 @@ and task assign. See docs/TURN-POLICY.md.
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 from agent_lab.run.state import RunState, RunStateLike
-
-ScribeTrigger = Literal[
-    "none",
-    "synthesize_only",
-    "verified_loop_done",
-    "consensus_reached",
-    "plan_workflow_draft",
-    "skill_intent",
-]
-
-TurnKind = Literal["agent_turn", "plan_side_effect"]
+from agent_lab.room.turn_contract import ContractOutcome
+from agent_lab.room.turn_intent import TurnIntent
+from agent_lab.room.turn_policy_models import (
+    ApplyTurnEffectsResult,
+    TurnEffects,
+    TurnPolicyEngine,
+    TurnSignals,
+    ScribeTrigger,
+    TurnKind as TurnKind,
+    build_turn_policy_record,
+)
 
 _PLAN_DRAFT_PHASES = frozenset({"DRAFT", "REFINE"})
 _PLAN_NO_SCRIBE_PHASES = frozenset({"HUMAN_PENDING", "APPROVED"})
@@ -116,32 +115,11 @@ def turn_policy_enabled() -> bool:
     return raw not in ("0", "false", "no", "off")
 
 
-_PLAN_EXECUTE_INTENT_MARKERS = (
-    "dry-run",
-    "dry run",
-    "dry_run",
-    "oracle pass",
-    "oracle verify",
-    "plan action",
-    "propose_build",
-    "execute lane",
-    "worktree",
-    "지금 실행",
-)
-
-
 def detect_plan_execute_intent(text: str) -> bool:
     """Topic asks for plan → approve → execute → verify (not casual discuss)."""
-    lowered = (text or "").strip().lower()
-    if not lowered:
-        return False
-    if any(marker in lowered for marker in _PLAN_EXECUTE_INTENT_MARKERS):
-        return True
-    if "merge" in lowered and any(token in lowered for token in ("oracle", "승인", "approve", "verify")):
-        return True
-    if "plan" in lowered and any(token in lowered for token in ("dry", "execute", "승인", "approve", "merge")):
-        return True
-    return False
+    from agent_lab.room.turn_intent import is_execute_lane_topic
+
+    return is_execute_lane_topic(text)
 
 
 def resolve_discuss_light(
@@ -302,232 +280,10 @@ def _plan_execute_intent(current_topic: str, session_topic: str) -> bool:
     return bool(session) and detect_plan_execute_intent(session)
 
 
-@dataclass(frozen=True, slots=True)
-class TurnSignals:
-    room_preset: str | None = None
-    plan_workflow_phase: str = "INTAKE"
-    plan_workflow_active: bool = False
-    consensus_mode: bool = False
-    consensus_status: str | None = None
-    pending_agreement_count: int = 0
-    verified_loop_done: bool = False
-    synthesize_only: bool = False
-    cancelled: bool = False
-    supervisor_first_turn: bool = False
-    skill_intent: str | None = None
-    proposed_tags_count: int = 0
-    route_category: str | None = None
-    discuss_light: bool = False
-    clarity_short_circuit: bool = False
-    plan_execute_intent: bool = False
-    roster_size: int = 0
-
-    @classmethod
-    def from_run_meta(
-        cls,
-        run_meta: RunStateLike | None,
-        *,
-        room_preset: str | None = None,
-        topic: str | None = None,
-        consensus_meta: dict[str, Any] | None = None,
-        synthesize_only: bool = False,
-        cancelled: bool = False,
-        verified_loop_done: bool = False,
-        supervisor_first_turn: bool = False,
-        skill_intent: str | None = None,
-        proposed_tags_count: int = 0,
-        roster_size: int | None = None,
-    ) -> TurnSignals:
-        from agent_lab.consensus_agreements import pending_consensus_agreements
-        from agent_lab.plan.workflow import is_plan_workflow_active, plan_workflow_phase
-
-        run = run_meta or {}
-        preset = (room_preset or run.get("room_preset") or "").strip().lower() or None
-        active = is_plan_workflow_active(run)
-        phase = plan_workflow_phase(run) if active else "INTAKE"
-        consensus = consensus_meta or {}
-        status = str(consensus.get("status") or run.get("consensus_status") or "").strip().lower() or None
-        pending = pending_consensus_agreements(run.get("consensus_agreements"))
-        resolved_skill = normalize_skill_intent(skill_intent) or normalize_skill_intent(
-            run.get("_active_skill_intent"),
-        )
-        route_category = _route_category_from_run_meta(run)
-        if topic and not route_category:
-            route_category = _route_category_for_topic(topic, run)
-        clarity_sc = False
-        if topic:
-            from agent_lab.clarity import clarity_short_circuit
-
-            clarity_sc = clarity_short_circuit(topic)
-        session_topic = str(run.get("topic") or "").strip()
-        plan_execute_intent = _plan_execute_intent(topic or "", session_topic)
-        agents_raw = run.get("agents")
-        resolved_roster = (
-            roster_size
-            if roster_size is not None
-            else (len([a for a in agents_raw if str(a).strip()]) if isinstance(agents_raw, list) else 0)
-        )
-        return cls(
-            room_preset=preset,
-            plan_workflow_phase=phase,
-            plan_workflow_active=active,
-            consensus_mode=bool(run.get("_active_consensus") or run.get("consensus_mode")),
-            consensus_status=status,
-            pending_agreement_count=len(pending),
-            verified_loop_done=verified_loop_done,
-            synthesize_only=synthesize_only,
-            cancelled=cancelled,
-            supervisor_first_turn=supervisor_first_turn,
-            skill_intent=resolved_skill,
-            proposed_tags_count=max(0, int(proposed_tags_count or 0)),
-            route_category=route_category,
-            discuss_light=bool(run.get("discuss_light")),
-            clarity_short_circuit=clarity_sc,
-            plan_execute_intent=plan_execute_intent,
-            roster_size=max(0, int(resolved_roster)),
-        )
-
-    def routing_contract_snapshot(self) -> dict[str, Any]:
-        """TurnContract routing signals persisted for trace / eval (P1)."""
-        return {
-            "route_category": self.route_category,
-            "discuss_light": self.discuss_light,
-            "clarity_short_circuit": self.clarity_short_circuit,
-            "plan_execute_intent": self.plan_execute_intent,
-            "skip_fsm_bootstrap": skip_plan_fsm_bootstrap(self),
-            "fast_turn": is_fast_turn(self),
-            "supervisor_turn": is_supervisor_turn(self),
-            "roster_size": self.roster_size,
-        }
 
 
-@dataclass(frozen=True, slots=True)
-class TurnEffects:
-    run_agent_round: bool = True
-    run_scribe: bool = False
-    scribe_trigger: ScribeTrigger = "none"
-    advance_plan_workflow: bool = False
-    init_plan_workflow: bool = False
-    assign_task_owners: bool = False
-    turn_kind: TurnKind = "agent_turn"
-
-    def to_turn_policy_dict(self) -> dict[str, Any]:
-        return {
-            "run_agent_round": self.run_agent_round,
-            "run_scribe": self.run_scribe,
-            "scribe_trigger": self.scribe_trigger,
-            "advance_plan_workflow": self.advance_plan_workflow,
-            "init_plan_workflow": self.init_plan_workflow,
-            "assign_task_owners": self.assign_task_owners,
-            "turn_kind": self.turn_kind,
-        }
-
-
-def build_turn_policy_record(
-    effects: TurnEffects,
-    signals: TurnSignals | None = None,
-) -> dict[str, Any]:
-    """Merge TurnEffects with optional TurnContract routing snapshot."""
-    payload = effects.to_turn_policy_dict()
-    if signals is not None:
-        payload["routing_contract"] = signals.routing_contract_snapshot()
-    return payload
-
-
-@dataclass
-class ApplyTurnEffectsResult:
-    effects: TurnEffects
-    applied: bool = False
-    detail: str = ""
-    plan_md: str = ""
-    scribe_applied: bool = False
-    run_meta: RunState = field(default_factory=RunState.empty)
-    plan_trigger: str | None = None
-
-
-class TurnPolicyEngine:
-    """Pure resolver — decision table SSOT: docs/TURN-POLICY.md."""
-
-    @staticmethod
-    def resolve(signals: TurnSignals) -> TurnEffects:
-        if signals.cancelled:
-            return TurnEffects(
-                run_agent_round=not signals.synthesize_only,
-                turn_kind="plan_side_effect" if signals.synthesize_only else "agent_turn",
-            )
-
-        if signals.synthesize_only:
-            return TurnEffects(
-                run_agent_round=False,
-                run_scribe=True,
-                scribe_trigger="synthesize_only",
-                turn_kind="plan_side_effect",
-            )
-
-        phase = (signals.plan_workflow_phase or "INTAKE").strip().upper()
-        is_fast = is_fast_turn(signals)
-        is_supervisor = is_supervisor_turn(signals)
-        skip_fsm = skip_plan_fsm_bootstrap(signals)
-
-        init_pw = bool(
-            is_supervisor
-            and signals.supervisor_first_turn
-            and (not signals.plan_workflow_active or phase == "INTAKE")
-            and not skip_fsm
-        )
-
-        advance_pw = bool(
-            is_supervisor
-            and (signals.plan_workflow_active or init_pw)
-            and phase in _PLAN_FSM_TICK_PHASES
-            and not skip_fsm
-        )
-
-        scribe_trigger: ScribeTrigger = "none"
-        run_scribe = False
-
-        if signals.verified_loop_done:
-            run_scribe = True
-            scribe_trigger = "verified_loop_done"
-        elif signals.consensus_status == "reached" and signals.pending_agreement_count > 0:
-            run_scribe = True
-            scribe_trigger = "consensus_reached"
-        elif (
-            not is_fast
-            and signals.plan_workflow_active
-            and phase in _PLAN_DRAFT_PHASES
-        ):
-            run_scribe = True
-            scribe_trigger = "plan_workflow_draft"
-        elif not is_fast and (
-            skill_intent_opens_scribe(signals.skill_intent)
-            or signals.proposed_tags_count >= proposed_envelope_threshold()
-        ):
-            run_scribe = True
-            scribe_trigger = "skill_intent"
-
-        if phase in _PLAN_NO_SCRIBE_PHASES:
-            run_scribe = False
-            scribe_trigger = "none"
-
-        assign = bool(
-            signals.consensus_mode or run_scribe or (signals.plan_workflow_active and phase in _TASK_ASSIGN_PHASES)
-        )
-
-        return TurnEffects(
-            run_agent_round=True,
-            run_scribe=run_scribe,
-            scribe_trigger=scribe_trigger,
-            advance_plan_workflow=advance_pw,
-            init_plan_workflow=init_pw,
-            assign_task_owners=assign,
-            turn_kind="agent_turn",
-        )
-
-
-def _contract_history_from_outcome_rows() -> list:
+def _contract_history_from_outcome_rows() -> list[ContractOutcome]:
     from agent_lab.outcome_harvester import load_outcome_rows
-    from agent_lab.room.turn_contract import ContractOutcome
 
     history: list[ContractOutcome] = []
     for row in load_outcome_rows():
@@ -535,15 +291,21 @@ def _contract_history_from_outcome_rows() -> list:
         if not isinstance(contract_id, str) or not contract_id:
             continue
         verdict = row.get("final_verdict")
+        execute_intent = row.get("execute_intent")
+        try:
+            repair_attempts = max(0, int(row.get("repair_attempts") or 0))
+        except (TypeError, ValueError):
+            continue
         history.append(
             {
                 "contract_id": contract_id,
+                "phase": str(row.get("phase") or "") or None,
                 "final_verdict": verdict if isinstance(verdict, str) else None,
-                "repair_attempts": int(row.get("repair_attempts") or 0),
+                "repair_attempts": repair_attempts,
                 "escalated": bool(row.get("escalated")),
                 "task_kind": str(row.get("task_kind") or "") or None,
                 "risk": str(row.get("risk") or "") or None,
-                "execute_intent": bool(row.get("execute_intent")),
+                "execute_intent": execute_intent if isinstance(execute_intent, bool) else None,
             },
         )
     return history
@@ -553,12 +315,32 @@ def _stamp_turn_contract_on_run_meta(
     run_meta: RunState,
     *,
     topic: str,
-    history: list,
+    history: list[ContractOutcome],
+    intent: TurnIntent | None = None,
 ) -> None:
-    from agent_lab.room.turn_contract import build_turn_contract, observe_turn
+    from agent_lab.room.turn_contract import (
+        build_turn_contract,
+        contract_runtime_controls,
+        contract_runtime_applied,
+        observe_turn,
+        turn_contract_mode,
+    )
     from agent_lab.run.meta import stamp_run_meta
 
-    turn_contract = build_turn_contract(observe_turn(topic, run_meta), history=history).to_snapshot()
+    mode = turn_contract_mode()
+    if mode == "off":
+        run_meta.pop("turn_contract", None)
+        return
+    turn_contract = build_turn_contract(intent or observe_turn(topic, run_meta), history=history).to_snapshot()
+    controls = contract_runtime_controls(str(turn_contract["contract_id"]))
+    applied = contract_runtime_applied(mode, turn_contract)
+    turn_contract["rollout_mode"] = mode
+    turn_contract["applied"] = applied
+    turn_contract["runtime_controls"] = {
+        "agent_limit": controls.agent_limit,
+        "max_rounds": controls.max_rounds,
+        "consensus": controls.consensus,
+    }
     stamp_run_meta(run_meta, turn_contract=turn_contract)
 
 
@@ -577,6 +359,7 @@ def prepare_turn_policy_before_agent_round(
         is_plan_workflow_active,
     )
     from agent_lab.run.meta import read_run_meta
+    from agent_lab.room.turn_contract import turn_contract_mode
 
     skill_hint = normalize_skill_intent(run_meta.get("_active_skill_intent"))
     signals = TurnSignals.from_run_meta(
@@ -588,8 +371,9 @@ def prepare_turn_policy_before_agent_round(
     room_preset_hint = signals.room_preset
     effects = TurnPolicyEngine.resolve(signals)
     persist_turn_policy_on_run_meta(run_meta, effects, signals=signals)
-    history = _contract_history_from_outcome_rows()
-    _stamp_turn_contract_on_run_meta(run_meta, topic=topic, history=history)
+    mode = turn_contract_mode()
+    history = _contract_history_from_outcome_rows() if mode != "off" else []
+    _stamp_turn_contract_on_run_meta(run_meta, topic=topic, history=history, intent=signals.intent)
     if folder.is_dir() and effects.init_plan_workflow and not is_plan_workflow_active(run_meta):
         init_plan_workflow_on_plan_send(folder)
         run_meta = read_run_meta(folder)
@@ -602,7 +386,7 @@ def prepare_turn_policy_before_agent_round(
         )
         effects = TurnPolicyEngine.resolve(signals)
         persist_turn_policy_on_run_meta(run_meta, effects, signals=signals)
-        _stamp_turn_contract_on_run_meta(run_meta, topic=topic, history=history)
+        _stamp_turn_contract_on_run_meta(run_meta, topic=topic, history=history, intent=signals.intent)
     snap_tp = run_meta.get("turn_policy")
     snap_tk = run_meta.get("turn_kind")
     snap_tc = run_meta.get("turn_contract")
@@ -617,7 +401,9 @@ def prepare_turn_policy_before_agent_round(
                 run["turn_kind"] = snap_tk
             if snap_rp:
                 run["room_preset"] = snap_rp
-            if isinstance(snap_tc, dict):
+            if mode == "off":
+                run.pop("turn_contract", None)
+            elif isinstance(snap_tc, dict):
                 run["turn_contract"] = snap_tc
             return run
 
@@ -765,7 +551,7 @@ def _run_turn_policy_scribe(
     effects: TurnEffects,
     cancelled: bool,
     on_event: Any,
-    permissions: dict | None,
+    permissions: dict[str, Any] | None,
     consensus_meta: dict[str, Any] | None,
     verified_result: dict[str, Any] | None,
     human_turn: int,
@@ -864,7 +650,7 @@ def apply_turn_effects(
     mode: str = "discuss",
     cancelled: bool = False,
     active_agents: list[Any] | None = None,
-    permissions: dict | None = None,
+    permissions: dict[str, Any] | None = None,
     on_event: Any = None,
     consensus_meta: dict[str, Any] | None = None,
     verified_result: dict[str, Any] | None = None,

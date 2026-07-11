@@ -1623,6 +1623,8 @@
   display: flex;
   align-items: center;
   gap: var(--space-8);
+  flex-wrap: wrap;
+  row-gap: var(--space-4);
   font-size: var(--text-caption);
   color: var(--label-secondary);
 }
@@ -2120,6 +2122,25 @@
   color: var(--label-tertiary);
   font-size: var(--text-micro);
   line-height: 1;
+}
+
+@media (max-width: 560px) {
+  .composer-action-row {
+    gap: var(--space-6);
+  }
+
+  .composer-action-row__start,
+  .composer-action-row__end {
+    gap: var(--space-4);
+  }
+
+  .composer-command-shortcut > span:not(.shortcut-key) {
+    display: none;
+  }
+
+  .composer-model-select {
+    max-width: min(46vw, 220px);
+  }
 }
 
 .btn-send {

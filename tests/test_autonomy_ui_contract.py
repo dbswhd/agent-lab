@@ -18,6 +18,7 @@ def test_autonomy_dial_in_session_header() -> None:
     chrome = _read("web", "src", "components", "WorkspaceChrome.tsx")
     dial = _read("web", "src", "components", "AutonomyDial.tsx")
     hook = _read("web", "src", "hooks", "useAutonomySession.ts")
+    runtime_hook = _read("web", "src", "hooks", "useSessionRuntime.ts")
     layout = _read("web", "src", "styles", "layout.css")
 
     assert "useRoomChat" in room
@@ -26,7 +27,9 @@ def test_autonomy_dial_in_session_header() -> None:
     assert "headerExtra" in chrome
     assert "workspace-chrome__pill--autonomy" in dial
     assert "autonomy-dial__level" in dial
-    assert "fetchSessionRuntime" in hook
+    # Runtime fetch was extracted into the shared useSessionRuntime hook.
+    assert "useSessionRuntime" in hook
+    assert "fetchSessionRuntime" in runtime_hook
     assert "buildAutonomySessionView" in hook
     assert ".workspace-chrome__pill--autonomy" in layout
 

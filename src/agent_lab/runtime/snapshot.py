@@ -11,7 +11,7 @@ from agent_lab.mission.loop import sync_mission_phase_from_run
 from agent_lab.runtime.policy import PolicyEngine
 from agent_lab.run.meta import read_run_meta
 
-from agent_lab.plan.execution_status_scopes import (
+from agent_lab.core.execution_status_scopes import (
     execution_rows as _execution_rows,
     find_pending_approval_execution,
 )

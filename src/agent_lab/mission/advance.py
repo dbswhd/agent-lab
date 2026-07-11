@@ -11,7 +11,10 @@ if TYPE_CHECKING:
     from agent_lab.mission.loop import MissionPhase
 
 
-from agent_lab.plan.execution_status_scopes import find_open_merge_pending_execution
+from agent_lab.core.execution_status_scopes import (
+    OPEN_MERGE_PENDING_STATUSES,
+    find_open_merge_pending_execution,
+)
 
 
 def _find_open_execution(
@@ -25,7 +28,7 @@ def _find_open_execution(
         if row.get("action_index") != action_index:
             continue
         status = str(row.get("status") or "")
-        if status in _OPEN_EXECUTION_STATUSES:
+        if status in OPEN_MERGE_PENDING_STATUSES:
             return row
     return None
 

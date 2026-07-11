@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any, Literal
 
 from agent_lab.adversarial_gate import LGTM_TOKEN, badge_tone
-from agent_lab.plan.execution_status_scopes import EVIDENCE_PENDING_STATUSES
+from agent_lab.core.execution_status_scopes import EVIDENCE_PENDING_STATUSES
 from agent_lab.time_utils import utc_now_iso as _now_iso
 
 GateStatus = Literal["pass", "fail", "pending", "skip"]

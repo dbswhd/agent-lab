@@ -7,14 +7,15 @@ from typing import Any
 from uuid import uuid4
 
 from agent_lab.time_utils import utc_now_iso_z as _now_iso
-from agent_lab.run.meta import patch_run_meta, read_run_meta
+from agent_lab.run.meta import patch_run_meta, read_run_meta, stamp_run_meta
+from agent_lab.run.state import RunStateLike
 
 _MAX_STEER_TEXT = 2000
 _MAX_QUEUE = 20
 
 
 
-def folder_from_run_meta(run_meta: dict[str, Any] | None) -> Path | None:
+def folder_from_run_meta(run_meta: RunStateLike | None) -> Path | None:
     if not isinstance(run_meta, dict):
         return None
     raw = run_meta.get("_session_folder")
@@ -46,7 +47,7 @@ def folder_from_run_meta(run_meta: dict[str, Any] | None) -> Path | None:
     return None
 
 
-def list_steer_queue(run_meta: dict[str, Any] | None) -> list[dict[str, Any]]:
+def list_steer_queue(run_meta: RunStateLike | None) -> list[dict[str, Any]]:
     if not isinstance(run_meta, dict):
         return []
     raw = run_meta.get("steer_queue")
@@ -93,7 +94,7 @@ def enqueue_steer(folder: Path, text: str, *, target: str = "any") -> dict[str, 
 
 def drain_steer_follow_up(
     folder: Path | None = None,
-    run_meta: dict[str, Any] | None = None,
+    run_meta: RunStateLike | None = None,
     *,
     target: str = "any",
 ) -> str:
@@ -122,7 +123,7 @@ def drain_steer_follow_up(
 
         patch_run_meta(path, _patch)
     elif isinstance(run_meta, dict):
-        run_meta["steer_queue"] = _take(list_steer_queue(run_meta))
+        stamp_run_meta(run_meta, steer_queue=_take(list_steer_queue(run_meta)))
     else:
         return ""
 

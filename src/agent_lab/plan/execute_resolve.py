@@ -27,7 +27,7 @@ from agent_lab.plan.execute_shared import (
     _resolve_snapshot_paths,
     _worktree_hooks_verify_before_merge,
 )
-from agent_lab.plan.execution_status_scopes import (
+from agent_lab.core.execution_status_scopes import (
     CANCELLABLE_EXECUTION_STATUSES,
     PENDING_STATUS,
 )

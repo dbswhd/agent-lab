@@ -11,7 +11,7 @@ from agent_lab.run.state import RunState, RunStateLike
 from agent_lab.plan.execute_snapshot import (
     normalize_path,
 )
-from agent_lab.plan.execution_status_scopes import find_pending_approval_execution
+from agent_lab.core.execution_status_scopes import find_pending_approval_execution
 from agent_lab.run.meta import patch_run_meta
 
 

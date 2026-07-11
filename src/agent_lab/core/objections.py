@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
-from agent_lab.time_utils import utc_now_iso as _now
 import uuid
 from collections.abc import Mapping
+from datetime import datetime, timezone
 from typing import Any
 
 RUN_OBJECTIONS_KEY = "objections"
 HARVEST_ACTS = frozenset({"BLOCK", "CHALLENGE"})
 
+
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
 
 def _new_objection_id() -> str:

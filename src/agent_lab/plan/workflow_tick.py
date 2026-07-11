@@ -20,8 +20,8 @@ from agent_lab.plan.workflow_state import (
     plan_fsm_skill_first_enabled,
     plan_workflow_phase,
     set_plan_workflow_phase,
-    _now,
 )
+from agent_lab.time_utils import utc_now_iso as _now
 from agent_lab.run.meta import patch_run_meta, read_run_meta
 
 

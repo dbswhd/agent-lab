@@ -9,6 +9,7 @@ from typing import Any
 from agent_lab.run.state import RunState
 
 from agent_lab.adversarial_gate import adversarial_review
+from agent_lab.core.execution_status_scopes import PENDING_STATUS
 from agent_lab.plan.actions import PlanAction, find_dry_run_action, parse_plan_action_sections
 from agent_lab.plan.execute_isolation import resolve_action_isolation
 from agent_lab.plan.execute_paths import paths_relative_to_workspace, paths_under_workspace
@@ -19,7 +20,6 @@ from agent_lab.plan.execute_prompts import (
 )
 from agent_lab.plan.execute_shared import (
     MAX_DIFF_CHARS,
-    PENDING_STATUS,
     _commit_exec_worktree,
     _exec_id,
     _now,

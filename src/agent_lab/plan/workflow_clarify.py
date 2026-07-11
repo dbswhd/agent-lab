@@ -6,11 +6,11 @@ from typing import Any
 
 from agent_lab.plan.workflow_state import (
     _mirror_verified_loop_status,
-    _now,
     get_plan_workflow,
     plan_workflow_wants_inbox_mcp,
     plan_fsm_skill_first_enabled,
 )
+from agent_lab.time_utils import utc_now_iso as _now
 from agent_lab.run.meta import patch_run_meta, read_run_meta
 from agent_lab.run.state import RunStateLike
 

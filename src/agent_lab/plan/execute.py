@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from agent_lab.core.execution_status_scopes import PENDING_STATUS
 from agent_lab.plan.actions import parse_plan_action_sections
 from agent_lab.plan.execute_dry_run import run_dry_run
 from agent_lab.plan.execute_merge import verify_after_merge
@@ -21,7 +22,6 @@ from agent_lab.plan.execute_resolve import (
 from agent_lab.plan.execute_shared import (
     MAX_DIFF_CHARS,
     MAX_VERIFY_RETRIES,
-    PENDING_STATUS,
     _exec_worktree_from_execution,
     _now,
     _rewrite_git_paths_in_text,

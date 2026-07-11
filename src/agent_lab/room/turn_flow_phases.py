@@ -6,7 +6,7 @@ import json
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, cast
 
 from agent_lab.run.state import RunState, RunStateLike
 
@@ -106,7 +106,12 @@ def prepare_turn_routing_phase(
         stamp_active_skill_intent,
         turn_policy_enabled,
     )
-    from agent_lab.room.turn_contract import ContractRuntimeControls, contract_runtime_applied, turn_contract_mode
+    from agent_lab.room.turn_contract import (
+        ContractRuntimeControls,
+        ContractSnapshot,
+        contract_runtime_applied,
+        turn_contract_mode,
+    )
     from agent_lab.room.team_orchestration import resolve_turn_lead
     from agent_lab.session.clarifier import sync_clarifier_answers_from_inbox
 
@@ -175,7 +180,9 @@ def prepare_turn_routing_phase(
             contract_mode = turn_contract_mode()
             contract_snapshot = run_meta.get("turn_contract")
             contract_id = str(contract_snapshot.get("contract_id") or "") if isinstance(contract_snapshot, dict) else ""
-            apply_contract = isinstance(contract_snapshot, dict) and contract_runtime_applied(contract_mode, contract_snapshot)
+            apply_contract = isinstance(contract_snapshot, dict) and contract_runtime_applied(
+                contract_mode, cast(ContractSnapshot, contract_snapshot)
+            )
             if apply_contract and contract_id:
                 from agent_lab.room.turn_contract import contract_runtime_controls
 

@@ -218,22 +218,22 @@ def build_turn_contract(
         RouteCandidate(
             contract_id=contract_id,
             score=_candidate_score(contract_id, observation)
-            + (
-                max(-0.5, min(0.5, history_scores.get(contract_id.value, 0.0) * 0.35))
-                if history_ready
-                else 0.0
-            ),
+            + (max(-0.5, min(0.5, history_scores.get(contract_id.value, 0.0) * 0.35)) if history_ready else 0.0),
             evidence=observation.evidence,
             rejected_by_safety=not _allowed(contract_id, floor),
         )
         for contract_id in ordered
     )
     eligible = tuple(candidate for candidate in candidates if not candidate.rejected_by_safety)
-    explored = deterministic_explore_contract(
-        [candidate.contract_id.value for candidate in eligible],
-        history_counts,
-        evidence=observation.evidence,
-    ) if history_ready else None
+    explored = (
+        deterministic_explore_contract(
+            [candidate.contract_id.value for candidate in eligible],
+            history_counts,
+            evidence=observation.evidence,
+        )
+        if history_ready
+        else None
+    )
     selected = (
         next(candidate for candidate in eligible if candidate.contract_id.value == explored)
         if explored

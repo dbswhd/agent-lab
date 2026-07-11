@@ -74,7 +74,9 @@ def main() -> int:
     parser.add_argument("--root", help="repo root override (기본: 실제 repo root)")
     parser.add_argument("--git-root", help="merge/rollback 대상 git 저장소 (기본: --root 또는 실제 repo root)")
     parser.add_argument("--session-folder", help="--mode propose 전용 — Inbox 카드를 붙일 세션 폴더")
-    parser.add_argument("--dry-run", action="store_true", help="--mode merge 전용 — 실제 apply/commit 없이 게이트만 확인")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="--mode merge 전용 — 실제 apply/commit 없이 게이트만 확인"
+    )
     args = parser.parse_args()
 
     from agent_lab.merge_gate import harness_inbox_enabled

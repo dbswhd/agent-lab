@@ -29,7 +29,6 @@ L2_TO_L3_ESCALATION_MAX = 0.05
 _LEVEL_ORDER: dict[str, int] = {"L0": 0, "L1": 1, "L2": 2, "L3": 3}
 
 
-
 def oracle_confidence(oracle: Mapping[str, Any] | None) -> float:
     """Oracle confidence from run.json oracle blob (explicit or verdict-derived)."""
     if not oracle:

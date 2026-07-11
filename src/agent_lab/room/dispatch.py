@@ -115,7 +115,6 @@ def append_dispatch_ledger(run_meta: RunStateLike, entry: dict[str, Any]) -> dic
     return entry
 
 
-
 def _topic_category_meta(run_meta: RunStateLike) -> str | None:
     cat = run_meta.get("_turn_category")
     if isinstance(cat, dict):

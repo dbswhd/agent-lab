@@ -109,9 +109,7 @@ def test_resolve_base_ref_when_git_ref_exists(tmp_path: Path) -> None:
 
 
 def test_include_from_worktreeinclude_file(tmp_path: Path) -> None:
-    (tmp_path / ".worktreeinclude").write_text(
-        ".env\n# comment\nfoo.txt\n", encoding="utf-8"
-    )
+    (tmp_path / ".worktreeinclude").write_text(".env\n# comment\nfoo.txt\n", encoding="utf-8")
     patterns = resolve_include_patterns(tmp_path)
     assert patterns == [".env", "foo.txt"]
 

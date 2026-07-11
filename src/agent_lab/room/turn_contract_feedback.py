@@ -88,12 +88,15 @@ def derive_route_regrets(
     subset_escalated: bool = False,
 ) -> tuple[str, ...]:
     regrets: list[str] = []
-    under_routed = contract_id == "quick_read" and (
-        escalated or final_verdict == "fail" or repair_attempts > 0
-    )
+    under_routed = contract_id == "quick_read" and (escalated or final_verdict == "fail" or repair_attempts > 0)
     if under_routed:
         regrets.append("under_routed")
-    over_routed = contract_id in {"guarded_plan", "critical_review"} and not escalated and not execution_present and rounds_used <= 1
+    over_routed = (
+        contract_id in {"guarded_plan", "critical_review"}
+        and not escalated
+        and not execution_present
+        and rounds_used <= 1
+    )
     if over_routed:
         regrets.append("over_routed_candidate")
     if clarify_no_delta:

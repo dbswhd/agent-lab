@@ -400,7 +400,7 @@ def _hook_run_record(
     parallel_round: int | None = None,
     dispatch_id: str | None = None,
 ) -> dict[str, Any]:
-    
+
     rec: dict[str, Any] = {
         "ts": utc_now_iso(),
         "event": result.event,

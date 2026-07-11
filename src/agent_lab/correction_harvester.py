@@ -93,7 +93,6 @@ def detect_user_correction(content: str) -> CorrectionPattern | None:
     return None
 
 
-
 def _topic_hash(topic: str) -> str:
     return "sha1:" + hashlib.sha1(topic.encode("utf-8")).hexdigest()[:16]
 

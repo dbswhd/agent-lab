@@ -15,7 +15,6 @@ from agent_lab.gateway.config import load_gateway_config
 from agent_lab.gateway.outbound import _sign_body
 
 
-
 _DEFAULT_WAKE_EVENTS = (
     "schedule_tick",
     "merge_ready",

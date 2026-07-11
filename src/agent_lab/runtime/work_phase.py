@@ -66,9 +66,7 @@ def resolve_work_phase_standalone(
     oracle_pass = str(oracle.get("verdict") or "").strip().lower() == "pass"
     if status == "completed" and oracle_pass:
         return "done"
-    if exec_row and (
-        status in WORK_PHASE_MERGE_VERIFY_STATUSES or oracle
-    ):
+    if exec_row and (status in WORK_PHASE_MERGE_VERIFY_STATUSES or oracle):
         return "merge_verify"
     if has_pending_execution:
         return "execute_pending"

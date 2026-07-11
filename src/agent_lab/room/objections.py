@@ -36,7 +36,6 @@ def discuss_objections_enabled() -> bool:
     return raw not in ("0", "false", "no", "off")
 
 
-
 def _new_objection_id() -> str:
     return f"obj-{uuid.uuid4().hex[:10]}"
 

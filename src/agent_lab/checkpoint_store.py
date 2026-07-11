@@ -54,7 +54,6 @@ def checkpoint_enabled() -> bool:
     return raw.strip().lower() in _TRUE
 
 
-
 def _fsm_subset(run: RunStateLike) -> dict[str, Any]:
     """Extract the FSM/ledger/budget subset present in ``run`` (deep-copied via json)."""
     subset: dict[str, Any] = {}

@@ -44,7 +44,6 @@ def harness_inbox_enabled() -> bool:
     return env_bool("AGENT_LAB_HARNESS_INBOX")
 
 
-
 class MergeRejected(Exception):
     """A candidate failed a MERGE-time gate (STOP guard, tier, freshness, audit)."""
 
@@ -137,9 +136,7 @@ def load_predictions(root: Path | None = None) -> list[dict[str, Any]]:
     return list(latest.values())
 
 
-def record_prediction(
-    candidate_id: str, *, predicted_effect: dict[str, Any], root: Path | None = None
-) -> None:
+def record_prediction(candidate_id: str, *, predicted_effect: dict[str, Any], root: Path | None = None) -> None:
     """HS5-4 — one row at merge time; ``verify_prediction`` appends the
     observed-outcome revision later (append-only, last write wins on read)."""
     path = predictions_path(root)

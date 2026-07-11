@@ -33,7 +33,6 @@ _LEVEL_NAMES: dict[str, str] = {
 }
 
 
-
 def _autonomy_block(run_meta: RunStateLike | None) -> dict[str, Any]:
     meta = run_meta or {}
     raw = meta.get("autonomy")

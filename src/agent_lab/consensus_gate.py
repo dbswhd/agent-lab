@@ -128,12 +128,16 @@ def consensus_action_block_reason(
     if (signal.get("status") or signal.get("consensus_status")) != "reached":
         return "consensus_not_reached"
     anchor = signal.get("anchor")
-    if not isinstance(anchor, dict) or not all(str(anchor.get(key) or "").strip() for key in ("id", "agent", "excerpt")):
+    if not isinstance(anchor, dict) or not all(
+        str(anchor.get(key) or "").strip() for key in ("id", "agent", "excerpt")
+    ):
         return "consensus_anchor_incomplete"
     active = [str(agent).strip().lower() for agent in (run.get("agents") or []) if str(agent).strip()]
     required = int(effective_consensus(active).get("required_endorsements") or 0)
     consented = signal.get("agents_consented")
-    if required and (not isinstance(consented, list) or len({str(agent).strip().lower() for agent in consented}) < required):
+    if required and (
+        not isinstance(consented, list) or len({str(agent).strip().lower() for agent in consented}) < required
+    ):
         return "consensus_endorsements_incomplete"
     from agent_lab.room.objections import execute_block_reason_for_action
 

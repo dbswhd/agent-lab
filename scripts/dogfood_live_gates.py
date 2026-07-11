@@ -346,7 +346,16 @@ def watch(
                 return {"ok": True, "idle": True, "session_id": sid, "history": history}
         else:
             idle = 0
-            print(json.dumps({"tick": tick.get("acted"), "actions": [a.get("action") or a.get("reason") for a in tick.get("actions") or []]}, ensure_ascii=False), flush=True)
+            print(
+                json.dumps(
+                    {
+                        "tick": tick.get("acted"),
+                        "actions": [a.get("action") or a.get("reason") for a in tick.get("actions") or []],
+                    },
+                    ensure_ascii=False,
+                ),
+                flush=True,
+            )
         time.sleep(poll_sec)
     return {"ok": False, "timeout": True, "session_id": sid, "history": history}
 

@@ -46,9 +46,7 @@ def transition_rows_for(
     event: RuntimeEvent,
     phase: str,
 ) -> tuple[RuntimeTransition, ...]:
-    return tuple(
-        row for row in TRANSITION_TABLE if row.event == event and phase in row.from_phases
-    )
+    return tuple(row for row in TRANSITION_TABLE if row.event == event and phase in row.from_phases)
 
 
 # Handler-time branching guards: entry allows the event; handler picks the row outcome.

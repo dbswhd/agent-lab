@@ -19,7 +19,6 @@ _ARTIFACT_BODY_RE = re.compile(
 )
 
 
-
 def _new_artifact_id() -> str:
     return f"art-{uuid.uuid4().hex[:10]}"
 

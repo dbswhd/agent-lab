@@ -280,8 +280,6 @@ def _plan_execute_intent(current_topic: str, session_topic: str) -> bool:
     return bool(session) and detect_plan_execute_intent(session)
 
 
-
-
 def _contract_history_from_outcome_rows() -> list[ContractOutcome]:
     from agent_lab.outcome_harvester import load_outcome_rows
 

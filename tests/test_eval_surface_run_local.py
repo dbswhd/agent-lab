@@ -17,9 +17,7 @@ _CASES_PATH = Path(__file__).resolve().parents[1] / "evals" / "cases.jsonl"
 
 def test_v1_cases_load_and_all_twelve_are_present() -> None:
     cases = load_cases(_CASES_PATH)
-    assert {c["case_id"] for c in cases} == {
-        "S1", "S2", "S3", "S4", "M3", "M4", "M5", "M6", "L1", "L2", "L3", "X2"
-    }
+    assert {c["case_id"] for c in cases} == {"S1", "S2", "S3", "S4", "M3", "M4", "M5", "M6", "L1", "L2", "L3", "X2"}
 
 
 def test_build_report_against_real_fixtures_all_pass() -> None:

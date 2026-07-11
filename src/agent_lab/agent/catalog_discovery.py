@@ -18,7 +18,6 @@ JWT_CLAIM_PATH = "https://api.openai.com/auth"
 _EFFORT_ORDER = ("minimal", "low", "medium", "high", "xhigh", "max")
 
 
-
 def extract_codex_account_id(access_token: str) -> str | None:
     try:
         parts = access_token.split(".")

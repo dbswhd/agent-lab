@@ -82,7 +82,6 @@ _DIMENSION_QUESTIONS: dict[str, str] = {
 }
 
 
-
 def _threshold() -> float:
     raw = os.getenv("AGENT_LAB_CLARITY_THRESHOLD", "").strip()
     if raw:

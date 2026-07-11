@@ -41,7 +41,6 @@ def risk_pin_enabled() -> bool:
     return env_bool("AGENT_LAB_RISK_PIN", default=True)
 
 
-
 def _turn_category(run_meta: RunStateLike) -> str:
     turns = run_meta.get("turns") or []
     if not turns or not isinstance(turns[-1], dict):

@@ -137,8 +137,7 @@ def test_history_is_ignored_until_project_sample_threshold() -> None:
         {"room_preset": "supervisor", "agents": ["cursor", "codex", "claude"]},
     )
     history: list[ContractOutcome] = [
-        {"contract_id": "quick_read", "final_verdict": "pass", "repair_attempts": 0}
-        for _ in range(9)
+        {"contract_id": "quick_read", "final_verdict": "pass", "repair_attempts": 0} for _ in range(9)
     ]
 
     contract = build_turn_contract(observation, history=history)
@@ -248,8 +247,7 @@ def test_history_cannot_lower_high_risk_safety_floor() -> None:
         {"room_preset": "supervisor", "agents": ["cursor", "codex", "claude"]},
     )
     history: list[ContractOutcome] = [
-        {"contract_id": "quick_read", "final_verdict": "pass", "repair_attempts": 0}
-        for _ in range(20)
+        {"contract_id": "quick_read", "final_verdict": "pass", "repair_attempts": 0} for _ in range(20)
     ]
 
     contract = build_turn_contract(observation, history=history)

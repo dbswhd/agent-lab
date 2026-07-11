@@ -13,7 +13,6 @@ from agent_lab.run.state import RunStateLike
 ClarifierCategory = Literal["goal", "scope", "verify", "constraints", "priority", "criteria", "context"]
 
 
-
 def clarifier_enabled() -> bool:
     raw = (os.getenv("AGENT_LAB_CLARIFIER") or "").strip().lower()
     return raw in ("1", "true", "yes", "on")

@@ -91,7 +91,7 @@ def test_audit_eval_case_diff_rejects_removal() -> None:
 
 
 def test_audit_eval_case_diff_ignores_unrelated_files() -> None:
-    diff = "+++ b/src/agent_lab/run/profile.py\n-{\"id\": \"whatever\"}\n"
+    diff = '+++ b/src/agent_lab/run/profile.py\n-{"id": "whatever"}\n'
     assert audit_eval_case_diff(diff) is None
 
 

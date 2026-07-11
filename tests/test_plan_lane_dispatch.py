@@ -5,7 +5,11 @@ from pathlib import Path
 
 import pytest
 
-from agent_lab.plan.workflow import init_plan_workflow_on_plan_send, set_plan_workflow_phase, tick_plan_workflow_after_turn
+from agent_lab.plan.workflow import (
+    init_plan_workflow_on_plan_send,
+    set_plan_workflow_phase,
+    tick_plan_workflow_after_turn,
+)
 from agent_lab.run.meta import read_run_meta
 from agent_lab.runtime.events import RuntimeEvent
 from agent_lab.runtime.runtime import dispatch

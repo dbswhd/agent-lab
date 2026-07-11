@@ -14,7 +14,6 @@ _MAX_STEER_TEXT = 2000
 _MAX_QUEUE = 20
 
 
-
 def folder_from_run_meta(run_meta: RunStateLike | None) -> Path | None:
     if not isinstance(run_meta, dict):
         return None

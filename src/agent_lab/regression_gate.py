@@ -52,7 +52,6 @@ def regression_gate_enabled() -> bool:
     return env_bool("AGENT_LAB_REGRESSION_GATE")
 
 
-
 class RegressionRejected(Exception):
     """A candidate failed a structural (pre-execution) regression check."""
 

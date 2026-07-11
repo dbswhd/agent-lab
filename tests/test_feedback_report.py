@@ -324,9 +324,7 @@ def test_harness_reproducibility_reads_latest_report(tmp_path: Path, monkeypatch
     assert repro["harness_reproducibility_pp"] == 0.0
 
 
-def test_harness_reproducibility_none_when_reports_dir_missing(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_harness_reproducibility_none_when_reports_dir_missing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("agent_lab.outcome_harvester.outcomes_path", lambda root=None: tmp_path / "missing.jsonl")
     rep = build_feedback_report(tmp_path)
     assert rep["harness_reproducibility"] is None

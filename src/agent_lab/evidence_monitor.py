@@ -9,9 +9,7 @@ from agent_lab.evidence_ledger import append_evidence
 from agent_lab.run.meta import patch_run_meta, read_run_meta
 
 _MAX_DETAIL = 2000
-_ALLOWED_KINDS = frozenset(
-    {"ci_status", "log_tail", "merge_checks", "hook", "external", "manual"}
-)
+_ALLOWED_KINDS = frozenset({"ci_status", "log_tail", "merge_checks", "hook", "external", "manual"})
 
 
 def record_monitor_event(
@@ -49,23 +47,15 @@ def maybe_record_merge_checks_monitor(
     checks = payload.get("checks")
     if not isinstance(checks, list):
         return None
-    failing = [
-        c
-        for c in checks
-        if isinstance(c, dict) and c.get("ok") is False
-    ]
+    failing = [c for c in checks if isinstance(c, dict) and c.get("ok") is False]
     if not failing:
         return None
-    fingerprint = "|".join(
-        f"{c.get('id')}:{c.get('detail')}" for c in failing
-    )
+    fingerprint = "|".join(f"{c.get('id')}:{c.get('detail')}" for c in failing)
     run = read_run_meta(folder)
     if str(run.get("monitor_merge_checks_fp") or "") == fingerprint:
         return None
 
-    detail = "; ".join(
-        f"{c.get('id')}={c.get('detail') or 'fail'}" for c in failing[:8]
-    )
+    detail = "; ".join(f"{c.get('id')}={c.get('detail') or 'fail'}" for c in failing[:8])
     row = record_monitor_event(
         folder,
         kind="merge_checks",

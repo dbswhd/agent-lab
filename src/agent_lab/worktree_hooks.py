@@ -41,14 +41,7 @@ class WorktreeHooksConfig:
 
     @property
     def has_any(self) -> bool:
-        return bool(
-            self.setup
-            or self.verify
-            or self.create
-            or self.remove
-            or self.include
-            or self.base_ref
-        )
+        return bool(self.setup or self.verify or self.create or self.remove or self.include or self.base_ref)
 
 
 def _parse_command_list(raw: Any) -> list[str]:
@@ -279,9 +272,7 @@ def public_config_summary(
     return {
         "baseRef": config.base_ref if config else None,
         "include": patterns,
-        "include_copied": list(include_report.get("copied") or [])
-        if isinstance(include_report, dict)
-        else [],
+        "include_copied": list(include_report.get("copied") or []) if isinstance(include_report, dict) else [],
         "has_create": bool(config.create) if config else False,
         "has_remove": bool(config.remove) if config else False,
         "has_setup": bool(config.setup) if config else False,

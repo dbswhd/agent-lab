@@ -17,7 +17,6 @@ from pathlib import Path
 from typing import Any
 
 
-
 def current_quarter(now: datetime | None = None) -> str:
     when = now or utc_now()
     q = (when.month - 1) // 3 + 1

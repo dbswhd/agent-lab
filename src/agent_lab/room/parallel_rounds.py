@@ -143,9 +143,7 @@ def run_parallel_round(
 
     steer_block = drain_steer_follow_up(run_meta=run_meta if isinstance(run_meta, dict) else None)
     if steer_block.strip():
-        extra_follow_up = "\n\n".join(
-            x for x in (extra_follow_up, steer_block) if x and x.strip()
-        )
+        extra_follow_up = "\n\n".join(x for x in (extra_follow_up, steer_block) if x and x.strip())
 
     replies: list[ChatMessage] = []
     sequential = parallel_round >= 2 or bool(task_type and task_type in _SEQUENTIAL_TASK_TYPES)

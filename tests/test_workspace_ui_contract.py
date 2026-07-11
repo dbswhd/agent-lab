@@ -216,7 +216,7 @@ def test_workspace_panels_have_distinct_document_wrappers():
     assert "exec-card" in plan_exec
     assert "plan-actions-bar" in plan_exec
     assert "WorkspaceCard" in plan_exec
-    assert "data-testid=\"workspace-card\"" in plan_exec or 'data-testid="workspace-card"' in plan_exec
+    assert 'data-testid="workspace-card"' in plan_exec or 'data-testid="workspace-card"' in plan_exec
     assert "PlanExecutePanel" in work_tool
     assert ".transcript--console" in surfaces
 

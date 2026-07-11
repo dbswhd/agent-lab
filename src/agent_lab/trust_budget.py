@@ -26,7 +26,6 @@ _DEFAULT_ASSISTANT: dict[str, Any] = {
 }
 
 
-
 def default_trust_budget(profile: GateProfile) -> dict[str, Any]:
     return dict(_DEFAULT_ASSISTANT if profile == "assistant" else _DEFAULT_DEV)
 

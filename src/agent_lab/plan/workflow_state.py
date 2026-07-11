@@ -65,7 +65,6 @@ class PlanWorkflowNotApproved(Exception):
         super().__init__(reason)
 
 
-
 def plan_workflow_env_disabled() -> bool:
     raw = (os.getenv("AGENT_LAB_PLAN_WORKFLOW") or "").strip().lower()
     return raw in ("0", "false", "no", "off")

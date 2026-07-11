@@ -162,9 +162,7 @@ def evaluate_gates(*, outcomes_root: Path | None = None) -> dict[str, Any]:
     manual_left = set(progress["remaining_manual_ids"])
     catalog_manual_ok = manual_left <= set(CATALOG_MANUAL_IDS) or len(manual_left) == 0
     # Still require X3/X4 in done if they are automatable now
-    catalog_met = catalog_auto_done and (
-        not manual_left or manual_left <= set(CATALOG_MANUAL_IDS)
-    )
+    catalog_met = catalog_auto_done and (not manual_left or manual_left <= set(CATALOG_MANUAL_IDS))
 
     patterns = _addressable()
     hs_merged = _harness_patch_merged(state)

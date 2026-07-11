@@ -18,7 +18,6 @@ RUN_PENDING_PLANS_KEY = "pending_plans"
 DEFAULT_MAX_TASKS_PER_TURN = 8
 
 
-
 def _pending_id() -> str:
     return f"pp-{uuid.uuid4().hex[:10]}"
 

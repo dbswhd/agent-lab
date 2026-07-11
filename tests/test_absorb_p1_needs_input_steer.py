@@ -17,26 +17,18 @@ def test_needs_input_status_util_exists() -> None:
 
 
 def test_needs_input_badge_wired_in_room_chat_view() -> None:
-    view = (ROOT / "web" / "src" / "components" / "RoomChatView.tsx").read_text(
-        encoding="utf-8"
-    )
+    view = (ROOT / "web" / "src" / "components" / "RoomChatView.tsx").read_text(encoding="utf-8")
     assert "NeedsInputBadge" in view
     assert "buildNeedsInputStatus" in view
-    badge = (ROOT / "web" / "src" / "components" / "NeedsInputBadge.tsx").read_text(
-        encoding="utf-8"
-    )
+    badge = (ROOT / "web" / "src" / "components" / "NeedsInputBadge.tsx").read_text(encoding="utf-8")
     assert 'data-testid="needs-input-badge"' in badge
 
 
 def test_composer_steer_affordance() -> None:
-    composer = (ROOT / "web" / "src" / "components" / "ChatComposer.tsx").read_text(
-        encoding="utf-8"
-    )
+    composer = (ROOT / "web" / "src" / "components" / "ChatComposer.tsx").read_text(encoding="utf-8")
     assert "steerEligible" in composer
     assert 'data-testid="composer-steer"' in composer
-    assert "steerSession" in (
-        ROOT / "web" / "src" / "api" / "client.ts"
-    ).read_text(encoding="utf-8")
+    assert "steerSession" in (ROOT / "web" / "src" / "api" / "client.ts").read_text(encoding="utf-8")
 
 
 def test_steer_router_registered() -> None:

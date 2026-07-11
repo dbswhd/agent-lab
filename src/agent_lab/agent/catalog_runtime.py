@@ -54,7 +54,6 @@ def cache_path() -> Path:
     return config_dir() / _CACHE_BASENAME
 
 
-
 def _read_json(path: Path) -> dict[str, Any]:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))

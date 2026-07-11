@@ -92,11 +92,7 @@ def _ensure_structured_plan(session_id: str, *, room_timeout: float) -> dict:
     always short-circuits as ready, regardless of plan.md's shape."""
     info: dict = {"retries": 0}
     phase = x2._wait_human_pending(session_id, timeout=10.0)
-    while (
-        phase == "HUMAN_PENDING"
-        and not _plan_structured(session_id)
-        and info["retries"] < MAX_PLAN_RETRIES
-    ):
+    while phase == "HUMAN_PENDING" and not _plan_structured(session_id) and info["retries"] < MAX_PLAN_RETRIES:
         info["retries"] += 1
         print(
             f"    plan.md not structured yet (retry {info['retries']}/{MAX_PLAN_RETRIES}) — continuing session",

@@ -17,7 +17,6 @@ _INDEX_FILENAME = "wisdom_index.json"
 _DEFAULT_LIMIT = 20
 
 
-
 def wisdom_index_enabled(run: dict[str, Any] | None = None) -> bool:
     raw = (os.getenv("AGENT_LAB_WISDOM_INDEX") or "").strip().lower()
     if raw in ("0", "false", "no", "off"):

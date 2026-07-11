@@ -17,7 +17,6 @@ _REGISTRY_FILE = "bridge_registry.json"
 _BRIDGE_NAME_MARKERS = ("cursor-sdk-bridge", "cursor_sdk_bridge")
 
 
-
 def registry_path() -> Path:
     from agent_lab.app_config import config_dir
 

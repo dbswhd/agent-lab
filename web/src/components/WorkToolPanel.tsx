@@ -54,6 +54,7 @@ type Props = {
   roomTasks: RoomTasksPayload | null;
   cursorReady: boolean;
   executeError?: string | null;
+  onRetryExecute?: () => void;
   planWorkflow?: PlanWorkflowRecord;
   planApproval?: PlanApprovalHost | null;
   onOpenDiff?: () => void;
@@ -91,6 +92,7 @@ export function WorkToolPanel({
   roomTasks,
   cursorReady,
   executeError = null,
+  onRetryExecute,
   planWorkflow,
   planApproval = null,
   onOpenDiff,
@@ -338,6 +340,18 @@ export function WorkToolPanel({
               ? "Plan 승인은 유지되었습니다. 실행을 다시 시도할 수 있습니다."
               : "Plan 승인은 유지되었습니다. 아래 Dry-run으로 다시 실행할 수 있습니다."}
           </p>
+          {isComposer && onRetryExecute ? (
+            <div className="plan-approval-strip__actions">
+              <button
+                type="button"
+                className="btn btn--sm btn--primary"
+                disabled={disabled}
+                onClick={onRetryExecute}
+              >
+                {disabled ? "재시도 중…" : "dry-run 다시 시도"}
+              </button>
+            </div>
+          ) : null}
         </div>
       ) : null}
 

@@ -38,12 +38,16 @@ async function mockPlanApprovalApi(
   page: Page,
   requests: string[],
   options: FixtureOptions = {},
+  hooks: {
+    onInboxResolve?: (body: Record<string, unknown>) => void;
+  } = {},
 ) {
   let approved = false;
+  let questionPending = options.question ?? false;
   const cursorReady = options.cursorReady ?? true;
   const hasAction = options.hasAction ?? true;
   const blockingObjection = options.blockingObjection ?? false;
-  const question = options.question ?? false;
+  const question = () => questionPending;
   await page.route(/^http:\/\/127\.0\.0\.1:4173\/api\//, async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -109,7 +113,7 @@ async function mockPlanApprovalApi(
             status: "idle",
             actions: hasAction ? [recommendedAction] : [],
             executions: [],
-            plan_workflow: question
+            plan_workflow: question()
               ? { enabled: false, phase: "INACTIVE" }
               : {
                   enabled: true,
@@ -185,9 +189,9 @@ async function mockPlanApprovalApi(
             pending_agreement: false,
           },
           inbox: {
-            pending: question,
-            pending_count: question ? 1 : 0,
-            pending_questions: question ? 1 : 0,
+            pending: question(),
+            pending_count: question() ? 1 : 0,
+            pending_questions: question() ? 1 : 0,
             pending_builds: 0,
           },
           next_action: "계획 검토",
@@ -199,10 +203,10 @@ async function mockPlanApprovalApi(
       await route.fulfill({
         json: {
           ok: true,
-          total_pending: question ? 1 : 0,
-          pending_questions: question ? 1 : 0,
+          total_pending: question() ? 1 : 0,
+          pending_questions: question() ? 1 : 0,
           pending_builds: 0,
-          sessions: question
+          sessions: question()
             ? [
                 {
                   session_id: "plan-review",
@@ -221,10 +225,10 @@ async function mockPlanApprovalApi(
     if (url.pathname === "/api/sessions/plan-review/inbox") {
       await route.fulfill({
         json: {
-          pending_count: question ? 1 : 0,
-          pending_questions: question ? 1 : 0,
+          pending_count: question() ? 1 : 0,
+          pending_questions: question() ? 1 : 0,
           pending_builds: 0,
-          human_inbox: question
+          human_inbox: question()
             ? [
                 {
                   id: "question-1",
@@ -252,6 +256,35 @@ async function mockPlanApprovalApi(
                 },
               ]
             : [],
+        },
+      });
+      return;
+    }
+    if (
+      url.pathname ===
+        "/api/sessions/plan-review/inbox/question-1/resolve" &&
+      request.method() === "POST"
+    ) {
+      requests.push(key);
+      const body = JSON.parse(request.postData() ?? "{}") as Record<
+        string,
+        unknown
+      >;
+      hooks.onInboxResolve?.(body);
+      questionPending = false;
+      await route.fulfill({
+        json: {
+          ok: true,
+          pending_count: 0,
+          pending_questions: 0,
+          pending_builds: 0,
+          human_inbox: [],
+          item: {
+            id: "question-1",
+            kind: "question",
+            status: "resolved",
+            prompt: "어떤 롤백 전략으로 진행할까요?",
+          },
         },
       });
       return;
@@ -386,8 +419,16 @@ test("plan review is one decision surface and approval starts dry-run", async ({
 test("question surface keeps options, freeform fallback, and submit state together", async ({
   page,
 }) => {
+  const resolveBodies: Record<string, unknown>[] = [];
   await initializePlanReview(page);
-  await mockPlanApprovalApi(page, [], { question: true });
+  await mockPlanApprovalApi(
+    page,
+    [],
+    { question: true },
+    {
+      onInboxResolve: (body) => resolveBodies.push(body),
+    },
+  );
   await page.goto("/");
   await page.getByRole("button", { name: "Plan approval review" }).click();
 
@@ -402,13 +443,45 @@ test("question surface keeps options, freeform fallback, and submit state togeth
   await expect(question).toContainText("선택지를 고르거나 직접 입력하세요");
   await expect(question.getByRole("button", { name: "제출" })).toBeDisabled();
   const options = question.getByRole("radio");
-  await options.nth(0).click();
+  await expect(options).toHaveCount(2);
+
+  await page.setViewportSize({ width: 375, height: 900 });
+  await expect(question).toBeVisible();
+  await expect(page.locator(".workbench-tile")).toBeHidden();
+  await page.screenshot({
+    path: "/tmp/agent-lab-plan-question-375.png",
+    fullPage: true,
+  });
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await expect(options.nth(0)).toHaveAttribute("tabindex", "0");
+  await expect(options.nth(1)).toHaveAttribute("tabindex", "-1");
+
+  await options.nth(0).focus();
   await page.keyboard.press("ArrowDown");
+  await expect(options.nth(1)).toBeFocused();
   await expect(options.nth(1)).toHaveAttribute("aria-checked", "true");
+  await expect(options.nth(0)).toHaveAttribute("tabindex", "-1");
+  await expect(options.nth(1)).toHaveAttribute("tabindex", "0");
   await page.keyboard.press("Home");
+  await expect(options.nth(0)).toBeFocused();
   await expect(options.nth(0)).toHaveAttribute("aria-checked", "true");
   await expect(question).not.toContainText("선택지를 고르거나 직접 입력하세요");
   await expect(question.getByRole("button", { name: "제출" })).toBeEnabled();
+
+  await options.nth(0).click();
+  await question.locator("textarea").fill("직접 입력 답변");
+  await expect(options.nth(0)).toHaveAttribute("aria-checked", "false");
+  await expect(options.nth(1)).toHaveAttribute("aria-checked", "false");
+
+  await options.nth(1).click();
+  await expect(options.nth(1)).toHaveAttribute("aria-checked", "true");
+  await expect(question.locator("textarea")).toHaveValue("");
+
+  await question.getByRole("button", { name: "제출" }).click();
+  await expect.poll(() => resolveBodies.at(-1)).toEqual({
+    selected: ["staged"],
+  });
   await expect(question.locator("textarea")).toHaveAttribute(
     "placeholder",
     "기타 — 직접 입력…",
@@ -489,4 +562,12 @@ test("dry-run failure preserves the approval decision and explains recovery", as
   await expect(page.locator(".work-surface--alert")).toContainText(
     "Plan 승인은 유지되었습니다.",
   );
+  await page
+    .getByRole("button", { name: "dry-run 다시 시도" })
+    .click();
+  await expect
+    .poll(() =>
+      requests.filter((entry) => entry.includes("/execute/dry-run")),
+    )
+    .toHaveLength(2);
 });

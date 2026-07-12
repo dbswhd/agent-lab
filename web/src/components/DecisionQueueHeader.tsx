@@ -45,12 +45,6 @@ function decisionMeta(
         tone: "question",
         icon: "alert",
       };
-    default:
-      return {
-        label: ko ? "다음 단계 선택" : "Choose the next step",
-        tone: "review",
-        icon: "alert",
-      };
   }
 }
 

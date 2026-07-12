@@ -22,6 +22,23 @@ type Props = {
   onRefClick?: (ref: string) => void;
 };
 
+function nextQuestionOptionIndex(
+  key: string,
+  index: number,
+  count: number,
+): number | null {
+  if (count === 0) return null;
+  if (key === "Home") return 0;
+  if (key === "End") return count - 1;
+  if (key === "ArrowDown" || key === "ArrowRight") {
+    return (index + 1) % count;
+  }
+  if (key === "ArrowUp" || key === "ArrowLeft") {
+    return (index - 1 + count) % count;
+  }
+  return null;
+}
+
 function pendingItems(items: HumanInboxItem[]): HumanInboxItem[] {
   return items.filter((item) => item.status === "pending");
 }
@@ -234,6 +251,16 @@ function InboxRow({
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const draft = freeformDraft[item.id] ?? "";
   const selected = selectedDraft[item.id] ?? null;
+  const optionTabStopIndex = useMemo(() => {
+    if (options.length === 0) return 0;
+    if (selected !== null) {
+      const idx = options.findIndex(
+        (opt) => (opt.id ?? opt.value ?? opt.label) === selected,
+      );
+      if (idx >= 0) return idx;
+    }
+    return 0;
+  }, [options, selected]);
   const canSubmit = !busy && (draft.trim().length > 0 || selected !== null);
   const pickOption = (optionId: string) => {
     setSelectedDraft((prev) => ({ ...prev, [item.id]: optionId }));
@@ -259,20 +286,7 @@ function InboxRow({
     event: React.KeyboardEvent<HTMLButtonElement>,
     index: number,
   ) => {
-    const direction =
-      event.key === "ArrowDown" || event.key === "ArrowRight"
-        ? 1
-        : event.key === "ArrowUp" || event.key === "ArrowLeft"
-          ? -1
-          : 0;
-    const nextIndex =
-      event.key === "Home"
-        ? 0
-        : event.key === "End"
-          ? options.length - 1
-          : direction
-            ? (index + direction + options.length) % options.length
-            : null;
+    const nextIndex = nextQuestionOptionIndex(event.key, index, options.length);
     if (nextIndex === null || !options[nextIndex]) return;
     event.preventDefault();
     const nextOption = options[nextIndex];
@@ -410,6 +424,7 @@ function InboxRow({
                       type="button"
                       role="radio"
                       aria-checked={isSelected}
+                      tabIndex={index === optionTabStopIndex ? 0 : -1}
                       ref={(node) => {
                         optionRefs.current[index] = node;
                       }}

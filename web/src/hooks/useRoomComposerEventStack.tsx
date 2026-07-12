@@ -29,6 +29,7 @@ type PlanExecuteSlice = {
   canDryRun: boolean;
   approve: () => void;
   reject: () => void;
+  dryRun: (overrideKey?: string | null) => Promise<boolean>;
 };
 
 type WorkHookAlert = {
@@ -163,6 +164,7 @@ export function useRoomComposerEventStack(
       roomTasks,
       cursorReady: agents.some((a) => a.id === "cursor" && a.ready),
       executeError: planExecute.error,
+      onRetryExecute: () => void planExecute.dryRun(),
       planWorkflow,
       planApproval: showPlanApproval
         ? {

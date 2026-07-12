@@ -64,20 +64,6 @@
   );
   --decision-focus-shadow: 0 0 0 1px var(--decision-border), var(--shadow-2);
 
-  /* Human decision surfaces — calm by default, semantic only at the edge. */
-  --decision-surface: var(--surface-card);
-  --decision-surface-muted: var(--surface-sunken);
-  --decision-border: var(--border-hair);
-  --decision-question: var(--progress);
-  --decision-question-soft: var(--progress-soft);
-  --decision-approval: var(--workbench-accent);
-  --decision-approval-soft: color-mix(
-    in srgb,
-    var(--workbench-accent) 12%,
-    transparent
-  );
-  --decision-focus-shadow: 0 0 0 1px var(--decision-border), var(--shadow-2);
-
   /* ---- Diff line/word (Apricot Glass — extracted from the      */
   /* installed Claude Code CLI binary's light theme object) ---- */
   --diff-add-line: #c7e1cb; /* diffAddedDimmed  */
@@ -353,19 +339,6 @@
   --danger-soft: rgba(220, 62, 66, 0.12);
   --progress: #3e63dd;
   --progress-soft: rgba(62, 99, 221, 0.2);
-  --decision-surface: var(--surface-card);
-  --decision-surface-muted: var(--surface-sunken);
-  --decision-border: var(--border-hair);
-  --decision-question: var(--progress);
-  --decision-question-soft: var(--progress-soft);
-  --decision-approval: var(--workbench-accent);
-  --decision-approval-soft: color-mix(
-    in srgb,
-    var(--workbench-accent) 18%,
-    transparent
-  );
-  --decision-focus-shadow: 0 0 0 1px var(--decision-border), var(--shadow-2);
-
   --decision-surface: var(--surface-card);
   --decision-surface-muted: var(--surface-sunken);
   --decision-border: var(--border-hair);

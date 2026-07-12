@@ -70,6 +70,7 @@ type Props = {
   readonly roomTasks: RoomTasksPayload | null;
   readonly cursorReady: boolean;
   readonly executeError?: string | null;
+  readonly onRetryExecute?: () => void;
   readonly planWorkflow?: PlanWorkflowRecord;
   readonly planApproval?: PlanApprovalHost | null;
   readonly workHookAlert?: {
@@ -121,6 +122,7 @@ export function ComposerEventStack({
   roomTasks,
   cursorReady,
   executeError = null,
+  onRetryExecute,
   planWorkflow,
   planApproval = null,
   workHookAlert = null,
@@ -384,6 +386,7 @@ export function ComposerEventStack({
               roomTasks={roomTasks}
               cursorReady={cursorReady}
               executeError={executeError}
+              onRetryExecute={onRetryExecute}
               planWorkflow={planWorkflow}
               planApproval={null}
               inboxPendingCount={inboxPendingCount}

@@ -31,6 +31,7 @@ type FixtureOptions = {
   hasAction?: boolean;
   blockingObjection?: boolean;
   dryRunFailure?: boolean;
+  question?: boolean;
 };
 
 async function mockPlanApprovalApi(
@@ -42,6 +43,7 @@ async function mockPlanApprovalApi(
   const cursorReady = options.cursorReady ?? true;
   const hasAction = options.hasAction ?? true;
   const blockingObjection = options.blockingObjection ?? false;
+  const question = options.question ?? false;
   await page.route(/^http:\/\/127\.0\.0\.1:4173\/api\//, async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -107,12 +109,14 @@ async function mockPlanApprovalApi(
             status: "idle",
             actions: hasAction ? [recommendedAction] : [],
             executions: [],
-            plan_workflow: {
-              enabled: true,
-              phase: approved ? "APPROVED" : "HUMAN_PENDING",
-              notice: approved ? "plan_approved" : "plan_pending_approval",
-              last_plan_gate: { ok: true },
-            },
+            plan_workflow: question
+              ? { enabled: false, phase: "INACTIVE" }
+              : {
+                  enabled: true,
+                  phase: approved ? "APPROVED" : "HUMAN_PENDING",
+                  notice: approved ? "plan_approved" : "plan_pending_approval",
+                  last_plan_gate: { ok: true },
+                },
           },
         },
       });
@@ -181,12 +185,73 @@ async function mockPlanApprovalApi(
             pending_agreement: false,
           },
           inbox: {
-            pending: false,
-            pending_count: 0,
-            pending_questions: 0,
+            pending: question,
+            pending_count: question ? 1 : 0,
+            pending_questions: question ? 1 : 0,
             pending_builds: 0,
           },
           next_action: "계획 검토",
+        },
+      });
+      return;
+    }
+    if (url.pathname === "/api/inbox/summary") {
+      await route.fulfill({
+        json: {
+          ok: true,
+          total_pending: question ? 1 : 0,
+          pending_questions: question ? 1 : 0,
+          pending_builds: 0,
+          sessions: question
+            ? [
+                {
+                  session_id: "plan-review",
+                  topic: "Plan approval review",
+                  pending_count: 1,
+                  pending_questions: 1,
+                  pending_builds: 0,
+                  inbox_pending: true,
+                },
+              ]
+            : [],
+        },
+      });
+      return;
+    }
+    if (url.pathname === "/api/sessions/plan-review/inbox") {
+      await route.fulfill({
+        json: {
+          pending_count: question ? 1 : 0,
+          pending_questions: question ? 1 : 0,
+          pending_builds: 0,
+          human_inbox: question
+            ? [
+                {
+                  id: "question-1",
+                  kind: "question",
+                  status: "pending",
+                  prompt: "어떤 롤백 전략으로 진행할까요?",
+                  body: "비가역 변경 전에 하나의 방향을 선택해야 합니다.",
+                  source: "claude",
+                  caller_agent: "claude",
+                  created_at: "2026-06-21T00:00:00Z",
+                  options: [
+                    {
+                      id: "snapshot",
+                      label: "스냅샷 후 진행",
+                      description: "실행 전 복구 지점을 남깁니다.",
+                      recommended: true,
+                    },
+                    {
+                      id: "staged",
+                      label: "단계적 전환",
+                      description: "작은 범위부터 순차적으로 적용합니다.",
+                      recommended: false,
+                    },
+                  ],
+                },
+              ]
+            : [],
         },
       });
       return;
@@ -261,12 +326,7 @@ async function initializePlanReview(page: Page) {
 
 async function openPlanReview(page: Page) {
   await page.getByRole("button", { name: "Plan approval review" }).click();
-  await page.getByRole("button", { name: "Workbench panel" }).click();
-  await page
-    .getByRole("menuitem", { name: "작업", exact: true })
-    .first()
-    .click();
-  await expect(page.locator(".plan-approval-review")).toBeVisible();
+  await expect(page.locator(".plan-approval-strip")).toBeVisible();
 }
 
 test("plan review is one decision surface and approval starts dry-run", async ({
@@ -278,35 +338,27 @@ test("plan review is one decision surface and approval starts dry-run", async ({
   await page.goto("/");
   await openPlanReview(page);
 
-  const review = page.locator(".plan-approval-review");
+  const review = page.locator(".plan-approval-strip");
   await expect(
-    review.getByRole("heading", { name: "계획 검토" }),
+    review.getByRole("heading", { name: "승인하고 실행" }),
   ).toBeVisible();
-  await expect(review.locator(".plan-action")).toHaveCount(1);
-  await expect(
-    review.getByRole("button", { name: "승인하고 실행" }),
-  ).toBeVisible();
+  await expect(review).toContainText("격리된 worktree");
   await expect(review.locator(".btn--primary")).toHaveCount(1);
   await expect(page.locator(".work-decision")).toHaveCount(0);
-  await expect(review).not.toContainText("completion promise");
-  await expect(review).not.toContainText("CLARIFY");
-  await expect(review).not.toContainText("DRAFT");
-  await expect(review).not.toContainText("REFINE");
 
   const approveAndExecute = review.getByRole("button", {
     name: "승인하고 실행",
   });
   await approveAndExecute.focus();
   await page.keyboard.press("Tab");
-  await expect(
-    review.getByRole("button", { name: "승인만", exact: true }),
-  ).toBeFocused();
-  await page.keyboard.press("Tab");
   await expect(review.getByRole("button", { name: "수정 요청" })).toBeFocused();
 
   for (const width of [375, 768, 1280]) {
     await page.setViewportSize({ width, height: 900 });
     await expect(review).toBeVisible();
+    if (width <= 900) {
+      await expect(page.locator(".workbench-tile")).toBeHidden();
+    }
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth),
     ).toBe(width);
@@ -331,6 +383,38 @@ test("plan review is one decision surface and approval starts dry-run", async ({
     ]);
 });
 
+test("question surface keeps options, freeform fallback, and submit state together", async ({
+  page,
+}) => {
+  await initializePlanReview(page);
+  await mockPlanApprovalApi(page, [], { question: true });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Plan approval review" }).click();
+
+  const question = page.locator(".human-inbox--composer");
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await expect(question).toContainText("질문에 답해주세요");
+  await expect(question).toContainText("답변하면 작업이 재개됩니다");
+  await page.screenshot({
+    path: "/tmp/agent-lab-plan-question-1440.png",
+    fullPage: true,
+  });
+  await expect(question).toContainText("선택지를 고르거나 직접 입력하세요");
+  await expect(question.getByRole("button", { name: "제출" })).toBeDisabled();
+  const options = question.getByRole("radio");
+  await options.nth(0).click();
+  await page.keyboard.press("ArrowDown");
+  await expect(options.nth(1)).toHaveAttribute("aria-checked", "true");
+  await page.keyboard.press("Home");
+  await expect(options.nth(0)).toHaveAttribute("aria-checked", "true");
+  await expect(question).not.toContainText("선택지를 고르거나 직접 입력하세요");
+  await expect(question.getByRole("button", { name: "제출" })).toBeEnabled();
+  await expect(question.locator("textarea")).toHaveAttribute(
+    "placeholder",
+    "기타 — 직접 입력…",
+  );
+});
+
 test("BLOCK objection disables approval and shows the reason", async ({
   page,
 }) => {
@@ -339,13 +423,24 @@ test("BLOCK objection disables approval and shows the reason", async ({
   await page.goto("/");
   await openPlanReview(page);
 
-  const review = page.locator(".plan-approval-review");
+  const review = page.locator(".plan-approval-strip");
   await expect(review.getByRole("alert")).toContainText(
     "보안 위험을 먼저 해결하세요.",
   );
   await expect(
     review.getByRole("button", { name: "승인하고 실행" }),
   ).toBeDisabled();
+  await page.screenshot({
+    path: "/tmp/agent-lab-plan-blocked-1280.png",
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 375, height: 900 });
+  await expect(review).toBeVisible();
+  await expect(page.locator(".workbench-tile")).toBeHidden();
+  await page.screenshot({
+    path: "/tmp/agent-lab-plan-blocked-375.png",
+    fullPage: true,
+  });
 });
 
 for (const fixture of [
@@ -358,10 +453,8 @@ for (const fixture of [
     await page.goto("/");
     await openPlanReview(page);
 
-    const review = page.locator(".plan-approval-review");
-    await expect(
-      review.getByRole("button", { name: "승인만", exact: true }),
-    ).toBeVisible();
+    const review = page.locator(".plan-approval-strip");
+    await expect(review.getByRole("button", { name: "승인만" })).toBeVisible();
     await expect(
       review.getByRole("button", { name: "승인하고 실행" }),
     ).toHaveCount(0);
@@ -369,7 +462,7 @@ for (const fixture of [
   });
 }
 
-test("dry-run failure keeps plan approval and offers retry", async ({
+test("dry-run failure preserves the approval decision and explains recovery", async ({
   page,
 }) => {
   const requests: string[] = [];
@@ -379,7 +472,7 @@ test("dry-run failure keeps plan approval and offers retry", async ({
   await openPlanReview(page);
 
   await page
-    .locator(".plan-approval-review")
+    .locator(".plan-approval-strip")
     .getByRole("button", { name: "승인하고 실행" })
     .click();
 
@@ -389,9 +482,11 @@ test("dry-run failure keeps plan approval and offers retry", async ({
       "POST /api/sessions/plan-review/plan/approve",
       "POST /api/sessions/plan-review/execute/dry-run",
     ]);
-  await expect(page.locator(".plan-approval-review")).toHaveCount(0);
+  await expect(page.locator(".plan-approval-strip")).toHaveCount(0);
   await expect(
     page.locator(".work-surface--alert .plan-card__error"),
   ).toHaveText("cursor unavailable");
-  await expect(page.getByRole("button", { name: "Dry-run" })).toBeVisible();
+  await expect(page.locator(".work-surface--alert")).toContainText(
+    "Plan 승인은 유지되었습니다.",
+  );
 });

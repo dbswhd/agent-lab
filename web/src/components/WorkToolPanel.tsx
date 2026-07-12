@@ -333,12 +333,11 @@ export function WorkToolPanel({
         <div className="work-surface work-surface--alert" role="alert">
           <strong>실행을 시작하지 못했습니다.</strong>
           <p className="plan-card__error">{executeError}</p>
-          {!isComposer ? (
-            <p className="plan-card__muted">
-              Plan 승인은 유지되었습니다. 아래 Dry-run으로 다시 실행할 수
-              있습니다.
-            </p>
-          ) : null}
+          <p className="plan-card__muted">
+            {isComposer
+              ? "Plan 승인은 유지되었습니다. 실행을 다시 시도할 수 있습니다."
+              : "Plan 승인은 유지되었습니다. 아래 Dry-run으로 다시 실행할 수 있습니다."}
+          </p>
         </div>
       ) : null}
 

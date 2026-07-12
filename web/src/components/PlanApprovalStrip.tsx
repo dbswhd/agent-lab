@@ -42,7 +42,8 @@ export function PlanApprovalStrip({
   onOpenFiles,
   planFileLabel = "plan.md",
 }: Props) {
-  const { msg } = useLocale();
+  const { locale, msg } = useLocale();
+  const ko = locale === "ko";
   const [revisionOpen, setRevisionOpen] = useState(false);
   const [revisionNote, setRevisionNote] = useState("");
   const [objectionBusyId, setObjectionBusyId] = useState<string | null>(null);
@@ -62,6 +63,11 @@ export function PlanApprovalStrip({
           <p className="plan-approval-strip__eyebrow">
             {msg.planApprovalPending}
           </p>
+          <h2 className="plan-approval-strip__title">
+            {canExecute
+              ? msg.planApprovalApproveAndExecute
+              : msg.planApprovalApproveOnly}
+          </h2>
           <p className="plan-approval-strip__detail">
             {msg.planApprovalReviewDetail}
           </p>
@@ -76,6 +82,19 @@ export function PlanApprovalStrip({
           </button>
         ) : null}
       </header>
+
+      <div className="plan-approval-strip__brief">
+        <strong>
+          {canExecute
+            ? ko
+              ? "승인하면 격리된 worktree에서 실행을 시작합니다."
+              : "Approval starts the run in an isolated worktree."
+            : ko
+              ? "승인하면 계획만 확정하고 실행은 나중에 시작합니다."
+              : "Approval confirms the plan; execution can happen later."}
+        </strong>
+        <span>{planFileLabel}</span>
+      </div>
 
       {noticeLabel ? (
         <p className="plan-workflow-banner__warn">{noticeLabel}</p>

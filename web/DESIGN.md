@@ -75,6 +75,18 @@ The composer is a stable dock with this order: actionable status, mode/turn cont
 - **Language:** user-facing copy names outcomes and blockers, while workflow phases, hashes, and completion protocol stay internal.
 - **Safety:** hiding internal state never bypasses worktree isolation, objections, merge checks, or Oracle verification.
 
+#### Decision surface contract
+
+- **Human job first:** the header answers `what needs my input?`, the body answers `what changes if I continue?`, and the footer offers one contextual primary action.
+- **Shared primitive:** questions, plan approval, execute review, and recovery use the same queue header and evidence rhythm. Their backend kinds remain distinct; their human-facing anatomy does not.
+- **Evidence order:** outcome → impact → gate status → optional details. Raw prompts, trigger codes, provenance, and diagnostics stay behind disclosure or quiet metadata.
+- **Queue behavior:** only the active decision is expanded. Additional pending decisions are represented as a count and a short next-item hint, never as stacked full cards.
+- **Question behavior:** options are selectable rows with a single selected state; freeform input is an explicit alternative. Submit stays disabled until one answer path is complete and explains why when disabled.
+- **Approval behavior:** the primary label names the consequence (`승인하고 실행`, `Approve and run`, `승인만`, `Approve only`). A blocked gate explains the blocker adjacent to the disabled action.
+- **Tone:** `--warn` and `--danger` are reserved for a real stop or risk; a normal question uses `--progress`/`--progress-soft`, success uses `--ok`/`--ok-soft`, and neutral review uses the graphite accent.
+- **Motion:** queue changes use a short opacity/transform transition; resolved cards collapse to a status receipt. No decorative pulse is used for a static approval surface.
+- **Responsive priority:** below 900px, an active decision lane temporarily yields the Workbench overlay so the current decision and primary action remain visible; the Workbench returns after the gate resolves.
+
 ### Settings Category
 
 - **Structure:** category navigation and one focused content panel.

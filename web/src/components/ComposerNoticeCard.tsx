@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 type Props = {
   readonly title: string;
   readonly description: string;
+  readonly eyebrow?: string;
   readonly primaryLabel?: string;
   readonly onPrimary?: () => void;
   readonly secondaryLabel?: string;
@@ -53,6 +54,7 @@ function CollapseIcon() {
 export function ComposerNoticeCard({
   title,
   description,
+  eyebrow = "Notice",
   primaryLabel,
   onPrimary,
   secondaryLabel,
@@ -78,7 +80,7 @@ export function ComposerNoticeCard({
       <header className="composer-notice-card__head">
         <span className="composer-notice-card__badge">
           <NoticeIcon />
-          Notice
+          {eyebrow}
         </span>
         {onDismiss ? (
           <button

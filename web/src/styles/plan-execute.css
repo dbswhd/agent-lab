@@ -2619,15 +2619,46 @@
   margin: 0;
   font-size: var(--text-caption);
   font-weight: var(--weight-semibold);
-  color: var(--accent);
+  color: var(--decision-approval);
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+
+.plan-approval-strip__title {
+  margin: var(--space-2) 0 0;
+  color: var(--label-primary);
+  font-size: var(--text-callout);
+  line-height: 1.35;
 }
 
 .plan-approval-strip__detail {
   margin: var(--space-4) 0 0;
   font-size: var(--text-footnote);
   color: var(--label-secondary);
+}
+
+.plan-approval-strip__brief {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-10);
+  border-radius: var(--radius-sm);
+  background: var(--decision-surface-muted);
+  color: var(--label-secondary);
+  font-size: var(--text-caption);
+}
+
+.plan-approval-strip__brief strong {
+  color: var(--label-primary);
+  font-weight: var(--weight-medium);
+  overflow-wrap: anywhere;
+}
+
+.plan-approval-strip__brief > span:last-child {
+  color: var(--label-tertiary);
+  font-family: var(--font-mono);
+  overflow-wrap: anywhere;
 }
 
 .plan-approval-strip__footer,
@@ -2648,4 +2679,11 @@
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--danger) 8%, var(--surface-card));
   font-size: var(--text-footnote);
+}
+
+@media (max-width: 760px) {
+  .plan-approval-strip__brief {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
 }

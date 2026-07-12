@@ -90,6 +90,7 @@ export function ComposerDecisionSurface({
     return (
       <ComposerNoticeCard
         variant="alert"
+        eyebrow={ko ? "복구 필요" : "Recovery needed"}
         title={item.title}
         description={
           item.details && item.details.length > (item.reason?.length ?? 0)
@@ -119,6 +120,7 @@ export function ComposerDecisionSurface({
     return (
       <ComposerNoticeCard
         variant="alert"
+        eyebrow={ko ? "결정 필요" : "Decision needed"}
         title={blockedHeadline.headline}
         description={blockedHeadline.detail}
         primaryLabel={ko ? "Composer에서 확인" : "View in composer"}

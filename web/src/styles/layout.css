@@ -1690,6 +1690,23 @@
   .app--fullscreen .workbench-tile {
     top: var(--workbench-island-inset);
   }
+
+  .workspace-canvas:has(.composer-event-stack[data-composer-lane="inbox"])
+    > .workbench-tile,
+  .workspace-canvas:has(
+      .composer-event-stack[data-composer-lane="plan_approval"]
+    )
+    > .workbench-tile,
+  .workspace-canvas:has(.composer-event-stack[data-composer-lane="clarify"])
+    > .workbench-tile,
+  .workspace-canvas:has(
+      .composer-event-stack[data-composer-lane="execute_queue"]
+    )
+    > .workbench-tile,
+  .workspace-canvas:has(.composer-event-stack[data-composer-lane="consensus"])
+    > .workbench-tile {
+    display: none;
+  }
 }
 
 .ctx-section {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   fetchSessionInbox,
   resolveInboxItem,
@@ -231,6 +231,7 @@ function InboxRow({
 
   // Question answering — select an option, or type your own; submit confirms.
   const options = item.options ?? [];
+  const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const draft = freeformDraft[item.id] ?? "";
   const selected = selectedDraft[item.id] ?? null;
   const canSubmit = !busy && (draft.trim().length > 0 || selected !== null);
@@ -253,6 +254,31 @@ function InboxRow({
         return next;
       });
     }
+  };
+  const handleOptionKeyDown = (
+    event: React.KeyboardEvent<HTMLButtonElement>,
+    index: number,
+  ) => {
+    const direction =
+      event.key === "ArrowDown" || event.key === "ArrowRight"
+        ? 1
+        : event.key === "ArrowUp" || event.key === "ArrowLeft"
+          ? -1
+          : 0;
+    const nextIndex =
+      event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? options.length - 1
+          : direction
+            ? (index + direction + options.length) % options.length
+            : null;
+    if (nextIndex === null || !options[nextIndex]) return;
+    event.preventDefault();
+    const nextOption = options[nextIndex];
+    const nextOptionId = nextOption.id ?? nextOption.value ?? nextOption.label;
+    pickOption(nextOptionId);
+    optionRefs.current[nextIndex]?.focus();
   };
   const submitAnswer = () => {
     if (!canSubmit) return;
@@ -369,7 +395,11 @@ function InboxRow({
           }}
         >
           {options.length > 0 ? (
-            <ul className="inbox-choices" role="listbox" aria-label={subject}>
+            <ul
+              className="inbox-choices"
+              role="radiogroup"
+              aria-label={subject}
+            >
               {options.map((opt, index) => {
                 const optionId = opt.id ?? opt.value ?? opt.label;
                 const optionKey = `${item.id}:${optionId}:${index}`;
@@ -378,8 +408,11 @@ function InboxRow({
                   <li key={optionKey} className="inbox-choices__item">
                     <button
                       type="button"
-                      role="option"
-                      aria-selected={isSelected}
+                      role="radio"
+                      aria-checked={isSelected}
+                      ref={(node) => {
+                        optionRefs.current[index] = node;
+                      }}
                       className={[
                         "inbox-choice",
                         isSelected ? "inbox-choice--selected" : "",
@@ -387,6 +420,7 @@ function InboxRow({
                         .filter(Boolean)
                         .join(" ")}
                       disabled={busy}
+                      onKeyDown={(event) => handleOptionKeyDown(event, index)}
                       onClick={() => pickOption(optionId)}
                     >
                       <span className="inbox-choice__index" aria-hidden>
@@ -440,6 +474,13 @@ function InboxRow({
             }}
           />
           <div className="inbox-row__footer">
+            {!canSubmit ? (
+              <span className="inbox-row__submit-hint">
+                {ko
+                  ? "선택지를 고르거나 직접 입력하세요"
+                  : "Pick an option or type an answer"}
+              </span>
+            ) : null}
             <span className="inbox-row__footer-actions">
               <button
                 type="button"
@@ -752,16 +793,27 @@ export function HumanInboxPanel({
       >
         {lead ? <Avatar role={inboxAgent(lead)} size={20} /> : null}
         <span className="human-inbox__composer-headline composer-dock-card__headline">
+          <span className="human-inbox__composer-kicker">
+            {lead?.kind === "question"
+              ? ko
+                ? "질문에 답해주세요"
+                : "Answer a question"
+              : ko
+                ? "결정이 필요합니다"
+                : "Decision needed"}
+          </span>
           <span className="human-inbox__composer-subject composer-dock-card__subject">
             {leadSubject}
           </span>
-          {!composerExpanded && multi ? (
-            <span className="human-inbox__composer-meta composer-dock-card__meta">
-              {ko
-                ? `외 ${visiblePending.length - 1}건`
-                : `+${visiblePending.length - 1} more`}
-            </span>
-          ) : null}
+          <span className="human-inbox__composer-meta composer-dock-card__meta">
+            {multi
+              ? ko
+                ? `${visiblePending.length}건 대기`
+                : `${visiblePending.length} pending`
+              : ko
+                ? "답변하면 작업이 재개됩니다"
+                : "Your answer resumes the workflow"}
+          </span>
         </span>
         <span
           className={[

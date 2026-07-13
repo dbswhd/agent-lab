@@ -104,7 +104,7 @@
 
 ### Step 1 — Mission application adapter
 
-**현재 상태:** first-pass adapter 완료 (`src/agent_lab/mission/application.py`); canonical `/plan/approve` route integration은 parity/read-model 단계 이후로 보류.
+**현재 상태:** first-pass adapter와 opt-in canonical route bridge 완료 (`src/agent_lab/mission/application.py`, `src/agent_lab/mission/dual_write.py`); 실제 `sessions/` route cohort 10건과 rollback 2건 통과. full traffic cutover는 보류.
 
 **산출:** session folder의 `plan.md`와 기존 API를 Mission repository command로 연결하는 adapter.
 
@@ -124,7 +124,7 @@
 
 ### Step 3 — Decision Queue vertical slice
 
-**현재 상태:** `MissionApplication.answer_inbox()` first-pass adapter와 restart/resolve test 완료; production router cutover와 cross-store atomicity는 pending.
+**현재 상태:** `MissionApplication.answer_inbox()` first-pass adapter, production router opt-in bridge, restart/resolve test, 실제 Room dogfood 2건 완료; cross-store atomicity는 pending.
 
 **산출:** `HumanInboxPanel` answer를 Decision Repository와 `human_bridge`에 연결.
 
@@ -154,7 +154,7 @@
 
 ### Step 6 — Legacy shadow parity와 cutover gate
 
-**현재 상태:** scheduler shadow candidate report와 ordered parity evaluator first pass 완료. 실제 regression fixture는 [dual-read report](./dual-read-report-2026-07-13.md)에서 모두 `unmigrated`다. [dual-write evidence report](./dual-write-evidence-report-2026-07-13.md)의 동일 identity 10건·5개 시나리오·replay/reconnect/Inbox/side-effect 검증은 격리 production-like cohort에서 통과했다. 다만 production route가 자동으로 두 저장소에 쓴 증거는 여전히 0건이다. [ADR-001](../decisions/ADR-001-production-dual-write-cutover.md)에 따라 Human cutover를 NO-GO로 결정한다.
+**현재 상태:** scheduler shadow candidate report와 ordered parity evaluator first pass 완료. 실제 `sessions/` route cohort, Room dogfood 2건, fail→repair `RepairScheduled` parity, G3 process kill/restart, ActivityQueue startup/scheduler recovery 및 daemon health 관찰이 통과했다. [ADR-001](../decisions/ADR-001-production-dual-write-cutover.md)은 evidence GO로 재판정하며, legacy retire/Mission 단일 authority 승격은 명시적 Human cutover 승인 전까지 보류한다.
 
 **산출:** ordered event drift report와 dual-read 기간.
 

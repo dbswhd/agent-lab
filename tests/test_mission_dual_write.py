@@ -6,6 +6,7 @@ from pathlib import Path
 from agent_lab.human_inbox import create_inbox_item, resolve_inbox_item
 from agent_lab.mission.dual_write import (
     mirror_inbox_resolution,
+    mirror_execution_transition,
     mirror_plan_approval,
     mirror_plan_rejection,
 )
@@ -33,6 +34,29 @@ def test_plan_bridge_is_opt_in_and_idempotent(tmp_path: Path, monkeypatch) -> No
     assert first["mirrored"] is True
     assert second["mirrored"] is True
     assert MissionApplication(folder, "ship").load().version == 2
+
+
+def test_plan_bridge_respects_session_cohort_allowlist(tmp_path: Path, monkeypatch) -> None:
+    folder = _session(tmp_path)
+    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
+    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS", "other-session, another-session")
+
+    result = mirror_plan_approval(folder, goal="ship")
+
+    assert result["enabled"] is True
+    assert result["mirrored"] is False
+    assert result["reason"] == "cohort_not_selected"
+    assert not (folder / ".agent-lab" / "mission-events.jsonl").exists()
+
+
+def test_plan_bridge_mirrors_allowlisted_session(tmp_path: Path, monkeypatch) -> None:
+    folder = _session(tmp_path)
+    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
+    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS", folder.name)
+
+    result = mirror_plan_approval(folder, goal="ship")
+
+    assert result["mirrored"] is True
 
 
 def test_inbox_bridge_resolves_awaiting_human(tmp_path: Path, monkeypatch) -> None:
@@ -78,3 +102,53 @@ def test_committed_side_effect_is_completed_after_restart_recovery(tmp_path: Pat
     decisions = ActivityQueue.for_session(tmp_path).recover(now=15.0)
     assert decisions[0].action is RecoveryAction.COMPLETE
     assert ActivityQueue.for_session(tmp_path).snapshot()[0].state is QueueState.COMPLETED
+
+
+def test_execute_approve_mirrors_merge_commit_without_advancing_oracle(tmp_path: Path, monkeypatch) -> None:
+    folder = _session(tmp_path)
+    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
+    application = MissionApplication(folder, "ship")
+    application.approve_plan()
+    result = mirror_execution_transition(
+        folder,
+        execution={"id": "exec-1", "status": "merged", "merge": {"commit_sha": "abc123"}},
+        phase="approve",
+    )
+    mission = application.load()
+    assert result["mirrored"] is True
+    assert mission.state is MissionState.VERIFYING
+    assert mission.merged_commit_sha == "abc123"
+
+
+def test_execute_reverify_mirrors_repair_attempt_before_final_oracle(tmp_path: Path, monkeypatch) -> None:
+    folder = _session(tmp_path)
+    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
+    application = MissionApplication(folder, "ship")
+    application.approve_plan()
+    mirror_execution_transition(
+        folder,
+        execution={"id": "exec-1", "status": "merged", "merge": {"commit_sha": "base123"}},
+        phase="approve",
+    )
+    result = mirror_execution_transition(
+        folder,
+        execution={
+            "id": "exec-1",
+            "status": "merged",
+            "merge": {"commit_sha": "repair-merge-123"},
+            "oracle": {"verdict": "pass", "detail": "repaired"},
+            "repair_history": [
+                {
+                    "attempt": 1,
+                    "exec_commit_sha": "repair-commit-123",
+                    "oracle_before": {"verdict": "fail", "detail": "missing marker"},
+                }
+            ],
+        },
+        phase="oracle",
+    )
+    mission = application.load()
+    assert result["mirrored"] is True
+    assert mission.state is MissionState.SUCCEEDED
+    assert mission.repair_attempt == 1
+    assert mission.merged_commit_sha == "repair-commit-123"

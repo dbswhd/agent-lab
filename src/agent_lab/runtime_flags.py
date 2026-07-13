@@ -45,6 +45,11 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         "Opt-in legacy route to Mission journal migration bridge (default off)",
     ),
     FlagDef(
+        "AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS",
+        "feature",
+        "Comma-separated session IDs allowed to use the dual-write bridge when enabled (empty means all)",
+    ),
+    FlagDef(
         "AGENT_LAB_STAGE_ROUTING", "feature", "Phase-aware single-vs-panel routing (stage-aware selective; default off)"
     ),
     FlagDef(
@@ -757,6 +762,18 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         "feature",
         "Mission scheduler poll interval seconds",
         default="60",
+    ),
+    FlagDef(
+        "AGENT_LAB_ACTIVITY_QUEUE_RECOVERY",
+        "feature",
+        "Startup and periodic ActivityQueue crash recovery scan (default on; opt out via =0)",
+        default="1",
+    ),
+    FlagDef(
+        "AGENT_LAB_ACTIVITY_RECOVERY_INTERVAL_S",
+        "feature",
+        "Minimum seconds between periodic ActivityQueue recovery scans (default 300; clamped 30..3600)",
+        default="300",
     ),
     FlagDef(
         "AGENT_LAB_OFFLINE_ACTIVE_CAP",

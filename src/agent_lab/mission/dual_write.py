@@ -21,8 +21,24 @@ from agent_lab.mission.repository import MissionRepository
 from agent_lab.run.meta import read_run_meta
 
 
-def dual_write_enabled() -> bool:
-    return bool(is_truthy(os.getenv("AGENT_LAB_MISSION_DUAL_WRITE")))
+def _cohort_ids() -> frozenset[str]:
+    raw = (os.getenv("AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS") or "").strip()
+    return frozenset(item.strip() for item in raw.split(",") if item.strip())
+
+
+def dual_write_enabled(folder: Path | None = None) -> bool:
+    if not is_truthy(os.getenv("AGENT_LAB_MISSION_DUAL_WRITE")):
+        return False
+    cohort = _cohort_ids()
+    return not cohort or (folder is not None and folder.name in cohort)
+
+
+def _blocked_result(folder: Path, operation: str) -> dict[str, Any] | None:
+    if not is_truthy(os.getenv("AGENT_LAB_MISSION_DUAL_WRITE")):
+        return {"enabled": False, "operation": operation, "mirrored": False}
+    if not dual_write_enabled(folder):
+        return _result(operation=operation, mirrored=False, reason="cohort_not_selected")
+    return None
 
 
 def _goal(folder: Path, explicit: str | None = None) -> str:
@@ -44,8 +60,9 @@ def _result(*, operation: str, mirrored: bool, reason: str = "") -> dict[str, An
 
 
 def mirror_plan_approval(folder: Path, *, goal: str | None = None) -> dict[str, Any]:
-    if not dual_write_enabled():
-        return {"enabled": False, "operation": "plan_approve", "mirrored": False}
+    blocked = _blocked_result(folder, "plan_approve")
+    if blocked is not None:
+        return blocked
     try:
         mission = MissionApplication(folder, _goal(folder, goal)).approve_plan()
     except (MissionApplicationError, MissionTransitionError, OSError, ValueError) as exc:
@@ -54,8 +71,9 @@ def mirror_plan_approval(folder: Path, *, goal: str | None = None) -> dict[str, 
 
 
 def mirror_plan_rejection(folder: Path, *, note: str = "", goal: str | None = None) -> dict[str, Any]:
-    if not dual_write_enabled():
-        return {"enabled": False, "operation": "plan_reject", "mirrored": False}
+    blocked = _blocked_result(folder, "plan_reject")
+    if blocked is not None:
+        return blocked
     try:
         mission = MissionApplication(folder, _goal(folder, goal)).reject_plan(note)
     except (MissionApplicationError, MissionTransitionError, OSError, ValueError) as exc:
@@ -64,8 +82,9 @@ def mirror_plan_rejection(folder: Path, *, note: str = "", goal: str | None = No
 
 
 def mirror_inbox_resolution(folder: Path, *, item_id: str, answer: str = "") -> dict[str, Any]:
-    if not dual_write_enabled():
-        return {"enabled": False, "operation": "inbox_resolve", "mirrored": False}
+    blocked = _blocked_result(folder, "inbox_resolve")
+    if blocked is not None:
+        return blocked
     journal = folder / ".agent-lab" / "mission-events.jsonl"
     if not journal.is_file():
         return _result(operation="inbox_resolve", mirrored=False, reason="mission_journal_missing")
@@ -86,8 +105,9 @@ def mirror_execution_transition(
     execution: dict[str, Any],
     phase: Literal["approve", "reject", "merge", "oracle"],
 ) -> dict[str, Any]:
-    if not dual_write_enabled():
-        return {"enabled": False, "operation": f"execution_{phase}", "mirrored": False}
+    blocked = _blocked_result(folder, f"execution_{phase}")
+    if blocked is not None:
+        return blocked
     journal = folder / ".agent-lab" / "mission-events.jsonl"
     if not journal.is_file():
         return _result(operation=f"execution_{phase}", mirrored=False, reason="mission_journal_missing")
@@ -104,6 +124,9 @@ def mirror_execution_transition(
                 mission = repo.dispatch(MarkDiffReady(), idempotency_key=f"diff-ready:{execution_id}")
             if mission.state is MissionState.AWAITING_DIFF_DECISION:
                 mission = repo.dispatch(ApproveDiff(), idempotency_key=f"diff-approve:{execution_id}")
+            commit_sha = str((execution.get("merge") or {}).get("commit_sha") or execution.get("commit_sha") or "")
+            if mission.state is MissionState.VERIFYING and mission.merged_commit_sha is None and commit_sha:
+                mission = repo.dispatch(RecordMerge(commit_sha), idempotency_key=f"merge:{execution_id}:{commit_sha}")
         elif phase == "merge":
             commit_sha = str((execution.get("merge") or {}).get("commit_sha") or execution.get("commit_sha") or "")
             if mission.state is MissionState.AWAITING_DIFF_DECISION:
@@ -116,6 +139,32 @@ def mirror_execution_transition(
                 mission = repo.dispatch(ApproveDiff(), idempotency_key=f"diff-approve:{execution_id}")
             if mission.state is MissionState.VERIFYING and mission.merged_commit_sha is None and commit_sha:
                 mission = repo.dispatch(RecordMerge(commit_sha), idempotency_key=f"merge:{execution_id}:{commit_sha}")
+            repair_history_raw = execution.get("repair_history")
+            repair_history = [row for row in repair_history_raw if isinstance(row, dict)] if isinstance(repair_history_raw, list) else []
+            for repair in repair_history:
+                attempt = int(repair.get("attempt") or 0)
+                before_raw = repair.get("oracle_before")
+                before: dict[str, Any] = before_raw if isinstance(before_raw, dict) else {}
+                detail = str(before.get("detail") or repair.get("detail") or "repair attempt")
+                if mission.state is MissionState.VERIFYING:
+                    mission = repo.dispatch(
+                        RecordOracle(OracleVerdict.FAIL, detail),
+                        idempotency_key=f"oracle-fail:{execution_id}:{attempt}:{detail}",
+                    )
+                if mission.state is MissionState.REPAIRING:
+                    mission = repo.dispatch(MarkDiffReady(), idempotency_key=f"repair-diff-ready:{execution_id}:{attempt}")
+                if mission.state is MissionState.AWAITING_DIFF_DECISION:
+                    mission = repo.dispatch(ApproveDiff(), idempotency_key=f"repair-diff-approve:{execution_id}:{attempt}")
+                repair_merge_raw = repair.get("merge")
+                repair_merge: dict[str, Any] = repair_merge_raw if isinstance(repair_merge_raw, dict) else {}
+                repair_sha = str(repair_merge.get("commit_sha") or repair.get("exec_commit_sha") or "")
+                if mission.state is MissionState.VERIFYING and mission.merged_commit_sha is None:
+                    if not repair_sha:
+                        return _result(operation="execution_oracle", mirrored=False, reason="repair_commit_missing")
+                    mission = repo.dispatch(
+                        RecordMerge(repair_sha),
+                        idempotency_key=f"repair-merge:{execution_id}:{attempt}:{repair_sha}",
+                    )
             if mission.state is MissionState.VERIFYING:
                 oracle_raw = execution.get("oracle")
                 oracle: dict[str, Any] = oracle_raw if isinstance(oracle_raw, dict) else {}

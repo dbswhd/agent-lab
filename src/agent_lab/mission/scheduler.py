@@ -14,13 +14,18 @@ from agent_lab.time_utils import utc_now_iso_seconds, utc_now
 from agent_lab.daemon_state import mark_scheduler_tick
 from agent_lab.env_flags import env_bool
 from agent_lab.run.meta import patch_run_meta, read_run_meta
-from agent_lab.session import SESSIONS_DIR
+from agent_lab.session.paths import active_sessions_dir
 
 logger = logging.getLogger("agent_lab.mission.scheduler")
 
 _SCHEDULER_THREAD: threading.Thread | None = None
 _SCHEDULER_STOP = threading.Event()
 _DEFAULT_INTERVAL_S = 60
+SESSIONS_DIR: Path | None = None
+
+
+def _sessions_root(explicit: Path | None) -> Path | None:
+    return explicit or SESSIONS_DIR or active_sessions_dir()
 
 
 def scheduler_interval_s() -> int:
@@ -177,7 +182,7 @@ def schedule_due(entry: dict[str, Any], *, now: datetime | None = None) -> bool:
 
 
 def list_session_schedules(sessions_dir: Path | None = None) -> list[dict[str, Any]]:
-    root = sessions_dir or SESSIONS_DIR
+    root = _sessions_root(sessions_dir)
     if root is None or not root.is_dir():
         return []
     rows: list[dict[str, Any]] = []
@@ -248,7 +253,7 @@ def run_schedule_entry(
     sessions_dir: Path | None = None,
     force: bool = False,
 ) -> dict[str, Any]:
-    root = sessions_dir or SESSIONS_DIR
+    root = _sessions_root(sessions_dir)
     if root is None:
         return {"ok": False, "reason": "sessions_dir_unset", "session_id": session_id}
     folder = root / session_id
@@ -420,9 +425,44 @@ def scheduler_tick(
         "skipped": not runs,
         "runs": runs,
         "checked": len(rows),
+        "activity_recovery": _maybe_run_activity_recovery(sessions_dir, force=force),
     }
     mark_scheduler_tick(payload)
     return payload
+
+
+def _maybe_run_activity_recovery(sessions_dir: Path | None, *, force: bool) -> dict[str, Any] | None:
+    """Throttled safety-net recovery — non-blocking, so a slow scan never stalls ticks.
+
+    Startup already ran an eager, blocking recovery; this is only for activities
+    that got stuck *while the process was running* (e.g. a worker crashed
+    mid-side-effect). Runs at most once per ``activity_recovery_interval_s()``
+    unless ``force`` (same override semantics as forced schedule runs).
+    """
+    try:
+        from agent_lab.mission.activity_recovery import (
+            activity_queue_recovery_enabled,
+            recover_activity_queue,
+            recovery_due,
+        )
+
+        if not activity_queue_recovery_enabled():
+            return None
+        root = _sessions_root(sessions_dir)
+        if root is None or not root.is_dir():
+            return None
+        now_val = utc_now().timestamp()
+        if not force and not recovery_due(root, now=now_val):
+            return None
+        result = recover_activity_queue(root, reason="periodic", now=now_val, blocking=False)
+        if "scanned" in result:
+            from agent_lab.daemon_state import record_last_activity_recovery
+
+            record_last_activity_recovery(result)
+        return result
+    except Exception:
+        logger.exception("scheduler: activity queue recovery failed")
+        return None
 
 
 def _scheduler_loop() -> None:

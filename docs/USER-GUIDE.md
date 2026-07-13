@@ -1189,6 +1189,10 @@ Path-like values are home-masked in API/CLI output. Undocumented `AGENT_LAB_*` v
 | `AGENT_LAB_DIFF_SAFETY` | pre-merge diff secret/danger scanner (default on) |
 | `AGENT_LAB_TRACE` | OTel-lite span tracer → `trace.jsonl` (default on) |
 | `AGENT_LAB_CRASH_RECOVERY` | boot-time reconcile of crashed in-flight merges, G3 (default on) |
+| `AGENT_LAB_MISSION_DUAL_WRITE` | opt-in legacy-route to Mission journal bridge; legacy writer remains first |
+| `AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS` | optional comma-separated session allowlist for controlled dual-write cohort; empty means all when bridge is on |
+| `AGENT_LAB_ACTIVITY_QUEUE_RECOVERY` | eager startup + throttled periodic Mission ActivityQueue recovery (default on; opt out with `=0`) |
+| `AGENT_LAB_ACTIVITY_RECOVERY_INTERVAL_S` | periodic ActivityQueue recovery interval in seconds (default `300`, clamped `30..3600`) |
 | `AGENT_LAB_JUDGE_LIVE` | live LLM-as-judge quality eval in `score_session` (default off) |
 | `AGENT_LAB_JUDGE_MODEL` | override Claude model for the judge |
 

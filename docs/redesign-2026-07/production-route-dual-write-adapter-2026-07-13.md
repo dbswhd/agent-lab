@@ -11,11 +11,11 @@ Implemented as an opt-in, fail-open migration slice. Set `AGENT_LAB_MISSION_DUAL
 | `POST /sessions/{id}/plan/approve` | `PlanOpened` + `PlanApproved` | plan hash |
 | `POST /sessions/{id}/plan/reject` | `PlanOpened` + `PlanRejected` | plan hash + note |
 | `POST /sessions/{id}/inbox/{item}/resolve` | `BlockResolved` when Mission is awaiting Human | item id + answer |
-| `POST /sessions/{id}/execute/resolve` | execution start → diff ready → diff approved as applicable | execution id |
+| `POST /sessions/{id}/execute/resolve` | execution start → diff ready → diff approved; returned commit SHA also records `MergeCommitted` | execution id + commit SHA |
 | `POST /sessions/{id}/execute/merge/confirm` | `MergeCommitted` | execution id + commit SHA |
 | `POST /sessions/{id}/execute/reverify` | `RecordMerge` + `RecordOracle` | execution id + verdict/detail |
 
-The legacy writer remains first. Bridge failures are returned as `mission_dual_write.mirrored=false` and do not turn a successful legacy operation into an HTTP failure. This keeps rollback safe while evidence is collected.
+The legacy writer remains first. Bridge failures are returned as `mission_dual_write.mirrored=false` and do not turn a successful legacy operation into an HTTP failure. This keeps rollback safe while evidence is collected. `VERIFYING` remains correct after merge because Oracle verification is still outstanding; parity is measured by `merged_commit_sha` and event cursor.
 
 ## Validation completed
 
@@ -28,4 +28,4 @@ The legacy writer remains first. Bridge failures are returned as `mission_dual_w
 
 ## Boundary
 
-This is local production-like route evidence, not a production cutover approval. The API default is unchanged, scheduler daemon default is unchanged, and legacy remains the authority. ADR-001 therefore remains `NO-GO` until an enabled cohort from the real sessions directory supplies the required 10 route observations and rollback approval.
+The initial real `sessions/` route cohort is recorded in [dual-write-route-cohort-report](./dual-write-route-cohort-report-2026-07-13.md). That cohort alone was sufficient only for a controlled opt-in GO because it did not cover Oracle fail→repair or daemon/crash. The follow-up evidence now covers actual Room dogfood, fail→repair with `RepairScheduled`, and recovery/health wiring; see [dual-write-cutover-followup](./dual-write-cutover-followup-2026-07-13.md) and [ActivityQueue auto-recovery](./activity-queue-auto-recovery-2026-07-13.md). The approve bridge records a returned merge commit in the same call; merge/confirm and reverify remain the fallback when the commit is not known at resolve time.

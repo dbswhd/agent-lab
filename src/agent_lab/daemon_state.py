@@ -64,6 +64,16 @@ def record_last_recovery(result: dict[str, Any]) -> dict[str, Any]:
     return state
 
 
+def record_last_activity_recovery(result: dict[str, Any]) -> dict[str, Any]:
+    state = load_daemon_state()
+    state["last_activity_recovery_at"] = _now_iso()
+    state["last_activity_recovery_result"] = {
+        key: result.get(key) for key in ("reason", "scanned", "actions", "errors", "locked_out")
+    }
+    save_daemon_state(state)
+    return state
+
+
 def public_daemon_payload() -> dict[str, Any]:
     state = load_daemon_state()
     return {
@@ -75,4 +85,6 @@ def public_daemon_payload() -> dict[str, Any]:
         "last_scheduler_result": state.get("last_scheduler_result"),
         "last_recovery_at": state.get("last_recovery_at"),
         "last_recovery_result": state.get("last_recovery_result"),
+        "last_activity_recovery_at": state.get("last_activity_recovery_at"),
+        "last_activity_recovery_result": state.get("last_activity_recovery_result"),
     }

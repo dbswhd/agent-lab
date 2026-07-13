@@ -54,6 +54,6 @@ AGENT_LAB_MOCK_AGENTS=1 \
 
 ## 제한과 다음 판정
 
-이번 cohort는 production-like dual-write 증거를 10건 확보한 것이며, production route의 lifecycle writer가 자동으로 두 저장소에 쓰도록 바뀐 것은 아니다. 따라서 [ADR-001](../decisions/ADR-001-production-dual-write-cutover.md)의 production dual-write evidence는 여전히 `0건`이고 Human cutover는 `NO-GO`다.
+이 문서는 후속 production route adapter·Room dogfood·fail→repair·recovery wiring이 반영되기 전의 baseline report다. 당시 cohort는 production-like dual-write 증거 10건이었지만 lifecycle writer 자동 연결 증거로 인정하지 않았고, 그 시점의 ADR 판정은 `NO-GO`였다. 최신 판정은 [ADR-001](../decisions/ADR-001-production-dual-write-cutover.md)과 [dual-write cutover follow-up](./dual-write-cutover-followup-2026-07-13.md)을 따른다.
 
 다음 단계는 이 harness의 동일 계약을 production route의 opt-in cohort에 연결하고, 실제 sessions directory에서 10건을 재실행하는 것이다. 그때만 cutover 재심사를 요청한다.

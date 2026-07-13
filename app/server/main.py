@@ -70,6 +70,19 @@ def _api_startup() -> None:
                 )
             )
             record_last_recovery(rec)
+        from agent_lab.mission.activity_recovery import activity_queue_recovery_enabled, recover_activity_queue
+
+        if activity_queue_recovery_enabled():
+            rec = recover_activity_queue(reason="startup", blocking=True)
+            if "scanned" in rec:
+                from agent_lab.daemon_state import record_last_activity_recovery
+
+                record_last_activity_recovery(rec)
+            write_boot_line(
+                "activity-queue recovery scanned=%s actions=%s errors=%s"
+                % (rec.get("scanned"), rec.get("actions"), rec.get("errors"))
+            )
+
         if start_mission_scheduler_background():
             write_boot_line("mission scheduler background thread started")
         from agent_lab.kimi.control_client import warm_bridge

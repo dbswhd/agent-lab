@@ -28,12 +28,12 @@
 | 단계 | 상태 | 다음 |
 | --- | --- | --- |
 | Step 0 authority/baseline | ✅ 완료 | 문서 상태·canonical 링크 유지 |
-| Step 1 Mission application adapter | ✅ opt-in route bridge | `/plan/approve`·reject·Inbox·execute/merge/Oracle bridge; enabled route cohort remains next |
+| Step 1 Mission application adapter | ✅ controlled opt-in cohort | 실제 `sessions/` route 10건·rollback 2건 통과; 전용 process/route에서만 `AGENT_LAB_MISSION_DUAL_WRITE=1` 적용. 운영 절차: [controlled cohort runbook](./redesign-2026-07/dual-write-controlled-cohort-runbook-2026-07-13.md) |
 | Step 2 MissionReadModel/UI contract | ✅ API first pass | SSE cursor·browser QA |
-| Step 3 Decision Queue vertical slice | ✅ adapter first pass | production Human Inbox route 연결 |
-| Step 4 Execute/merge/Oracle | ✅ kernel first pass | real worktree/Oracle ports |
+| Step 3 Decision Queue vertical slice | ✅ route + Room dogfood | production Human Inbox route와 실제 Room dogfood 2건 통과; cross-store atomicity는 pending |
+| Step 4 Execute/merge/Oracle | ✅ route parity + repair event | merge parity·fail→repair·RepairScheduled bridge·G3 process kill/restart 통과 |
 | Step 5 Durable runtime hardening | ✅ shadow + fault pass | scheduler ActivityQueue validation, committed-side-effect restart recovery; production daemon opt-in remains |
-| Step 6–7 shadow parity/retire | **NO-GO · production route evidence 0건** | [ADR-001](./decisions/ADR-001-production-dual-write-cutover.md) 판정: 격리 production-like dual-write 10건은 통과했지만 production route 증거가 아니므로 legacy writer 제거·Mission 단일 authority 승격·production enqueue를 보류. [cohort report](./redesign-2026-07/dual-write-evidence-report-2026-07-13.md) 참조 |
+| Step 6–7 shadow parity/retire | **EVIDENCE GO · Human cutover approval pending** | 실제 `sessions/` route cohort·Room dogfood 2건·fail→repair event parity·G3 process kill→restart·ActivityQueue startup/scheduler recovery·health 관찰 통과. 명시적 Human 승인 전까지 legacy writer 제거·Mission 단일 authority 승격은 보류. [ADR-001](./decisions/ADR-001-production-dual-write-cutover.md)·[follow-up](./redesign-2026-07/dual-write-cutover-followup-2026-07-13.md) 참조 |
 
 **안전 경계:** 기존 `plan_workflow`·`mission_loop`·`human_inbox` writer를 아직 제거하지 않는다. 새 경로는 shadow/compatibility projection으로만 사용하며 execute gate를 우회하지 않는다. 상세: [redesign governance](./redesign-2026-07/13-document-governance-and-execution-plan.md).
 

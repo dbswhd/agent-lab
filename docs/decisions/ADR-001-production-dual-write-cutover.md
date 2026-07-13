@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted — **Controlled cohort evidence GO (v3d). Full traffic pending Human bounded-cutover approval. Legacy writer retire pending separate Human approval after soak.**
+Accepted — **Controlled cohort GO (v3d). Full traffic soak PASS (≥15 Room turns). Legacy writer retire pending separate Human approval.**
 
 ## Date
 

@@ -154,7 +154,7 @@
 
 ### Step 6 — Legacy shadow parity와 cutover gate
 
-**현재 상태:** scheduler shadow candidate report와 ordered parity evaluator first pass 완료. [2026-07-13 dual-read report](./dual-read-report-2026-07-13.md)에서 대표 5개 fixture가 모두 `unmigrated`로 판정되어 cutover는 아직 열지 않는다.
+**현재 상태:** scheduler shadow candidate report와 ordered parity evaluator first pass 완료. 실제 regression fixture는 [dual-read report](./dual-read-report-2026-07-13.md)에서 모두 `unmigrated`다. [dual-write evidence report](./dual-write-evidence-report-2026-07-13.md)의 동일 identity 10건·5개 시나리오·replay/reconnect/Inbox/side-effect 검증은 격리 production-like cohort에서 통과했다. 다만 production route가 자동으로 두 저장소에 쓴 증거는 여전히 0건이다. [ADR-001](../decisions/ADR-001-production-dual-write-cutover.md)에 따라 Human cutover를 NO-GO로 결정한다.
 
 **산출:** ordered event drift report와 dual-read 기간.
 

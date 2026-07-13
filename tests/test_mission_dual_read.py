@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from agent_lab.mission.dual_read import evaluate_manifest, inspect_fixture
+from agent_lab.mission.activity_queue import ActivityQueue, QueueState, QueuedActivity
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -53,3 +54,28 @@ def test_dual_read_reports_pass_when_fixture_has_matching_journal(tmp_path: Path
 
     assert result.status == "pass"
     assert result.journal_present is True
+
+
+def test_dual_read_accepts_activity_queue_evidence_for_completed_step(tmp_path: Path) -> None:
+    folder = tmp_path / "fixture"
+    folder.mkdir()
+    (folder / "run.json").write_text(
+        json.dumps({"completed_steps": [{"step": "1"}]}),
+        encoding="utf-8",
+    )
+    ActivityQueue.for_session(folder).enqueue(
+        QueuedActivity("recovery-step-1", "fixture", "recovery", 1, "recovery-step-1", QueueState.COMPLETED)
+    )
+
+    result = inspect_fixture(
+        tmp_path,
+        {
+            "id": "fixture-1",
+            "fixture": "fixture",
+            "expected_terminal_state": "partial",
+        },
+    )
+
+    assert result.status == "pass"
+    assert result.journal_present is False
+    assert result.activity_queue_present is True

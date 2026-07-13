@@ -26,6 +26,8 @@ def _payload(report: FixtureDualReadReport) -> dict[str, object]:
                 "unexpected_event_types": result.unexpected_event_types,
                 "unsupported_observations": result.unsupported_observations,
                 "detail": result.detail,
+                "activity_queue_present": result.activity_queue_present,
+                "completed_activity_ids": result.completed_activity_ids,
             }
             for result in report.results
         ],

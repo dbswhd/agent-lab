@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import time
 from collections.abc import Awaitable, Callable, Iterator
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -64,6 +66,7 @@ from app.server.deps import (
 router = APIRouter(prefix="/api")
 
 _ROOM_SSE_KEEPALIVE_SEC = 25.0
+_ROOM_SERVER_TIMEOUT_ENV = "AGENT_LAB_ROOM_SERVER_TIMEOUT_SEC"
 
 
 def _room_run_terminal_events(
@@ -129,9 +132,66 @@ def _drain_room_event_queue(
         if ev is None:
             break
         if ev.get("type") == "complete":
-            result["complete_event"] = ev
+            # A timeout has already selected a partial terminal event.  The
+            # worker's later cancellation completion must not overwrite it.
+            if not result.get("timeout"):
+                result["complete_event"] = ev
             continue
         yield ev
+
+
+def _room_server_timeout_sec() -> float | None:
+    raw = (os.getenv(_ROOM_SERVER_TIMEOUT_ENV) or "").strip()
+    if not raw:
+        return None
+    timeout_sec = float(raw)
+    if timeout_sec <= 0:
+        return None
+    return timeout_sec
+
+
+def _mark_room_server_timeout(
+    *,
+    folder: Path | None,
+    run_session_id: str | None,
+    timeout_sec: float,
+    result: dict[str, Any],
+) -> dict[str, Any]:
+    result["cancelled"] = True
+    result["timeout"] = True
+    result["complete_event"] = {
+        "type": "complete",
+        "session_id": run_session_id,
+        "status": "partial",
+        "cancelled": True,
+    }
+    request_cancel(run_session_id)
+    if folder is not None:
+        from agent_lab.run.meta import patch_run_meta
+
+        timeout_event = {
+            "reason": "server_timeout",
+            "timeout_sec": timeout_sec,
+            "at": datetime.now(UTC).isoformat(),
+        }
+
+        def _stamp_timeout(run: dict[str, Any]) -> dict[str, Any]:
+            run["status"] = "partial"
+            run["room_timeout"] = timeout_event
+            turns = run.get("turns")
+            if isinstance(turns, list) and turns:
+                last_turn = turns[-1]
+                if isinstance(last_turn, dict) and not last_turn.get("status"):
+                    last_turn["status"] = "partial"
+            return run
+
+        patch_run_meta(folder, _stamp_timeout)
+    return {
+        "type": "run_timeout",
+        "message": f"Room run exceeded server timeout ({timeout_sec:g}s)",
+        "timeout_sec": timeout_sec,
+        "status": "partial",
+    }
 
 
 def _run_with_lock(
@@ -213,6 +273,29 @@ def _session_has_pending_human_inbox(folder: Path | None) -> bool:
     if not isinstance(inbox, list):
         return False
     return any(isinstance(item, dict) and item.get("status") == "pending" for item in inbox)
+
+
+def _cancel_room_stream_worker(*, folder: Path | None, run_session_id: str | None) -> bool:
+    if _session_has_pending_human_inbox(folder):
+        return True
+    request_cancel(run_session_id)
+    if folder is not None:
+        from agent_lab.mission.loop import on_global_run_cancel
+
+        try:
+            on_global_run_cancel(folder)
+        except Exception:
+            pass
+    return False
+
+
+async def _wait_for_room_worker_cancel_ack(worker: asyncio.Future[Any] | None) -> None:
+    if worker is None:
+        return
+    try:
+        await asyncio.wait_for(asyncio.shield(worker), timeout=8.0)
+    except asyncio.TimeoutError:
+        pass
 
 
 def _loop_readiness_detail(agent_list: list[str] | None) -> dict[str, Any] | None:
@@ -358,13 +441,11 @@ async def _stream_synthesize_only(
     req_id = (request_id or "").strip() or None
     run_session_id = folder.name
 
-    def _cancel_on_client_disconnect() -> None:
-        request_cancel(run_session_id)
-
     async def generate():
         event_q: asyncio.Queue[dict[str, Any] | None] = asyncio.Queue()
         result: dict[str, Any] = {}
         loop = asyncio.get_running_loop()
+        worker: asyncio.Future[Any] | None = None
 
         def on_event(typ: str, payload: dict[str, Any]) -> None:
             loop.call_soon_threadsafe(event_q.put_nowait, {"type": typ, **payload})
@@ -416,13 +497,45 @@ async def _stream_synthesize_only(
                 ),
             )
             last_keepalive = time.monotonic()
+            started_at = last_keepalive
+            timeout_sec = _room_server_timeout_sec()
             while True:
                 if await request.is_disconnected():
-                    _cancel_on_client_disconnect()
-                    try:
-                        await asyncio.wait_for(worker, timeout=8.0)
-                    except asyncio.TimeoutError:
-                        pass
+                    _cancel_room_stream_worker(folder=folder, run_session_id=run_session_id)
+                    await _wait_for_room_worker_cancel_ack(worker)
+                    for ev in _drain_room_event_queue(event_q, result):
+                        yield sse(ev)
+                    # The worker may persist its cancellation result after the
+                    # timeout marker was written. Re-apply the timeout state
+                    # after the worker's final write so disk state matches the
+                    # SSE terminal event.
+                    _mark_room_server_timeout(
+                        folder=folder,
+                        run_session_id=run_session_id,
+                        timeout_sec=timeout_sec,
+                        result=result,
+                    )
+                    for payload in _room_run_terminal_events(
+                        result,
+                        run_session_id=run_session_id,
+                    ):
+                        yield sse(payload)
+                    return
+                now = time.monotonic()
+                if (
+                    timeout_sec is not None
+                    and now - started_at >= timeout_sec
+                    and not _session_has_pending_human_inbox(folder)
+                ):
+                    yield sse(
+                        _mark_room_server_timeout(
+                            folder=folder,
+                            run_session_id=run_session_id,
+                            timeout_sec=timeout_sec,
+                            result=result,
+                        )
+                    )
+                    await _wait_for_room_worker_cancel_ack(worker)
                     for ev in _drain_room_event_queue(event_q, result):
                         yield sse(ev)
                     for payload in _room_run_terminal_events(
@@ -452,6 +565,10 @@ async def _stream_synthesize_only(
                 run_session_id=run_session_id,
             ):
                 yield sse(payload)
+        except asyncio.CancelledError:
+            _cancel_room_stream_worker(folder=folder, run_session_id=run_session_id)
+            await _wait_for_room_worker_cancel_ack(worker)
+            raise
         except Exception as e:
             yield sse({"type": "error", "message": str(e)})
 
@@ -755,21 +872,12 @@ async def create_room_run(
         run_meta=sse_run_meta,
     )
 
-    def _cancel_on_client_disconnect() -> None:
-        request_cancel(run_session_id)
-        if folder is not None:
-            from agent_lab.mission.loop import on_global_run_cancel
-
-            try:
-                on_global_run_cancel(folder)
-            except Exception:
-                pass
-
     async def generate():
         event_q: asyncio.Queue[dict[str, Any] | None] = asyncio.Queue()
         result: dict[str, Any] = {}
         disconnected = False
         loop = asyncio.get_running_loop()
+        worker: asyncio.Future[Any] | None = None
 
         def on_event(typ: str, payload: dict[str, Any]) -> None:
             loop.call_soon_threadsafe(event_q.put_nowait, {"type": typ, **payload})
@@ -866,18 +974,47 @@ async def create_room_run(
                 ),
             )
             last_keepalive = time.monotonic()
+            started_at = last_keepalive
+            timeout_sec = _room_server_timeout_sec()
             detached = False
             while True:
                 if await request.is_disconnected():
                     if not disconnected:
                         disconnected = True
-                        if _session_has_pending_human_inbox(folder):
-                            # Human is still composing an answer to ask_human —
-                            # let the worker keep waiting instead of killing it.
-                            detached = True
-                        else:
-                            _cancel_on_client_disconnect()
+                        detached = _cancel_room_stream_worker(
+                            folder=folder,
+                            run_session_id=run_session_id,
+                        )
                     break
+                now = time.monotonic()
+                if (
+                    timeout_sec is not None
+                    and now - started_at >= timeout_sec
+                    and not _session_has_pending_human_inbox(folder)
+                ):
+                    yield sse(
+                        _mark_room_server_timeout(
+                            folder=folder,
+                            run_session_id=run_session_id,
+                            timeout_sec=timeout_sec,
+                            result=result,
+                        )
+                    )
+                    await _wait_for_room_worker_cancel_ack(worker)
+                    for ev in _drain_room_event_queue(event_q, result):
+                        yield sse(ev)
+                    _mark_room_server_timeout(
+                        folder=folder,
+                        run_session_id=run_session_id,
+                        timeout_sec=timeout_sec,
+                        result=result,
+                    )
+                    for payload in _room_run_terminal_events(
+                        result,
+                        run_session_id=run_session_id,
+                    ):
+                        yield sse(payload)
+                    return
                 try:
                     ev = await asyncio.wait_for(event_q.get(), timeout=0.25)
                 except asyncio.TimeoutError:
@@ -890,7 +1027,8 @@ async def create_room_run(
                 if ev is None:
                     break
                 if ev.get("type") == "complete":
-                    result["complete_event"] = ev
+                    if not result.get("timeout"):
+                        result["complete_event"] = ev
                     continue
                 last_keepalive = time.monotonic()
                 yield sse(ev)
@@ -900,10 +1038,7 @@ async def create_room_run(
                     # wait) — leave it to finish on its own thread and release
                     # the run lock itself; don't block this dead connection on it.
                     return
-                try:
-                    await asyncio.wait_for(worker, timeout=8.0)
-                except asyncio.TimeoutError:
-                    pass
+                await _wait_for_room_worker_cancel_ack(worker)
                 for ev in _drain_room_event_queue(event_q, result):
                     yield sse(ev)
                 for payload in _room_run_terminal_events(
@@ -918,6 +1053,14 @@ async def create_room_run(
                 run_session_id=run_session_id,
             ):
                 yield sse(payload)
+        except asyncio.CancelledError:
+            detached = _cancel_room_stream_worker(
+                folder=folder,
+                run_session_id=run_session_id,
+            )
+            if not detached:
+                await _wait_for_room_worker_cancel_ack(worker)
+            raise
         except Exception as e:
             yield sse({"type": "error", "message": str(e)})
 

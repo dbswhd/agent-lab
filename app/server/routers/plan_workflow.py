@@ -59,7 +59,10 @@ def post_plan_approve(
         )
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
-    return {"ok": True, "session_id": session_id, **result}
+    from agent_lab.mission.dual_write import mirror_plan_approval
+
+    bridge = mirror_plan_approval(folder, goal=body.goal)
+    return {"ok": True, "session_id": session_id, "mission_dual_write": bridge, **result}
 
 
 @router.post("/sessions/{session_id}/plan/reject")
@@ -74,4 +77,7 @@ def post_plan_reject(
     if phase not in {"CLARIFY", "REFINE", "DRAFT"}:
         raise HTTPException(status_code=422, detail="invalid target_phase")
     pw = reject_plan(folder, note=body.note, target_phase=phase)  # type: ignore[arg-type]
-    return {"ok": True, "session_id": session_id, "plan_workflow": pw}
+    from agent_lab.mission.dual_write import mirror_plan_rejection
+
+    bridge = mirror_plan_rejection(folder, note=body.note)
+    return {"ok": True, "session_id": session_id, "plan_workflow": pw, "mission_dual_write": bridge}

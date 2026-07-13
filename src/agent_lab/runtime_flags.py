@@ -40,6 +40,11 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
     # --- feature: mission / execute ---
     FlagDef("AGENT_LAB_MISSION_LOOP", "feature", "Verified mission loop FSM"),
     FlagDef(
+        "AGENT_LAB_MISSION_DUAL_WRITE",
+        "feature",
+        "Opt-in legacy route to Mission journal migration bridge (default off)",
+    ),
+    FlagDef(
         "AGENT_LAB_STAGE_ROUTING", "feature", "Phase-aware single-vs-panel routing (stage-aware selective; default off)"
     ),
     FlagDef(
@@ -658,6 +663,12 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
     FlagDef("AGENT_LAB_CLI_RETRY_MAX", "feature", "CLI transport retry count", default="3"),
     FlagDef("AGENT_LAB_CLI_RETRY_BASE_SEC", "feature", "CLI retry base delay (seconds)", default="2.0"),
     FlagDef("AGENT_LAB_CLI_RETRY_ROOM_ONLY", "feature", "Limit CLI retries to room turns only"),
+    FlagDef(
+        "AGENT_LAB_ROOM_SERVER_TIMEOUT_SEC",
+        "feature",
+        "Server-side Room turn wall-clock timeout in seconds; <=0 disables partial timeout cancellation",
+        default="0",
+    ),
     FlagDef(
         "AGENT_LAB_SKIP_AUTH_BOOTSTRAP",
         "feature",

@@ -1,5 +1,7 @@
 # Agent Lab 전면 재설계 계획 — 2026-07
 
+실제 provider 검증 기록: [live supervisor dual-read report](./dual-read-live-report-2026-07-13.md) — timeout·partial persistence·lock recovery는 통과했지만 production dual-write 증거는 아니다. 최종 판정은 [ADR-001](../decisions/ADR-001-production-dual-write-cutover.md) 참조.
+
 > **상태:** In progress / D0 — Wave 0~1 계약·shadow spike 착수, legacy cutover는 Human gate 유지  
 > **작성 기준일:** 2026-07-12  
 > **입력:** `AI-에이전트-엔지니어링-발췌노트.md`, 현재 코드, 프로젝트 SSOT  
@@ -175,7 +177,7 @@ Wave 0 기준선: [00-wave0-mission-inventory.md](./00-wave0-mission-inventory.m
 - dispatcher의 authority/authentication, payload provenance/redaction, gateway boundary
 - 기존 plan/mission/execute writer와의 session-facing application adapter 및 parity evidence
 
-read model의 첫 HTTP surface는 `/api/sessions/{id}/mission/read-model`로 추가되었으며, journal이 없는 세션을 `migrated=false`로 표시한다. scheduler shadow candidate report도 추가했지만, SSE cursor·실제 UI 소비·legacy writer와 scheduler cutover는 여전히 Human gate 전 과제다.
+read model의 첫 HTTP surface는 `/api/sessions/{id}/mission/read-model`로 추가되었으며, journal이 없는 세션을 `migrated=false`로 표시한다. SSE cursor와 live resume smoke가 통과했고, opt-in route dual-write adapter와 scheduler shadow enqueue validation이 추가되었지만, 실제 운영 cohort와 legacy writer/scheduler cutover는 여전히 Human gate 전 과제다.
 
 ## 9. 주제별 심화 설계
 
@@ -192,5 +194,10 @@ read model의 첫 HTTP surface는 `/api/sessions/{id}/mission/read-model`로 추
 | 12   | [12-compatibility-and-legacy-audit.md](./12-compatibility-and-legacy-audit.md)                 | 기존 writer·dispatcher·UI와의 충돌·겹침·레거시 리스크                |
 | 13   | [13-document-governance-and-execution-plan.md](./13-document-governance-and-execution-plan.md) | 기존 docs 정리 기준과 다음 실행 단계                                 |
 | —    | [dual-read-report-2026-07-13.md](./dual-read-report-2026-07-13.md)                             | 대표 5개 fixture parity gate 결과                                      |
+| —    | [dual-read-seeded-report-2026-07-13.md](./dual-read-seeded-report-2026-07-13.md)               | 임시 migration simulation parity 결과                                  |
+| —    | [dual-read-dogfood-report-2026-07-13.md](./dual-read-dogfood-report-2026-07-13.md)               | mock supervisor dogfood dual-read 결과                                  |
+| —    | [dual-read-live-report-2026-07-13.md](./dual-read-live-report-2026-07-13.md)                   | live supervisor timeout evidence와 cancellation follow-up               |
+| —    | [dual-write-evidence-report-2026-07-13.md](./dual-write-evidence-report-2026-07-13.md)       | 동일 identity 10건의 격리 production-like dual-write evidence              |
+| —    | [production-route-dual-write-adapter-2026-07-13.md](./production-route-dual-write-adapter-2026-07-13.md) | opt-in route bridge, scheduler enqueue, live HTTP/SSE 검증                  |
 
 심화 문서는 새로운 독립 로드맵이 아니다. 각 문서의 구현 작업은 Wave 0~4와 해당 섹터 작업에 편입하며, 동일한 command/event/context 계약을 중복 구현하지 않는다.

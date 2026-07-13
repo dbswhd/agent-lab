@@ -110,3 +110,20 @@ def collect_scheduler_shadow_report(
         tuple(queue_items),
         now=now or datetime.now(timezone.utc),
     )
+
+
+def enqueue_scheduler_shadow_candidates(
+    sessions_dir: Path | None = None,
+    *,
+    now: datetime | None = None,
+) -> SchedulerShadowReport:
+    current = now or datetime.now(timezone.utc)
+    rows = list_session_schedules(sessions_dir)
+    for row in rows:
+        candidate = _candidate(row, now=current)
+        if candidate is None:
+            continue
+        folder_text = row.get("session_folder")
+        if isinstance(folder_text, str):
+            ActivityQueue.for_session(Path(folder_text)).enqueue(candidate.activity)
+    return collect_scheduler_shadow_report(sessions_dir, now=current)

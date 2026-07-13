@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 
+from agent_lab.mission.activity_queue import ActivityQueue, QueueCorruptionError, QueueState
 from agent_lab.mission.journal import JournalCorruptionError, MissionJournal
 from agent_lab.mission.shadow import OrderedParityReport, build_ordered_parity_report, shadow_diff
 from agent_lab.run.state import RunState
@@ -25,6 +26,8 @@ class FixtureDualReadResult:
     unexpected_event_types: tuple[str, ...]
     unsupported_observations: tuple[str, ...]
     detail: str | None = None
+    activity_queue_present: bool = False
+    completed_activity_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,6 +47,8 @@ def _result_from_parity(
     expected_terminal_state: str,
     observations: tuple[Any, ...],
     parity: OrderedParityReport,
+    *,
+    completed_activity_ids: tuple[str, ...] = (),
 ) -> FixtureDualReadResult:
     return FixtureDualReadResult(
         scenario_id,
@@ -56,7 +61,24 @@ def _result_from_parity(
         parity.missing_types,
         parity.unexpected_types,
         tuple(kind.value for kind in parity.unsupported_kinds),
+        None,
+        bool(completed_activity_ids),
+        completed_activity_ids,
     )
+
+
+def _completed_activity_ids(folder: Path) -> tuple[str, ...]:
+    queue_path = folder / ".agent-lab" / "activities.json"
+    if not queue_path.is_file():
+        return ()
+    try:
+        return tuple(
+            activity.activity_id
+            for activity in ActivityQueue.for_session(folder).snapshot()
+            if activity.state is QueueState.COMPLETED
+        )
+    except QueueCorruptionError:
+        return ()
 
 
 def inspect_fixture(root: Path, scenario: dict[str, Any]) -> FixtureDualReadResult:
@@ -82,7 +104,28 @@ def inspect_fixture(root: Path, scenario: dict[str, Any]) -> FixtureDualReadResu
     run = RunState.from_raw(json.loads(run_path.read_text(encoding="utf-8")))
     observations = shadow_diff(RunState.empty(), run)
     journal_path = folder / ".agent-lab" / "mission-events.jsonl"
+    completed_activity_ids = _completed_activity_ids(folder)
     if not journal_path.is_file():
+        if (
+            observations
+            and all(observation.kind.value == "step_completed" for observation in observations)
+            and completed_activity_ids
+        ):
+            return FixtureDualReadResult(
+                scenario_id,
+                fixture,
+                expected,
+                "pass",
+                False,
+                tuple(observation.kind.value for observation in observations),
+                (),
+                (),
+                (),
+                (),
+                "step completion is represented by completed ActivityQueue evidence",
+                True,
+                completed_activity_ids,
+            )
         return FixtureDualReadResult(
             scenario_id,
             fixture,
@@ -95,6 +138,8 @@ def inspect_fixture(root: Path, scenario: dict[str, Any]) -> FixtureDualReadResu
             (),
             (),
             "Mission journal is not present; parity is not claimed",
+            bool(completed_activity_ids),
+            completed_activity_ids,
         )
     try:
         stored = MissionJournal(journal_path, mission_id=folder.name).load()
@@ -111,9 +156,18 @@ def inspect_fixture(root: Path, scenario: dict[str, Any]) -> FixtureDualReadResu
             (),
             (),
             str(exc),
+            bool(completed_activity_ids),
+            completed_activity_ids,
         )
     parity = build_ordered_parity_report(RunState.empty(), run, tuple(event.event_type for event in stored))
-    return _result_from_parity(scenario_id, fixture, expected, observations, parity)
+    return _result_from_parity(
+        scenario_id,
+        fixture,
+        expected,
+        observations,
+        parity,
+        completed_activity_ids=completed_activity_ids,
+    )
 
 
 def evaluate_manifest(root: Path, manifest_path: Path) -> FixtureDualReadReport:

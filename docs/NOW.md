@@ -1,6 +1,6 @@
 # NOW — 지금 무엇을 해야 하는가 (종합 상태 표면)
 
-> **작성:** 2026-07-08 · **갱신:** 2026-07-12 (Mission redesign continuation) · **역할:** "오늘/이번 주/다음/동결"을 한 곳에서 판정한다.
+> **작성:** 2026-07-08 · **갱신:** 2026-07-13 (Mission redesign continuation) · **역할:** "오늘/이번 주/다음/동결"을 한 곳에서 판정한다.
 > **이 문서가 아닌 것:** 방향·구조·턴·평가 계약의 SSOT가 아니다. 이 문서는 **상태 포인터**만 갖는다.
 > **ID 규칙:** 소스 namespace를 보존한다 (`N*`, `F*`, `HS*`, `TC-*`, `ABS-P2-*`). bare `P1/P2` 신규 사용 금지.
 > **진실 순서:** runtime 동작은 code+tests, 현재 상태는 NOW, 방향·구조·턴·평가는 아래 담당 문서가 각각 소유한다.
@@ -28,12 +28,12 @@
 | 단계 | 상태 | 다음 |
 | --- | --- | --- |
 | Step 0 authority/baseline | ✅ 완료 | 문서 상태·canonical 링크 유지 |
-| Step 1 Mission application adapter | ✅ first pass | `/plan/approve` parity/read-model 연결 |
+| Step 1 Mission application adapter | ✅ opt-in route bridge | `/plan/approve`·reject·Inbox·execute/merge/Oracle bridge; enabled route cohort remains next |
 | Step 2 MissionReadModel/UI contract | ✅ API first pass | SSE cursor·browser QA |
 | Step 3 Decision Queue vertical slice | ✅ adapter first pass | production Human Inbox route 연결 |
 | Step 4 Execute/merge/Oracle | ✅ kernel first pass | real worktree/Oracle ports |
-| Step 5 Durable runtime hardening | ✅ first pass | production enqueue, side-effect adapter reconcile |
-| Step 6–7 shadow parity/retire | 진행 중 | create journal-backed fixtures, rerun [dual-read report](./redesign-2026-07/dual-read-report-2026-07-13.md), Human cutover gate |
+| Step 5 Durable runtime hardening | ✅ shadow + fault pass | scheduler ActivityQueue validation, committed-side-effect restart recovery; production daemon opt-in remains |
+| Step 6–7 shadow parity/retire | **NO-GO · production route evidence 0건** | [ADR-001](./decisions/ADR-001-production-dual-write-cutover.md) 판정: 격리 production-like dual-write 10건은 통과했지만 production route 증거가 아니므로 legacy writer 제거·Mission 단일 authority 승격·production enqueue를 보류. [cohort report](./redesign-2026-07/dual-write-evidence-report-2026-07-13.md) 참조 |
 
 **안전 경계:** 기존 `plan_workflow`·`mission_loop`·`human_inbox` writer를 아직 제거하지 않는다. 새 경로는 shadow/compatibility projection으로만 사용하며 execute gate를 우회하지 않는다. 상세: [redesign governance](./redesign-2026-07/13-document-governance-and-execution-plan.md).
 

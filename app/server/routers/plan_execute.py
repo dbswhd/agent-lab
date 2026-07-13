@@ -379,7 +379,15 @@ def session_execute_resolve(
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
-    return {"ok": True, **result}
+    from agent_lab.mission.dual_write import mirror_execution_transition
+
+    vote = body.vote.strip().lower()
+    bridge = mirror_execution_transition(
+        folder,
+        execution=result.get("execution") or {},
+        phase="approve" if vote == "approve" else "reject",
+    )
+    return {"ok": True, "mission_dual_write": bridge, **result}
 
 
 @router.post("/sessions/{session_id}/execute/merge/abort")
@@ -411,7 +419,10 @@ def session_execute_merge_confirm(
         )
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e)) from e
-    return {"ok": True, **result}
+    from agent_lab.mission.dual_write import mirror_execution_transition
+
+    bridge = mirror_execution_transition(folder, execution=result.get("execution") or {}, phase="merge")
+    return {"ok": True, "mission_dual_write": bridge, **result}
 
 
 @router.post("/sessions/{session_id}/executions/{execution_id}/external-handoff")
@@ -456,4 +467,7 @@ def session_execute_reverify(
         raise HTTPException(status_code=409, detail=str(e)) from e
     except RuntimeError as e:
         raise HTTPException(status_code=503, detail=str(e)) from e
-    return {"ok": True, **result}
+    from agent_lab.mission.dual_write import mirror_execution_transition
+
+    bridge = mirror_execution_transition(folder, execution=result.get("execution") or {}, phase="oracle")
+    return {"ok": True, "mission_dual_write": bridge, **result}

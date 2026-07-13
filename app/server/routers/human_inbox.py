@@ -134,6 +134,9 @@ def resolve_session_inbox_item(
         )
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+    from agent_lab.mission.dual_write import mirror_inbox_resolution
+
+    bridge = mirror_inbox_resolution(folder, item_id=item_id, answer=body.decision or "")
     run = read_run_meta(folder)
     from agent_lab.human_inbox import format_human_decision
 
@@ -141,6 +144,7 @@ def resolve_session_inbox_item(
         "ok": True,
         "item": item,
         "human_decision": format_human_decision(item),
+        "mission_dual_write": bridge,
         **public_inbox_payload(run),
     }
 

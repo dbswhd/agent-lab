@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Literal, TypedDict
+from typing import Any, Literal, NotRequired, TypedDict
 
 from fastapi import APIRouter
 
 from agent_lab.mission.application import MissionApplication
-from agent_lab.mission.read_model import MissionReadModel, build_read_model
+from agent_lab.mission.read_model import (
+    MissionReadModel,
+    build_legacy_composites,
+    build_read_model,
+    session_run_for_read_model,
+)
 from agent_lab.run.meta import read_run_meta
 
 from app.server.deps import session_folder_or_404
@@ -33,6 +38,11 @@ class MissionReadModelPayload(TypedDict):
     operational_status: str | None
     open_execution_gates: list[dict[str, Any]]
     legacy_phase: str | None
+    plan: NotRequired[dict[str, Any] | None]
+    work_phase: NotRequired[str | None]
+    mission_overview: NotRequired[dict[str, Any] | None]
+    inbox_summary: NotRequired[dict[str, Any] | None]
+    inbox_items: NotRequired[list[dict[str, Any]]]
 
 
 def _goal_from_run(folder: Path) -> str:
@@ -49,15 +59,56 @@ def _goal_from_run(folder: Path) -> str:
     return folder.name
 
 
-def _legacy_phase(folder: Path) -> str | None:
-    mission_loop = read_run_meta(folder).get("mission_loop")
+def _legacy_phase(folder: Path, run: dict[str, Any] | None = None) -> str | None:
+    meta = run if run is not None else read_run_meta(folder)
+    mission_loop = meta.get("mission_loop")
     if not isinstance(mission_loop, dict):
         return None
     phase = mission_loop.get("phase")
     return phase if isinstance(phase, str) else None
 
 
+def _composite_dict(model: MissionReadModel) -> dict[str, Any]:
+    plan = model.plan
+    overview = model.mission_overview
+    inbox = model.inbox_summary
+    return {
+        "plan": (
+            {
+                "phase": plan.phase,
+                "hash": plan.hash,
+                "approved_hash": plan.approved_hash,
+                "pending_approval": plan.pending_approval,
+            }
+            if plan is not None
+            else None
+        ),
+        "work_phase": model.work_phase,
+        "mission_overview": (
+            {
+                "phase_label": overview.phase_label,
+                "paused": overview.paused,
+                "circuit_breaker": overview.circuit_breaker,
+                "pending_inbox_count": overview.pending_inbox_count,
+            }
+            if overview is not None
+            else None
+        ),
+        "inbox_summary": (
+            {
+                "pending_count": inbox.pending_count,
+                "pending_questions": inbox.pending_questions,
+                "pending_builds": inbox.pending_builds,
+            }
+            if inbox is not None
+            else None
+        ),
+        "inbox_items": list(model.inbox_items),
+    }
+
+
 def _payload(session_id: str, model: MissionReadModel, *, legacy_phase: str | None) -> MissionReadModelPayload:
+    composites = _composite_dict(model)
     return {
         "session_id": session_id,
         "migrated": True,
@@ -77,10 +128,17 @@ def _payload(session_id: str, model: MissionReadModel, *, legacy_phase: str | No
         "operational_status": model.operational_status.value,
         "open_execution_gates": [{"gate_id": g.gate_id, "kind": g.kind} for g in model.open_execution_gates],
         "legacy_phase": legacy_phase,
+        "plan": composites["plan"],
+        "work_phase": composites["work_phase"],
+        "mission_overview": composites["mission_overview"],
+        "inbox_summary": composites["inbox_summary"],
+        "inbox_items": composites["inbox_items"],
     }
 
 
 def _legacy_payload(session_id: str, folder: Path) -> MissionReadModelPayload:
+    run = session_run_for_read_model(folder)
+    composites = build_legacy_composites(run)
     return {
         "session_id": session_id,
         "migrated": False,
@@ -99,7 +157,12 @@ def _legacy_payload(session_id: str, folder: Path) -> MissionReadModelPayload:
         "event_cursor": 0,
         "operational_status": None,
         "open_execution_gates": [],
-        "legacy_phase": _legacy_phase(folder),
+        "legacy_phase": _legacy_phase(folder, run),
+        "plan": composites["plan"],
+        "work_phase": composites["work_phase"],
+        "mission_overview": composites["mission_overview"],
+        "inbox_summary": composites["inbox_summary"],
+        "inbox_items": composites["inbox_items"],
     }
 
 
@@ -109,6 +172,8 @@ def get_mission_read_model(session_id: str) -> MissionReadModelPayload:
     journal_path = folder / ".agent-lab" / "mission-events.jsonl"
     if not journal_path.is_file():
         return _legacy_payload(session_id, folder)
+    run = session_run_for_read_model(folder)
     goal = _goal_from_run(folder)
-    model = build_read_model(MissionApplication(folder, goal).load(), legacy_phase=_legacy_phase(folder))
+    legacy = _legacy_phase(folder, run)
+    model = build_read_model(MissionApplication(folder, goal).load(), legacy_phase=legacy, run=run)
     return _payload(session_id, model, legacy_phase=model.legacy_phase)

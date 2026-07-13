@@ -2,8 +2,8 @@
 
 실제 provider 검증 기록: [live supervisor dual-read report](./dual-read-live-report-2026-07-13.md) — timeout·partial persistence·lock recovery는 통과했지만 production dual-write 증거는 아니다. 최종 판정은 [ADR-001](../decisions/ADR-001-production-dual-write-cutover.md) 참조.
 
-현재 상태: controlled cohort **v3d GO** · Full traffic soak **IN PROGRESS (≥15 Room turns)** · legacy writer retire **Human 승인 전 금지**.  
-운영: [controlled cohort runbook](./dual-write-controlled-cohort-runbook-2026-07-13.md) · [full-traffic bounded cutover](./dual-write-full-traffic-bounded-cutover-2026-07-14.md) · [cutover scope](./dual-write-cutover-scope-limitations-2026-07-13.md) · [cohort run report](./dual-write-cohort-run-report-2026-07-13.md).
+현재 상태: controlled cohort **v3d GO** · Full traffic soak **PASS** · Slice 1–3 soft authority **implemented** · journal-first Wave A **API composites** · hard retire **Human 승인 전 금지**.  
+운영: [Slice 1 plan](./dual-write-retire-slice-plan-soft-2026-07-14.md) · [Slice 2 inbox](./dual-write-retire-slice-inbox-soft-2026-07-14.md) · [Slice 3 execution](./dual-write-retire-slice-execution-soft-2026-07-14.md) · [journal-first read/projection](./journal-first-read-projection-design-2026-07-14.md) · [m6-precheck](./m6-precheck-retire-scope-2026-07-14.md) · [full-traffic](./dual-write-full-traffic-bounded-cutover-2026-07-14.md).
 
 > **상태:** In progress / D0 — Wave 0~1 계약·shadow spike 착수, legacy cutover는 Human gate 유지  
 > **작성 기준일:** 2026-07-12  
@@ -208,5 +208,7 @@ read model의 첫 HTTP surface는 `/api/sessions/{id}/mission/read-model`이다.
 | —    | [production-route-dual-write-adapter-2026-07-13.md](./production-route-dual-write-adapter-2026-07-13.md) | opt-in route bridge, scheduler enqueue, live HTTP/SSE 검증                  |
 | —    | [dual-write-route-cohort-report-2026-07-13.md](./dual-write-route-cohort-report-2026-07-13.md) | 실제 `sessions/` route 10건·rollback 2건 및 cutover 경계                   |
 | —    | [dual-write-cutover-followup-2026-07-13.md](./dual-write-cutover-followup-2026-07-13.md) | Room dogfood 2건·fail/repair·durable recovery 후속 판정                   |
+| —    | [journal-first-read-projection-design-2026-07-14.md](./journal-first-read-projection-design-2026-07-14.md) | Journal SSOT · compat projection · Wave A read-model composites · M6 unlock |
+| —    | [m6-precheck-retire-scope-2026-07-14.md](./m6-precheck-retire-scope-2026-07-14.md) | M6 hard-retire NO-GO scope · keep inbox/execute implementers |
 
 심화 문서는 새로운 독립 로드맵이 아니다. 각 문서의 구현 작업은 Wave 0~4와 해당 섹터 작업에 편입하며, 동일한 command/event/context 계약을 중복 구현하지 않는다.

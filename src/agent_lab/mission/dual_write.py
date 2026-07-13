@@ -55,6 +55,38 @@ def dual_write_enabled(folder: Path | None = None) -> bool:
     return not cohort or (folder is not None and folder.name in cohort)
 
 
+def plan_write_authority_enabled(folder: Path | None = None) -> bool:
+    """Soft retire slice 1: Mission journal owns plan phase writes.
+
+    Requires dual-write (incl. optional session cohort). Authority without the
+    bridge is a hard no — callers must fall back to legacy-first approve/reject.
+    """
+    if not is_truthy(os.getenv("AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY")):
+        return False
+    return dual_write_enabled(folder)
+
+
+def inbox_write_authority_enabled(folder: Path | None = None) -> bool:
+    """Soft retire slice 2: Mission journal owns execution-gate open/close.
+
+    Requires dual-write. Legacy ``human_inbox`` remains the UI/compatibility store.
+    """
+    if not is_truthy(os.getenv("AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY")):
+        return False
+    return dual_write_enabled(folder)
+
+
+def execution_write_authority_enabled(folder: Path | None = None) -> bool:
+    """Soft retire slice 3: Mission journal must record execute/merge/oracle transitions.
+
+    Requires dual-write. Legacy writers still perform side effects first; this flag
+    fail-closes the HTTP route when the Mission commit does not mirror.
+    """
+    if not is_truthy(os.getenv("AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY")):
+        return False
+    return dual_write_enabled(folder)
+
+
 def _blocked_result(folder: Path, operation: str) -> dict[str, Any] | None:
     if not is_truthy(os.getenv("AGENT_LAB_MISSION_DUAL_WRITE")):
         return {"enabled": False, "operation": operation, "mirrored": False}
@@ -192,6 +224,59 @@ def mirror_plan_rejection(folder: Path, *, note: str = "", goal: str | None = No
 
 
 @_observed
+def commit_plan_approval(folder: Path, *, goal: str | None = None) -> dict[str, Any]:
+    """Authority path: Mission journal is the plan-phase write source, then projects.
+
+    Unlike ``mirror_plan_approval``, this requires
+    ``plan_write_authority_enabled`` and returns ``mirrored=False`` with an
+    explicit reason when the soft-retire flag/cohort gate is closed.
+    """
+    if not plan_write_authority_enabled(folder):
+        return {
+            "enabled": dual_write_enabled(folder),
+            "operation": "plan_approve_commit",
+            "mirrored": False,
+            "reason": "plan_write_authority_disabled",
+        }
+    try:
+        mission = MissionApplication(folder, _goal(folder, goal)).approve_plan()
+    except (MissionApplicationError, MissionTransitionError, OSError, ValueError) as exc:
+        return _result(operation="plan_approve_commit", mirrored=False, reason=str(exc)[:240])
+    return {
+        **_result(operation="plan_approve_commit", mirrored=True),
+        "state": mission.state.value,
+        "version": mission.version,
+    }
+
+
+@_observed
+def commit_plan_rejection(
+    folder: Path,
+    *,
+    note: str = "",
+    goal: str | None = None,
+    target_phase: str = "CLARIFY",
+) -> dict[str, Any]:
+    """Authority path reject: Mission owns phase; honors CLARIFY|REFINE|DRAFT projection."""
+    if not plan_write_authority_enabled(folder):
+        return {
+            "enabled": dual_write_enabled(folder),
+            "operation": "plan_reject_commit",
+            "mirrored": False,
+            "reason": "plan_write_authority_disabled",
+        }
+    try:
+        mission = MissionApplication(folder, _goal(folder, goal)).reject_plan(note, target_phase=target_phase)
+    except (MissionApplicationError, MissionTransitionError, OSError, ValueError) as exc:
+        return _result(operation="plan_reject_commit", mirrored=False, reason=str(exc)[:240])
+    return {
+        **_result(operation="plan_reject_commit", mirrored=True),
+        "state": mission.state.value,
+        "version": mission.version,
+    }
+
+
+@_observed
 def mirror_inbox_creation(folder: Path, *, item_id: str, kind: str = "", reason: str = "") -> dict[str, Any]:
     """Open an execution-level gate when a human question/build item is created.
 
@@ -251,6 +336,65 @@ def mirror_inbox_resolution(folder: Path, *, item_id: str, answer: str = "") -> 
     }
 
 
+def _dispatch_open_gate(folder: Path, *, item_id: str, kind: str, reason: str) -> Any:
+    journal = folder / ".agent-lab" / "mission-events.jsonl"
+    journal.parent.mkdir(parents=True, exist_ok=True)
+    repo = MissionRepository(journal, folder.name, _goal(folder))
+    return repo.dispatch(OpenExecutionGate(item_id, kind, reason), idempotency_key=f"gate-open:{item_id}")
+
+
+def _dispatch_close_gate(folder: Path, *, item_id: str, answer: str = "") -> Any:
+    journal = folder / ".agent-lab" / "mission-events.jsonl"
+    journal.parent.mkdir(parents=True, exist_ok=True)
+    repo = MissionRepository(journal, folder.name, _goal(folder))
+    mission = repo.load()
+    if mission.state is MissionState.AWAITING_HUMAN:
+        mission = repo.dispatch(ResolveBlock(), idempotency_key=f"inbox-resolve:{item_id}:{answer.strip()}")
+    return repo.dispatch(CloseExecutionGate(item_id), idempotency_key=f"gate-close:{item_id}")
+
+
+@_observed
+def commit_inbox_creation(folder: Path, *, item_id: str, kind: str = "", reason: str = "") -> dict[str, Any]:
+    """Authority path: OpenExecutionGate first (may bootstrap journal)."""
+    if not inbox_write_authority_enabled(folder):
+        return {
+            "enabled": dual_write_enabled(folder),
+            "operation": "inbox_create_commit",
+            "mirrored": False,
+            "reason": "inbox_write_authority_disabled",
+        }
+    try:
+        mission = _dispatch_open_gate(folder, item_id=item_id, kind=kind, reason=reason)
+    except (MissionTransitionError, OSError, ValueError) as exc:
+        return _result(operation="inbox_create_commit", mirrored=False, reason=str(exc)[:240])
+    return {
+        **_result(operation="inbox_create_commit", mirrored=True),
+        "state": mission.state.value,
+        "open_gate_count": len(mission.open_gates),
+    }
+
+
+@_observed
+def commit_inbox_resolution(folder: Path, *, item_id: str, answer: str = "") -> dict[str, Any]:
+    """Authority path: CloseExecutionGate first (optional ResolveBlock)."""
+    if not inbox_write_authority_enabled(folder):
+        return {
+            "enabled": dual_write_enabled(folder),
+            "operation": "inbox_resolve_commit",
+            "mirrored": False,
+            "reason": "inbox_write_authority_disabled",
+        }
+    try:
+        mission = _dispatch_close_gate(folder, item_id=item_id, answer=answer)
+    except (MissionTransitionError, OSError, ValueError) as exc:
+        return _result(operation="inbox_resolve_commit", mirrored=False, reason=str(exc)[:240])
+    return {
+        **_result(operation="inbox_resolve_commit", mirrored=True),
+        "state": mission.state.value,
+        "open_gate_count": len(mission.open_gates),
+    }
+
+
 @_observed
 def mirror_execution_transition(
     folder: Path,
@@ -261,9 +405,98 @@ def mirror_execution_transition(
     blocked = _blocked_result(folder, f"execution_{phase}")
     if blocked is not None:
         return blocked
+    return _execution_transition(folder, execution=execution, phase=phase, operation=f"execution_{phase}")
+
+
+@_observed
+def commit_execution_transition(
+    folder: Path,
+    *,
+    execution: dict[str, Any],
+    phase: Literal["approve", "reject", "merge", "oracle"],
+) -> dict[str, Any]:
+    """Authority path: same Mission recording as mirror, fail-closed at the route."""
+    if not execution_write_authority_enabled(folder):
+        return {
+            "enabled": dual_write_enabled(folder),
+            "operation": f"execution_{phase}_commit",
+            "mirrored": False,
+            "reason": "execution_write_authority_disabled",
+        }
+    blocked = _blocked_result(folder, f"execution_{phase}_commit")
+    if blocked is not None:
+        return {**blocked, "operation": f"execution_{phase}_commit"}
+    return _execution_transition(
+        folder,
+        execution=execution,
+        phase=phase,
+        operation=f"execution_{phase}_commit",
+    )
+
+
+def sync_open_gates_for_inbox_items(
+    folder: Path,
+    items: list[dict[str, Any]],
+    *,
+    reason: str = "harvest",
+) -> list[str]:
+    """Open Mission execution gates for harvested/appended inbox items.
+
+    Fail-open: individual mirror/commit failures are skipped so turn persistence
+    is never blocked. Necessary for dual-write parity when items bypass
+    ``create_inbox_item``.
+    """
+    opened: list[str] = []
+    if not dual_write_enabled(folder):
+        return opened
+    for item in items:
+        item_id = str(item.get("id") or "")
+        if not item_id:
+            continue
+        kind = str(item.get("kind") or "question")
+        item_reason = str(item.get("summary") or item.get("prompt") or reason)
+        try:
+            if inbox_write_authority_enabled(folder):
+                result = commit_inbox_creation(folder, item_id=item_id, kind=kind, reason=item_reason)
+            else:
+                result = mirror_inbox_creation(folder, item_id=item_id, kind=kind, reason=item_reason)
+        except Exception:
+            continue
+        if result.get("mirrored") is True:
+            opened.append(item_id)
+    return opened
+
+
+def close_gates_for_inbox_ids(folder: Path, item_ids: list[str], *, answer: str = "superseded") -> list[str]:
+    """Close Mission gates for superseded (or otherwise retired) inbox ids."""
+    closed: list[str] = []
+    if not dual_write_enabled(folder):
+        return closed
+    for item_id in item_ids:
+        if not item_id:
+            continue
+        try:
+            if inbox_write_authority_enabled(folder):
+                result = commit_inbox_resolution(folder, item_id=item_id, answer=answer)
+            else:
+                result = mirror_inbox_resolution(folder, item_id=item_id, answer=answer)
+        except Exception:
+            continue
+        if result.get("mirrored") is True:
+            closed.append(item_id)
+    return closed
+
+
+def _execution_transition(
+    folder: Path,
+    *,
+    execution: dict[str, Any],
+    phase: Literal["approve", "reject", "merge", "oracle"],
+    operation: str,
+) -> dict[str, Any]:
     journal = folder / ".agent-lab" / "mission-events.jsonl"
     if not journal.is_file():
-        return _result(operation=f"execution_{phase}", mirrored=False, reason="mission_journal_missing")
+        return _result(operation=operation, mirrored=False, reason="mission_journal_missing")
     repo = MissionRepository(journal, folder.name, _goal(folder))
     mission = repo.load()
     execution_id = str(execution.get("id") or execution.get("execution_id") or "unknown")
@@ -271,7 +504,10 @@ def mirror_execution_transition(
     merge_conflict_inbox: dict[str, Any] | None = None
     try:
         if phase == "reject":
-            return {**_result(operation="execution_reject", mirrored=False, reason="legacy_only"), "state": mission.state.value}
+            return {
+                **_result(operation=operation, mirrored=False, reason="legacy_only"),
+                "state": mission.state.value,
+            }
         if phase == "approve":
             if execution_status == "merge_conflict":
                 merge_conflict_inbox = {
@@ -321,7 +557,7 @@ def mirror_execution_transition(
                 repair_sha = str(repair_merge.get("commit_sha") or repair.get("exec_commit_sha") or "")
                 if mission.state is MissionState.VERIFYING and mission.merged_commit_sha is None:
                     if not repair_sha:
-                        return _result(operation="execution_oracle", mirrored=False, reason="repair_commit_missing")
+                        return _result(operation=operation, mirrored=False, reason="repair_commit_missing")
                     mission = repo.dispatch(
                         RecordMerge(repair_sha),
                         idempotency_key=f"repair-merge:{execution_id}:{attempt}:{repair_sha}",
@@ -333,9 +569,9 @@ def mirror_execution_transition(
                 detail = str(oracle.get("detail") or oracle.get("reason") or "")
                 mission = repo.dispatch(RecordOracle(verdict, detail), idempotency_key=f"oracle:{execution_id}:{verdict.value}:{detail}")
     except (MissionTransitionError, OSError, ValueError) as exc:
-        return _result(operation=f"execution_{phase}", mirrored=False, reason=str(exc)[:240])
+        return _result(operation=operation, mirrored=False, reason=str(exc)[:240])
     payload: dict[str, Any] = {
-        **_result(operation=f"execution_{phase}", mirrored=True),
+        **_result(operation=operation, mirrored=True),
         "state": mission.state.value,
         "version": mission.version,
     }

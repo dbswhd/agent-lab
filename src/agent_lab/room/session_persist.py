@@ -498,27 +498,41 @@ def _write_session_files(
 
     _inbox_human_turn = _human_turn_count(messages_to_store)
     _inbox_mode = str(tm.get("mode") or "discuss")
+    harvested: list[dict[str, Any]] = []
     if clarifier_questions:
-        harvest_clarifier_questions(
-            run_meta,
-            clarifier_questions,
-            human_turn=_inbox_human_turn,
+        harvested.extend(
+            harvest_clarifier_questions(
+                run_meta,
+                clarifier_questions,
+                human_turn=_inbox_human_turn,
+            )
         )
-    harvest_discuss_questions(
-        run_meta,
-        messages_to_store,
-        human_turn=_inbox_human_turn,
-        plan_md=plan_md,
-        mode=_inbox_mode,
-        session_id=folder.name,
+    harvested.extend(
+        harvest_discuss_questions(
+            run_meta,
+            messages_to_store,
+            human_turn=_inbox_human_turn,
+            plan_md=plan_md,
+            mode=_inbox_mode,
+            session_id=folder.name,
+        )
     )
     # Build proposal after questions so a pending question blocks build (§3.2).
-    harvest_build_proposal(
+    build_item = harvest_build_proposal(
         run_meta,
         plan_md=plan_md,
         human_turn=_inbox_human_turn,
         mode=_inbox_mode,
     )
+    if build_item:
+        harvested.append(build_item)
+    if harvested:
+        try:
+            from agent_lab.mission.dual_write import sync_open_gates_for_inbox_items
+
+            sync_open_gates_for_inbox_items(folder, harvested, reason="harvest")
+        except Exception:
+            pass
     from agent_lab.room.artifacts import harvest_artifacts_from_turn
 
     harvest_artifacts_from_turn(

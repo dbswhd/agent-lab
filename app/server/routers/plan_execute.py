@@ -379,14 +379,24 @@ def session_execute_resolve(
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
-    from agent_lab.mission.dual_write import mirror_execution_transition
+    from agent_lab.mission.dual_write import (
+        commit_execution_transition,
+        execution_write_authority_enabled,
+        mirror_execution_transition,
+    )
 
     vote = body.vote.strip().lower()
-    bridge = mirror_execution_transition(
-        folder,
-        execution=result.get("execution") or {},
-        phase="approve" if vote == "approve" else "reject",
-    )
+    phase = "approve" if vote == "approve" else "reject"
+    execution = result.get("execution") or {}
+    if execution_write_authority_enabled(folder):
+        bridge = commit_execution_transition(folder, execution=execution, phase=phase)
+        if phase != "reject" and bridge.get("mirrored") is not True:
+            raise HTTPException(
+                status_code=409,
+                detail=f"mission execution commit failed: {bridge.get('reason') or 'unknown'}",
+            )
+    else:
+        bridge = mirror_execution_transition(folder, execution=execution, phase=phase)
     return {"ok": True, "mission_dual_write": bridge, **result}
 
 
@@ -419,9 +429,22 @@ def session_execute_merge_confirm(
         )
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e)) from e
-    from agent_lab.mission.dual_write import mirror_execution_transition
+    from agent_lab.mission.dual_write import (
+        commit_execution_transition,
+        execution_write_authority_enabled,
+        mirror_execution_transition,
+    )
 
-    bridge = mirror_execution_transition(folder, execution=result.get("execution") or {}, phase="merge")
+    execution = result.get("execution") or {}
+    if execution_write_authority_enabled(folder):
+        bridge = commit_execution_transition(folder, execution=execution, phase="merge")
+        if bridge.get("mirrored") is not True:
+            raise HTTPException(
+                status_code=409,
+                detail=f"mission execution commit failed: {bridge.get('reason') or 'unknown'}",
+            )
+    else:
+        bridge = mirror_execution_transition(folder, execution=execution, phase="merge")
     return {"ok": True, "mission_dual_write": bridge, **result}
 
 
@@ -467,7 +490,20 @@ def session_execute_reverify(
         raise HTTPException(status_code=409, detail=str(e)) from e
     except RuntimeError as e:
         raise HTTPException(status_code=503, detail=str(e)) from e
-    from agent_lab.mission.dual_write import mirror_execution_transition
+    from agent_lab.mission.dual_write import (
+        commit_execution_transition,
+        execution_write_authority_enabled,
+        mirror_execution_transition,
+    )
 
-    bridge = mirror_execution_transition(folder, execution=result.get("execution") or {}, phase="oracle")
+    execution = result.get("execution") or {}
+    if execution_write_authority_enabled(folder):
+        bridge = commit_execution_transition(folder, execution=execution, phase="oracle")
+        if bridge.get("mirrored") is not True:
+            raise HTTPException(
+                status_code=409,
+                detail=f"mission execution commit failed: {bridge.get('reason') or 'unknown'}",
+            )
+    else:
+        bridge = mirror_execution_transition(folder, execution=execution, phase="oracle")
     return {"ok": True, "mission_dual_write": bridge, **result}

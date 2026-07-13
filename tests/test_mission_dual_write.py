@@ -4,6 +4,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from agent_lab.human_inbox import create_inbox_item, resolve_inbox_item
 from agent_lab.mission.dual_write import (
     mirror_inbox_creation,
@@ -18,6 +20,15 @@ from agent_lab.mission.scheduler_shadow import enqueue_scheduler_shadow_candidat
 from agent_lab.mission.activity_queue import ActivityQueue, QueueState, QueuedActivity
 from agent_lab.mission.recovery import RecoveryAction, SideEffectState
 from agent_lab.run.meta import read_run_meta
+
+
+@pytest.fixture(autouse=True)
+def _clear_dual_write_process_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep dual-write tests hermetic when the developer shell has cohort soak env."""
+    monkeypatch.delenv("AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS", raising=False)
+    monkeypatch.delenv("AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY", raising=False)
+    monkeypatch.delenv("AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY", raising=False)
+    monkeypatch.delenv("AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY", raising=False)
 
 
 def _session(tmp_path: Path) -> Path:
@@ -356,3 +367,279 @@ def test_merge_confirm_closes_orphan_gate_without_legacy_inbox(tmp_path: Path, m
     assert result["mirrored"] is True
     assert mission.open_gates == ()
     assert gate_id in (result.get("merge_conflict_inbox") or {}).get("closed_item_ids", [])
+
+
+def test_plan_write_authority_requires_dual_write(tmp_path: Path, monkeypatch) -> None:
+    folder = _session(tmp_path)
+    monkeypatch.setenv("AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY", "1")
+    monkeypatch.delenv("AGENT_LAB_MISSION_DUAL_WRITE", raising=False)
+
+    from agent_lab.mission.dual_write import plan_write_authority_enabled
+
+    assert plan_write_authority_enabled(folder) is False
+
+
+def test_plan_write_authority_off_keeps_legacy_first_mirror(tmp_path: Path, monkeypatch) -> None:
+    """Authority OFF: legacy approve writes phase first; mirror still works."""
+    folder = _session(tmp_path)
+    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
+    monkeypatch.delenv("AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY", raising=False)
+
+    from agent_lab.plan.workflow_approval import approve_plan
+    from agent_lab.mission.dual_write import mirror_plan_approval, plan_write_authority_enabled
+
+    assert plan_write_authority_enabled(folder) is False
+    result = approve_plan(folder, goal="ship")
+    assert result["plan_workflow"]["phase"] == "APPROVED"
+    bridge = mirror_plan_approval(folder, goal="ship")
+    assert bridge["mirrored"] is True
+    assert bridge["operation"] == "plan_approve"
+
+
+def test_plan_write_authority_on_mission_first_then_side_effects(tmp_path: Path, monkeypatch) -> None:
+    folder = _session(tmp_path)
+    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
+    monkeypatch.setenv("AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY", "1")
+
+    from agent_lab.mission.dual_write import commit_plan_approval, plan_write_authority_enabled
+    from agent_lab.plan.workflow_approval import (
+        approve_plan_with_mission_authority,
+        ensure_plan_workflow_approved,
+    )
+
+    assert plan_write_authority_enabled(folder) is True
+
+    # Mission commit alone leaves journal + projected phase before side effects.
+    commit = commit_plan_approval(folder, goal="ship")
+    assert commit["mirrored"] is True
+    assert commit["operation"] == "plan_approve_commit"
+    journal = folder / ".agent-lab" / "mission-events.jsonl"
+    assert journal.is_file()
+    journal_text = journal.read_text(encoding="utf-8")
+    assert "PlanApproved" in journal_text or '"event_type":"PlanApproved"' in journal_text
+    assert read_run_meta(folder)["plan_workflow"]["phase"] == "APPROVED"
+
+    # Reset to HUMAN_PENDING for the full authority approve path.
+    (folder / "run.json").write_text(
+        '{"plan_workflow":{"enabled":true,"phase":"HUMAN_PENDING"}}',
+        encoding="utf-8",
+    )
+    # Fresh journal for the full path test in a sibling session.
+    folder2 = tmp_path / "session-auth"
+    folder2.mkdir()
+    (folder2 / "plan.md").write_text("# Plan\n\n- ship", encoding="utf-8")
+    (folder2 / "run.json").write_text(
+        '{"plan_workflow":{"enabled":true,"phase":"HUMAN_PENDING"}}',
+        encoding="utf-8",
+    )
+
+    result = approve_plan_with_mission_authority(folder2, goal="ship")
+    assert result["plan_workflow"]["phase"] == "APPROVED"
+    assert result["mission_dual_write"]["mirrored"] is True
+    ensure_plan_workflow_approved(folder2)
+    assert MissionApplication(folder2, "ship").load().state is MissionState.READY_TO_EXECUTE
+
+
+def test_plan_write_authority_commit_is_idempotent(tmp_path: Path, monkeypatch) -> None:
+    folder = _session(tmp_path)
+    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
+    monkeypatch.setenv("AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY", "1")
+
+    from agent_lab.mission.dual_write import commit_plan_approval
+
+    first = commit_plan_approval(folder, goal="ship")
+    second = commit_plan_approval(folder, goal="ship")
+    assert first["mirrored"] is True
+    assert second["mirrored"] is True
+    assert MissionApplication(folder, "ship").load().version == 2
+
+
+def test_plan_write_authority_reject_honors_refine(tmp_path: Path, monkeypatch) -> None:
+    folder = _session(tmp_path)
+    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
+    monkeypatch.setenv("AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY", "1")
+
+    from agent_lab.plan.workflow_approval import reject_plan_with_mission_authority
+
+    result = reject_plan_with_mission_authority(folder, note="narrow scope", target_phase="REFINE")
+    assert result["plan_workflow"]["phase"] == "REFINE"
+    assert result["plan_workflow"].get("last_reject_note") == "narrow scope"
+    assert result["mission_dual_write"]["mirrored"] is True
+
+
+def test_plan_write_authority_off_reject_mirror_still_clarify(tmp_path: Path, monkeypatch) -> None:
+    """Dual-write-only rejection continues to project CLARIFY (characterization)."""
+    folder = _session(tmp_path)
+    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
+    monkeypatch.delenv("AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY", raising=False)
+
+    from agent_lab.plan.workflow_approval import reject_plan
+
+    pw = reject_plan(folder, note="needs scope", target_phase="REFINE")
+    assert pw["phase"] == "REFINE"
+    result = mirror_plan_rejection(folder, note="needs scope", goal="ship")
+    assert result["mirrored"] is True
+    # Mirror re-projects to CLARIFY — existing dual-write behavior.
+    assert read_run_meta(folder)["plan_workflow"]["phase"] == "CLARIFY"
+
+
+def test_plan_write_authority_rollback_via_flag_off(tmp_path: Path, monkeypatch) -> None:
+    folder = _session(tmp_path)
+    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
+    monkeypatch.setenv("AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY", "1")
+
+    from agent_lab.mission.dual_write import plan_write_authority_enabled
+
+    assert plan_write_authority_enabled(folder) is True
+    monkeypatch.delenv("AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY", raising=False)
+    assert plan_write_authority_enabled(folder) is False
+
+
+def test_inbox_write_authority_requires_dual_write(tmp_path: Path, monkeypatch) -> None:
+    folder = _session(tmp_path)
+    monkeypatch.setenv("AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY", "1")
+    monkeypatch.delenv("AGENT_LAB_MISSION_DUAL_WRITE", raising=False)
+
+    from agent_lab.mission.dual_write import inbox_write_authority_enabled
+
+    assert inbox_write_authority_enabled(folder) is False
+
+
+def test_inbox_write_authority_off_keeps_legacy_first_mirror(tmp_path: Path, monkeypatch) -> None:
+    folder = _session(tmp_path)
+    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
+    monkeypatch.delenv("AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY", raising=False)
+
+    MissionApplication(folder, "ship").approve_plan()
+    item = create_inbox_item(folder, kind="question", source="test", prompt="legacy first?")
+    mission = MissionApplication(folder, "ship").load()
+    assert {g.gate_id for g in mission.open_gates} == {item["id"]}
+
+    resolve_inbox_item(folder, item["id"], decision="yes", append_chat=False)
+    result = mirror_inbox_resolution(folder, item_id=item["id"], answer="yes")
+    assert result["mirrored"] is True
+    assert result["operation"] == "inbox_resolve"
+    assert MissionApplication(folder, "ship").load().open_gates == ()
+
+
+def test_inbox_write_authority_on_mission_first(tmp_path: Path, monkeypatch) -> None:
+    folder = _session(tmp_path)
+    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
+    monkeypatch.setenv("AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY", "1")
+
+    from agent_lab.mission.dual_write import commit_inbox_resolution
+
+    MissionApplication(folder, "ship").approve_plan()
+    # create_inbox_item commits OpenExecutionGate before run.json append when authority on.
+    item = create_inbox_item(folder, kind="question", source="test", prompt="authority first?")
+    mission = MissionApplication(folder, "ship").load()
+    assert {g.gate_id for g in mission.open_gates} == {item["id"]}
+    assert any(i.get("id") == item["id"] for i in read_run_meta(folder).get("human_inbox") or [])
+
+    # Resolve via Mission-first commit then legacy (router shape).
+    bridge = commit_inbox_resolution(folder, item_id=item["id"], answer="ship it")
+    assert bridge["mirrored"] is True
+    assert bridge["operation"] == "inbox_resolve_commit"
+    resolve_inbox_item(folder, item["id"], decision="ship it", append_chat=False)
+    assert MissionApplication(folder, "ship").load().open_gates == ()
+    pending = [i for i in read_run_meta(folder).get("human_inbox") or [] if i.get("status") == "pending"]
+    assert pending == []
+
+
+def test_inbox_write_authority_commit_open_is_idempotent(tmp_path: Path, monkeypatch) -> None:
+    folder = _session(tmp_path)
+    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
+    monkeypatch.setenv("AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY", "1")
+
+    from agent_lab.mission.dual_write import commit_inbox_creation
+
+    MissionApplication(folder, "ship").approve_plan()
+    item_id = "inbox-authority-idem"
+    first = commit_inbox_creation(folder, item_id=item_id, kind="question", reason="once")
+    second = commit_inbox_creation(folder, item_id=item_id, kind="question", reason="once")
+    assert first["mirrored"] is True
+    assert second["mirrored"] is True
+    mission = MissionApplication(folder, "ship").load()
+    assert len(mission.open_gates) == 1
+    assert mission.open_gates[0].gate_id == item_id
+
+
+def test_inbox_write_authority_rollback_via_flag_off(tmp_path: Path, monkeypatch) -> None:
+    folder = _session(tmp_path)
+    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
+    monkeypatch.setenv("AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY", "1")
+
+    from agent_lab.mission.dual_write import inbox_write_authority_enabled
+
+    assert inbox_write_authority_enabled(folder) is True
+    monkeypatch.delenv("AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY", raising=False)
+    assert inbox_write_authority_enabled(folder) is False
+
+
+def test_supersede_closes_open_execution_gates(tmp_path: Path, monkeypatch) -> None:
+    folder = _session(tmp_path)
+    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
+    monkeypatch.setenv("AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY", "1")
+
+    from agent_lab.human_inbox import supersede_pending_inbox
+
+    MissionApplication(folder, "ship").approve_plan()
+    item = create_inbox_item(folder, kind="question", source="test", prompt="stale?")
+    assert {g.gate_id for g in MissionApplication(folder, "ship").load().open_gates} == {item["id"]}
+    count = supersede_pending_inbox(folder, human_turn_id=2)
+    assert count == 1
+    assert MissionApplication(folder, "ship").load().open_gates == ()
+
+
+def test_sync_open_gates_for_harvested_items(tmp_path: Path, monkeypatch) -> None:
+    folder = _session(tmp_path)
+    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
+    monkeypatch.setenv("AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY", "1")
+
+    from agent_lab.human_inbox import append_inbox_item, new_inbox_item
+    from agent_lab.mission.dual_write import sync_open_gates_for_inbox_items
+    from agent_lab.run.meta import patch_run_meta
+
+    MissionApplication(folder, "ship").approve_plan()
+    item = new_inbox_item(kind="question", source="orchestrator", prompt="harvested?")
+    patch_run_meta(folder, lambda run: append_inbox_item(run, item))
+    opened = sync_open_gates_for_inbox_items(folder, [item], reason="harvest")
+    assert opened == [item["id"]]
+    assert {g.gate_id for g in MissionApplication(folder, "ship").load().open_gates} == {item["id"]}
+
+
+def test_execution_write_authority_commit_approve(tmp_path: Path, monkeypatch) -> None:
+    folder = _session(tmp_path)
+    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
+    monkeypatch.setenv("AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY", "1")
+
+    from agent_lab.mission.dual_write import commit_execution_transition, execution_write_authority_enabled
+
+    assert execution_write_authority_enabled(folder) is True
+    MissionApplication(folder, "ship").approve_plan()
+    result = commit_execution_transition(
+        folder,
+        execution={"id": "exec-1", "status": "approved"},
+        phase="approve",
+    )
+    assert result["mirrored"] is True
+    assert result["operation"] == "execution_approve_commit"
+    assert MissionApplication(folder, "ship").load().state is MissionState.VERIFYING
+
+
+def test_execution_write_authority_reject_stays_legacy_only(tmp_path: Path, monkeypatch) -> None:
+    folder = _session(tmp_path)
+    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
+    monkeypatch.setenv("AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY", "1")
+
+    from agent_lab.mission.dual_write import commit_execution_transition
+
+    MissionApplication(folder, "ship").approve_plan()
+    result = commit_execution_transition(
+        folder,
+        execution={"id": "exec-1", "status": "rejected"},
+        phase="reject",
+    )
+    assert result["mirrored"] is False
+    assert result["reason"] == "legacy_only"
+    assert MissionApplication(folder, "ship").load().state is MissionState.READY_TO_EXECUTE

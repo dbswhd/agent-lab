@@ -56,7 +56,7 @@ class MissionApplication:
         self._project_plan(mission)
         return mission
 
-    def reject_plan(self, note: str) -> Mission:
+    def reject_plan(self, note: str, *, target_phase: str = "CLARIFY") -> Mission:
         plan = self._read_plan()
         plan_hash = plan_content_hash(plan)
         current = self.load()
@@ -71,7 +71,7 @@ class MissionApplication:
             expected_version=current.version,
             idempotency_key=f"plan-reject:{reject_key}",
         )
-        self._project_plan(mission, note=note)
+        self._project_plan(mission, note=note, phase=target_phase)
         return mission
 
     def answer_inbox(self, item_id: str, answer: str, *, note: str | None = None) -> Mission:
@@ -103,22 +103,32 @@ class MissionApplication:
             raise MissionApplicationError("plan.md is empty")
         return plan
 
-    def _project_plan(self, mission: Mission, *, note: str = "") -> None:
-        phase = "APPROVED" if mission.state is MissionState.READY_TO_EXECUTE else "CLARIFY"
+    def _project_plan(self, mission: Mission, *, note: str = "", phase: str | None = None) -> None:
+        from agent_lab.time_utils import utc_now_iso
+
+        if mission.state is MissionState.READY_TO_EXECUTE:
+            projected = "APPROVED"
+        else:
+            allowed = {"CLARIFY", "REFINE", "DRAFT"}
+            candidate = (phase or "CLARIFY").strip().upper()
+            projected = candidate if candidate in allowed else "CLARIFY"
 
         def update(run: RunState) -> RunState:
-            if phase == "APPROVED":
+            if projected == "APPROVED":
                 updated = apply_plan_substate_patch(
                     run,
-                    phase=phase,
+                    phase=projected,
                     plan_hash_at_approval=mission.approved_plan_hash,
-                    pop_fields=("last_reject_note",),
+                    approved_at=utc_now_iso(),
+                    approved_by="human",
+                    pop_fields=("last_reject_note", "notice", "last_plan_gate"),
                 )
             else:
                 updated = apply_plan_substate_patch(
                     run,
-                    phase=phase,
+                    phase=projected,
                     last_reject_note=note.strip()[:500],
+                    pop_fields=("notice", "last_plan_gate"),
                 )
             return RunState.from_memory(updated)
 

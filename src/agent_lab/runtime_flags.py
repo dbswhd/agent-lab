@@ -50,6 +50,30 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         "Comma-separated session IDs allowed to use the dual-write bridge when enabled (empty means all)",
     ),
     FlagDef(
+        "AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY",
+        "feature",
+        "Soft retire Slice 1: Mission owns plan approve/reject phase (requires DUAL_WRITE; balanced/thorough/autonomous default on)",
+        default="1",
+    ),
+    FlagDef(
+        "AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY",
+        "feature",
+        "Soft retire Slice 2: Mission owns inbox execution-gate open/close (requires DUAL_WRITE; balanced/thorough/autonomous default on)",
+        default="1",
+    ),
+    FlagDef(
+        "AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY",
+        "feature",
+        "Soft retire Slice 3: fail-closed Mission commit after execute/merge/reverify (requires DUAL_WRITE; balanced/thorough/autonomous default on)",
+        default="1",
+    ),
+    FlagDef(
+        "AGENT_LAB_MISSION_UI_READ_MODEL",
+        "feature",
+        "Wave A stub: web may fetch GET /mission/read-model (default off; do not replace Inbox/Composer until Wave B)",
+        default="0",
+    ),
+    FlagDef(
         "AGENT_LAB_STAGE_ROUTING", "feature", "Phase-aware single-vs-panel routing (stage-aware selective; default off)"
     ),
     FlagDef(

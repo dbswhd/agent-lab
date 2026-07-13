@@ -5,8 +5,10 @@ from __future__ import annotations
 from agent_lab.plan.workflow_approval import (
     approve_plan,
     approve_plan_bypass,
+    approve_plan_with_mission_authority,
     ensure_plan_workflow_approved,
     reject_plan,
+    reject_plan_with_mission_authority,
 )
 from agent_lab.plan.workflow_clarify import (
     PLAN_CLARIFY_GUIDANCE,
@@ -75,6 +77,7 @@ __all__ = [
     "apply_legacy_verified_turn_profile",
     "approve_plan",
     "approve_plan_bypass",
+    "approve_plan_with_mission_authority",
     "build_clarify_context_block",
     "build_plan_clarify_agent_block",
     "default_plan_workflow",
@@ -104,6 +107,7 @@ __all__ = [
     "plan_workflow_skips_server_clarifier",
     "plan_workflow_wants_inbox_mcp",
     "reject_plan",
+    "reject_plan_with_mission_authority",
     "resolved_max_peer_review_rounds",
     "resolve_work_phase_from_plan_workflow",
     "run_plan_peer_review_round",

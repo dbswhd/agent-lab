@@ -2697,6 +2697,57 @@ export async function fetchInboxSummary(includeArchived = false) {
   return json<InboxSummaryPayload>(`/api/inbox/summary${query}`);
 }
 
+/** Wave A journal-first read-model (see docs/redesign-2026-07/journal-first-read-projection-design-2026-07-14.md). */
+export type MissionReadModelPayload = {
+  session_id: string;
+  migrated: boolean;
+  source: "mission_journal" | "legacy" | string;
+  mission_id: string | null;
+  goal: string | null;
+  state: string | null;
+  version: number | null;
+  plan_revision: number | null;
+  plan_hash: string | null;
+  approved_plan_hash: string | null;
+  repair_attempt: number | null;
+  max_repair_attempts: number | null;
+  oracle_verdict: string | null;
+  next_action: string;
+  event_cursor: number;
+  operational_status: string | null;
+  open_execution_gates: Array<{ gate_id: string; kind: string }>;
+  legacy_phase: string | null;
+  plan?: {
+    phase: string | null;
+    hash: string | null;
+    approved_hash: string | null;
+    pending_approval: boolean;
+  } | null;
+  work_phase?: string | null;
+  mission_overview?: {
+    phase_label: string;
+    paused: boolean;
+    circuit_breaker: boolean;
+    pending_inbox_count: number;
+  } | null;
+  inbox_summary?: {
+    pending_count: number;
+    pending_questions: number;
+    pending_builds: number;
+  } | null;
+  inbox_items?: HumanInboxItem[];
+};
+
+/**
+ * Read-only Mission composites. Prefer only when AGENT_LAB_MISSION_UI_READ_MODEL=1;
+ * do not replace Composer / HumanInboxPanel until Wave B.
+ */
+export async function fetchMissionReadModel(sessionId: string) {
+  return json<MissionReadModelPayload>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/mission/read-model`,
+  );
+}
+
 export async function steerSession(
   sessionId: string,
   text: string,

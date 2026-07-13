@@ -296,6 +296,23 @@ def create_inbox_item(
         harvest_key=harvest_key,
         caller_agent=caller_agent,
     )
+
+    from agent_lab.mission.dual_write import (
+        commit_inbox_creation,
+        inbox_write_authority_enabled,
+        mirror_inbox_creation,
+    )
+
+    if inbox_write_authority_enabled(folder):
+        bridge = commit_inbox_creation(
+            folder,
+            item_id=item["id"],
+            kind=kind,
+            reason=summary or prompt,
+        )
+        if bridge.get("mirrored") is not True:
+            raise ValueError(f"mission inbox commit failed: {bridge.get('reason') or 'unknown'}")
+
     patch_run_meta(folder, lambda run: append_inbox_item(run, item))
     try:
         from agent_lab.room.live_log import append_live_room_event
@@ -316,12 +333,11 @@ def create_inbox_item(
         )
     except Exception:
         pass
-    try:
-        from agent_lab.mission.dual_write import mirror_inbox_creation
-
-        mirror_inbox_creation(folder, item_id=item["id"], kind=kind, reason=summary or prompt)
-    except Exception:
-        pass
+    if not inbox_write_authority_enabled(folder):
+        try:
+            mirror_inbox_creation(folder, item_id=item["id"], kind=kind, reason=summary or prompt)
+        except Exception:
+            pass
     return item
 
 
@@ -341,21 +357,32 @@ def fan_out_inbox_item(session_id: str, item: dict[str, Any]) -> None:
 def supersede_pending_inbox(folder: Path, *, human_turn_id: int | None = None) -> int:
     ts = _now_iso()
     count = 0
+    superseded_ids: list[str] = []
 
     def _supersede(run: dict[str, Any]) -> dict[str, Any]:
         nonlocal count
         for item in inbox_items(run):
             if item.get("status") != "pending":
                 continue
+            item_id = str(item.get("id") or "")
             item["status"] = "superseded"
             item["superseded_at"] = ts
             if human_turn_id is not None:
                 item["superseded_human_turn_id"] = human_turn_id
             count += 1
+            if item_id:
+                superseded_ids.append(item_id)
         run["human_inbox"] = inbox_items(run)
         return _sync_inbox_flag(run)
 
     patch_run_meta(folder, _supersede)
+    if superseded_ids:
+        try:
+            from agent_lab.mission.dual_write import close_gates_for_inbox_ids
+
+            close_gates_for_inbox_ids(folder, superseded_ids, answer="superseded")
+        except Exception:
+            pass
     return count
 
 

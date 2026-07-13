@@ -48,9 +48,20 @@ def post_plan_approve(
     body: PlanApproveRequest,
 ) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
-    from agent_lab.plan.workflow import approve_plan
+    from agent_lab.mission.dual_write import plan_write_authority_enabled
+    from agent_lab.plan.workflow import approve_plan, approve_plan_with_mission_authority
 
     try:
+        if plan_write_authority_enabled(folder):
+            result = approve_plan_with_mission_authority(
+                folder,
+                goal=body.goal,
+                completion_promise=body.completion_promise,
+                criteria=body.criteria,
+            )
+            bridge = result.pop("mission_dual_write", {"enabled": True, "mirrored": True})
+            return {"ok": True, "session_id": session_id, "mission_dual_write": bridge, **result}
+
         result = approve_plan(
             folder,
             goal=body.goal,
@@ -71,12 +82,32 @@ def post_plan_reject(
     body: PlanRejectRequest,
 ) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
-    from agent_lab.plan.workflow import reject_plan
+    from agent_lab.mission.dual_write import plan_write_authority_enabled
+    from agent_lab.plan.workflow import reject_plan, reject_plan_with_mission_authority
 
     phase = body.target_phase.strip().upper() or "CLARIFY"
     if phase not in {"CLARIFY", "REFINE", "DRAFT"}:
         raise HTTPException(status_code=422, detail="invalid target_phase")
-    pw = reject_plan(folder, note=body.note, target_phase=phase)  # type: ignore[arg-type]
+
+    try:
+        if plan_write_authority_enabled(folder):
+            result = reject_plan_with_mission_authority(
+                folder,
+                note=body.note,
+                target_phase=phase,  # type: ignore[arg-type]
+                goal=None,
+            )
+            bridge = result.pop("mission_dual_write", {"enabled": True, "mirrored": True})
+            return {
+                "ok": True,
+                "session_id": session_id,
+                "plan_workflow": result["plan_workflow"],
+                "mission_dual_write": bridge,
+            }
+
+        pw = reject_plan(folder, note=body.note, target_phase=phase)  # type: ignore[arg-type]
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     from agent_lab.mission.dual_write import mirror_plan_rejection
 
     bridge = mirror_plan_rejection(folder, note=body.note)

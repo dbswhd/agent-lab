@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted — **EVIDENCE GO across plan/execute/merge/Oracle/Human Inbox paths; full writer cutover pending explicit Human approval**
+Accepted — **Controlled cohort evidence GO (v3d). Full traffic pending Human bounded-cutover approval. Legacy writer retire pending separate Human approval after soak.**
 
 ## Date
 
@@ -46,11 +46,11 @@ Agent Lab은 기존 `run.json`·`plan_workflow`·`mission_loop` writer를 유지
 ## Decision
 
 1. **Controlled opt-in은 GO로 판정한다.** 실제 운영 `sessions/`를 대상으로 10개 route session과 rollback 2건이 통과했으므로, 승인된 cohort에서만 `AGENT_LAB_MISSION_DUAL_WRITE=1`을 켤 수 있다. 공유 process에서는 `AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS` non-empty allowlist를 함께 사용한다.
-2. **Human Inbox 경로도 이제 GO다.** 발견된 브리지 gap(inbox 생성 시 Mission이 `AWAITING_HUMAN`에 안 들어가던 문제)을 `create_inbox_item()` 훅으로 수정하고 실제 production 경로로 재검증했다. 단, `BlockExecution`은 kernel 계약상 `READY_TO_EXECUTE`에서만 유효하므로 실행 도중 뜨는 human question은 여전히 mirror되지 않는다 — 이건 의도된 FSM 경계이고 로그/카운터로 관측 가능하다.
-3. **cohort를 이미 운영했다면 지금 `scripts/mission_dual_write_verify.py --cohort`로 divergence를 확인해야 한다.** 이 수정 이전에 human question이 뜬 세션은 Mission journal이 legacy와 어긋나 있을 수 있다 — 이미 벌어진 divergence는 코드 수정만으로 소급 교정되지 않는다.
-4. 그 외(Room dogfood·fail→repair·merge parity·G3 실제 process kill→restart recovery·ActivityQueue 자동 복구·로그/메트릭/검증쿼리)도 모두 닫혔다. 그러나 legacy writer 제거 또는 Mission 단일 authority 승격은 별도의 **명시적 Human cutover 승인** 없이는 실행하지 않는다.
+2. **Human Inbox — cutover scope는 v1 경계다.** plan 승인 직후 question은 mirror 대상이다. 실행 도중 question의 `mirrored=false, reason=mission_not_ready_to_execute`는 **기대 동작**이며 cohort 실패로 세지 않는다([cutover scope limitations](../redesign-2026-07/dual-write-cutover-scope-limitations-2026-07-13.md)). execution-level gate·`MissionOperationalStatus` projection·dashboard 전환은 이번 cutover에 섞지 않고 cohort 통과 후 별도 설계 이슈로 분리한다 — kernel/read-model 쪽 구현은 이미 리포에 있으나 full 채택 판정은 cutover와 분리한다.
+3. **cohort를 이미 운영했다면 지금 `scripts/mission_dual_write_verify.py --cohort`로 divergence를 확인해야 한다.** 이전 human question이 뜬 세션은 Mission journal이 legacy와 어긋나 있을 수 있다 — 이미 벌어진 divergence는 코드 수정만으로 소급 교정되지 않는다.
+4. 그 외(Room dogfood·fail→repair·merge parity·G3·ActivityQueue·로그/메트릭/검증쿼리)는 **기술 evidence GO**로 유지한다. **2026-07-14 operational cohort v3d는 GO**([cohort run report](../redesign-2026-07/dual-write-cohort-run-report-2026-07-13.md)). 다음 Human gate는 **Full traffic (bounded cutover + soak)** — [full-traffic runbook](../redesign-2026-07/dual-write-full-traffic-bounded-cutover-2026-07-14.md). **Legacy writer retire는 soak 완료 후 별도 Human 승인 전까지 금지.**
 5. 기존 writer와 compatibility projection은 유지한다. flag OFF rollback이 통과했으므로 즉시(재시작 후) legacy-only로 되돌릴 수 있다.
-6. 다음 단계는 Human이 cutover 범위(전체 traffic 또는 cohort 유지), rollback window, legacy writer retire 시점을 승인하는 것이다. 승인 전까지는 dual-write를 유지하고 legacy writer를 보존한다.
+6. Full traffic soak **통과 후**에만 Human이 legacy writer retire 시점·irreversible cleanup 범위를 승인한다.
 
 ## Re-review checklist
 
@@ -85,4 +85,4 @@ Agent Lab은 기존 `run.json`·`plan_workflow`·`mission_loop` writer를 유지
 - [dual-write controlled cohort runbook](../redesign-2026-07/dual-write-controlled-cohort-runbook-2026-07-13.md)
 - [dual-write 운영 준비 3종 점검](../redesign-2026-07/dual-write-operational-readiness-check-2026-07-13.md)
 - [dual-write 로그/메트릭 + parity 검증 쿼리 (Human Inbox 브리지 gap 발견)](../redesign-2026-07/dual-write-observability-and-verification-2026-07-13.md)
-- [execution-level human gate — 쓰기 모델 분리 + 읽기 모델 통합](../redesign-2026-07/execution-gate-design-draft-2026-07-13.md)
+- [dual-write cutover scope and limitations](../redesign-2026-07/dual-write-cutover-scope-limitations-2026-07-13.md)

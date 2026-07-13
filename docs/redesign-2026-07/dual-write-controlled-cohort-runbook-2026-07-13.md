@@ -2,14 +2,22 @@
 
 ## 판정
 
-- Evidence gate: **GO**
-- `AGENT_LAB_MISSION_DUAL_WRITE=1`: **승인된 controlled cohort에서만 GO**
-- legacy writer: cohort 전체 기간 동안 **항상 유지**
-- 전체 traffic 승격, legacy writer 제거, irreversible cleanup: **Human 승인 전 금지**
+- Evidence gate: **GO** (operational cohort **v3d** — [cohort run report](./dual-write-cohort-run-report-2026-07-13.md))
+- `AGENT_LAB_MISSION_DUAL_WRITE=1`: controlled cohort 전용 process/allowlist에서 GO; Full traffic은 **별도** Human 승인 ([full-traffic runbook](./dual-write-full-traffic-bounded-cutover-2026-07-14.md), soak ≥15 Room turns)
+- legacy writer: cohort·Full traffic soak 전체 기간 **항상 유지**
+- legacy writer 제거·irreversible cleanup: **Human 승인 전 금지** (Full traffic soak 이후 별도 gate)
 
-## Human Inbox 경로 — 수정됨, 단 경계 있음
+## Cutover scope SSOT
 
-[검증 결과](dual-write-observability-and-verification-2026-07-13.md): Human Inbox pause/resume의 dual-write 브리지에 inbox 생성 쪽 훅이 빠져 있던 gap을 `create_inbox_item()`에 추가해 수정했다. `BlockExecution`은 kernel 계약상 Mission이 `READY_TO_EXECUTE`일 때만 유효하므로, **plan 승인 직후 뜨는 human question은 자동으로 mirror되지만 실행 도중(merge_gate, autonomy_inbox 등) 뜨는 question은 여전히 mirror되지 않는다** — 이건 의도된 FSM 경계이고 `mirrored=false, reason=mission_not_ready_to_execute`로 로그/카운터에 남는다. **이 수정 이전에 이미 cohort를 운영해 human question이 뜬 세션이 있다면, 그 세션의 divergence는 소급 교정되지 않는다** — `scripts/mission_dual_write_verify.py --cohort`로 먼저 확인해야 한다.
+판정 범위·문서화된 제한·커버리지·후속 설계 분리: **[dual-write cutover scope and limitations](./dual-write-cutover-scope-limitations-2026-07-13.md)**.
+
+요약 — cohort **실패로 세지 않는** Human Inbox 경계:
+
+- plan 승인 직후 human question → mirror 대상
+- 실행 도중 question → v1 기준 `mirrored=false`, `reason=mission_not_ready_to_execute` (기대 동작)
+- execution-level gate / `MissionOperationalStatus` projection / dashboard 전환 → **이번 cutover에 섞지 않음** (cohort 통과 후 별도 이슈)
+
+cohort 시작 전·이전 운영분이 있으면 `scripts/mission_dual_write_verify.py --cohort`로 baseline divergence를 확인한다.
 
 ## 운영 경계
 
@@ -20,6 +28,23 @@
 3. cohort session identity를 전용 deployment/route로 고정하고, 나머지 traffic은 legacy-only 프로세스로 보낸다.
 
 공유 production process에서 allowlist 없이 임의로 master flag만 켜는 것은 controlled cohort가 아니다.
+
+## Cohort 규모
+
+| 항목 | 값 |
+| --- | --- |
+| Dual-write 작업 | **100건** |
+| 관찰 창 | **60분** (baseline 이후 주기적 verify + health) |
+| 실패 | unexplained mismatch / missing / unexpected duplicate **0건** |
+
+## 필수 스모크 (시작 전·종료 후)
+
+1. Startup eager recovery — `/api/health/daemon` → `last_activity_recovery_result.reason=startup`
+2. `AGENT_LAB_MISSION_DUAL_WRITE=0` rollback — 신규 세션 journal 없음 + 기존 mirrored 세션 legacy 정상
+
+## 커버리지 ledger (판정과 별도)
+
+[scope doc](./dual-write-cutover-scope-limitations-2026-07-13.md) §커버리지: human question 총수, mirrored, `mission_not_ready_to_execute`, 실행 중 question 비율.
 
 ## 시작 전 체크
 

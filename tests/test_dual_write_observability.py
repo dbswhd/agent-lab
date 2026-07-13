@@ -80,6 +80,27 @@ def test_real_failure_is_counted_as_error_and_logged_warning(
     assert any(r.levelno == logging.WARNING for r in caplog.records)
 
 
+def test_expected_boundary_is_not_counted_as_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    from agent_lab.mission.dual_write_observability import record_dual_write_event
+
+    folder = _session(tmp_path)
+    result = {
+        "enabled": True,
+        "operation": "inbox_create",
+        "mirrored": False,
+        "reason": "mission_not_ready_to_execute",
+    }
+    with caplog.at_level(logging.INFO, logger="agent_lab.mission.dual_write"):
+        record_dual_write_event(folder, result)
+    snapshot = dual_write_counters_snapshot()
+    assert snapshot["operations"]["inbox_create"]["expected_boundary"] == 1
+    assert snapshot["operations"]["inbox_create"]["error"] == 0
+    assert any(r.levelno == logging.INFO for r in caplog.records)
+    assert not any(r.levelno == logging.WARNING for r in caplog.records)
+
+
 def test_counters_accumulate_across_multiple_operations(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     folder = _session(tmp_path)
     monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")

@@ -2,7 +2,8 @@
 
 실제 provider 검증 기록: [live supervisor dual-read report](./dual-read-live-report-2026-07-13.md) — timeout·partial persistence·lock recovery는 통과했지만 production dual-write 증거는 아니다. 최종 판정은 [ADR-001](../decisions/ADR-001-production-dual-write-cutover.md) 참조.
 
-현재 controlled cohort 운영 절차: [dual-write controlled cohort runbook](./dual-write-controlled-cohort-runbook-2026-07-13.md). Legacy writer는 cohort 전체 기간 동안 유지한다.
+현재 상태: controlled cohort **v3d GO** · Full traffic soak **IN PROGRESS (≥15 Room turns)** · legacy writer retire **Human 승인 전 금지**.  
+운영: [controlled cohort runbook](./dual-write-controlled-cohort-runbook-2026-07-13.md) · [full-traffic bounded cutover](./dual-write-full-traffic-bounded-cutover-2026-07-14.md) · [cutover scope](./dual-write-cutover-scope-limitations-2026-07-13.md) · [cohort run report](./dual-write-cohort-run-report-2026-07-13.md).
 
 > **상태:** In progress / D0 — Wave 0~1 계약·shadow spike 착수, legacy cutover는 Human gate 유지  
 > **작성 기준일:** 2026-07-12  
@@ -179,7 +180,7 @@ Wave 0 기준선: [00-wave0-mission-inventory.md](./00-wave0-mission-inventory.m
 - dispatcher의 authority/authentication, payload provenance/redaction, gateway boundary
 - 기존 plan/mission/execute writer와의 session-facing application adapter 및 parity evidence
 
-read model의 첫 HTTP surface는 `/api/sessions/{id}/mission/read-model`로 추가되었으며, journal이 없는 세션을 `migrated=false`로 표시한다. SSE cursor와 live resume smoke가 통과했고, opt-in route dual-write adapter와 scheduler shadow enqueue validation이 추가되었지만, 실제 운영 cohort와 legacy writer/scheduler cutover는 여전히 Human gate 전 과제다.
+read model의 첫 HTTP surface는 `/api/sessions/{id}/mission/read-model`이다. controlled cohort evidence는 **GO(v3d)**; Full traffic soak는 Human 승인 후 진행 중이며, **legacy writer retire는 별도 Human 승인 전 금지** ([full-traffic runbook](./dual-write-full-traffic-bounded-cutover-2026-07-14.md)).
 
 ## 9. 주제별 심화 설계
 
@@ -199,6 +200,10 @@ read model의 첫 HTTP surface는 `/api/sessions/{id}/mission/read-model`로 추
 | —    | [dual-read-seeded-report-2026-07-13.md](./dual-read-seeded-report-2026-07-13.md)               | 임시 migration simulation parity 결과                                  |
 | —    | [dual-read-dogfood-report-2026-07-13.md](./dual-read-dogfood-report-2026-07-13.md)               | mock supervisor dogfood dual-read 결과                                  |
 | —    | [dual-read-live-report-2026-07-13.md](./dual-read-live-report-2026-07-13.md)                   | live supervisor timeout evidence와 cancellation follow-up               |
+| —    | [dual-write-cohort-run-report-2026-07-13.md](./dual-write-cohort-run-report-2026-07-13.md) | **v3d GO** (v1/v2 NO-GO 이력 포함); Full traffic soak 별도 |
+| —    | [dual-write-full-traffic-bounded-cutover-2026-07-14.md](./dual-write-full-traffic-bounded-cutover-2026-07-14.md) | Full traffic Human gate · soak ≥15 Room turns · retire 금지 |
+| —    | [dual-write-preflight-report-2026-07-13.md](./dual-write-preflight-report-2026-07-13.md) | cutover pre-flight PASS |
+| —    | [dual-write-cutover-scope-limitations-2026-07-13.md](./dual-write-cutover-scope-limitations-2026-07-13.md) | cohort GO/NO-GO 판정 범위 SSOT |
 | —    | [dual-write-evidence-report-2026-07-13.md](./dual-write-evidence-report-2026-07-13.md)       | 동일 identity 10건의 격리 production-like dual-write evidence              |
 | —    | [production-route-dual-write-adapter-2026-07-13.md](./production-route-dual-write-adapter-2026-07-13.md) | opt-in route bridge, scheduler enqueue, live HTTP/SSE 검증                  |
 | —    | [dual-write-route-cohort-report-2026-07-13.md](./dual-write-route-cohort-report-2026-07-13.md) | 실제 `sessions/` route 10건·rollback 2건 및 cutover 경계                   |

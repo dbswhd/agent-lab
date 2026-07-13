@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 from agent_lab.human_inbox import create_inbox_item, resolve_inbox_item
 from agent_lab.mission.dual_write import (
@@ -243,3 +244,115 @@ def test_execute_reverify_mirrors_repair_attempt_before_final_oracle(tmp_path: P
     assert mission.state is MissionState.SUCCEEDED
     assert mission.repair_attempt == 1
     assert mission.merged_commit_sha == "repair-commit-123"
+
+
+def test_merge_conflict_approve_opens_gate_for_pending_inbox(tmp_path: Path, monkeypatch) -> None:
+    folder = _session(tmp_path)
+    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
+    monkeypatch.delenv("AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS", raising=False)
+    mirror_plan_approval(folder, goal="ship")
+
+    from agent_lab.human_inbox import append_inbox_item, inbox_items, new_inbox_item, pending_inbox_items
+    from agent_lab.run.meta import patch_run_meta, read_run_meta
+
+    item = new_inbox_item(
+        kind="question",
+        source="mission_circuit_break",
+        prompt="Structural execution failure: merge conflict: src/app.py",
+        summary="mission circuit_breaker: structural_execution_failure",
+    )
+
+    def _seed(run: dict[str, Any]) -> dict[str, Any]:
+        return append_inbox_item(run, item)
+
+    patch_run_meta(folder, _seed)
+    assert pending_inbox_items(read_run_meta(folder))
+
+    result = mirror_execution_transition(
+        folder,
+        execution={"id": "exec-1", "status": "merge_conflict", "merge": {"status": "conflict"}},
+        phase="approve",
+    )
+
+    mission = MissionApplication(folder, "ship").load()
+    assert result["mirrored"] is True
+    assert item["id"] in {g.gate_id for g in mission.open_gates}
+    assert result.get("merge_conflict_inbox", {}).get("opened_gate_ids") == [item["id"]]
+
+
+def test_merge_confirm_resolves_merge_conflict_inbox(tmp_path: Path, monkeypatch) -> None:
+    folder = _session(tmp_path)
+    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
+    monkeypatch.delenv("AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS", raising=False)
+    application = MissionApplication(folder, "ship")
+    application.approve_plan()
+
+    from agent_lab.human_inbox import append_inbox_item, inbox_items, new_inbox_item, pending_inbox_items
+    from agent_lab.mission.kernel import ApproveDiff, MarkDiffReady, StartExecution
+    from agent_lab.run.meta import patch_run_meta, read_run_meta
+
+    item = new_inbox_item(
+        kind="question",
+        source="mission_circuit_break",
+        prompt="Structural execution failure: merge conflict: src/app.py",
+        summary="mission circuit_breaker: structural_execution_failure",
+    )
+
+    def _seed(run: dict[str, Any]) -> dict[str, Any]:
+        run = append_inbox_item(run, item)
+        ml = run.setdefault("mission_loop", {})
+        ml["enabled"] = True
+        ml["circuit_breaker"] = True
+        ml["phase"] = "MISSION_PAUSED"
+        run["mission_loop"] = ml
+        return run
+
+    patch_run_meta(folder, _seed)
+    repo = application.repository
+    repo.dispatch(StartExecution(), idempotency_key="exec-1:start")
+    repo.dispatch(MarkDiffReady(), idempotency_key="exec-1:diff-ready")
+    repo.dispatch(ApproveDiff(), idempotency_key="exec-1:diff-approve")
+    mirror_inbox_creation(folder, item_id=item["id"], kind="question", reason="merge conflict")
+
+    result = mirror_execution_transition(
+        folder,
+        execution={
+            "id": "exec-1",
+            "status": "merged",
+            "merge": {"status": "merged", "commit_sha": "resolved123"},
+        },
+        phase="merge",
+    )
+
+    mission = application.load()
+    assert result["mirrored"] is True
+    assert not pending_inbox_items(read_run_meta(folder))
+    assert item["id"] not in {g.gate_id for g in mission.open_gates}
+    assert mission.merged_commit_sha == "resolved123"
+    assert result.get("merge_conflict_inbox", {}).get("closed_item_ids") == [item["id"]]
+
+
+def test_merge_confirm_closes_orphan_gate_without_legacy_inbox(tmp_path: Path, monkeypatch) -> None:
+    folder = _session(tmp_path)
+    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
+    monkeypatch.delenv("AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS", raising=False)
+    application = MissionApplication(folder, "ship")
+    application.approve_plan()
+    gate_id = "inbox-orphan-gate"
+    mirror_inbox_creation(folder, item_id=gate_id, kind="question", reason="mission circuit_breaker: structural_execution_failure")
+    assert {g.gate_id for g in application.load().open_gates} == {gate_id}
+
+    result = mirror_execution_transition(
+        folder,
+        execution={
+            "id": "exec-1",
+            "status": "merged",
+            "merge": {"status": "merged", "commit_sha": "resolved123"},
+        },
+        phase="merge",
+    )
+
+    mission = application.load()
+    assert result["mirrored"] is True
+    assert mission.open_gates == ()
+    assert gate_id in (result.get("merge_conflict_inbox") or {}).get("closed_item_ids", [])

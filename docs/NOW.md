@@ -33,7 +33,7 @@
 | Step 3 Decision Queue vertical slice | ✅ route + Room dogfood | production Human Inbox route와 실제 Room dogfood 2건 통과; cross-store atomicity는 pending |
 | Step 4 Execute/merge/Oracle | ✅ route parity + repair event | merge parity·fail→repair·RepairScheduled bridge·G3 process kill/restart 통과 |
 | Step 5 Durable runtime hardening | ✅ shadow + fault pass | scheduler ActivityQueue validation, committed-side-effect restart recovery; production daemon opt-in remains |
-| Step 6–7 shadow parity/retire | **EVIDENCE GO · Human cutover approval pending** | 실제 `sessions/` route cohort·Room dogfood 2건·fail→repair event parity·G3 process kill→restart·ActivityQueue startup/scheduler recovery·health 관찰 통과. 명시적 Human 승인 전까지 legacy writer 제거·Mission 단일 authority 승격은 보류. [ADR-001](./decisions/ADR-001-production-dual-write-cutover.md)·[follow-up](./redesign-2026-07/dual-write-cutover-followup-2026-07-13.md) 참조 |
+| Step 6–7 shadow parity/retire | **Full traffic soak IN PROGRESS** | Human 승인(2026-07-14): soak **≥15 Room turns**. Legacy retire 금지. [full-traffic runbook](./redesign-2026-07/dual-write-full-traffic-bounded-cutover-2026-07-14.md) · [cohort report](./redesign-2026-07/dual-write-cohort-run-report-2026-07-13.md) |
 
 **안전 경계:** 기존 `plan_workflow`·`mission_loop`·`human_inbox` writer를 아직 제거하지 않는다. 새 경로는 shadow/compatibility projection으로만 사용하며 execute gate를 우회하지 않는다. 상세: [redesign governance](./redesign-2026-07/13-document-governance-and-execution-plan.md).
 

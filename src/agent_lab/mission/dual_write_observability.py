@@ -21,7 +21,11 @@ _LOCK = threading.Lock()
 _OPERATION_COUNTERS: dict[str, dict[str, int]] = {}
 _DISABLED_TOTAL = 0
 
-_BUCKETS = ("mirrored", "blocked_cohort", "error")
+_BUCKETS = ("mirrored", "blocked_cohort", "expected_boundary", "error")
+
+# Documented FSM boundaries — not cohort failures (see
+# docs/redesign-2026-07/dual-write-cutover-scope-limitations-2026-07-13.md).
+_EXPECTED_BOUNDARY_REASONS = frozenset({"mission_not_ready_to_execute"})
 
 
 def _bucket(result: dict[str, Any]) -> str:
@@ -29,8 +33,11 @@ def _bucket(result: dict[str, Any]) -> str:
         return "disabled"
     if result.get("mirrored"):
         return "mirrored"
-    if result.get("reason") == "cohort_not_selected":
+    reason = str(result.get("reason") or "")
+    if reason == "cohort_not_selected":
         return "blocked_cohort"
+    if reason in _EXPECTED_BOUNDARY_REASONS:
+        return "expected_boundary"
     return "error"
 
 
@@ -52,6 +59,7 @@ def record_dual_write_event(folder: Path, result: dict[str, Any]) -> dict[str, A
     if bucket == "error":
         logger.warning(message, *args)
     else:
+        # expected_boundary (e.g. mission_not_ready_to_execute) is documented cutover scope, not a failure.
         logger.info(message, *args)
     return result
 

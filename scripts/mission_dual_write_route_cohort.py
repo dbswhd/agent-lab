@@ -82,8 +82,8 @@ def _journal_exists(folder: Path) -> bool:
 
 
 def _init_session(sessions_root: Path, name: str, *, with_plan: bool = True) -> Path:
-    folder = sessions_root / name
-    folder.mkdir(parents=True)
+    folder = sessions_root.resolve() / name
+    folder.mkdir(parents=True, exist_ok=True)
     (folder / "topic.txt").write_text(name, encoding="utf-8")
     (folder / "chat.jsonl").write_text("", encoding="utf-8")
     if with_plan:
@@ -504,10 +504,10 @@ def _rollback_existing_mirrored_session_stays_legacy(client: Any, sessions_root:
     }
 
 
-def run_cohort(sessions_root: Path, repos_root: Path) -> dict[str, Any]:
+def run_cohort(sessions_root: Path, repos_root: Path, *, prefix: str = "dualwrite-route") -> dict[str, Any]:
     sessions_root.mkdir(parents=True, exist_ok=True)
     repos_root.mkdir(parents=True, exist_ok=True)
-    prefix = "dualwrite-route"
+    prefix = prefix.strip() or "dualwrite-route"
 
     os.environ["AGENT_LAB_MISSION_DUAL_WRITE"] = "1"
     os.environ.setdefault("AGENT_LAB_MOCK_AGENTS", "1")

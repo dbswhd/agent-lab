@@ -81,6 +81,92 @@ def _result(*, operation: str, mirrored: bool, reason: str = "") -> dict[str, An
     return {"enabled": True, "operation": operation, "mirrored": mirrored, "reason": reason}
 
 
+def _merge_conflict_inbox_items(folder: Path) -> list[dict[str, Any]]:
+    from agent_lab.human_inbox import pending_inbox_items
+
+    items: list[dict[str, Any]] = []
+    for item in pending_inbox_items(read_run_meta(folder)):
+        source = str(item.get("source") or "")
+        summary = str(item.get("summary") or "").lower()
+        prompt = str(item.get("prompt") or "").lower()
+        if source == "mission_circuit_break":
+            items.append(item)
+            continue
+        if "merge conflict" in summary or "merge conflict" in prompt:
+            items.append(item)
+            continue
+        if "structural execution failure" in summary or "structural execution failure" in prompt:
+            items.append(item)
+    return items
+
+
+def _ensure_merge_conflict_gates(folder: Path) -> list[str]:
+    """Mirror OpenExecutionGate for pending merge-conflict inbox items."""
+    opened: list[str] = []
+    for item in _merge_conflict_inbox_items(folder):
+        item_id = str(item.get("id") or "")
+        if not item_id:
+            continue
+        result = mirror_inbox_creation(
+            folder,
+            item_id=item_id,
+            kind=str(item.get("kind") or "question"),
+            reason=str(item.get("summary") or item.get("prompt") or "merge conflict"),
+        )
+        if result.get("mirrored") is True:
+            opened.append(item_id)
+    return opened
+
+
+def _resolve_merge_conflict_inboxes(folder: Path) -> dict[str, Any]:
+    """After merge/confirm, resolve legacy inbox items and close all related gates."""
+    from agent_lab.human_inbox import pending_inbox_items, resolve_inbox_item
+    from agent_lab.mission.application import MissionApplication
+
+    closed: list[str] = []
+    errors: list[str] = []
+    targets: dict[str, dict[str, Any]] = {
+        str(item.get("id") or ""): item for item in _merge_conflict_inbox_items(folder) if item.get("id")
+    }
+    for item in pending_inbox_items(read_run_meta(folder)):
+        item_id = str(item.get("id") or "")
+        if not item_id:
+            continue
+        if item_id not in targets and str(item.get("source") or "") == "mission_circuit_break":
+            targets[item_id] = item
+
+    for item_id, _item in targets.items():
+        try:
+            resolve_inbox_item(folder, item_id, decision="merge_confirmed", append_chat=False)
+        except (ValueError, OSError):
+            pass
+        result = mirror_inbox_resolution(folder, item_id=item_id, answer="merge_confirmed")
+        if result.get("mirrored") is True:
+            closed.append(item_id)
+        else:
+            errors.append(f"{item_id}:{result.get('reason') or 'not_mirrored'}")
+
+    mission = MissionApplication(folder, _goal(folder)).load()
+    for gate in mission.open_gates:
+        gate_id = gate.gate_id
+        if gate_id in closed:
+            continue
+        result = mirror_inbox_resolution(folder, item_id=gate_id, answer="merge_confirmed")
+        if result.get("mirrored") is True:
+            closed.append(gate_id)
+        else:
+            errors.append(f"{gate_id}:{result.get('reason') or 'not_mirrored'}")
+    try:
+        from agent_lab.mission.loop import clear_circuit_breaker, get_mission_loop
+
+        run = read_run_meta(folder)
+        if get_mission_loop(run).get("circuit_breaker"):
+            clear_circuit_breaker(folder, resume_phase="EXECUTE_QUEUE")
+    except (OSError, ValueError):
+        pass
+    return {"closed_item_ids": closed, "errors": errors}
+
+
 @_observed
 def mirror_plan_approval(folder: Path, *, goal: str | None = None) -> dict[str, Any]:
     blocked = _blocked_result(folder, "plan_approve")
@@ -181,10 +267,16 @@ def mirror_execution_transition(
     repo = MissionRepository(journal, folder.name, _goal(folder))
     mission = repo.load()
     execution_id = str(execution.get("id") or execution.get("execution_id") or "unknown")
+    execution_status = str(execution.get("status") or "")
+    merge_conflict_inbox: dict[str, Any] | None = None
     try:
         if phase == "reject":
             return {**_result(operation="execution_reject", mirrored=False, reason="legacy_only"), "state": mission.state.value}
         if phase == "approve":
+            if execution_status == "merge_conflict":
+                merge_conflict_inbox = {
+                    "opened_gate_ids": _ensure_merge_conflict_gates(folder),
+                }
             if mission.state is MissionState.READY_TO_EXECUTE:
                 mission = repo.dispatch(StartExecution(), idempotency_key=f"execution-start:{execution_id}")
             if mission.state is MissionState.EXECUTING:
@@ -200,6 +292,8 @@ def mirror_execution_transition(
                 mission = repo.dispatch(ApproveDiff(), idempotency_key=f"diff-approve:{execution_id}")
             if mission.state is MissionState.VERIFYING and commit_sha:
                 mission = repo.dispatch(RecordMerge(commit_sha), idempotency_key=f"merge:{execution_id}:{commit_sha}")
+            if execution_status == "merged" and commit_sha:
+                merge_conflict_inbox = _resolve_merge_conflict_inboxes(folder)
         else:
             commit_sha = str((execution.get("merge") or {}).get("commit_sha") or execution.get("commit_sha") or "")
             if mission.state is MissionState.AWAITING_DIFF_DECISION:
@@ -240,4 +334,11 @@ def mirror_execution_transition(
                 mission = repo.dispatch(RecordOracle(verdict, detail), idempotency_key=f"oracle:{execution_id}:{verdict.value}:{detail}")
     except (MissionTransitionError, OSError, ValueError) as exc:
         return _result(operation=f"execution_{phase}", mirrored=False, reason=str(exc)[:240])
-    return {**_result(operation=f"execution_{phase}", mirrored=True), "state": mission.state.value, "version": mission.version}
+    payload: dict[str, Any] = {
+        **_result(operation=f"execution_{phase}", mirrored=True),
+        "state": mission.state.value,
+        "version": mission.version,
+    }
+    if merge_conflict_inbox is not None:
+        payload["merge_conflict_inbox"] = merge_conflict_inbox
+    return payload

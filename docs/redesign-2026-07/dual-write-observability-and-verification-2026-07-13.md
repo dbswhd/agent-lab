@@ -7,7 +7,8 @@
 `src/agent_lab/mission/dual_write_observability.py` (신규) — `dual_write.py`의 4개 public `mirror_*` 함수를 `@_observed` 데코레이터로 감쌌다. 개별 return 지점(총 ~10곳)을 일일이 계측하는 대신 함수 전체를 감싸 모든 exit path(성공/cohort 제외/에러/flag off)를 빠짐없이 잡는다.
 
 - **로그**: `logging.getLogger("agent_lab.mission.dual_write")`로 구조화된 라인 출력 — 이미 `app_logging.setup_app_logging()`이 구성한 `agent-lab-api.log`(rotating)에 자동으로 남는다. `mirrored=true`/`cohort_not_selected`는 INFO, 실제 실패(`mirrored=false`이고 이유가 cohort 제외가 아닌 경우)는 WARNING. `flag OFF`(`enabled=false`)는 매우 잦은 routine이라 로그를 안 남기고 카운터만 올린다(노이즈 방지).
-- **메트릭**: 인메모리 카운터(`operations: {plan_approve: {mirrored, blocked_cohort, error}, ...}`, `disabled_calls_total`) — 프로세스 재시작 시 리셋(디스크에 안 씀, 매 호출 I/O 방지). `/api/health/daemon`에 `dual_write` 키로 노출(`app/server/routers/mission_os.py`).
+- **메트릭**: 인메모리 카운터(`operations: {plan_approve: {mirrored, blocked_cohort, expected_boundary, error}, ...}`, `disabled_calls_total`) — 프로세스 재시작 시 리셋(디스크에 안 씀, 매 호출 I/O 방지). `/api/health/daemon`에 `dual_write` 키로 노출(`app/server/routers/mission_os.py`).
+- **cohort 실패가 아닌 경계**: `reason=mission_not_ready_to_execute` → bucket `expected_boundary` ([cutover scope](./dual-write-cutover-scope-limitations-2026-07-13.md)).
 
 테스트 5건(`tests/test_dual_write_observability.py`) + 기존 dual-write 스위트 전부 통과.
 

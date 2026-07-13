@@ -316,6 +316,12 @@ def create_inbox_item(
         )
     except Exception:
         pass
+    try:
+        from agent_lab.mission.dual_write import mirror_inbox_creation
+
+        mirror_inbox_creation(folder, item_id=item["id"], kind=kind, reason=summary or prompt)
+    except Exception:
+        pass
     return item
 
 

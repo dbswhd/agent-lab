@@ -7,6 +7,10 @@
 - legacy writer: cohort 전체 기간 동안 **항상 유지**
 - 전체 traffic 승격, legacy writer 제거, irreversible cleanup: **Human 승인 전 금지**
 
+## Human Inbox 경로 — 수정됨, 단 경계 있음
+
+[검증 결과](dual-write-observability-and-verification-2026-07-13.md): Human Inbox pause/resume의 dual-write 브리지에 inbox 생성 쪽 훅이 빠져 있던 gap을 `create_inbox_item()`에 추가해 수정했다. `BlockExecution`은 kernel 계약상 Mission이 `READY_TO_EXECUTE`일 때만 유효하므로, **plan 승인 직후 뜨는 human question은 자동으로 mirror되지만 실행 도중(merge_gate, autonomy_inbox 등) 뜨는 question은 여전히 mirror되지 않는다** — 이건 의도된 FSM 경계이고 `mirrored=false, reason=mission_not_ready_to_execute`로 로그/카운터에 남는다. **이 수정 이전에 이미 cohort를 운영해 human question이 뜬 세션이 있다면, 그 세션의 divergence는 소급 교정되지 않는다** — `scripts/mission_dual_write_verify.py --cohort`로 먼저 확인해야 한다.
+
 ## 운영 경계
 
 `AGENT_LAB_MISSION_DUAL_WRITE`는 프로세스 단위 master flag이고, `AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS`는 코드가 매 호출마다 적용하는 session allowlist다. allowlist가 비어 있으면 master flag가 켜진 모든 session이 대상이 된다. controlled cohort는 다음 중 하나로 격리한다.
@@ -41,7 +45,9 @@
 
 ## Rollback
 
-1. 전용 process의 `AGENT_LAB_MISSION_DUAL_WRITE`를 `0`으로 전환한다.
+`AGENT_LAB_MISSION_DUAL_WRITE`는 순수 OS 환경변수이며 live-reload/toggle API가 없다(코드에 POST 라우트 없음, 확인됨: [dual-write-operational-readiness-check-2026-07-13](dual-write-operational-readiness-check-2026-07-13.md)). "즉시 rollback"은 재시작 없이 되는 것이 아니라 **재시작 한 번이면 100% 안전하게** 되는 것이다. 코드는 매 호출마다 flag를 새로 읽으므로(캐싱 없음) 재시작 이후에는 지연 없이 legacy-only로 복귀한다.
+
+1. 전용 process의 `AGENT_LAB_MISSION_DUAL_WRITE`를 `0`으로 바꾸고 **프로세스를 재시작한다.**
 2. 새 session에서 Mission journal이 생성되지 않고 legacy route가 정상 동작하는지 확인한다.
 3. 이미 mirrored된 session에서도 legacy route가 계속 정상 동작하는지 확인한다.
 4. 실패한 cohort identity와 evidence를 보존하고, 원인·재현·재개 조건을 Human Inbox에 남긴다.

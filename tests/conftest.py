@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import sys
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -14,6 +15,20 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 if str(_TESTS) not in sys.path:
     sys.path.insert(0, str(_TESTS))
+
+# `app.server.main` runs `create_app()` at import time (and every
+# `create_app(bootstrap=False)` call test files make explicitly), which calls
+# `setup_app_logging()` unconditionally. That attaches a RotatingFileHandler
+# to the *root* logger pointing at the real user log directory
+# (~/Library/Logs/Agent Lab/agent-lab-api.log by default) and — because
+# `_CONFIGURED` is a module-global sticky flag — it stays attached for the
+# rest of the process, so every test's log output (including unrelated
+# `logging.getLogger(...)` calls from any module) leaks into that real file
+# for the remainder of the pytest run. Redirect before anything imports
+# `app.server.main`, so no test run ever touches the real one; the tmp dir
+# is unique per pytest invocation (per xdist worker) and left for the OS to
+# reap, same as pytest's own tmp_path base.
+os.environ.setdefault("AGENT_LAB_LOG_DIR", tempfile.mkdtemp(prefix="agent-lab-test-logs-"))
 
 for _qat_src in (
     Path.home() / "Projects" / "quant-agentic-trading" / "src",

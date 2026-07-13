@@ -35,6 +35,8 @@ def test_read_model_route_marks_legacy_session_without_journal(tmp_path: Path, m
         "oracle_verdict": None,
         "next_action": "legacy_route",
         "event_cursor": 0,
+        "operational_status": None,
+        "open_execution_gates": [],
         "legacy_phase": None,
     }
 
@@ -57,3 +59,5 @@ def test_read_model_route_projects_mission_journal(tmp_path: Path, monkeypatch) 
     assert payload["next_action"] == "start_execution"
     assert payload["version"] == 2
     assert payload["event_cursor"] == 2
+    assert payload["operational_status"] == "READY"
+    assert payload["open_execution_gates"] == []

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal, TypedDict
+from typing import Any, Literal, TypedDict
 
 from fastapi import APIRouter
 
@@ -30,6 +30,8 @@ class MissionReadModelPayload(TypedDict):
     oracle_verdict: str | None
     next_action: str
     event_cursor: int
+    operational_status: str | None
+    open_execution_gates: list[dict[str, Any]]
     legacy_phase: str | None
 
 
@@ -72,6 +74,8 @@ def _payload(session_id: str, model: MissionReadModel, *, legacy_phase: str | No
         "oracle_verdict": model.oracle_verdict.value if model.oracle_verdict is not None else None,
         "next_action": model.next_action,
         "event_cursor": model.event_cursor,
+        "operational_status": model.operational_status.value,
+        "open_execution_gates": [{"gate_id": g.gate_id, "kind": g.kind} for g in model.open_execution_gates],
         "legacy_phase": legacy_phase,
     }
 
@@ -93,6 +97,8 @@ def _legacy_payload(session_id: str, folder: Path) -> MissionReadModelPayload:
         "oracle_verdict": None,
         "next_action": "legacy_route",
         "event_cursor": 0,
+        "operational_status": None,
+        "open_execution_gates": [],
         "legacy_phase": _legacy_phase(folder),
     }
 

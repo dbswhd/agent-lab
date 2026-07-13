@@ -5,6 +5,7 @@ from pathlib import Path
 
 from agent_lab.human_inbox import create_inbox_item, resolve_inbox_item
 from agent_lab.mission.dual_write import (
+    mirror_inbox_creation,
     mirror_inbox_resolution,
     mirror_execution_transition,
     mirror_plan_approval,
@@ -60,6 +61,8 @@ def test_plan_bridge_mirrors_allowlisted_session(tmp_path: Path, monkeypatch) ->
 
 
 def test_inbox_bridge_resolves_awaiting_human(tmp_path: Path, monkeypatch) -> None:
+    """The pre-execution BlockExecution/AWAITING_HUMAN mechanism is untouched —
+    mirror_inbox_resolution still resolves it when Mission happens to be there."""
     folder = _session(tmp_path)
     monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
     MissionApplication(folder, "ship").approve_plan()
@@ -69,6 +72,94 @@ def test_inbox_bridge_resolves_awaiting_human(tmp_path: Path, monkeypatch) -> No
     result = mirror_inbox_resolution(folder, item_id=item["id"], answer="yes")
     assert result["mirrored"] is True
     assert MissionApplication(folder, "ship").load().state is MissionState.READY_TO_EXECUTE
+
+
+def test_inbox_creation_bridge_opens_gate_without_changing_state(tmp_path: Path, monkeypatch) -> None:
+    """The actual production path: create_inbox_item alone (no manual kernel dispatch)
+    must open an execution gate, regardless of Mission's current state — the original
+    gap was that inbox creation had no dual-write hook at all. See
+    docs/redesign-2026-07/execution-gate-design-draft-2026-07-13.md.
+    """
+    folder = _session(tmp_path)
+    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
+    application = MissionApplication(folder, "ship")
+    application.approve_plan()
+    assert application.load().state is MissionState.READY_TO_EXECUTE
+
+    item = create_inbox_item(folder, kind="question", source="test", prompt="proceed?")
+
+    mission = application.load()
+    assert mission.state is MissionState.READY_TO_EXECUTE  # unchanged — gates are observational
+    assert len(mission.open_gates) == 1
+    assert mission.open_gates[0].gate_id == item["id"]
+
+    # A stray re-call for the same item is idempotent, not an error.
+    result = mirror_inbox_creation(folder, item_id=item["id"], kind="question")
+    assert result["mirrored"] is True
+    assert result["open_gate_count"] == 1
+
+
+def test_inbox_creation_bridge_opens_gate_from_drafting_state_too(tmp_path: Path, monkeypatch) -> None:
+    """Unlike the old BlockExecution-based bridge, this is not limited to
+    READY_TO_EXECUTE — the entire point of the redesign."""
+    folder = _session(tmp_path)
+    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
+    MissionApplication(folder, "ship").reject_plan("needs more scope")  # journal exists, state DRAFTING
+
+    item = create_inbox_item(folder, kind="question", source="test", prompt="proceed?")
+
+    mission = MissionApplication(folder, "ship").load()
+    assert mission.state is MissionState.DRAFTING
+    assert len(mission.open_gates) == 1
+    assert mission.open_gates[0].gate_id == item["id"]
+    assert mission.open_gates[0].opened_at_state is MissionState.DRAFTING
+
+
+def test_inbox_creation_bridge_opens_gate_mid_execution(tmp_path: Path, monkeypatch) -> None:
+    """The primary motivating case: most real inbox items (merge_gate.py,
+    autonomy_inbox.py, room/retry.py) fire while Mission is EXECUTING, not
+    READY_TO_EXECUTE. This used to always no-op; now it mirrors."""
+    folder = _session(tmp_path)
+    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
+    from agent_lab.mission.kernel import StartExecution
+
+    application = MissionApplication(folder, "ship")
+    application.approve_plan()
+    application.repository.dispatch(StartExecution())
+    assert application.load().state is MissionState.EXECUTING
+
+    item = create_inbox_item(folder, kind="question", source="test", prompt="which approach?")
+
+    mission = application.load()
+    assert mission.state is MissionState.EXECUTING  # unchanged
+    assert {g.gate_id for g in mission.open_gates} == {item["id"]}
+
+    resolve_inbox_item(folder, item["id"], decision="yes", append_chat=False)
+    result = mirror_inbox_resolution(folder, item_id=item["id"], answer="yes")
+    assert result["mirrored"] is True
+    mission = application.load()
+    assert mission.state is MissionState.EXECUTING  # still unchanged
+    assert mission.open_gates == ()
+
+
+def test_full_inbox_pause_resume_lifecycle_without_manual_mission_setup(tmp_path: Path, monkeypatch) -> None:
+    """End-to-end: plan approve -> a real inbox question fires -> it gets resolved,
+    driven entirely through the production functions (mirror_plan_approval,
+    create_inbox_item, mirror_inbox_resolution) with no direct kernel dispatch.
+    """
+    folder = _session(tmp_path)
+    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
+    mirror_plan_approval(folder, goal="ship")
+    item = create_inbox_item(folder, kind="question", source="test", prompt="proceed?")
+    assert len(MissionApplication(folder, "ship").load().open_gates) == 1
+
+    resolve_inbox_item(folder, item["id"], decision="yes", append_chat=False)
+    result = mirror_inbox_resolution(folder, item_id=item["id"], answer="yes")
+
+    assert result["mirrored"] is True
+    mission = MissionApplication(folder, "ship").load()
+    assert mission.state is MissionState.READY_TO_EXECUTE
+    assert mission.open_gates == ()
 
 
 def test_rejection_bridge_projects_clarify(tmp_path: Path, monkeypatch) -> None:

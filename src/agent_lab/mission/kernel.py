@@ -29,6 +29,22 @@ class OracleVerdict(StrEnum):
 
 
 @dataclass(frozen=True, slots=True)
+class GateRecord:
+    """An open execution-level human gate — independent of ``MissionState``.
+
+    Unlike ``BlockExecution``/``AWAITING_HUMAN`` (valid only from
+    READY_TO_EXECUTE, blocks StartExecution), gates can open from any state,
+    many can be open at once, and opening/closing one never changes
+    ``mission.state``. See docs/redesign-2026-07/execution-gate-design-draft-2026-07-13.md.
+    """
+
+    gate_id: str
+    kind: str
+    reason: str
+    opened_at_state: MissionState
+
+
+@dataclass(frozen=True, slots=True)
 class Mission:
     id: MissionId
     goal: str
@@ -43,6 +59,7 @@ class Mission:
     last_oracle_verdict: OracleVerdict | None = None
     last_oracle_detail: str | None = None
     merged_commit_sha: str | None = None
+    open_gates: tuple[GateRecord, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -96,7 +113,32 @@ class ResolveBlock:
     pass
 
 
-MissionCommand = OpenPlan | RejectPlan | ApprovePlan | StartExecution | MarkDiffReady | ApproveDiff | RecordMerge | RecordOracle | BlockExecution | ResolveBlock
+@dataclass(frozen=True, slots=True)
+class OpenExecutionGate:
+    gate_id: str
+    kind: str = ""
+    reason: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class CloseExecutionGate:
+    gate_id: str
+
+
+MissionCommand = (
+    OpenPlan
+    | RejectPlan
+    | ApprovePlan
+    | StartExecution
+    | MarkDiffReady
+    | ApproveDiff
+    | RecordMerge
+    | RecordOracle
+    | BlockExecution
+    | ResolveBlock
+    | OpenExecutionGate
+    | CloseExecutionGate
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -162,6 +204,19 @@ class BlockResolved:
     pass
 
 
+@dataclass(frozen=True, slots=True)
+class ExecutionGateOpened:
+    gate_id: str
+    kind: str
+    reason: str
+    at_state: MissionState
+
+
+@dataclass(frozen=True, slots=True)
+class ExecutionGateClosed:
+    gate_id: str
+
+
 MissionEvent = (
     PlanOpened
     | PlanRejected
@@ -175,6 +230,8 @@ MissionEvent = (
     | RepairScheduled
     | BlockOpened
     | BlockResolved
+    | ExecutionGateOpened
+    | ExecutionGateClosed
 )
 
 
@@ -250,6 +307,15 @@ def decide(mission: Mission, command: MissionCommand, *, expected_version: int |
             if not mission.blocked:
                 raise _reject(mission, command, "no active execution block")
             return (BlockResolved(),)
+        case OpenExecutionGate(gate_id=gate_id, kind=kind, reason=reason):
+            # No _require_state — valid from any MissionState by design.
+            if any(g.gate_id == gate_id for g in mission.open_gates):
+                return ()  # idempotent no-op: already open
+            return (ExecutionGateOpened(gate_id, kind, reason, mission.state),)
+        case CloseExecutionGate(gate_id=gate_id):
+            if not any(g.gate_id == gate_id for g in mission.open_gates):
+                return ()  # idempotent no-op: already closed / never opened
+            return (ExecutionGateClosed(gate_id),)
         case _ as unreachable:
             assert_never(unreachable)
 
@@ -310,5 +376,17 @@ def apply_event(mission: Mission, event: MissionEvent) -> Mission:
             return replace(mission, version=next_version, state=MissionState.AWAITING_HUMAN, blocked=True)
         case BlockResolved():
             return replace(mission, version=next_version, state=MissionState.READY_TO_EXECUTE, blocked=False)
+        case ExecutionGateOpened(gate_id=gate_id, kind=kind, reason=reason, at_state=at_state):
+            return replace(
+                mission,
+                version=next_version,
+                open_gates=(*mission.open_gates, GateRecord(gate_id, kind, reason, at_state)),
+            )
+        case ExecutionGateClosed(gate_id=gate_id):
+            return replace(
+                mission,
+                version=next_version,
+                open_gates=tuple(g for g in mission.open_gates if g.gate_id != gate_id),
+            )
         case _ as unreachable:
             assert_never(unreachable)

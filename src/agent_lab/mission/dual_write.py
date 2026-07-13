@@ -1,15 +1,20 @@
 from __future__ import annotations
 
+import functools
 import os
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Literal
 
 from agent_lab.env_flags import is_truthy
 from agent_lab.mission.application import MissionApplication, MissionApplicationError
+from agent_lab.mission.dual_write_observability import record_dual_write_event
 from agent_lab.mission.kernel import (
     ApproveDiff,
+    CloseExecutionGate,
     MarkDiffReady,
     MissionState,
+    OpenExecutionGate,
     OracleVerdict,
     RecordMerge,
     RecordOracle,
@@ -19,6 +24,23 @@ from agent_lab.mission.kernel import (
 from agent_lab.mission.errors import MissionTransitionError
 from agent_lab.mission.repository import MissionRepository
 from agent_lab.run.meta import read_run_meta
+
+
+def _observed(fn: Callable[..., dict[str, Any]]) -> Callable[..., dict[str, Any]]:
+    """Log + count every mirror_* outcome, regardless of which return path it took.
+
+    Every mirror_* function's first positional arg is the session ``folder`` and
+    every return value is a dict carrying ``enabled``/``mirrored``/``operation``/
+    ``reason`` — wrapping the call site (rather than instrumenting each of the
+    ~10 internal return statements individually) guarantees no exit path is missed.
+    """
+
+    @functools.wraps(fn)
+    def wrapper(folder: Path, *args: Any, **kwargs: Any) -> dict[str, Any]:
+        result = fn(folder, *args, **kwargs)
+        return record_dual_write_event(folder, result)
+
+    return wrapper
 
 
 def _cohort_ids() -> frozenset[str]:
@@ -59,6 +81,7 @@ def _result(*, operation: str, mirrored: bool, reason: str = "") -> dict[str, An
     return {"enabled": True, "operation": operation, "mirrored": mirrored, "reason": reason}
 
 
+@_observed
 def mirror_plan_approval(folder: Path, *, goal: str | None = None) -> dict[str, Any]:
     blocked = _blocked_result(folder, "plan_approve")
     if blocked is not None:
@@ -70,6 +93,7 @@ def mirror_plan_approval(folder: Path, *, goal: str | None = None) -> dict[str, 
     return {**_result(operation="plan_approve", mirrored=True), "state": mission.state.value, "version": mission.version}
 
 
+@_observed
 def mirror_plan_rejection(folder: Path, *, note: str = "", goal: str | None = None) -> dict[str, Any]:
     blocked = _blocked_result(folder, "plan_reject")
     if blocked is not None:
@@ -81,7 +105,45 @@ def mirror_plan_rejection(folder: Path, *, note: str = "", goal: str | None = No
     return {**_result(operation="plan_reject", mirrored=True), "state": mission.state.value, "version": mission.version}
 
 
+@_observed
+def mirror_inbox_creation(folder: Path, *, item_id: str, kind: str = "", reason: str = "") -> dict[str, Any]:
+    """Open an execution-level gate when a human question/build item is created.
+
+    Uses ``OpenExecutionGate`` — valid from any ``MissionState``, purely
+    observational, never blocks other transitions (kernel.py; see
+    docs/redesign-2026-07/execution-gate-design-draft-2026-07-13.md) — instead
+    of ``BlockExecution`` (valid only from READY_TO_EXECUTE, blocks
+    StartExecution). Most real inbox items fire mid-execution (merge_gate.py,
+    autonomy_inbox.py, room/retry.py, ...) where BlockExecution used to
+    silently no-op; this mirrors regardless of what Mission is doing.
+    """
+    blocked = _blocked_result(folder, "inbox_create")
+    if blocked is not None:
+        return blocked
+    journal = folder / ".agent-lab" / "mission-events.jsonl"
+    if not journal.is_file():
+        return _result(operation="inbox_create", mirrored=False, reason="mission_journal_missing")
+    repo = MissionRepository(journal, folder.name, _goal(folder))
+    try:
+        mission = repo.dispatch(OpenExecutionGate(item_id, kind, reason), idempotency_key=f"gate-open:{item_id}")
+    except (MissionTransitionError, OSError, ValueError) as exc:
+        return _result(operation="inbox_create", mirrored=False, reason=str(exc)[:240])
+    return {
+        **_result(operation="inbox_create", mirrored=True),
+        "state": mission.state.value,
+        "open_gate_count": len(mission.open_gates),
+    }
+
+
+@_observed
 def mirror_inbox_resolution(folder: Path, *, item_id: str, answer: str = "") -> dict[str, Any]:
+    """Close the execution-level gate for this item, if one is open.
+
+    Also resolves the (independent, unrelated) pre-execution
+    ``BlockExecution``/``AWAITING_HUMAN`` gate when Mission happens to be
+    sitting in it — that mechanism is untouched and still valid, just no
+    longer the only thing this bridge understands.
+    """
     blocked = _blocked_result(folder, "inbox_resolve")
     if blocked is not None:
         return blocked
@@ -90,15 +152,20 @@ def mirror_inbox_resolution(folder: Path, *, item_id: str, answer: str = "") -> 
         return _result(operation="inbox_resolve", mirrored=False, reason="mission_journal_missing")
     repo = MissionRepository(journal, folder.name, _goal(folder))
     mission = repo.load()
-    if mission.state is not MissionState.AWAITING_HUMAN:
-        return {**_result(operation="inbox_resolve", mirrored=False, reason="mission_not_awaiting_human"), "state": mission.state.value}
     try:
-        mission = repo.dispatch(ResolveBlock(), idempotency_key=f"inbox-resolve:{item_id}:{answer.strip()}")
+        if mission.state is MissionState.AWAITING_HUMAN:
+            mission = repo.dispatch(ResolveBlock(), idempotency_key=f"inbox-resolve:{item_id}:{answer.strip()}")
+        mission = repo.dispatch(CloseExecutionGate(item_id), idempotency_key=f"gate-close:{item_id}")
     except (MissionTransitionError, OSError, ValueError) as exc:
         return _result(operation="inbox_resolve", mirrored=False, reason=str(exc)[:240])
-    return {**_result(operation="inbox_resolve", mirrored=True), "state": mission.state.value, "version": mission.version}
+    return {
+        **_result(operation="inbox_resolve", mirrored=True),
+        "state": mission.state.value,
+        "open_gate_count": len(mission.open_gates),
+    }
 
 
+@_observed
 def mirror_execution_transition(
     folder: Path,
     *,

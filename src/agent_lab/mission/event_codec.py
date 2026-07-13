@@ -9,9 +9,12 @@ from agent_lab.mission.kernel import (
     BlockResolved,
     DiffApproved,
     DiffReady,
+    ExecutionGateClosed,
+    ExecutionGateOpened,
     ExecutionStarted,
     MergeCommitted,
     MissionEvent,
+    MissionState,
     OracleFailed,
     OraclePassed,
     PlanApproved,
@@ -39,6 +42,8 @@ class EventType(StrEnum):
     REPAIR_SCHEDULED = "RepairScheduled"
     BLOCK_OPENED = "BlockOpened"
     BLOCK_RESOLVED = "BlockResolved"
+    EXECUTION_GATE_OPENED = "ExecutionGateOpened"
+    EXECUTION_GATE_CLOSED = "ExecutionGateClosed"
 
 
 def _text(payload: Mapping[str, JsonValue], key: str) -> str:
@@ -60,6 +65,14 @@ def _flag(payload: Mapping[str, JsonValue], key: str) -> bool:
     if not isinstance(value, bool):
         raise EventCodecError(f"{key} must be a boolean")
     return value
+
+
+def _mission_state(payload: Mapping[str, JsonValue], key: str) -> MissionState:
+    raw = _text(payload, key)
+    try:
+        return MissionState(raw)
+    except ValueError as exc:
+        raise EventCodecError(f"{key} is not a valid MissionState: {raw}") from exc
 
 
 def encode_event(event: MissionEvent) -> PendingEvent:
@@ -88,6 +101,13 @@ def encode_event(event: MissionEvent) -> PendingEvent:
             return PendingEvent("BlockOpened", {"reason": reason})
         case BlockResolved():
             return PendingEvent("BlockResolved", {})
+        case ExecutionGateOpened(gate_id=gate_id, kind=kind, reason=reason, at_state=at_state):
+            return PendingEvent(
+                "ExecutionGateOpened",
+                {"gate_id": gate_id, "kind": kind, "reason": reason, "at_state": at_state.value},
+            )
+        case ExecutionGateClosed(gate_id=gate_id):
+            return PendingEvent("ExecutionGateClosed", {"gate_id": gate_id})
         case _ as unreachable:
             assert_never(unreachable)
 
@@ -123,5 +143,14 @@ def decode_event(event: StoredEvent) -> MissionEvent:
             return BlockOpened(_text(payload, "reason"))
         case EventType.BLOCK_RESOLVED:
             return BlockResolved()
+        case EventType.EXECUTION_GATE_OPENED:
+            return ExecutionGateOpened(
+                _text(payload, "gate_id"),
+                _text(payload, "kind"),
+                _text(payload, "reason"),
+                _mission_state(payload, "at_state"),
+            )
+        case EventType.EXECUTION_GATE_CLOSED:
+            return ExecutionGateClosed(_text(payload, "gate_id"))
         case _ as unreachable:
             assert_never(unreachable)

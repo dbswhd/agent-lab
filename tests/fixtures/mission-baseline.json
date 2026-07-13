@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "inventory_document": "docs/redesign-2026-07/00-wave0-mission-inventory.md",
+  "scenarios": [
+    {
+      "id": "plan_reject_revisit",
+      "fixture": "sessions/_regression/mission_loop_plan_reject",
+      "expected_terminal_state": "PLAN_REJECT",
+      "expected_gate": "plan_gate_reject",
+      "writers": [
+        "src/agent_lab/mission/loop.py",
+        "src/agent_lab/mission/advance.py",
+        "src/agent_lab/runtime/transitions.py"
+      ],
+      "classification": "map"
+    },
+    {
+      "id": "execute_success_merge_oracle_pass",
+      "fixture": "sessions/_regression/worktree_merge_ok",
+      "expected_terminal_state": "merged_and_verified",
+      "expected_gate": "human_merge_then_oracle_pass",
+      "writers": [
+        "src/agent_lab/plan/execute_merge.py",
+        "src/agent_lab/plan/execute_verify.py",
+        "src/agent_lab/mission/advance.py"
+      ],
+      "classification": "map"
+    },
+    {
+      "id": "oracle_fail_repair",
+      "fixture": "sessions/_regression/mission_loop_verify_repair",
+      "expected_terminal_state": "MISSION_DONE",
+      "expected_gate": "oracle_fail_then_bounded_repair_pass",
+      "writers": [
+        "src/agent_lab/mission/advance.py",
+        "src/agent_lab/verify_repair_policy.py",
+        "src/agent_lab/runtime/invoke_execute.py"
+      ],
+      "classification": "map"
+    },
+    {
+      "id": "human_inbox_pause_resume",
+      "fixture": "sessions/_regression/mission_loop_paused",
+      "expected_terminal_state": "MISSION_PAUSED",
+      "expected_gate": "human_or_global_cancel_resume_gate",
+      "writers": [
+        "src/agent_lab/run/control.py",
+        "src/agent_lab/human_inbox.py",
+        "src/agent_lab/mission/loop.py"
+      ],
+      "classification": "map"
+    },
+    {
+      "id": "daemon_crash_recovery",
+      "fixture": "sessions/_regression/durable_completed_steps",
+      "expected_terminal_state": "partial_with_completed_step_resume",
+      "expected_gate": "persisted_step_replay_after_restart",
+      "writers": [
+        "src/agent_lab/run/meta.py",
+        "src/agent_lab/checkpoint_store.py",
+        "src/agent_lab/crash_recovery.py",
+        "src/agent_lab/room/session_persist.py"
+      ],
+      "classification": "map"
+    }
+  ]
+}

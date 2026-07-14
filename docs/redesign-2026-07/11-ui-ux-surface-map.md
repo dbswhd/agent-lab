@@ -132,3 +132,11 @@ legacy fallback은 read-model 자체가 `null`일 때만 발동한다.
 | `event_cursor` vs SSE 쪽 비교 | 현재 server는 cursor를 검증만 하고, client의 SSE stream과 조합하지 않음 | §7.4 SSE cursor/reconnect wiring |
 | durable event merge on reconnect | SSE progress와 Mission event의 시각적 구분 규약이 미정 | §7.4 + §6.4 |
 | `HumanInboxPanel` answer가 `decision_id`, `expected_version` 전송 | 아직 command endpoint contract가 없음 | §7.3 이후 |
+
+### §7.4 SSE cursor inventory (2026-07-14)
+
+- Server SSE routes: `POST /api/runs`, `POST /api/room/runs`, `GET /api/room/runs/{session_id}/resume` (all in `app/server/routers/room.py`).
+- Mission journal: `{session}/.agent-lab/mission-events.jsonl`, append-only, versioned, idempotent, file-locked. Read-model `event_cursor` equals `mission.version` (`src/agent_lab/mission/read_model.py:373`).
+- Client stream: `web/src/api/client.ts` `consumeSse()` uses `fetch`+`ReadableStream`, not `EventSource`. `runRoom()`/`resumeRoomRun()` track `since` against `live.jsonl` resumable event types.
+- Read-model consumers: `HumanInboxPanel`, `NotificationCenter`, `WorkToolPanel`, `ContextOverviewPanel`, `ComposerEventStack`, `useAutonomySession`, `useRoomChatInteractions`, `useRoomSseHandler`.
+- Gap: no SSE endpoint emits Mission journal events; `event_cursor` is not merged with the Room SSE `since` cursor; durable Mission event merge on reconnect is undefined.

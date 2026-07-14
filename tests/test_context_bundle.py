@@ -60,6 +60,58 @@ def test_peer_dedupe_removes_duplicate_agent_lines():
     assert human in recent
 
 
+# --- context.recipe shadow decision -----------------------------------------
+# select_context() has no real ActivityKind signal to draw on anywhere else in
+# the codebase (doc-09 sector audit finding) — build_context_bundle can only
+# honestly distinguish review_mode (-> CRITIC) from everything else (-> PLAN).
+# These lock that mapping plus the real layer_chars -> ContextItem wiring.
+
+
+def test_context_recipe_shadow_reflects_review_mode():
+    messages = [_Msg("user", None, "add a login endpoint")]
+    plan = build_context_bundle("add a login endpoint", messages, "cursor", plan_md="# Plan\n\n- ship\n", run_meta={})
+    critic = build_context_bundle(
+        "add a login endpoint",
+        messages,
+        "cursor",
+        plan_md="# Plan\n\n- ship\n",
+        run_meta={},
+        review_mode=True,
+    )
+    assert plan.meta.context_recipe_shadow["activity"] == "plan"
+    assert critic.meta.context_recipe_shadow["activity"] == "critic"
+
+
+def test_context_recipe_shadow_included_matches_real_layer_chars():
+    messages = [_Msg("user", None, "add a login endpoint")]
+    bundle = build_context_bundle("add a login endpoint", messages, "cursor", plan_md="# Plan\n\n- ship\n", run_meta={})
+    shadow = bundle.meta.context_recipe_shadow
+    assert shadow is not None
+    non_empty_layers = {layer for layer, chars in bundle.meta.layer_chars.items() if layer != "total" and chars > 0}
+    assert set(shadow["included"]) | set(shadow["excluded"]) == non_empty_layers
+    assert shadow["over_budget"] is False
+
+
+def test_context_recipe_shadow_flags_over_budget_when_bundle_is_huge():
+    messages = [_Msg("user", None, "q" * 500_000)]
+    bundle = build_context_bundle("q" * 500_000, messages, "cursor", plan_md="# Plan\n\n- ship\n", run_meta={})
+    shadow = bundle.meta.context_recipe_shadow
+    assert shadow is not None
+    assert shadow["over_budget"] is True
+    assert shadow["excluded"]
+
+
+def test_context_recipe_shadow_present_for_slim_bundle_too():
+    from agent_lab.context.bundle import build_slim_consensus_bundle
+
+    messages = [_Msg("user", None, "add a login endpoint")]
+    bundle = build_slim_consensus_bundle(
+        "add a login endpoint", messages, "cursor", plan_md="# Plan\n\n- ship\n", run_meta={}
+    )
+    assert bundle.meta.context_recipe_shadow is not None
+    assert bundle.meta.context_recipe_shadow["activity"] == "plan"
+
+
 def test_build_context_bundle_has_layers_and_meta():
     human = _Msg("user", None, "hello")
     messages = [human, _Msg("agent", "codex", "hi", 1)]

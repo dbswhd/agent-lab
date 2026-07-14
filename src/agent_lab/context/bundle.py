@@ -7,6 +7,15 @@ from typing import Any, Callable, cast
 
 from agent_lab.run.state import RunStateLike
 
+from agent_lab.context.recipe import (
+    ActivityKind,
+    ContextItem,
+    ContextManifest,
+    ContextNeed,
+    ContextSelectionError,
+    SourceClass,
+    select_context,
+)
 from agent_lab.core.context_bundle import ContextBundle, ContextBundleMeta
 from agent_lab.agent.thread_resume import build_agent_thread_resume_block
 from agent_lab.room.context import (
@@ -307,6 +316,7 @@ def build_slim_consensus_bundle(
         messages_in_turn=current_turn_message_count(messages),
         messages_in_session=count_messages(messages),
     )
+    meta.context_recipe_shadow = _context_recipe_shadow_decision(bundle, review_mode=meta.review_mode)
     _record_context_bundle_metrics(run_meta, meta, agent=agent, mode="slim")
     return bundle
 
@@ -748,8 +758,81 @@ def build_context_bundle(
         messages_in_turn=current_turn_message_count(full),
         messages_in_session=count_messages(full),
     )
+    meta.context_recipe_shadow = _context_recipe_shadow_decision(bundle, review_mode=review_mode)
     _record_context_bundle_metrics(run_meta, meta, agent=agent, mode="full")
     return bundle
+
+
+_LAYER_SOURCE: dict[str, SourceClass] = {
+    "constraints": SourceClass.HUMAN_INTENT,
+    "guidance_block": SourceClass.SYSTEM_INVARIANT,
+    "connect_hint": SourceClass.SYSTEM_INVARIANT,
+    "claude_tools": SourceClass.SYSTEM_INVARIANT,
+    "plan_open": SourceClass.APPROVED_PLAN,
+    "turn_state": SourceClass.RUNTIME_STATE,
+    "bridge": SourceClass.RUNTIME_STATE,
+    "recent": SourceClass.RUNTIME_STATE,
+    "peer": SourceClass.RUNTIME_STATE,
+    "follow_up": SourceClass.RUNTIME_STATE,
+}
+
+
+def _context_recipe_shadow_decision(bundle: ContextBundle, *, review_mode: bool) -> dict[str, Any]:
+    """Route the bundle's already-named, already-measured layers
+    (ContextBundleMeta.layer_chars) through context.recipe.select_context() —
+    diagnostic only, doesn't change what actually got included above.
+
+    ActivityKind has no real caller anywhere else in the codebase (per the
+    doc-09 sector audit), so this call site can only honestly distinguish two
+    of its six values from what's actually available here: review_mode=True
+    is a genuine critique/evaluation pass (CRITIC); everything else is the
+    discuss-toward-a-plan conversation this bundle is built for (PLAN).
+    CLARIFY/EXECUTE/REPAIR/SCRIBE don't have a corresponding signal at this
+    call site and are not guessed at.
+
+    authority/relevance are uniform within required vs. optional — there's no
+    real per-layer importance signal to rank by beyond that split, and
+    inventing one would fail the same test this wiring is trying to pass
+    (real signals only, not invented ones).
+    """
+    from agent_lab.core.limits import agent_context_limits
+
+    layer_chars = dict(getattr(bundle.meta, "layer_chars", {}) or {})
+    items: list[ContextItem] = []
+    for layer, source in _LAYER_SOURCE.items():
+        content = str(getattr(bundle, layer, "") or "")
+        if not content.strip():
+            continue
+        chars = layer_chars.get(layer, len(content))
+        items.append(
+            ContextItem(
+                item_id=layer,
+                source=source,
+                content=content,
+                authority=1,
+                relevance=1,
+                estimated_tokens=max(1, chars // 4),
+            )
+        )
+    need = ContextNeed(
+        activity=ActivityKind.CRITIC if review_mode else ActivityKind.PLAN,
+        required_sources=frozenset({SourceClass.HUMAN_INTENT, SourceClass.SYSTEM_INVARIANT}),
+        optional_sources=frozenset({SourceClass.APPROVED_PLAN, SourceClass.RUNTIME_STATE}),
+        forbidden_sources=frozenset(),
+        token_budget=max(1, agent_context_limits().max_thread_chars // 4),
+    )
+    try:
+        manifest: ContextManifest = select_context(need, tuple(items))
+    except ContextSelectionError as exc:
+        return {"activity": need.activity.value, "error": exc.reason}
+    return {
+        "activity": manifest.activity.value,
+        "total_estimated_tokens": manifest.total_tokens,
+        "token_budget": need.token_budget,
+        "included": [item.item_id for item in manifest.included],
+        "excluded": list(manifest.excluded),
+        "over_budget": bool(manifest.excluded),
+    }
 
 
 def _record_context_bundle_metrics(

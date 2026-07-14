@@ -126,17 +126,19 @@ legacy fallback은 read-model 자체가 `null`일 때만 발동한다.
 | migrated payload integrity fail-closed | `app/server/routers/mission_read_model.py` | `_payload_integrity_ok` + `try/except` |
 | consumer field precedence | `web/src/utils/missionReadModel.ts`, `components/*` | `?. ??` 패턴 |
 | epoch guard | `web/src/utils/missionReadModel.ts` | 동일 스트림 시간순 |
+| `event_cursor` vs durable journal 비교 | `app/server/routers/mission_read_model.py` (`_expected_event_cursor`) | cursor == journal line count; 불일치 시 legacy fail-closed |
+| SSE cursor replay / reconnect | `app/server/routers/mission_events.py`, `web/src/api/client.ts` (`fetchMissionEventsSSE`) | `Last-Event-ID` header로 missed event replay |
+| durable event merge on reconnect | `web/src/utils/missionReadModel.ts` | SSE notification → `fetchMissionReadModel` snapshot + epoch guard |
 
 | 비보장 / 미착수 | 이유 | 다음 단계 |
 |----------------|------|-----------|
-| `event_cursor` vs SSE 쪽 비교 | 현재 server는 cursor를 검증만 하고, client의 SSE stream과 조합하지 않음 | §7.4 SSE cursor/reconnect wiring |
-| durable event merge on reconnect | SSE progress와 Mission event의 시각적 구분 규약이 미정 | §7.4 + §6.4 |
 | `HumanInboxPanel` answer가 `decision_id`, `expected_version` 전송 | 아직 command endpoint contract가 없음 | §7.3 이후 |
 
 ### §7.4 SSE cursor inventory (2026-07-14)
 
-- Server SSE routes: `POST /api/runs`, `POST /api/room/runs`, `GET /api/room/runs/{session_id}/resume` (all in `app/server/routers/room.py`).
-- Mission journal: `{session}/.agent-lab/mission-events.jsonl`, append-only, versioned, idempotent, file-locked. Read-model `event_cursor` equals `mission.version` (`src/agent_lab/mission/read_model.py:373`).
-- Client stream: `web/src/api/client.ts` `consumeSse()` uses `fetch`+`ReadableStream`, not `EventSource`. `runRoom()`/`resumeRoomRun()` track `since` against `live.jsonl` resumable event types.
+- Server SSE routes: `POST /api/runs`, `POST /api/room/runs`, `GET /api/room/runs/{session_id}/resume` (all in `app/server/routers/room.py`) **plus** `GET /api/sessions/{session_id}/mission/events` (in `app/server/routers/mission_events.py`).
+- Mission journal: `{session}/.agent-lab/mission-events.jsonl`, append-only, versioned, idempotent, file-locked. Read-model `event_cursor` equals journal line count validated by `_payload_integrity_ok`.
+- Client stream: `web/src/api/client.ts` `consumeSse()` uses `fetch`+`ReadableStream`. `fetchMissionEventsSSE()` sends `Last-Event-ID` and receives mission journal notifications.
 - Read-model consumers: `HumanInboxPanel`, `NotificationCenter`, `WorkToolPanel`, `ContextOverviewPanel`, `ComposerEventStack`, `useAutonomySession`, `useRoomChatInteractions`, `useRoomSseHandler`.
-- Gap: no SSE endpoint emits Mission journal events; `event_cursor` is not merged with the Room SSE `since` cursor; durable Mission event merge on reconnect is undefined.
+- `useMissionReadModel` replaced 2.5s polling with initial snapshot + durable SSE stream; reconnects use `model.event_cursor` as `Last-Event-ID` and epoch guard drops stale responses.
+- **§7.4 status: complete.**

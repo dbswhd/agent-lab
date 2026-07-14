@@ -520,6 +520,13 @@ f7-dogfood-report:
 f8-cost-report:
 	.venv/bin/python scripts/f8_cost_report.py $(if $(ROOT),--root $(ROOT),) $(if $(JSON),--json,)
 
+# mission.topology choose_topology() shadow decision — real-usage dogfood report
+coordination-topology-report:
+	.venv/bin/python scripts/coordination_topology_report.py \
+	  --sessions $(if $(SESSIONS),$(SESSIONS),sessions) \
+	  --days $(if $(DAYS),$(DAYS),14) \
+	  $(if $(JSON),--json,)
+
 smoke:
 	.venv/bin/python scripts/smoke_room.py
 

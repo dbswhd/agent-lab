@@ -52,8 +52,8 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
     FlagDef(
         "AGENT_LAB_MISSION_UI_READ_MODEL",
         "feature",
-        "Wave A stub: web may fetch GET /mission/read-model (default off; do not replace Inbox/Composer until Wave B)",
-        default="0",
+        "Wave B: web fetches GET /mission/read-model and prefers it over legacy Inbox/Composer state when migrated (default on)",
+        default="1",
     ),
     FlagDef(
         "AGENT_LAB_STAGE_ROUTING", "feature", "Phase-aware single-vs-panel routing (stage-aware selective; default off)"

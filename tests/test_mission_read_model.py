@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from dataclasses import replace
 
@@ -345,11 +346,29 @@ def test_build_legacy_composites_for_unmigrated() -> None:
 
 
 def _make_test_folder(tmp_path: Path, journal_lines: int = 0) -> Path:
+    """Seed a session folder with a structurally-valid journal of N events.
+
+    Events must decode as real ``StoredEvent`` records (sequence/event_id/
+    event_type/payload) — ``_expected_event_cursor`` now parses the journal
+    via ``MissionJournal`` instead of counting raw lines.
+    """
     folder = tmp_path / "session-1"
     journal_folder = folder / ".agent-lab"
     journal_folder.mkdir(parents=True)
     journal = journal_folder / "mission-events.jsonl"
-    journal.write_text("\n".join(["{}"] * journal_lines), encoding="utf-8")
+    records = [
+        json.dumps(
+            {
+                "event_id": f"evt-{i}",
+                "sequence": i,
+                "event_type": "PlanOpened",
+                "payload": {},
+                "schema_version": 1,
+            }
+        )
+        for i in range(1, journal_lines + 1)
+    ]
+    journal.write_text("\n".join(records), encoding="utf-8")
     return folder
 
 
@@ -402,3 +421,48 @@ def test_payload_integrity_ok_allows_missing_run_event_cursor(tmp_path: Path) ->
     run = {"mission_loop": {}}
     payload = _payload("session-1", model, legacy_phase=None, folder=folder, run=run)
     assert payload["source"] == "mission_journal"
+
+
+def test_expected_event_cursor_counts_batch_record_events_not_lines(tmp_path: Path) -> None:
+    """Regression: a single ``record_type: batch`` line holds >1 event.
+
+    Counting physical lines undercounts the cursor for any multi-event
+    dispatch (e.g. ``MissionRepository.decide_plan``), which used to
+    permanently fail the payload closed to legacy even though the journal and
+    model agreed on ``event_cursor``.
+    """
+    from app.server.routers.mission_read_model import _expected_event_cursor
+
+    folder = tmp_path / "session-batch"
+    journal_folder = folder / ".agent-lab"
+    journal_folder.mkdir(parents=True)
+    journal = journal_folder / "mission-events.jsonl"
+    batch_record = {
+        "record_type": "batch",
+        "batch_id": "batch-1",
+        "events": [
+            {
+                "event_id": "evt-1",
+                "sequence": 1,
+                "event_type": "PlanOpened",
+                "payload": {},
+                "schema_version": 1,
+            },
+            {
+                "event_id": "evt-2",
+                "sequence": 2,
+                "event_type": "PlanApproved",
+                "payload": {},
+                "schema_version": 1,
+            },
+        ],
+    }
+    journal.write_text(json.dumps(batch_record), encoding="utf-8")
+
+    assert _expected_event_cursor(folder) == 2
+
+    mission = new_mission("m-cursor", "ship")
+    model = replace(build_read_model(mission), event_cursor=2, version=2)
+    payload = _payload("session-batch", model, legacy_phase=None, folder=folder, run=None)
+    assert payload["source"] == "mission_journal"
+    assert payload["event_cursor"] == 2

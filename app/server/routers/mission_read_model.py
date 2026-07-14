@@ -7,6 +7,7 @@ from fastapi import APIRouter
 from typing_extensions import NotRequired, TypedDict
 
 from agent_lab.mission.application import MissionApplication
+from agent_lab.mission.journal import JournalCorruptionError, MissionJournal
 from agent_lab.mission.read_model import (
     MissionReadModel,
     build_legacy_composites,
@@ -178,11 +179,24 @@ def _payload_integrity_ok(
 
 
 def _expected_event_cursor(folder: Path) -> int:
+    """Count events in the journal, not physical lines.
+
+    ``MissionJournal.append()`` can write >1 event as a single ``batch``
+    record, so a raw line count undercounts the true cursor whenever a
+    multi-event dispatch (e.g. ``MissionRepository.decide_plan``) has run.
+    Uses ``recover_tail()`` — the same self-healing read ``MissionApplication``
+    uses to derive ``model.version`` — so a torn trailing write doesn't
+    disagree with the event_cursor it's meant to validate.
+    """
     journal = folder / ".agent-lab" / "mission-events.jsonl"
     if not journal.is_file():
         return 0
-    with journal.open("r", encoding="utf-8") as f:
-        return sum(1 for line in f if line.strip())
+    try:
+        return len(MissionJournal(journal).recover_tail())
+    except JournalCorruptionError:
+        # Corruption must fail closed to legacy, never coincidentally match a
+        # fresh mission's event_cursor (0), so -1 rather than 0 here.
+        return -1
 
 
 def _legacy_payload(session_id: str, folder: Path) -> MissionReadModelPayload:

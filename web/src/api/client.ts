@@ -1632,15 +1632,28 @@ function parseRoomRunHttpError(text: string): string {
 // 25s keepalive as a dead connection instead of waiting indefinitely.
 const SSE_STALE_VISIBLE_MS = 40_000;
 
+type ConsumeSseResult = {
+  /** The read loop ended via a clean `done` (no thrown/network error). True
+   * for any well-behaved server-initiated close, regardless of whether the
+   * protocol has an in-band terminal marker. */
+  closedCleanly: boolean;
+  /** An in-band terminal marker event (type: complete/error/run_failed/
+   * run_cancelled) was seen — the Room SSE protocol's convention. Streams
+   * with no such marker (e.g. mission events) never set this; use
+   * `closedCleanly` instead. */
+  sawTerminal: boolean;
+};
+
 async function consumeSse(
   res: Response,
   onEvent: (data: Record<string, unknown>) => void,
-): Promise<boolean> {
+): Promise<ConsumeSseResult> {
   const reader = res.body?.getReader();
   if (!reader) throw new Error("no response body");
   const dec = new TextDecoder();
   let buf = "";
   let sawTerminal = false;
+  let closedCleanly = false;
   let lastEventAt = Date.now();
   const onVisibilityChange = () => {
     if (
@@ -1654,7 +1667,10 @@ async function consumeSse(
   try {
     while (true) {
       const { done, value } = await reader.read();
-      if (done) break;
+      if (done) {
+        closedCleanly = true;
+        break;
+      }
       lastEventAt = Date.now();
       buf += dec.decode(value, { stream: true });
       const parts = buf.split("\n\n");
@@ -1685,7 +1701,7 @@ async function consumeSse(
     document.removeEventListener("visibilitychange", onVisibilityChange);
     reader.cancel().catch(() => {});
   }
-  return sawTerminal;
+  return { closedCleanly, sawTerminal };
 }
 
 // Mirrors LIVE_EVENT_TYPES in agent_lab/room/live_log.py — only these event
@@ -1985,7 +2001,7 @@ export async function runRoom(
 
   const wakeLock = await acquireRoomWakeLock();
   try {
-    let sawTerminal = await consumeSse(res, trackingOnEvent);
+    let { sawTerminal } = await consumeSse(res, trackingOnEvent);
     if (sawTerminal || opts?.signal?.aborted) return;
 
     if (!resumeSessionId) {
@@ -2061,7 +2077,8 @@ export async function resumeRoomRun(
   if (!res.ok) {
     throw new Error(parseRoomRunHttpError(await res.text()));
   }
-  return consumeSse(res, trackingOnEvent);
+  const { sawTerminal } = await consumeSse(res, trackingOnEvent);
+  return sawTerminal;
 }
 
 export async function cancelRoomRun(sessionId?: string): Promise<void> {
@@ -2778,8 +2795,12 @@ export async function fetchMissionEventsSSE(
     onError();
     return;
   }
-  const sawTerminal = await consumeSse(res, onEvent);
-  if (sawTerminal) {
+  // Mission events carry no in-band terminal marker (unlike Room's
+  // type: complete/error/...) — the server simply closes the connection
+  // once the mission reaches a terminal state, so a clean transport-level
+  // close (not an in-band marker) is the correct completion signal here.
+  const { closedCleanly } = await consumeSse(res, onEvent);
+  if (closedCleanly) {
     onDone();
   } else {
     onError();

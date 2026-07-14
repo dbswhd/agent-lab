@@ -239,6 +239,7 @@ export function useMissionReadModel(
           modelRef.current?.event_cursor !== undefined
             ? String(modelRef.current.event_cursor)
             : undefined;
+        let hadError = false;
         try {
           // eslint-disable-next-line no-await-in-loop
           await fetchMissionEventsSSE(
@@ -258,22 +259,24 @@ export function useMissionReadModel(
                 });
             },
             () => {
-              // Stream ended cleanly; stop reconnecting.
+              // Stream ended cleanly (mission caught up or reached a
+              // terminal state) — not a failure, so don't escalate backoff.
             },
             () => {
-              // Stream disconnected; loop will reconnect after backoff.
+              // Stream disconnected/failed; escalate backoff before retrying.
+              hadError = true;
             },
           );
-          reconnectAttempt = 0;
         } catch {
-          // ignore, backoff will reconnect
+          hadError = true;
         }
         if (cancelled || controller.signal.aborted) break;
-        const backoff =
-          SSE_RECONNECT_BACKOFF_MS[
-            Math.min(reconnectAttempt, SSE_RECONNECT_BACKOFF_MS.length - 1)
-          ];
-        reconnectAttempt += 1;
+        const backoff = hadError
+          ? SSE_RECONNECT_BACKOFF_MS[
+              Math.min(reconnectAttempt, SSE_RECONNECT_BACKOFF_MS.length - 1)
+            ]
+          : SSE_RECONNECT_BACKOFF_MS[0];
+        reconnectAttempt = hadError ? reconnectAttempt + 1 : 0;
         // eslint-disable-next-line no-await-in-loop
         await sleep(backoff, controller.signal);
       }

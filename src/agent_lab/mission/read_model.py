@@ -307,7 +307,10 @@ def _overview_from_mission(
     circuit_breaker: bool = False,
 ) -> MissionOverviewView:
     phase_label = operational_status.value
-    paused = False  # PAUSED reserved; circuit_breaker may imply pause in legacy UI
+    # Terminal always wins (matches compute_operational_status precedence); otherwise the
+    # canonical AWAITING_HUMAN block or a legacy circuit_breaker flag both mean "paused".
+    terminal = mission.state in _TERMINAL_STATUS
+    paused = False if terminal else mission.state is MissionState.AWAITING_HUMAN or circuit_breaker
     return MissionOverviewView(
         phase_label=str(phase_label),
         paused=paused,

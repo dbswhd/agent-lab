@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Literal, NotRequired, TypedDict
+from typing import Any, Literal
 
 from fastapi import APIRouter
+from typing_extensions import NotRequired, TypedDict
 
 from agent_lab.mission.application import MissionApplication
 from agent_lab.mission.read_model import (

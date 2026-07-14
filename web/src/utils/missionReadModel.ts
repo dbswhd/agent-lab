@@ -55,6 +55,31 @@ function hasValidGates(value: Record<string, unknown>): boolean {
   return true;
 }
 
+function isStaleReviewItem(item: Record<string, unknown>): boolean {
+  return item.actionable === false || item.mission_gate_status === "stale";
+}
+
+function hasValidInboxJoin(value: Record<string, unknown>): boolean {
+  if (!Array.isArray(value.inbox_items)) return true;
+  const gates = Array.isArray(value.open_execution_gates)
+    ? value.open_execution_gates
+    : [];
+  const gateIds = new Set(
+    gates
+      .filter(isRecord)
+      .map((gate) => gate.gate_id)
+      .filter((id): id is string => typeof id === "string"),
+  );
+  const seen = new Set<string>();
+  for (const item of value.inbox_items) {
+    if (!isRecord(item) || typeof item.id !== "string") return false;
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    if (!gateIds.has(item.id) && !isStaleReviewItem(item)) return false;
+  }
+  return true;
+}
+
 function hasValidComposites(value: Record<string, unknown>): boolean {
   const summary = value.inbox_summary;
   if (summary !== undefined) {
@@ -110,6 +135,7 @@ export function parseMissionReadModel(
     return null;
   }
   if (!hasValidGates(value)) return null;
+  if (!hasValidInboxJoin(value)) return null;
   if (!hasValidComposites(value)) return null;
   return value as MissionReadModelPayload;
 }

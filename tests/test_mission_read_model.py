@@ -138,7 +138,7 @@ def test_wave_a_read_model_composites_join_run() -> None:
     assert model.inbox_summary.pending_count == 2
     assert model.inbox_summary.pending_questions == 1
     assert model.inbox_summary.pending_builds == 1
-    assert model.inbox_items == ()
+    assert [item["id"] for item in model.inbox_items] == ["q1", "b1"]
 
 
 def test_read_model_paused_uses_canonical_mission_and_circuit_state() -> None:
@@ -158,7 +158,7 @@ def test_read_model_paused_uses_canonical_mission_and_circuit_state() -> None:
     ).mission_overview.paused is False
 
 
-def test_read_model_join_excludes_extra_pending_rows_from_gate_projection() -> None:
+def test_read_model_join_includes_unrelated_inbox_rows() -> None:
     mission = replace(
         new_mission("m-extra", "ship"),
         state=MissionState.EXECUTING,
@@ -170,14 +170,18 @@ def test_read_model_join_excludes_extra_pending_rows_from_gate_projection() -> N
         run={
             "human_inbox": [
                 {"id": "gate-1", "kind": "question", "status": "pending", "prompt": "Pick"},
-                {"id": "extra", "kind": "question", "status": "pending", "prompt": "Do not join"},
+                {"id": "extra", "kind": "question", "status": "pending", "prompt": "Unrelated row"},
             ]
         },
     )
 
-    assert [item["id"] for item in model.inbox_items] == ["gate-1"]
+    assert [item["id"] for item in model.inbox_items] == ["gate-1", "extra"]
     assert model.inbox_summary is not None
-    assert model.inbox_summary.pending_count == 1
+    assert model.inbox_summary.pending_count == 2
+    gate_item = next(item for item in model.inbox_items if item["id"] == "gate-1")
+    assert gate_item.get("mission_gate_status") == "open_gate"
+    extra_item = next(item for item in model.inbox_items if item["id"] == "extra")
+    assert extra_item.get("mission_gate_status") == "unrelated"
 
 
 def test_read_model_joins_open_gates_to_full_rows_in_gate_order() -> None:

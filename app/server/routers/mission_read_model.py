@@ -109,7 +109,7 @@ def _composite_dict(model: MissionReadModel) -> dict[str, Any]:
 
 def _payload(session_id: str, model: MissionReadModel, *, legacy_phase: str | None) -> MissionReadModelPayload:
     composites = _composite_dict(model)
-    return {
+    payload: MissionReadModelPayload = {
         "session_id": session_id,
         "migrated": True,
         "source": "mission_journal",
@@ -134,6 +134,27 @@ def _payload(session_id: str, model: MissionReadModel, *, legacy_phase: str | No
         "inbox_summary": composites["inbox_summary"],
         "inbox_items": composites["inbox_items"],
     }
+    if not _payload_integrity_ok(payload):
+        return _legacy_payload(session_id, folder_or_404(session_id))
+    return payload
+
+
+def folder_or_404(session_id: str) -> Path:
+    from app.server.deps import session_folder_or_404
+    return session_folder_or_404(session_id)
+
+
+def _payload_integrity_ok(payload: MissionReadModelPayload) -> bool:
+    """§8.1: parsing boundary validation. Fail closed to legacy on any structural violation."""
+    if payload.get("event_cursor") is None or payload["event_cursor"] < 0:
+        return False
+    if not payload.get("mission_id"):
+        return False
+    if payload.get("operational_status") is None:
+        return False
+    if not isinstance(payload.get("inbox_items"), list):
+        return False
+    return True
 
 
 def _legacy_payload(session_id: str, folder: Path) -> MissionReadModelPayload:
@@ -175,5 +196,8 @@ def get_mission_read_model(session_id: str) -> MissionReadModelPayload:
     run = session_run_for_read_model(folder)
     goal = _goal_from_run(folder)
     legacy = _legacy_phase(folder, run)
-    model = build_read_model(MissionApplication(folder, goal).load(), legacy_phase=legacy, run=run)
+    try:
+        model = build_read_model(MissionApplication(folder, goal).load(), legacy_phase=legacy, run=run)
+    except Exception:
+        return _legacy_payload(session_id, folder)
     return _payload(session_id, model, legacy_phase=model.legacy_phase)

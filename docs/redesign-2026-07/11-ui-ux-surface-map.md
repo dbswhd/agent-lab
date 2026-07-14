@@ -73,8 +73,62 @@
 
 ## 7. 구현 순서
 
-1. `/api/sessions/{id}/mission/read-model`과 legacy projection parity를 고정한다.
-2. `ComposerEventStack`에 Decision Queue precedence를 연결한다.
+1. ✅ `/api/sessions/{id}/mission/read-model`과 legacy projection parity를 고정한다.
+2. ✅ `ComposerEventStack`에 Decision Queue precedence를 연결한다.
 3. `WorkStatusBar`/`WorkspaceCard`에 activity·merge·Oracle evidence를 추가한다.
-4. SSE cursor/reconnect와 durable event merge를 연결한다.
+4. SSE cursor/reconnect와 durable event merge를 연결한다. (미착수)
 5. Playwright journey로 plan reject, diff approve, Oracle repair, Human resume을 검증한다.
+
+## 8. Wave B join / cross-source 우선순위 계약
+
+> 이 섹션은 2026-07-14 커밋 `32c9f3d` 이후 편입되었다.  
+> 현재 상태: payload parsing boundary + read-model field precedence까지 구현, browser SSE cursor wiring은 미착수.
+
+### 8.1 내부 join: `inbox_items` ↔ `open_execution_gates`
+
+`mission/read_model.py`의 `_joined_inbox_items`는 세 범주를 모두 노출한다.
+
+| 범주 | `mission_gate_status` | 처리 |
+|------|-----------------------|------|
+| inbox row가 open gate에 매칭됨 | `open_gate` | gate row의 데이터를 유지하고 tag 추가 |
+| open gate에 inbox row가 없음 | `missing_row` / `terminal_orphan` | placeholder item 생성 |
+| inbox row가 어떤 gate에도 매칭되지 않음 | `unrelated` | 원본 row 유지, tag 추가 |
+
+`app/server/routers/mission_read_model.py`는 `_payload_integrity_ok`에서 강제 검증한다.  
+위반이면 payload 전체를 `null`로 폐기하고 `_legacy_payload`로 fail-closed한다.
+
+### 8.2 cross-source 우선순위: 7 consumer
+
+모든 React consumer는 `missionReadModel?.field ?? legacy` 패턴을 따른다.  
+presence 기반: `migrated && source === "mission_journal"`이면 개별 필드(빈 배열 포함)가 무조건 이긴다.  
+legacy fallback은 read-model 자체가 `null`일 때만 발동한다.
+
+| consumer | 파일 | 사용 필드 | fallback |
+|----------|------|-----------|----------|
+| HumanInboxPanel | `components/HumanInboxPanel.tsx` | `inbox_items` | `payload.human_inbox` |
+| NotificationCenter | `components/NotificationCenter.tsx` | 전체 model | legacy payload |
+| WorkToolPanel | `components/WorkToolPanel.tsx` | `work_phase`, `plan.phase`, `mission_overview.paused`, `oracle_verdict` | run.json / 기존 state |
+| missionOverviewView | `utils/missionOverviewView.ts` | `operational_status`, `mission_overview` | legacy phase |
+| useMissionReadModel | `utils/missionReadModel.ts` | 파싱된 payload | `null` |
+| (6) | (reserved) | | |
+| (7) | (reserved) | | |
+
+### 8.3 epoch guard
+
+`useMissionReadModel`의 `shouldApplyMissionReadModelEpoch`는 **동일 스트림 내부** 시간순만 보장한다.  
+오래된 응답이 늦게 와도 버린다. 8.2의 cross-source 최신성 문제와는 별개.
+
+### 8.4 보장/비보장 한눈에 보기
+
+| 보장 | 구현 위치 | 비고 |
+|------|-----------|------|
+| `inbox_items` + `open_execution_gates` cross join | `mission/read_model.py` | `unrelated` / `missing_row` / `open_gate` tag |
+| migrated payload integrity fail-closed | `app/server/routers/mission_read_model.py` | `_payload_integrity_ok` + `try/except` |
+| consumer field precedence | `web/src/utils/missionReadModel.ts`, `components/*` | `?. ??` 패턴 |
+| epoch guard | `web/src/utils/missionReadModel.ts` | 동일 스트림 시간순 |
+
+| 비보장 / 미착수 | 이유 | 다음 단계 |
+|----------------|------|-----------|
+| `event_cursor` vs SSE 쪽 비교 | 현재 server는 cursor를 검증만 하고, client의 SSE stream과 조합하지 않음 | §7.4 SSE cursor/reconnect wiring |
+| durable event merge on reconnect | SSE progress와 Mission event의 시각적 구분 규약이 미정 | §7.4 + §6.4 |
+| `HumanInboxPanel` answer가 `decision_id`, `expected_version` 전송 | 아직 command endpoint contract가 없음 | §7.3 이후 |

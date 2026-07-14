@@ -18,13 +18,18 @@ ERROR_RE = re.compile(r"^([^:]+):\d+: error:")
 
 
 def resolve_mypy() -> str:
+    # Prefer the running interpreter's own venv (sys.executable) over a
+    # ROOT-relative guess — see scripts/mypy_vendor_ratchet.py for why.
+    sibling = Path(sys.executable).with_name("mypy")
+    if sibling.is_file():
+        return str(sibling)
     venv = ROOT / ".venv" / "bin" / "mypy"
     if venv.is_file():
         return str(venv)
     on_path = shutil.which("mypy")
     if on_path:
         return on_path
-    raise FileNotFoundError("mypy not found (.venv/bin/mypy or PATH)")
+    raise FileNotFoundError("mypy not found (next to sys.executable, .venv/bin/mypy, or PATH)")
 
 
 def run_pkg_mypy() -> tuple[int, dict[str, int]]:

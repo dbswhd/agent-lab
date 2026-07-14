@@ -39,13 +39,22 @@ PACKAGES = {
 
 
 def resolve_mypy() -> str:
+    # Prefer the running interpreter's own venv (sys.executable) over a
+    # ROOT-relative guess — ROOT is script-file-relative, so it resolves to a
+    # git worktree's root when this runs there, and worktrees never have
+    # their own .venv (not git-tracked). Falling through to a PATH mypy in
+    # that case can silently pick up an unrelated install with none of this
+    # project's dependencies/stubs (2026-07-14 HS4 dogfood).
+    sibling = Path(sys.executable).with_name("mypy")
+    if sibling.is_file():
+        return str(sibling)
     venv = ROOT / ".venv" / "bin" / "mypy"
     if venv.is_file():
         return str(venv)
     on_path = shutil.which("mypy")
     if on_path:
         return on_path
-    raise FileNotFoundError("mypy not found (.venv/bin/mypy or PATH)")
+    raise FileNotFoundError("mypy not found (next to sys.executable, .venv/bin/mypy, or PATH)")
 
 
 def run_pkg_mypy(pkg_src: Path) -> tuple[int, dict[str, int]]:

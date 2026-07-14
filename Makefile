@@ -520,7 +520,12 @@ f7-dogfood-report:
 f8-cost-report:
 	.venv/bin/python scripts/f8_cost_report.py $(if $(ROOT),--root $(ROOT),) $(if $(JSON),--json,)
 
-# mission.topology choose_topology() shadow decision — real-usage dogfood report
+# mission.topology choose_topology() shadow decision — real-usage dogfood
+coordination-topology-dogfood-run:
+	.venv/bin/python scripts/coordination_topology_dogfood_run.py \
+	  --sessions $(if $(SESSIONS),$(SESSIONS),sessions) \
+	  $(if $(JSON),--json,)
+
 coordination-topology-report:
 	.venv/bin/python scripts/coordination_topology_report.py \
 	  --sessions $(if $(SESSIONS),$(SESSIONS),sessions) \

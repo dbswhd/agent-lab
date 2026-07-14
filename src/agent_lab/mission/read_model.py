@@ -237,6 +237,12 @@ def _inbox_summary_from_run(
 
 
 def _joined_inbox_items(mission: Mission, run: RunStateLike) -> tuple[dict[str, Any], ...]:
+    """Wave B cross join: inbox rows + open execution gates, with gate status tags.
+
+    - Gate-matched rows keep their data and receive a ``mission_gate_status`` tag.
+    - Gate rows missing from inbox become placeholder items.
+    - Inbox rows not matching any gate are included as ``unrelated``.
+    """
     from agent_lab.human_inbox import inbox_items
 
     rows_by_id: dict[str, dict[str, Any]] = {}
@@ -247,25 +253,25 @@ def _joined_inbox_items(mission: Mission, run: RunStateLike) -> tuple[dict[str, 
         rows_by_id[item_id] = row
 
     terminal = mission.state in _TERMINAL_STATUS
+    gate_ids = {gate.gate_id for gate in mission.open_gates}
     joined: list[dict[str, Any]] = []
+
     for gate in mission.open_gates:
         matched_row = rows_by_id.get(gate.gate_id)
         if matched_row is None:
-            joined.append(
-                {
-                    "id": gate.gate_id,
-                    "kind": gate.kind,
-                    "status": "pending",
-                    "prompt": "Human inbox item unavailable",
-                    "options": [],
-                    "reason": gate.reason,
-                    "actionable": False,
-                    "mission_gate_status": "terminal_orphan" if terminal else "missing_row",
-                }
-            )
+            joined.append({
+                "id": gate.gate_id,
+                "kind": gate.kind,
+                "status": "pending",
+                "prompt": "Human inbox item unavailable",
+                "options": [],
+                "reason": gate.reason,
+                "actionable": False,
+                "mission_gate_status": "terminal_orphan" if terminal else "missing_row",
+            })
             continue
-
         item = dict(matched_row)
+        item.setdefault("mission_gate_status", "open_gate")
         if terminal:
             item["actionable"] = False
             item["mission_gate_status"] = "terminal_orphan"
@@ -273,6 +279,14 @@ def _joined_inbox_items(mission: Mission, run: RunStateLike) -> tuple[dict[str, 
             item["actionable"] = False
             item["mission_gate_status"] = "stale"
         joined.append(item)
+
+    for item_id, row in rows_by_id.items():
+        if item_id in gate_ids:
+            continue
+        item = dict(row)
+        item.setdefault("mission_gate_status", "unrelated")
+        joined.append(item)
+
     return tuple(joined)
 
 
@@ -312,10 +326,13 @@ def _overview_from_mission(
     circuit_breaker: bool = False,
 ) -> MissionOverviewView:
     phase_label = operational_status.value
-    # Terminal always wins (matches compute_operational_status precedence); otherwise the
-    # canonical AWAITING_HUMAN block or a legacy circuit_breaker flag both mean "paused".
-    terminal = mission.state in _TERMINAL_STATUS
-    paused = False if terminal else mission.state is MissionState.AWAITING_HUMAN or circuit_breaker
+    # Terminal always wins (matches compute_operational_status precedence). Otherwise,
+    # any of the WAITING_FOR_HUMAN states (plan/diff decision, AWAITING_HUMAN, or an
+    # open execution gate) or a legacy circuit_breaker flag both mean "paused".
+    paused = (
+        operational_status is MissionOperationalStatus.WAITING_FOR_HUMAN
+        or (bool(circuit_breaker) and operational_status not in _TERMINAL_STATUS.values())
+    )
     return MissionOverviewView(
         phase_label=str(phase_label),
         paused=paused,
@@ -336,7 +353,7 @@ def build_read_model(
     inbox = _inbox_summary_from_run(
         run_meta,
         open_gate_count=len(mission.open_gates),
-        joined_items=joined_items if mission.open_gates else None,
+        joined_items=joined_items,
     )
     raw_mission_loop = run_meta.get("mission_loop")
     ml: dict[str, Any] = raw_mission_loop if isinstance(raw_mission_loop, dict) else {}

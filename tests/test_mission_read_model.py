@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from dataclasses import replace
 
 import pytest
@@ -13,6 +14,7 @@ from agent_lab.mission.read_model import (
     plan_phase_from_mission,
     work_phase_from_mission,
 )
+from app.server.routers.mission_read_model import _payload
 
 
 def test_read_model_exposes_user_action_without_leaking_fsm() -> None:
@@ -340,3 +342,63 @@ def test_build_legacy_composites_for_unmigrated() -> None:
     assert out["mission_overview"]["paused"] is True
     assert out["work_phase"] in {"execute_pending", "plan_draft", "merge_verify", "review_needed", "done"}
     assert out["inbox_items"] == []
+
+
+def _make_test_folder(tmp_path: Path, journal_lines: int = 0) -> Path:
+    folder = tmp_path / "session-1"
+    journal_folder = folder / ".agent-lab"
+    journal_folder.mkdir(parents=True)
+    journal = journal_folder / "mission-events.jsonl"
+    journal.write_text("\n".join(["{}"] * journal_lines), encoding="utf-8")
+    return folder
+
+
+def test_payload_integrity_ok_requires_non_negative_event_cursor(tmp_path: Path) -> None:
+    mission = new_mission("m-cursor", "ship")
+    folder = _make_test_folder(tmp_path)
+    # new_mission has version 0 and an empty journal, so event_cursor 0 matches.
+    model = build_read_model(mission)
+    payload = _payload("session-1", model, legacy_phase=None, folder=folder, run=None)
+    assert payload["source"] == "mission_journal"
+
+    # Simulate a negative event_cursor by replacing it in the model.
+    bad_model = replace(model, event_cursor=-1)
+    bad_payload = _payload("session-1", bad_model, legacy_phase=None, folder=folder, run=None)
+    assert bad_payload["source"] == "legacy"
+
+
+def test_payload_integrity_ok_matches_event_cursor_to_journal_line_count(tmp_path: Path) -> None:
+    mission = new_mission("m-cursor", "ship")
+    folder = _make_test_folder(tmp_path, journal_lines=2)
+    model = build_read_model(mission)
+    # Default model event_cursor == mission.version == 0, but journal has 2 lines.
+    payload = _payload("session-1", model, legacy_phase=None, folder=folder, run=None)
+    assert payload["source"] == "legacy"
+
+    # Bump the model event_cursor to match the journal line count.
+    matched_model = replace(model, event_cursor=2, version=2)
+    payload = _payload("session-1", matched_model, legacy_phase=None, folder=folder, run=None)
+    assert payload["source"] == "mission_journal"
+    assert payload["event_cursor"] == 2
+
+
+def test_payload_integrity_ok_cross_checks_run_event_cursor_when_present(tmp_path: Path) -> None:
+    mission = new_mission("m-cursor", "ship")
+    folder = _make_test_folder(tmp_path, journal_lines=1)
+    model = replace(build_read_model(mission), event_cursor=1, version=1)
+    payload = _payload("session-1", model, legacy_phase=None, folder=folder, run=None)
+    assert payload["source"] == "mission_journal"
+
+    # A run dict with a different cursor should trigger fail-closed.
+    run = {"mission_loop": {"event_cursor": 5}}
+    payload = _payload("session-1", model, legacy_phase=None, folder=folder, run=run)
+    assert payload["source"] == "legacy"
+
+
+def test_payload_integrity_ok_allows_missing_run_event_cursor(tmp_path: Path) -> None:
+    mission = new_mission("m-cursor", "ship")
+    folder = _make_test_folder(tmp_path, journal_lines=0)
+    model = build_read_model(mission)
+    run = {"mission_loop": {}}
+    payload = _payload("session-1", model, legacy_phase=None, folder=folder, run=run)
+    assert payload["source"] == "mission_journal"

@@ -108,7 +108,14 @@ def _composite_dict(model: MissionReadModel) -> dict[str, Any]:
     }
 
 
-def _payload(session_id: str, model: MissionReadModel, *, legacy_phase: str | None) -> MissionReadModelPayload:
+def _payload(
+    session_id: str,
+    model: MissionReadModel,
+    *,
+    legacy_phase: str | None,
+    folder: Path,
+    run: dict[str, Any] | None,
+) -> MissionReadModelPayload:
     composites = _composite_dict(model)
     payload: MissionReadModelPayload = {
         "session_id": session_id,
@@ -135,8 +142,8 @@ def _payload(session_id: str, model: MissionReadModel, *, legacy_phase: str | No
         "inbox_summary": composites["inbox_summary"],
         "inbox_items": composites["inbox_items"],
     }
-    if not _payload_integrity_ok(payload):
-        return _legacy_payload(session_id, folder_or_404(session_id))
+    if not _payload_integrity_ok(payload, folder=folder, run=run):
+        return _legacy_payload(session_id, folder)
     return payload
 
 
@@ -145,10 +152,22 @@ def folder_or_404(session_id: str) -> Path:
     return session_folder_or_404(session_id)
 
 
-def _payload_integrity_ok(payload: MissionReadModelPayload) -> bool:
+def _payload_integrity_ok(
+    payload: MissionReadModelPayload,
+    *,
+    folder: Path,
+    run: dict[str, Any] | None,
+) -> bool:
     """§8.1: parsing boundary validation. Fail closed to legacy on any structural violation."""
-    if payload.get("event_cursor") is None or payload["event_cursor"] < 0:
+    event_cursor = payload.get("event_cursor")
+    if not isinstance(event_cursor, int) or event_cursor < 0:
         return False
+    if event_cursor != _expected_event_cursor(folder):
+        return False
+    if run is not None:
+        run_cursor = run.get("mission_loop", {}).get("event_cursor")
+        if run_cursor is not None and event_cursor != run_cursor:
+            return False
     if not payload.get("mission_id"):
         return False
     if payload.get("operational_status") is None:
@@ -156,6 +175,14 @@ def _payload_integrity_ok(payload: MissionReadModelPayload) -> bool:
     if not isinstance(payload.get("inbox_items"), list):
         return False
     return True
+
+
+def _expected_event_cursor(folder: Path) -> int:
+    journal = folder / ".agent-lab" / "mission-events.jsonl"
+    if not journal.is_file():
+        return 0
+    with journal.open("r", encoding="utf-8") as f:
+        return sum(1 for line in f if line.strip())
 
 
 def _legacy_payload(session_id: str, folder: Path) -> MissionReadModelPayload:
@@ -201,4 +228,4 @@ def get_mission_read_model(session_id: str) -> MissionReadModelPayload:
         model = build_read_model(MissionApplication(folder, goal).load(), legacy_phase=legacy, run=run)
     except Exception:
         return _legacy_payload(session_id, folder)
-    return _payload(session_id, model, legacy_phase=model.legacy_phase)
+    return _payload(session_id, model, legacy_phase=model.legacy_phase, folder=folder, run=run)

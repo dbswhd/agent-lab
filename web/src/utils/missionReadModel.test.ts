@@ -248,4 +248,50 @@ describe("mission read-model rollout boundary", () => {
     expect(shouldApplyMissionReadModelEpoch(4, 3)).toBe(false);
     expect(shouldApplyMissionReadModelEpoch(4, 4)).toBe(true);
   });
+
+  it("keeps the newer poll's payload when an older durable fetch resolves after it", async () => {
+    // Mirrors useMissionReadModel's request()/apply() pair: a monotonic
+    // requestEpoch ref plus the exported guard. Poll 1 (epoch 1) is slow and
+    // resolves after poll 2 (epoch 2) has already landed — the classic
+    // durable-vs-ephemeral race on a 2.5s interval. The guard must keep
+    // poll 2's fresher state and drop poll 1's stale one, regardless of
+    // resolution order.
+    let requestEpoch = 0;
+    const state: { applied: MissionReadModelPayload | null } = {
+      applied: null,
+    };
+
+    const resolvers: Record<number, (payload: MissionReadModelPayload) => void> =
+      {};
+    const pending = new Map<number, Promise<MissionReadModelPayload>>();
+
+    function fire(): number {
+      const epoch = ++requestEpoch;
+      pending.set(
+        epoch,
+        new Promise<MissionReadModelPayload>((resolve) => {
+          resolvers[epoch] = resolve;
+        }),
+      );
+      void pending.get(epoch)!.then((payload) => {
+        if (shouldApplyMissionReadModelEpoch(requestEpoch, epoch)) {
+          state.applied = payload;
+        }
+      });
+      return epoch;
+    }
+
+    const epoch1 = fire();
+    const epoch2 = fire();
+    expect(epoch1).toBe(1);
+    expect(epoch2).toBe(2);
+
+    // Poll 2 (newer) resolves first, then the slow poll 1 (older) lands.
+    resolvers[epoch2]?.({ ...migratedPayload, event_cursor: 9 });
+    await pending.get(epoch2);
+    resolvers[epoch1]?.({ ...migratedPayload, event_cursor: 1 });
+    await pending.get(epoch1);
+
+    expect(state.applied?.event_cursor).toBe(9);
+  });
 });

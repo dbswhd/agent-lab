@@ -43,6 +43,7 @@ export function ComposerStrip({
         .filter(Boolean)
         .join(" ")}
       role={role}
+      aria-live={role === "status" ? "polite" : role === "alert" ? "assertive" : undefined}
       aria-label={ariaLabel}
     >
       <div className="composer-strip__main">

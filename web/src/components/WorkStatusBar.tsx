@@ -32,6 +32,7 @@ export function WorkStatusBar({
         .filter(Boolean)
         .join(" ")}
       role="status"
+      aria-live="polite"
     >
       {missionPaused ? (
         <span

@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { fetchHealthFlags, fetchMissionReadModel } from "../api/client";
+import {
+  fetchHealthFlags,
+  fetchMissionEventsSSE,
+  fetchMissionReadModel,
+} from "../api/client";
 import type { MissionReadModelPayload } from "../api/client";
 
 const FLAG = "AGENT_LAB_MISSION_UI_READ_MODEL";
@@ -159,6 +163,22 @@ export function shouldApplyMissionReadModelEpoch(
   return responseEpoch >= currentEpoch;
 }
 
+const SSE_RECONNECT_BACKOFF_MS = [1000, 2000, 4000, 8000, 15000, 15000];
+
+function sleep(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, ms);
+    signal.addEventListener(
+      "abort",
+      () => {
+        clearTimeout(timer);
+        resolve();
+      },
+      { once: true },
+    );
+  });
+}
+
 export function useMissionReadModel(
   sessionId: string | null,
   reloadKey = 0,
@@ -166,6 +186,13 @@ export function useMissionReadModel(
   const [model, setModel] = useState<MissionReadModelPayload | null>(null);
   const [loading, setLoading] = useState(false);
   const requestEpoch = useRef(0);
+  const modelRef = useRef(model);
+
+  // Keep a mutable ref in sync with the latest model so reconnects can use
+  // the current cursor without capturing stale React state in the async loop.
+  useEffect(() => {
+    modelRef.current = model;
+  }, [model]);
 
   useEffect(() => {
     if (!sessionId) {
@@ -174,10 +201,13 @@ export function useMissionReadModel(
       setLoading(false);
       return;
     }
+    const controller = new AbortController();
     let cancelled = false;
     setModel(null);
     setLoading(true);
-    const apply = (next: MissionReadModelPayload | null, epoch: number) => {
+    const epoch = ++requestEpoch.current;
+
+    const apply = (next: MissionReadModelPayload | null) => {
       if (
         !cancelled &&
         shouldApplyMissionReadModelEpoch(requestEpoch.current, epoch)
@@ -185,19 +215,74 @@ export function useMissionReadModel(
         setModel(next);
       }
     };
-    const request = () => {
-      const epoch = ++requestEpoch.current;
-      void fetchMissionReadModelIfEnabled(sessionId)
-        .then((next) => apply(next, epoch))
-        .finally(() => {
-          if (!cancelled && epoch === requestEpoch.current) setLoading(false);
-        });
+
+    const startStream = async () => {
+      if (!(await missionUiReadModelEnabled())) {
+        setLoading(false);
+        return;
+      }
+      // Initial snapshot so UI can render immediately before events arrive.
+      try {
+        const payload = await fetchMissionReadModel(sessionId);
+        const parsed = parseMissionReadModel(payload);
+        if (!cancelled && epoch === requestEpoch.current) {
+          apply(isUsableMissionReadModel(parsed) ? parsed : null);
+        }
+      } catch {
+        // ignore; SSE will catch up if it can
+      }
+      setLoading(false);
+
+      let reconnectAttempt = 0;
+      while (!cancelled && !controller.signal.aborted) {
+        const since =
+          modelRef.current?.event_cursor !== undefined
+            ? String(modelRef.current.event_cursor)
+            : undefined;
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          await fetchMissionEventsSSE(
+            sessionId,
+            since,
+            () => {
+              // Notification event received; refetch the canonical snapshot.
+              void fetchMissionReadModel(sessionId)
+                .then((payload) => parseMissionReadModel(payload))
+                .then((parsed) => {
+                  if (isUsableMissionReadModel(parsed)) {
+                    apply(parsed);
+                  }
+                })
+                .catch(() => {
+                  /* ignore parse/fetch errors; reconnect will retry */
+                });
+            },
+            () => {
+              // Stream ended cleanly; stop reconnecting.
+            },
+            () => {
+              // Stream disconnected; loop will reconnect after backoff.
+            },
+          );
+          reconnectAttempt = 0;
+        } catch {
+          // ignore, backoff will reconnect
+        }
+        if (cancelled || controller.signal.aborted) break;
+        const backoff =
+          SSE_RECONNECT_BACKOFF_MS[
+            Math.min(reconnectAttempt, SSE_RECONNECT_BACKOFF_MS.length - 1)
+          ];
+        reconnectAttempt += 1;
+        // eslint-disable-next-line no-await-in-loop
+        await sleep(backoff, controller.signal);
+      }
     };
-    request();
-    const timer = window.setInterval(request, 2500);
+
+    void startStream();
     return () => {
       cancelled = true;
-      window.clearInterval(timer);
+      controller.abort();
     };
   }, [reloadKey, sessionId]);
 

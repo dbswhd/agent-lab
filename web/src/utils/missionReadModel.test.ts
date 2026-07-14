@@ -163,27 +163,26 @@ describe("mission read-model rollout boundary", () => {
     expect(parseMissionReadModel(incomplete)?.inbox_items).toEqual([]);
   });
 
-  it("rejects migrated inbox rows that are not execution-gate joins", () => {
-    expect(
-      parseMissionReadModel({
-        ...migratedPayload,
-        inbox_items: [
-          ...(migratedPayload.inbox_items ?? []),
-          { id: "extra", kind: "question", status: "pending", prompt: "Extra" },
-        ],
-      }),
-    ).toBeNull();
+  it("accepts unrelated migrated inbox rows as part of Wave B join", () => {
+    const parsed = parseMissionReadModel({
+      ...migratedPayload,
+      inbox_items: [
+        ...(migratedPayload.inbox_items ?? []),
+        { id: "extra", kind: "question", status: "pending", prompt: "Extra" },
+      ],
+    });
+    expect(parsed).not.toBeNull();
+    expect(parsed?.inbox_items).toHaveLength(2);
   });
 
-  it("rejects duplicate migrated inbox IDs", () => {
+  it("keeps duplicate migrated inbox IDs as a server-side invariant (client boundary does not dedupe)", () => {
     const item = migratedPayload.inbox_items?.[0];
     expect(item).toBeDefined();
-    expect(
-      parseMissionReadModel({
-        ...migratedPayload,
-        inbox_items: [item, item],
-      }),
-    ).toBeNull();
+    const parsed = parseMissionReadModel({
+      ...migratedPayload,
+      inbox_items: [item, item],
+    });
+    expect(parsed?.inbox_items).toHaveLength(2);
   });
 
   it("keeps stale gate rows visible for non-actionable review", () => {

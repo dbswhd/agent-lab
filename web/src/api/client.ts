@@ -2750,6 +2750,42 @@ export async function fetchMissionReadModel(sessionId: string) {
   );
 }
 
+/**
+ * Stream mission events from the dedicated SSE endpoint. Uses `consumeSse` so
+ * reconnects can be driven by the caller (see `useMissionReadModel`).
+ *
+ * The server emits `id: <cursor>` per event. The `since` value is sent as the
+ * `Last-Event-ID` header to request replay from that cursor. Every emitted event
+ * is an opaque notification; callers should refetch the full read-model snapshot
+ * and apply epoch guard themselves.
+ */
+export async function fetchMissionEventsSSE(
+  sessionId: string,
+  since: string | undefined,
+  onEvent: (data: Record<string, unknown>) => void,
+  onDone: () => void,
+  onError: () => void,
+): Promise<void> {
+  const headers: Record<string, string> = { Accept: "text/event-stream" };
+  if (since !== undefined && since !== "") {
+    headers["Last-Event-ID"] = since;
+  }
+  const res = await fetch(
+    apiUrl(`/api/sessions/${encodeURIComponent(sessionId)}/mission/events`),
+    { headers },
+  );
+  if (!res.ok) {
+    onError();
+    return;
+  }
+  const sawTerminal = await consumeSse(res, onEvent);
+  if (sawTerminal) {
+    onDone();
+  } else {
+    onError();
+  }
+}
+
 export async function steerSession(
   sessionId: string,
   text: string,

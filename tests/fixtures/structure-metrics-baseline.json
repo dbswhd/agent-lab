@@ -111,7 +111,7 @@
     },
     {
       "path": "web/src/hooks/useRoomChatInteractions.ts",
-      "lines": 732
+      "lines": 729
     },
     {
       "path": "web/src/hooks/useRoomChatPresentation.ts",

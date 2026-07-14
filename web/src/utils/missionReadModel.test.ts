@@ -283,8 +283,10 @@ describe("mission read-model rollout boundary", () => {
       applied: null,
     };
 
-    const resolvers: Record<number, (payload: MissionReadModelPayload) => void> =
-      {};
+    const resolvers: Record<
+      number,
+      (payload: MissionReadModelPayload) => void
+    > = {};
     const pending = new Map<number, Promise<MissionReadModelPayload>>();
 
     function fire(): number {

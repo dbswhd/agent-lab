@@ -73,8 +73,53 @@
 
 ## 7. 구현 순서
 
-1. `/api/sessions/{id}/mission/read-model`과 legacy projection parity를 고정한다.
-2. `ComposerEventStack`에 Decision Queue precedence를 연결한다.
+1. `/api/sessions/{id}/mission/read-model`과 legacy projection parity를 고정한다. — **완료** (`AGENT_LAB_MISSION_UI_READ_MODEL` default on, 2026-07-14)
+2. `ComposerEventStack`에 Decision Queue precedence를 연결한다. — 완료 (§8 join 규약 참고)
 3. `WorkStatusBar`/`WorkspaceCard`에 activity·merge·Oracle evidence를 추가한다.
-4. SSE cursor/reconnect와 durable event merge를 연결한다.
+4. SSE cursor/reconnect와 durable event merge를 연결한다. — **미착수.** `event_cursor`는 payload에 존재하고 파싱 시 타입 검증만 되지만, 어떤 consumer도 SSE 쪽 버전과 비교해 사용하지 않는다. §8 참고.
 5. Playwright journey로 plan reject, diff approve, Oracle repair, Human resume을 검증한다.
+
+## 8. Wave B join 규약 (as-built, 2026-07-14)
+
+`AGENT_LAB_MISSION_UI_READ_MODEL` default on 시점 기준, 실제 코드가 수행하는 두 종류의 join을 명문화한다. 이 절은 §5의 설계 원칙("UI는 여러 소스를 조합하지 않는다")이 실제로 어떻게 구현됐는지의 as-built 기록이며, §5를 대체하지 않는다.
+
+### 8.1 내부 join — `inbox_items` ↔ `open_execution_gates`
+
+파싱 경계(`parseMissionReadModel`, `web/src/utils/missionReadModel.ts`)에서 강제한다. payload 전체가 이 조건을 만족하지 않으면 **`null`을 반환** — 부분 적용 없이 legacy 경로로 fail-closed.
+
+- 모든 `open_execution_gates[j].gate_id`는 비어 있지 않고 중복 없음.
+- actionable한 `inbox_items[i]` (i.e. `actionable !== false && mission_gate_status !== "stale"`)는 반드시 어떤 `open_execution_gates[j].gate_id`와 `id`가 일치해야 한다.
+- stale/non-actionable item은 매칭되는 gate가 없어도 허용 — 조회 전용으로 남아 있는 지난 항목이기 때문.
+- `inbox_items[i].id` 중복 금지.
+
+### 8.2 cross-source 우선순위 join — read-model vs legacy/runtime
+
+7개 consumer(`ComposerEventStack`, `HumanInboxPanel`, `WorkToolPanel`, `ContextOverviewPanel`, `NotificationCenter`, `useRoomChatInteractions`, `useAutonomySession`) 모두 동일한 패턴을 쓴다:
+
+```
+missionReadModel?.<field> ?? legacy/runtime의 동등 필드
+```
+
+규약은 **presence 기반이지 freshness 기반이 아니다**:
+
+- `missionReadModel`이 non-null인 조건은 `isUsableMissionReadModel()` — `migrated === true && source === "mission_journal"`. 이 조건을 만족하는 순간 그 세션은 "journal-authoritative"로 취급된다.
+- `missionReadModel`이 non-null이면, 그 안의 **개별 필드 값**(빈 배열/`false`/`0` 포함)이 그대로 이긴다. Legacy로의 fallback은 `missionReadModel` 자체가 `null`일 때(flag off, 미마이그레이션, fetch 실패, 파싱 실패)만 발생한다. 필드 단위 병합(item-by-item merge)은 없다 — 예: `HumanInboxPanel`이 `missionReadModel.inbox_items === []`를 받으면 legacy `human_inbox`에 항목이 남아 있어도 `[]`로 완전히 교체한다. Journal 기준으로는 "pending 없음"이 사실이므로 이는 의도된 동작이다.
+- `event_cursor`는 payload에 실려 오고 숫자 타입 검증만 받는다 — **어떤 consumer도 SSE/runtime 쪽 커서·버전과 비교하지 않는다.** 두 소스 중 어느 쪽이 실제로 더 최신인지 판단하는 로직은 없다. §7 항목 4(SSE cursor/reconnect merge)가 이 자리를 메울 예정이며, 아직 미착수다.
+
+### 8.3 durable 스트림 내부 순서 보장 — epoch guard
+
+`useMissionReadModel`(`web/src/utils/missionReadModel.ts`)은 2.5초 간격 폴링이다. 8.2의 cross-source join과는 별개로, **같은 스트림 내부**에서의 순서만 별도로 보장한다:
+
+- `requestEpoch` ref는 poll마다 단조 증가.
+- 응답 적용 조건은 `shouldApplyMissionReadModelEpoch(requestEpoch.current, epoch)` → `epoch >= requestEpoch.current`.
+- 즉, 오래된 poll이 최신 poll보다 늦게 resolve돼도(네트워크 지연) 버려진다 — `missionReadModel.test.ts`의 durable race 시나리오 테스트로 고정됨.
+- 이 guard는 "durable 스트림이 자기 자신에 대해 시간순인지"만 보장한다. 8.2의 "read-model vs legacy/runtime 중 뭐가 최신인지"는 별개 문제이며 아직 풀리지 않았다.
+
+### 8.4 요약 — 지금 안전한 것과 아닌 것
+
+| 보장 대상                                  | 상태                                            |
+| ------------------------------------------- | ------------------------------------------------ |
+| `inbox_items` ↔ `open_execution_gates` 정합 | 파싱 경계에서 강제, 위반 시 payload 전체 폐기    |
+| durable poll 내부 순서 (stale response 무시) | epoch guard로 보장, 테스트 있음                  |
+| read-model vs legacy/runtime 중 최신 판정   | **없음** — presence만 보고 판단, cursor 비교 없음 |
+| SSE reconnect 후 durable event 중복 방지    | **없음** — §7 항목 4 미착수                       |

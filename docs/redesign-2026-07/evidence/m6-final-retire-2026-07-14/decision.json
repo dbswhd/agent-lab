@@ -1,10 +1,11 @@
 {
   "approval_artifact": null,
   "approved_at": null,
-  "approver_one": null,
+  "approver_one": "dbswhd (solo-maintainer override, 2026-07-14)",
   "approver_two": null,
+  "two_person_confirmation_note": "This repo is a solo-maintainer project; the plan's two_person_confirmation requirement was explicitly relaxed by the owner in-session on 2026-07-14. approver_two intentionally left null — not a missing signature, a documented override.",
   "manifest_scope_note": "Deletion manifest retains 6 candidates and 12 protected paths; the authoritative compatibility inventory is 18 scoped files and 275 references, superseding the pre-Todo-5 12-file/251-reference baseline.",
-  "owner": null,
-  "reason": "separate Human approval for irreversible deletion is absent",
+  "owner": "dbswhd",
+  "reason": "Two-person approval gate relaxed (solo-maintainer override), but manifest execution is still blocked: the 6 candidate files (tick.py, advance.py, transitions.py, orchestration.py, clarity.py, room.py) were never touched by the Todo 8/9 authority-retirement commits (f5cd68c, 8ccfe2c) — their legacy-field references (17-81 per file) predate that work and are still live. AGENT_LAB_MISSION_UI_READ_MODEL still defaults off in production (runtime_flags.py), so legacy read paths in these files are the active default, not dead code. A dead-code scan of these 6 files today finds nothing safely removable. Flipping the read-model default on and soaking is a separate rollout decision, not made in this session.",
   "status": "NO-GO"
 }

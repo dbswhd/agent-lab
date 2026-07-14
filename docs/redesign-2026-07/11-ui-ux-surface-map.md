@@ -88,8 +88,9 @@
 파싱 경계(`parseMissionReadModel`, `web/src/utils/missionReadModel.ts`)에서 강제한다. payload 전체가 이 조건을 만족하지 않으면 **`null`을 반환** — 부분 적용 없이 legacy 경로로 fail-closed.
 
 - 모든 `open_execution_gates[j].gate_id`는 비어 있지 않고 중복 없음.
-- actionable한 `inbox_items[i]` (i.e. `actionable !== false && mission_gate_status !== "stale"`)는 반드시 어떤 `open_execution_gates[j].gate_id`와 `id`가 일치해야 한다.
+- actionable한 `inbox_items[i]` (i.e. `actionable !== false && mission_gate_status`가 `"stale"`/`"unrelated"`가 아님)는 반드시 어떤 `open_execution_gates[j].gate_id`와 `id`가 일치해야 한다.
 - stale/non-actionable item은 매칭되는 gate가 없어도 허용 — 조회 전용으로 남아 있는 지난 항목이기 때문.
+- `mission_gate_status === "unrelated"` item도 매칭되는 gate 없이 허용 — Mission의 `open_gates`는 execution-level 게이트만 다루는 개념이라, plan-approval 질문 등 gate에 안 걸리는 `human_inbox` row가 정상적으로 존재할 수 있음 (main 커밋 `2a50ecd1`의 `_joined_inbox_items` unrelated 카테고리). `actionable`은 건드리지 않음 — unrelated pending item도 `inbox_summary.pending_count`에 잡혀야 하기 때문 (2026-07-14 리뷰에서 발견: 이 예외가 없으면 `hasValidInboxJoin`이 unrelated row가 하나라도 있는 payload 전체를 폐기해서 Wave B가 조용히 legacy로 fallback됨).
 - `inbox_items[i].id` 중복 금지.
 
 ### 8.2 cross-source 우선순위 join — read-model vs legacy/runtime

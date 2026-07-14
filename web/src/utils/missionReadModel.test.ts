@@ -175,6 +175,28 @@ describe("mission read-model rollout boundary", () => {
     ).toBeNull();
   });
 
+  it("accepts a gate-unmatched row tagged mission_gate_status=unrelated (no actionable field required)", () => {
+    // main commit 2a50ecd1's _joined_inbox_items: Mission.open_gates only covers
+    // execution-level gates, so a human_inbox row with no matching gate (e.g. a
+    // plan-approval question) is tagged "unrelated" rather than dropped — and
+    // deliberately does NOT set actionable, since an unrelated pending row must
+    // still count toward inbox_summary.pending_count.
+    const parsed = parseMissionReadModel({
+      ...migratedPayload,
+      inbox_items: [
+        ...(migratedPayload.inbox_items ?? []),
+        {
+          id: "extra",
+          kind: "question",
+          status: "pending",
+          prompt: "Unrelated row",
+          mission_gate_status: "unrelated",
+        },
+      ],
+    });
+    expect(parsed?.inbox_items?.map((item) => item.id)).toContain("extra");
+  });
+
   it("rejects duplicate migrated inbox IDs", () => {
     const item = migratedPayload.inbox_items?.[0];
     expect(item).toBeDefined();

@@ -55,8 +55,12 @@ function hasValidGates(value: Record<string, unknown>): boolean {
   return true;
 }
 
-function isStaleReviewItem(item: Record<string, unknown>): boolean {
-  return item.actionable === false || item.mission_gate_status === "stale";
+function isGateExemptItem(item: Record<string, unknown>): boolean {
+  return (
+    item.actionable === false ||
+    item.mission_gate_status === "stale" ||
+    item.mission_gate_status === "unrelated"
+  );
 }
 
 function hasValidInboxJoin(value: Record<string, unknown>): boolean {
@@ -75,7 +79,7 @@ function hasValidInboxJoin(value: Record<string, unknown>): boolean {
     if (!isRecord(item) || typeof item.id !== "string") return false;
     if (seen.has(item.id)) return false;
     seen.add(item.id);
-    if (!gateIds.has(item.id) && !isStaleReviewItem(item)) return false;
+    if (!gateIds.has(item.id) && !isGateExemptItem(item)) return false;
   }
   return true;
 }

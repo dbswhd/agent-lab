@@ -18,6 +18,12 @@ from dataclasses import dataclass, field, replace
 from typing import Any, Literal
 
 from agent_lab.env_flags import is_falsy
+from agent_lab.mission.topology import (
+    CoordinationNeed,
+    RiskLevel,
+    TopologyDecision,
+    choose_topology,
+)
 from agent_lab.room.consensus import (
     max_debate_round_count,
 )
@@ -233,6 +239,10 @@ class CategoryRoute:
     topology: TopologyHint = "parallel"
     # 역할 배정: {agent_id: role_id}, 호출측에서 active 확정 후 채워진다 (진단용 스냅샷)
     role_plan: dict[str, str] = field(default_factory=dict)
+    # mission.topology.choose_topology() shadow decision — diagnostic only, does not
+    # drive routing yet. See _coordination_shadow_decision() for the signal mapping.
+    coordination_topology: str | None = None
+    coordination_topology_reason: str | None = None
 
     def category_dict(self) -> dict[str, Any]:
         """turns[].category 영속용 (additive run.json 필드)."""
@@ -252,6 +262,9 @@ class CategoryRoute:
             out["topology"] = self.topology
         if self.role_plan:
             out["role_plan"] = dict(self.role_plan)
+        if self.coordination_topology:
+            out["coordination_topology"] = self.coordination_topology
+            out["coordination_topology_reason"] = self.coordination_topology_reason
         return out
 
 
@@ -321,6 +334,53 @@ def _resolve_topology(
     if task_type == "code" and category in ("standard", "deep", "critical"):
         return "producer_reviewer"
     return "parallel"
+
+
+_CATEGORY_RISK: dict[Category, RiskLevel] = {
+    "quick": RiskLevel.LOW,
+    "standard": RiskLevel.LOW,
+    "trading": RiskLevel.MEDIUM,
+    "deep": RiskLevel.MEDIUM,
+    "critical": RiskLevel.HIGH,
+}
+
+
+def _coordination_shadow_decision(
+    category: Category,
+    task_type: TaskType,
+    *,
+    debate_rounds: int,
+    max_rounds: int,
+    max_calls: int,
+    agent_subset: tuple[str, ...] | None,
+) -> TopologyDecision:
+    """Route the same signals _resolve_topology() already computed through
+    mission.topology.choose_topology() as a shadow decision (diagnostic only —
+    does not drive routing). Field mapping, each backed by a real per-category
+    signal already in _ROUTE_TABLE rather than an invented number:
+
+    - complexity: debate_rounds * 2 (0..8) — the category's own curated debate depth.
+    - domain_count / available_specialists: size of the expert-pool subset hint,
+      or 1/0 when the router left the full pool active (no distinguishable subset).
+    - decomposable: whether a subset hint exists at all.
+    - risk: category tier (critical=HIGH, trading/deep=MEDIUM, else LOW).
+    - evaluation_clear: task_type == "review" (checking existing work against a
+      rubric vs. producing new work).
+    - time/cost budget: max_rounds/max_calls scaled by a rough seconds/cost-per-call
+      estimate — no real budget signal exists at this layer yet.
+    """
+    specialists = len(agent_subset) if agent_subset else 0
+    need = CoordinationNeed(
+        complexity=debate_rounds * 2,
+        domain_count=max(specialists, 1),
+        decomposable=agent_subset is not None,
+        risk=_CATEGORY_RISK.get(category, RiskLevel.LOW),
+        evaluation_clear=task_type == "review",
+        time_budget_seconds=max_rounds * 30,
+        cost_budget_usd=max_calls * 0.5,
+        available_specialists=specialists,
+    )
+    return choose_topology(need)
 
 
 def resolve_active_subset(
@@ -415,6 +475,15 @@ def _build_route(
     if topology == "producer_reviewer":
         agent_subset = None
 
+    coordination = _coordination_shadow_decision(
+        category,
+        task_type,
+        debate_rounds=debate_rounds,
+        max_rounds=max_rounds,
+        max_calls=max_calls,
+        agent_subset=agent_subset,
+    )
+
     return CategoryRoute(
         category=category,
         debate_rounds=debate_rounds,
@@ -431,6 +500,8 @@ def _build_route(
         agent_subset=agent_subset,
         task_type=task_type,
         topology=topology,
+        coordination_topology=coordination.kind.value,
+        coordination_topology_reason=coordination.reason,
     )
 
 

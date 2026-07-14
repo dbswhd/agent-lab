@@ -355,6 +355,46 @@ def test_agent_subset_critical_is_none(monkeypatch):
     assert route.agent_subset is None
 
 
+# --- mission.topology shadow decision --------------------------------------
+# choose_topology() does not drive routing yet — these lock the real signal
+# mapping (category/task_type/agent_subset -> CoordinationNeed) so drift in
+# either module shows up as a test failure, not silent divergence.
+
+
+def test_coordination_shadow_quick_general_is_single(monkeypatch):
+    _clear_router_env(monkeypatch)
+    route = resolve_topic_route("오타 수정")
+    assert route.coordination_topology == "single"
+    assert route.category_dict()["coordination_topology"] == "single"
+
+
+def test_coordination_shadow_standard_review_prefers_specialists(monkeypatch):
+    """2 named specialists (claude+codex) on a decomposable review task."""
+    _clear_router_env(monkeypatch)
+    route = resolve_topic_route("이 PR 코드 리뷰해줘 — 유저 프로필 업데이트 모듈 변경사항에 대해 피드백 부탁드립니다.")
+    assert route.agent_subset == ("claude", "codex")
+    assert route.coordination_topology == "manager_specialists"
+
+
+def test_coordination_shadow_critical_review_prefers_actor_critic(monkeypatch):
+    """High risk + clear review rubric, but no named specialist pool (critical=None)."""
+    _clear_router_env(monkeypatch)
+    route = resolve_topic_route("프로덕션 DB 마이그레이션 PR 코드 리뷰해줘 — 보안 취약점 검토 필요")
+    assert route.category == "critical"
+    assert route.task_type == "review"
+    assert route.agent_subset is None
+    assert route.coordination_topology == "actor_critic"
+
+
+def test_coordination_shadow_absent_on_disabled_router(monkeypatch):
+    """Legacy rollback path stays untouched by the shadow wiring."""
+    _clear_router_env(monkeypatch)
+    monkeypatch.setenv("AGENT_LAB_TOPIC_ROUTER", "0")
+    route = resolve_topic_route("아무 토픽")
+    assert route.coordination_topology is None
+    assert "coordination_topology" not in route.category_dict()
+
+
 def test_escalation_releases_subset(monkeypatch):
     """에스컬레이션 시 agent_subset이 None으로 리셋된다."""
     _clear_router_env(monkeypatch)

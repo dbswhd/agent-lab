@@ -29,6 +29,7 @@ type PlanExecuteSlice = {
   canDryRun: boolean;
   approve: () => void;
   reject: () => void;
+  reverify: (executionId: string) => void;
   dryRun: (overrideKey?: string | null) => Promise<boolean>;
 };
 
@@ -212,6 +213,16 @@ export function useRoomComposerEventStack(
           return;
         }
         void planExecute.reject();
+      },
+      onExecuteReverify: (executionId: string) => {
+        if (demoExecPending) {
+          pushMacNotification({
+            title: "Execute (demo)",
+            body: "재검증 시뮬레이트",
+          });
+          return;
+        }
+        void planExecute.reverify(executionId);
       },
       showExecuteQueue: showExecuteQueueStrip,
       consensusProposal: consensusForBar,

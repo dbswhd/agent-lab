@@ -7,6 +7,7 @@ import {
 } from "../utils/planExecuteHistory";
 import { executionStatusLabel } from "../hooks/usePlanExecute";
 import { executionApprovalGate } from "../utils/executeApprovalGate";
+import { oracleStatus } from "./PlanExecutePanelSupport";
 
 type Props = {
   pending: PlanExecutionRecord;
@@ -17,6 +18,7 @@ type Props = {
   onApprove: () => void;
   onReject: () => void;
   onOpenPlan?: () => void;
+  onReverify?: (executionId: string) => void;
 };
 
 /** ExecuteQueueBar — inline approval bar for pending plan executions.
@@ -26,8 +28,10 @@ type Props = {
  *  Drop-in for old component that used .execute-queue-bar (legacy-bridge.css).
  *
  *  Shows: badge · title · status · artifact path/page-count ·
- *         gate block reason (if blocked) · approve/reject/diff buttons.
- *  Approve button is disabled when gate.blocked === true.
+ *         gate block reason (if blocked) · approve/reject/diff/reverify buttons.
+ *  Approve button is disabled when gate.blocked === true. Reverify only shows
+ *  when the Oracle verdict failed — this is the sole surface for it while a
+ *  pending execution exists, since it preempts the "work" lane (composerStackLane.ts).
  */
 export function ExecuteQueueBar({
   pending,
@@ -38,6 +42,7 @@ export function ExecuteQueueBar({
   onApprove,
   onReject,
   onOpenPlan,
+  onReverify,
 }: Props) {
   const action = resolveExecutionAction(pending, storedActions);
   const title = executionHistoryTitle(pending, action);
@@ -46,6 +51,7 @@ export function ExecuteQueueBar({
   const gate = executionApprovalGate(pending);
   const pdfPath = gate.pdfPath;
   const pageCount = gate.pageCount;
+  const oracleFailed = ["failed", "fail"].includes(oracleStatus(pending) ?? "");
 
   return (
     <div
@@ -112,6 +118,16 @@ export function ExecuteQueueBar({
             onClick={onOpenPlan}
           >
             diff 보기
+          </button>
+        ) : null}
+        {oracleFailed && onReverify ? (
+          <button
+            type="button"
+            className="btn btn--sm"
+            disabled={disabled || busy}
+            onClick={() => onReverify(pending.id)}
+          >
+            Oracle 재검증
           </button>
         ) : null}
       </div>

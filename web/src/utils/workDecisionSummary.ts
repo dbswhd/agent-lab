@@ -82,8 +82,8 @@ export function buildWorkDecisionSummary(
   const oracleFailed = status ? FAIL_STATUSES.has(status) : false;
   const oraclePassed = status ? PASS_STATUSES.has(status) : false;
   const runtimeBlock =
-    input.runtime?.gates.block_reason ??
-    input.runtime?.gates.execute?.reason ??
+    input.runtime?.gates?.block_reason ??
+    input.runtime?.gates?.execute?.reason ??
     input.runtime?.last_failure?.reason ??
     null;
   const blockReason = openBlockReason(input);

@@ -166,8 +166,8 @@ export function WorkToolPanel({
     runtime?.work_phase ??
     resolveWorkPhase({
       hasPlan,
-      hasPendingExecution: Boolean(runtime?.execute.has_pending),
-      hasDryRunDiff: Boolean(runtime?.execute.has_dry_run_diff),
+      hasPendingExecution: Boolean(runtime?.execute?.has_pending),
+      hasDryRunDiff: Boolean(runtime?.execute?.has_dry_run_diff),
       pendingAgreement: Boolean(planMeta.pendingAgreement),
       latestExecution: readModelExecution,
     });
@@ -298,7 +298,7 @@ export function WorkToolPanel({
               hasPlan={hasPlan}
               missionPaused={
                 missionReadModel?.mission_overview?.paused ??
-                runtime?.mission.paused ??
+                runtime?.mission?.paused ??
                 false
               }
             />
@@ -339,7 +339,7 @@ export function WorkToolPanel({
             hasPlan={hasPlan}
             missionPaused={
               missionReadModel?.mission_overview?.paused ??
-              runtime?.mission.paused ??
+              runtime?.mission?.paused ??
               false
             }
           />

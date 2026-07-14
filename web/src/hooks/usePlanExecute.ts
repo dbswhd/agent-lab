@@ -7,6 +7,7 @@ import {
   fetchPlanActions,
   PlanExecuteDryRunError,
   resolvePlanExecution,
+  reverifyPlanExecution,
   runPlanDryRun,
   type PlanActionItem,
   type PlanExecutionRecord,
@@ -159,12 +160,12 @@ export function usePlanExecute({ sessionId, run, onUpdated }: Options) {
       const res = await fetchPlanActions(sessionId);
       setRecommended(res.recommended);
       setNowItems(res.now ?? []);
-      setRoadmap(res.roadmap);
+      setRoadmap(res.roadmap ?? []);
       const executableItems = [
         ...(res.recommended ? [res.recommended] : []),
         ...(res.now ?? []).filter((item) => item.executable !== false),
-        ...res.roadmap.filter((item) => item.executable !== false),
-        ...res.actions.filter((item) => item.executable !== false),
+        ...(res.roadmap ?? []).filter((item) => item.executable !== false),
+        ...(res.actions ?? []).filter((item) => item.executable !== false),
       ];
       const seen = new Set<string>();
       const uniqueExecutable = executableItems.filter((item) => {
@@ -299,6 +300,26 @@ export function usePlanExecute({ sessionId, run, onUpdated }: Options) {
     [sessionId, activePending, onUpdated, refreshActions],
   );
 
+  const reverify = useCallback(
+    async (executionId: string) => {
+      if (!sessionId) return false;
+      setBusy(true);
+      setError(null);
+      try {
+        await reverifyPlanExecution(sessionId, executionId, fullAgentPermissions());
+        onUpdated?.();
+        await refreshActions();
+        return true;
+      } catch (e) {
+        setError(formatPlanExecuteError(e));
+        return false;
+      } finally {
+        setBusy(false);
+      }
+    },
+    [sessionId, onUpdated, refreshActions],
+  );
+
   const pendingContext = activePending
     ? executionContextFields(activePending, pendingAction)
     : null;
@@ -336,6 +357,7 @@ export function usePlanExecute({ sessionId, run, onUpdated }: Options) {
     dryRun,
     approve: () => resolve("approve"),
     reject: () => resolve("reject"),
+    reverify,
     refreshActions,
     actionKey,
   };

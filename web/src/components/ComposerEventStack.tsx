@@ -103,6 +103,7 @@ type Props = {
   readonly storedActions: StoredPlanAction[];
   readonly onExecuteApprove: () => void;
   readonly onExecuteReject: () => void;
+  readonly onExecuteReverify?: (executionId: string) => void;
   readonly showExecuteQueue: boolean;
   readonly consensusProposal: ConsensusDryRunProposal | null;
   readonly showConsensusGate: boolean;
@@ -151,6 +152,7 @@ export function ComposerEventStack({
   storedActions,
   onExecuteApprove,
   onExecuteReject,
+  onExecuteReverify,
   showExecuteQueue,
   consensusProposal,
   showConsensusGate,
@@ -251,8 +253,8 @@ export function ComposerEventStack({
       runtime?.work_phase ??
       resolveWorkPhase({
         hasPlan,
-        hasPendingExecution: Boolean(runtime?.execute.has_pending),
-        hasDryRunDiff: Boolean(runtime?.execute.has_dry_run_diff),
+        hasPendingExecution: Boolean(runtime?.execute?.has_pending),
+        hasDryRunDiff: Boolean(runtime?.execute?.has_dry_run_diff),
         pendingAgreement: Boolean(planMeta.pendingAgreement),
         latestExecution,
       })
@@ -378,6 +380,7 @@ export function ComposerEventStack({
               onApprove={onExecuteApprove}
               onReject={onExecuteReject}
               onOpenPlan={onOpenDiff}
+              onReverify={onExecuteReverify}
             />
           </div>
         ) : null}

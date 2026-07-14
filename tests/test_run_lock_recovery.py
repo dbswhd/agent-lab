@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import time
+from pathlib import Path
 
 import pytest
 
@@ -18,7 +19,13 @@ from agent_lab.run import control as rc
 
 
 @pytest.fixture(autouse=True)
-def _reset_lock():
+def _reset_lock(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    # AGENT_LAB_CONFIG_DIR isolation: try_begin_run()'s fcntl.flock is a real
+    # cross-process OS lock at config_dir()/run.lock. Without a private dir
+    # per test, two xdist workers racing on the same shared machine-wide lock
+    # file make try_begin_run() spuriously return False (2026-07-14 HS4
+    # dogfood — these tests only ever ran safely single-process/sequential).
+    monkeypatch.setenv("AGENT_LAB_CONFIG_DIR", str(tmp_path / ".agent-lab-config"))
     rc.force_reset_run_lock()
     yield
     rc.force_reset_run_lock()

@@ -3,6 +3,9 @@ from __future__ import annotations
 import subprocess
 import sys
 import time
+from pathlib import Path
+
+import pytest
 
 from agent_lab.run.control import (
     clear_cancel,
@@ -13,6 +16,14 @@ from agent_lab.run.control import (
     terminate_active_children,
     unregister_child_process,
 )
+
+
+@pytest.fixture(autouse=True)
+def _isolate_run_lock(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    # See tests/test_run_lock_recovery.py's _reset_lock for why: try_begin_run()
+    # holds a real cross-process fcntl lock at config_dir()/run.lock, which
+    # collides across xdist workers without a private dir per test.
+    monkeypatch.setenv("AGENT_LAB_CONFIG_DIR", str(tmp_path / ".agent-lab-config"))
 
 
 def test_request_cancel_terminates_registered_child() -> None:

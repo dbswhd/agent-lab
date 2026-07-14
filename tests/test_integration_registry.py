@@ -149,7 +149,9 @@ def test_fast_bucket_collection_budget():
     # 2026-07-14: raised 3295 -> 3302 for the coordination-topology shadow decision
     # (test_coordination_topology_report.py, test_coordination_topology_dogfood_run.py,
     # plus test_turn_routing.py/test_topic_router.py additions).
-    assert count <= 3302, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-14: raised 3302 -> 3305 for the human-decision message/dispatcher
+    # wiring in mirror_inbox_resolution() (test_mission_dual_write.py additions).
+    assert count <= 3305, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

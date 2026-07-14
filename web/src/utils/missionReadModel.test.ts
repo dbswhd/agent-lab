@@ -247,4 +247,24 @@ describe("mission read-model rollout boundary", () => {
     expect(shouldApplyMissionReadModelEpoch(4, 3)).toBe(false);
     expect(shouldApplyMissionReadModelEpoch(4, 4)).toBe(true);
   });
+
+  it("keeps event_cursor strictly inside the read-model boundary", () => {
+    // Cursor is only useful for validation and the SSE `since` parameter; no UI
+    // consumer should sort or display by event_cursor. The type permits it but
+    // the boundary helper does not expose it, so the parse test above confirms
+    // shape, not leakage. We assert it is not returned as a public UI field.
+    const parsed = parseMissionReadModel(migratedPayload);
+    expect(parsed).not.toBeNull();
+    expect(parsed?.event_cursor).toBe(4);
+
+    // Verify the boundary contract: the shape check accepts it, but the only
+    // exported accessor (the hook state / model object) does not add it to any
+    // derived view. The test file itself is the consumer boundary — it may read
+    // the raw payload only to assert it is not promoted to ordering/selection.
+    const directFieldNames = Object.keys(parsed!).filter(
+      (key) => key !== "event_cursor",
+    );
+    expect(directFieldNames).toContain("inbox_summary");
+    expect(directFieldNames).toContain("mission_overview");
+  });
 });

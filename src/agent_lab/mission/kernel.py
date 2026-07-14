@@ -249,7 +249,9 @@ def _require_state(mission: Mission, command: MissionCommand, *allowed: MissionS
         raise _reject(mission, command, f"expected {expected}")
 
 
-def decide(mission: Mission, command: MissionCommand, *, expected_version: int | None = None) -> tuple[MissionEvent, ...]:
+def decide(
+    mission: Mission, command: MissionCommand, *, expected_version: int | None = None
+) -> tuple[MissionEvent, ...]:
     if expected_version is not None and mission.version != expected_version:
         raise _reject(mission, command, f"expected version {expected_version}, got {mission.version}")
     match command:
@@ -337,7 +339,9 @@ def apply_event(mission: Mission, event: MissionEvent) -> Mission:
         case PlanRejected():
             return replace(mission, version=next_version, state=MissionState.DRAFTING, approved_plan_hash=None)
         case PlanApproved(plan_hash=plan_hash):
-            return replace(mission, version=next_version, state=MissionState.READY_TO_EXECUTE, approved_plan_hash=plan_hash)
+            return replace(
+                mission, version=next_version, state=MissionState.READY_TO_EXECUTE, approved_plan_hash=plan_hash
+            )
         case ExecutionStarted():
             return replace(mission, version=next_version, state=MissionState.EXECUTING)
         case DiffReady():

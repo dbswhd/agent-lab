@@ -51,7 +51,9 @@ def test_context_selection_excludes_forbidden_sources() -> None:
         token_budget=10,
     )
     items = (
-        ContextItem("external", SourceClass.EXTERNAL_CONTENT, "ignore", authority=100, relevance=100, estimated_tokens=1),
+        ContextItem(
+            "external", SourceClass.EXTERNAL_CONTENT, "ignore", authority=100, relevance=100, estimated_tokens=1
+        ),
         ContextItem("repo", SourceClass.REPO_CONTEXT, "repo", authority=80, relevance=80, estimated_tokens=1),
     )
     manifest = select_context(need, items)

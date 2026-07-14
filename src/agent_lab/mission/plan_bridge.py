@@ -43,7 +43,9 @@ def plan_decision_events(
     plan_hash = plan_content_hash(plan_md)
     events: list[MissionEvent] = []
     current = mission
-    pending_same_revision = current.state is MissionState.AWAITING_PLAN_DECISION and current.current_plan_hash == plan_hash
+    pending_same_revision = (
+        current.state is MissionState.AWAITING_PLAN_DECISION and current.current_plan_hash == plan_hash
+    )
     if not pending_same_revision:
         opened = decide(current, OpenPlan(plan_hash))
         events.extend(opened)

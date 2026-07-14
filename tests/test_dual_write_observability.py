@@ -39,7 +39,9 @@ def test_disabled_call_is_counted_but_not_logged(tmp_path: Path, caplog: pytest.
     assert caplog.records == []  # disabled is routine noise — no log line
 
 
-def test_mirrored_call_is_counted_and_logged_info(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:
+def test_mirrored_call_is_counted_and_logged_info(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
     folder = _session(tmp_path)
     monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
     with caplog.at_level(logging.INFO, logger="agent_lab.mission.dual_write"):

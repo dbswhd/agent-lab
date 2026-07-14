@@ -104,8 +104,12 @@ def _seed_one(index: int, *, category: str) -> Path:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--count", type=int, default=3, help="distinct sessions to seed (default 3 = MIN_PATTERN_SAMPLE)")
-    parser.add_argument("--category", default="quick", help="shared category so rows collapse into one pattern (default quick)")
+    parser.add_argument(
+        "--count", type=int, default=3, help="distinct sessions to seed (default 3 = MIN_PATTERN_SAMPLE)"
+    )
+    parser.add_argument(
+        "--category", default="quick", help="shared category so rows collapse into one pattern (default quick)"
+    )
     args = parser.parse_args()
 
     os.environ.setdefault("AGENT_LAB_OUTCOME_LEDGER", "1")
@@ -119,7 +123,9 @@ def main() -> int:
     for f in folders:
         print(f"  {f.relative_to(ROOT)}")
     print()
-    print(f"mine_weakness_patterns() -> {len(report['patterns'])} pattern(s), min_pattern_sample={report['min_pattern_sample']}")
+    print(
+        f"mine_weakness_patterns() -> {len(report['patterns'])} pattern(s), min_pattern_sample={report['min_pattern_sample']}"
+    )
     for p in report["patterns"]:
         marker = "ADDRESSABLE" if p["addressable"] else "-"
         print(f"  [{marker}] {p['pattern_id']}  recurrence={p['recurrence_count']}")

@@ -63,9 +63,7 @@ def ordered_parity_report(
     observed_event_types: tuple[str, ...],
 ) -> OrderedParityReport:
     unsupported = tuple(
-        observation.kind
-        for observation in observations
-        if _OBSERVATION_EVENT_TYPES[observation.kind] is None
+        observation.kind for observation in observations if _OBSERVATION_EVENT_TYPES[observation.kind] is None
     )
     expected = tuple(
         event_type
@@ -196,14 +194,22 @@ def shadow_diff(before: RunStateLike, after: RunStateLike) -> tuple[ShadowObserv
     for identity, row in _execution_rows(after).items():
         previous = before_rows.get(identity, {})
         if str(row.get("status") or "") == "merged" and str(previous.get("status") or "") != "merged":
-            observations.append(ShadowObservation(ShadowEventKind.EXECUTION_MERGED, identity, "executions.status", "merged"))
+            observations.append(
+                ShadowObservation(ShadowEventKind.EXECUTION_MERGED, identity, "executions.status", "merged")
+            )
         verdict = _oracle_verdict(row)
         previous_verdict = _oracle_verdict(previous)
         if verdict == "pass" and previous_verdict != "pass":
             observations.append(ShadowObservation(ShadowEventKind.ORACLE_PASSED, identity, "executions.oracle", "pass"))
         if verdict == "fail" and previous_verdict != "fail":
-            detail = str((row.get("oracle") or {}).get("detail") or "oracle failed") if isinstance(row.get("oracle"), dict) else "oracle failed"
+            detail = (
+                str((row.get("oracle") or {}).get("detail") or "oracle failed")
+                if isinstance(row.get("oracle"), dict)
+                else "oracle failed"
+            )
             observations.append(ShadowObservation(ShadowEventKind.ORACLE_FAILED, identity, "executions.oracle", detail))
     for step_id in sorted(_step_ids(after) - _step_ids(before)):
-        observations.append(ShadowObservation(ShadowEventKind.STEP_COMPLETED, step_id, "completed_steps", "step persisted"))
+        observations.append(
+            ShadowObservation(ShadowEventKind.STEP_COMPLETED, step_id, "completed_steps", "step persisted")
+        )
     return tuple(observations)

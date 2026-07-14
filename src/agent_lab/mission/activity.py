@@ -269,7 +269,9 @@ def apply_activity_event(activity: Activity, event: ActivityEvent) -> Activity:
         case ActivityHeartbeat(lease_expires_at=lease_expires_at):
             return replace(activity, lease_expires_at=lease_expires_at)
         case ClaimReleased():
-            return replace(activity, state=ActivityState.SCHEDULED, lease_owner=None, lease_token=None, lease_expires_at=None)
+            return replace(
+                activity, state=ActivityState.SCHEDULED, lease_owner=None, lease_token=None, lease_expires_at=None
+            )
         case ActivityStarted():
             return replace(activity, state=ActivityState.RUNNING, wait_reason=None, failure_reason=None)
         case ActivityWaitingExternal(reason=reason):
@@ -279,7 +281,14 @@ def apply_activity_event(activity: Activity, event: ActivityEvent) -> Activity:
         case ActivityResumed():
             return replace(activity, state=ActivityState.RUNNING, wait_reason=None)
         case ActivityCompleted():
-            return replace(activity, state=ActivityState.SUCCEEDED, wait_reason=None, lease_owner=None, lease_token=None, lease_expires_at=None)
+            return replace(
+                activity,
+                state=ActivityState.SUCCEEDED,
+                wait_reason=None,
+                lease_owner=None,
+                lease_token=None,
+                lease_expires_at=None,
+            )
         case ActivityFailed(reason=reason, retryable=retryable):
             next_attempt = activity.attempt + 1
             state = ActivityState.FAILED_RETRYABLE if retryable else ActivityState.FAILED_TERMINAL
@@ -293,8 +302,12 @@ def apply_activity_event(activity: Activity, event: ActivityEvent) -> Activity:
                 lease_expires_at=None,
             )
         case ActivityCancelled():
-            return replace(activity, state=ActivityState.CANCELLED, lease_owner=None, lease_token=None, lease_expires_at=None)
+            return replace(
+                activity, state=ActivityState.CANCELLED, lease_owner=None, lease_token=None, lease_expires_at=None
+            )
         case ActivityTimedOut():
-            return replace(activity, state=ActivityState.TIMED_OUT, lease_owner=None, lease_token=None, lease_expires_at=None)
+            return replace(
+                activity, state=ActivityState.TIMED_OUT, lease_owner=None, lease_token=None, lease_expires_at=None
+            )
         case _ as unreachable:
             assert_never(unreachable)

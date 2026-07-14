@@ -163,7 +163,9 @@ def _run_one_dogfood_session(sessions_root: Path, topic: str) -> dict[str, Any]:
         _git(workspace, "commit", "-m", "init")
 
         exec_id = f"exec-{session_id}"
-        ew = create_exec_worktree(folder, exec_id=exec_id, git_root=workspace, action_key="now:1", session_id=session_id)
+        ew = create_exec_worktree(
+            folder, exec_id=exec_id, git_root=workspace, action_key="now:1", session_id=session_id
+        )
         (ew.worktree_path / "src" / "dogfood_marker.py").write_text("v2 room dogfood\n", encoding="utf-8")
         _git(ew.worktree_path, "add", "-A")
         _git(ew.worktree_path, "commit", "-m", "room dogfood change")

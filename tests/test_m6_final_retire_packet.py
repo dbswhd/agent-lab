@@ -59,11 +59,15 @@ def test_build_and_verify_packet_is_redacted_and_checksum_backed(tmp_path: Path)
 
     built = subprocess.run(
         [sys.executable, str(SCRIPT), "--build", "--root", str(tmp_path), "--output", str(packet)],
-        capture_output=True, text=True, check=False,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     verified = subprocess.run(
         [sys.executable, str(SCRIPT), "--verify", "--root", str(tmp_path), "--output", str(packet)],
-        capture_output=True, text=True, check=False,
+        capture_output=True,
+        text=True,
+        check=False,
     )
 
     assert built.returncode == 0
@@ -87,7 +91,10 @@ def test_sigterm_during_build_cleans_partial_output_and_allows_retry(tmp_path: P
     env = {**os.environ, "M6_PACKET_BUILD_DELAY_SECONDS": "2"}
     process = subprocess.Popen(
         [sys.executable, str(SCRIPT), "--build", "--root", str(tmp_path), "--output", str(packet)],
-        env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
     )
     partials: list[Path] = []
     deadline = time.monotonic() + 5
@@ -104,7 +111,9 @@ def test_sigterm_during_build_cleans_partial_output_and_allows_retry(tmp_path: P
     assert not list(tmp_path.glob(".packet.partial-*"))
     retry = subprocess.run(
         [sys.executable, str(SCRIPT), "--build", "--root", str(tmp_path), "--output", str(packet)],
-        capture_output=True, text=True, check=False,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     assert retry.returncode == 0
 
@@ -113,7 +122,9 @@ def test_build_rejects_missing_required_evidence(tmp_path: Path) -> None:
     _seed_packet_inputs(tmp_path, tasks=range(1, 2))
     result = subprocess.run(
         [sys.executable, str(SCRIPT), "--build", "--root", str(tmp_path), "--output", str(tmp_path / "packet")],
-        capture_output=True, text=True, check=False,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     assert result.returncode != 0
     assert "required evidence" in (result.stderr + result.stdout).lower()
@@ -125,8 +136,20 @@ def test_delete_non_object_approval_is_controlled_no_go(tmp_path: Path) -> None:
     approval = tmp_path / "approval.json"
     approval.write_text("[]\n", encoding="utf-8")
     result = subprocess.run(
-        [sys.executable, str(SCRIPT), "--delete", "--root", str(tmp_path), "--manifest", str(manifest), "--approval", str(approval)],
-        capture_output=True, text=True, check=False,
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--delete",
+            "--root",
+            str(tmp_path),
+            "--manifest",
+            str(manifest),
+            "--approval",
+            str(approval),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
     )
     assert result.returncode == 2
     assert "NO-GO" in result.stdout
@@ -137,7 +160,9 @@ def test_verify_rejects_extra_tar_symlink(tmp_path: Path) -> None:
     packet = tmp_path / "packet"
     built = subprocess.run(
         [sys.executable, str(SCRIPT), "--build", "--root", str(tmp_path), "--output", str(packet)],
-        capture_output=True, text=True, check=False,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     assert built.returncode == 0
     archive = packet / "m6-final-retire.tar.gz"
@@ -160,7 +185,9 @@ def test_verify_rejects_extra_tar_symlink(tmp_path: Path) -> None:
     (packet / "packet-index.json").write_text(json.dumps(index), encoding="utf-8")
     verified = subprocess.run(
         [sys.executable, str(SCRIPT), "--verify", "--root", str(tmp_path), "--output", str(packet)],
-        capture_output=True, text=True, check=False,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     assert verified.returncode != 0
 
@@ -170,7 +197,9 @@ def test_verify_rejects_tampered_allowlist_hash(tmp_path: Path) -> None:
     packet = tmp_path / "packet"
     built = subprocess.run(
         [sys.executable, str(SCRIPT), "--build", "--root", str(tmp_path), "--output", str(packet)],
-        capture_output=True, text=True, check=False,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     assert built.returncode == 0
     index = json.loads((packet / "packet-index.json").read_text(encoding="utf-8"))
@@ -179,7 +208,9 @@ def test_verify_rejects_tampered_allowlist_hash(tmp_path: Path) -> None:
     (packet / "packet-index.json").write_text(json.dumps(index), encoding="utf-8")
     verified = subprocess.run(
         [sys.executable, str(SCRIPT), "--verify", "--root", str(tmp_path), "--output", str(packet)],
-        capture_output=True, text=True, check=False,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     assert verified.returncode != 0
 
@@ -189,7 +220,9 @@ def test_verify_rejects_tampered_packet_index(tmp_path: Path) -> None:
     packet = tmp_path / "packet"
     built = subprocess.run(
         [sys.executable, str(SCRIPT), "--build", "--root", str(tmp_path), "--output", str(packet)],
-        capture_output=True, text=True, check=False,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     assert built.returncode == 0
     index = json.loads((packet / "packet-index.json").read_text(encoding="utf-8"))
@@ -199,7 +232,9 @@ def test_verify_rejects_tampered_packet_index(tmp_path: Path) -> None:
 
     verified = subprocess.run(
         [sys.executable, str(SCRIPT), "--verify", "--root", str(tmp_path), "--output", str(packet)],
-        capture_output=True, text=True, check=False,
+        capture_output=True,
+        text=True,
+        check=False,
     )
 
     assert verified.returncode != 0

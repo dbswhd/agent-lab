@@ -170,7 +170,10 @@ def work_phase_from_mission(
     if status is MissionOperationalStatus.WAITING_FOR_HUMAN:
         if mission.state is MissionState.AWAITING_DIFF_DECISION:
             return "review_needed"
-        if mission.state in {MissionState.EXECUTING, MissionState.VERIFYING, MissionState.REPAIRING} and mission.open_gates:
+        if (
+            mission.state in {MissionState.EXECUTING, MissionState.VERIFYING, MissionState.REPAIRING}
+            and mission.open_gates
+        ):
             return "review_needed"
         if mission.state is MissionState.AWAITING_PLAN_DECISION:
             return "plan_draft"
@@ -222,9 +225,7 @@ def _inbox_summary_from_run(
         pending_builds = int(payload.get("pending_builds") or 0)
     else:
         pending = [
-            item
-            for item in joined_items
-            if item.get("status") == "pending" and item.get("actionable", True) is True
+            item for item in joined_items if item.get("status") == "pending" and item.get("actionable", True) is True
         ]
         pending_count = len(pending)
         pending_questions = sum(1 for item in pending if item.get("kind") == "question")
@@ -259,16 +260,18 @@ def _joined_inbox_items(mission: Mission, run: RunStateLike) -> tuple[dict[str, 
     for gate in mission.open_gates:
         matched_row = rows_by_id.get(gate.gate_id)
         if matched_row is None:
-            joined.append({
-                "id": gate.gate_id,
-                "kind": gate.kind,
-                "status": "pending",
-                "prompt": "Human inbox item unavailable",
-                "options": [],
-                "reason": gate.reason,
-                "actionable": False,
-                "mission_gate_status": "terminal_orphan" if terminal else "missing_row",
-            })
+            joined.append(
+                {
+                    "id": gate.gate_id,
+                    "kind": gate.kind,
+                    "status": "pending",
+                    "prompt": "Human inbox item unavailable",
+                    "options": [],
+                    "reason": gate.reason,
+                    "actionable": False,
+                    "mission_gate_status": "terminal_orphan" if terminal else "missing_row",
+                }
+            )
             continue
         item = dict(matched_row)
         item.setdefault("mission_gate_status", "open_gate")
@@ -310,9 +313,8 @@ def _plan_view_from_run_and_mission(
     return PlanView(
         phase=phase,
         hash=mission.current_plan_hash or str(pw.get("plan_hash_at_approval") or "") or None,
-        approved_hash=mission.approved_plan_hash or (
-            str(pw.get("plan_hash_at_approval") or "") or None if phase == "APPROVED" else None
-        ),
+        approved_hash=mission.approved_plan_hash
+        or (str(pw.get("plan_hash_at_approval") or "") or None if phase == "APPROVED" else None),
         pending_approval=phase == "HUMAN_PENDING",
     )
 
@@ -329,9 +331,8 @@ def _overview_from_mission(
     # Terminal always wins (matches compute_operational_status precedence). Otherwise,
     # any of the WAITING_FOR_HUMAN states (plan/diff decision, AWAITING_HUMAN, or an
     # open execution gate) or a legacy circuit_breaker flag both mean "paused".
-    paused = (
-        operational_status is MissionOperationalStatus.WAITING_FOR_HUMAN
-        or (bool(circuit_breaker) and operational_status not in _TERMINAL_STATUS.values())
+    paused = operational_status is MissionOperationalStatus.WAITING_FOR_HUMAN or (
+        bool(circuit_breaker) and operational_status not in _TERMINAL_STATUS.values()
     )
     return MissionOverviewView(
         phase_label=str(phase_label),

@@ -345,6 +345,43 @@ _CATEGORY_RISK: dict[Category, RiskLevel] = {
 }
 
 
+def _topology_need(
+    category: Category,
+    task_type: TaskType,
+    *,
+    debate_rounds: int,
+    max_rounds: int,
+    max_calls: int,
+    decomposable: bool,
+    domain_count: int,
+    available_specialists: int,
+) -> CoordinationNeed:
+    """Shared field mapping for both coordination-shadow decision stages below,
+    each backed by a real per-category signal already in _ROUTE_TABLE rather
+    than an invented number:
+
+    - complexity: debate_rounds * 2 (0..8) — the category's own curated debate depth.
+    - risk: category tier (critical=HIGH, trading/deep=MEDIUM, else LOW).
+    - evaluation_clear: task_type == "review" (checking existing work against a
+      rubric vs. producing new work).
+    - time/cost budget: max_rounds/max_calls scaled by a rough seconds/cost-per-call
+      estimate — no real budget signal exists at this layer yet.
+
+    decomposable / domain_count / available_specialists are supplied by the
+    caller — their meaning differs between the two stages, see below.
+    """
+    return CoordinationNeed(
+        complexity=debate_rounds * 2,
+        domain_count=domain_count,
+        decomposable=decomposable,
+        risk=_CATEGORY_RISK.get(category, RiskLevel.LOW),
+        evaluation_clear=task_type == "review",
+        time_budget_seconds=max_rounds * 30,
+        cost_budget_usd=max_calls * 0.5,
+        available_specialists=available_specialists,
+    )
+
+
 def _coordination_shadow_decision(
     category: Category,
     task_type: TaskType,
@@ -354,30 +391,62 @@ def _coordination_shadow_decision(
     max_calls: int,
     agent_subset: tuple[str, ...] | None,
 ) -> TopologyDecision:
-    """Route the same signals _resolve_topology() already computed through
-    mission.topology.choose_topology() as a shadow decision (diagnostic only —
-    does not drive routing). Field mapping, each backed by a real per-category
-    signal already in _ROUTE_TABLE rather than an invented number:
-
-    - complexity: debate_rounds * 2 (0..8) — the category's own curated debate depth.
-    - domain_count / available_specialists: size of the expert-pool subset hint,
-      or 1/0 when the router left the full pool active (no distinguishable subset).
-    - decomposable: whether a subset hint exists at all.
-    - risk: category tier (critical=HIGH, trading/deep=MEDIUM, else LOW).
-    - evaluation_clear: task_type == "review" (checking existing work against a
-      rubric vs. producing new work).
-    - time/cost budget: max_rounds/max_calls scaled by a rough seconds/cost-per-call
-      estimate — no real budget signal exists at this layer yet.
+    """_build_route()-time estimate — the real active roster isn't known yet here,
+    only the expert-pool subset *hint* (_resolve_agent_subset()). deep/critical/
+    trading always hint None (by design — "no distinguishable subset, full team"),
+    which this stage can only read as 0 available specialists. See
+    refine_coordination_shadow_decision() for the corrected, roster-aware pass
+    that runs once turn_routing.finalize_turn_routing() knows who's actually active.
     """
     specialists = len(agent_subset) if agent_subset else 0
-    need = CoordinationNeed(
-        complexity=debate_rounds * 2,
-        domain_count=max(specialists, 1),
+    need = _topology_need(
+        category,
+        task_type,
+        debate_rounds=debate_rounds,
+        max_rounds=max_rounds,
+        max_calls=max_calls,
         decomposable=agent_subset is not None,
-        risk=_CATEGORY_RISK.get(category, RiskLevel.LOW),
-        evaluation_clear=task_type == "review",
-        time_budget_seconds=max_rounds * 30,
-        cost_budget_usd=max_calls * 0.5,
+        domain_count=max(specialists, 1),
+        available_specialists=specialists,
+    )
+    return choose_topology(need)
+
+
+def refine_coordination_shadow_decision(
+    category: Category,
+    task_type: TaskType,
+    *,
+    debate_rounds: int,
+    max_rounds: int,
+    max_calls: int,
+    active_roster: list[str],
+    applied_subset: tuple[str, ...] | None,
+) -> TopologyDecision:
+    """Corrected shadow decision once the real active roster is known
+    (turn_routing.finalize_turn_routing(), after subset resolution).
+
+    Fixes the _build_route()-time estimate's biggest blind spot: deep/critical/
+    trading never carry a subset *hint* (full team by design), which read as
+    "0 specialists available" there. Here available_specialists is the real
+    roster size regardless of narrowing, so e.g. a critical-risk review with
+    the full 3-agent room now correctly reaches PEER_QUORUM ("high risk
+    requires independent perspectives") instead of misreading as no one
+    being around to consult.
+
+    decomposable/domain_count stay tied to whether a subset narrowing
+    actually applied (applied_subset) — that's a distinct signal from "how
+    many people are in the room."
+    """
+    specialists = len(active_roster)
+    domain_count = len(applied_subset) if applied_subset else max(specialists, 1)
+    need = _topology_need(
+        category,
+        task_type,
+        debate_rounds=debate_rounds,
+        max_rounds=max_rounds,
+        max_calls=max_calls,
+        decomposable=applied_subset is not None,
+        domain_count=domain_count,
         available_specialists=specialists,
     )
     return choose_topology(need)

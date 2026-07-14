@@ -1,0 +1,134 @@
+{
+  "task": "wave-b-m6-retire/task-7",
+  "title": "Bounded production UI read-model cutover and rollback",
+  "captured_at": "2026-07-14",
+  "status": "PASS_WITH_SCOPED_BASELINE_RESIDUALS",
+  "scope": "Operational cutover/evidence only; no writers, bridges, or M6 authority were deleted or changed.",
+  "commit": "f5cd68c596c2366a38359795d41a40cbef3a186c",
+  "baseline": {
+    "process": "PID 8627 uvicorn app.server.main:app --host 127.0.0.1 --port 8765",
+    "flag_values": {
+      "AGENT_LAB_MISSION_UI_READ_MODEL": "unset/off",
+      "AGENT_LAB_MISSION_DUAL_WRITE": "1",
+      "AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS": "unset/empty",
+      "AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY": "1",
+      "AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY": "1",
+      "AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY": "1"
+    },
+    "health_ok": true,
+    "artifacts": "/tmp/agent-lab-ui-read-model-cutover-20260714/baseline-{health,flags,daemon}.json"
+  },
+  "cutover": {
+    "process": "PID 14643 uvicorn app.server.main:app --host 127.0.0.1 --port 8765",
+    "flag": "AGENT_LAB_MISSION_UI_READ_MODEL=1",
+    "allowlist": {
+      "required_non_empty": true,
+      "full_inventory_allowlist_count": 776,
+      "bounded_soak_allowlist_count": 15,
+      "sha256": "8a8ebfd8b8077acf20fc42638adae860d19aa37dbaa4c0ceb2bd53b353117367",
+      "full_inventory_path": "/tmp/agent-lab-ui-read-model-cutover-20260714/ui-cutover-allowlist.txt",
+      "bounded_soak_path": "/tmp/agent-lab-ui-read-model-cutover-20260714/soak-allowlist.txt",
+      "secret_or_pii_redacted": true
+    },
+    "health_ok": true,
+    "cutover_flags_and_process": "/tmp/agent-lab-ui-read-model-cutover-20260714/cutover-{process,flags,health,daemon}.json"
+  },
+  "soak": {
+    "target_room_turns": 15,
+    "migrated_turns_checked": 15,
+    "legacy_sessions_checked": 1,
+    "read_model": {
+      "http_200": 16,
+      "valid_json": 16,
+      "migrated_true_source_mission_journal": 15,
+      "legacy_false_source_legacy": 1,
+      "request_errors": 0,
+      "not_found": 0
+    },
+    "backlog": {
+      "pending_count": 0,
+      "pending_questions": 0,
+      "pending_builds": 0
+    },
+    "verification": {
+      "checked": 15,
+      "checked_equals_bounded_soak_allowlist_count": true,
+      "full_inventory_allowlist_is_residual_baseline_only": true,
+      "hard_mismatch": 0,
+      "missing": 0,
+      "unexpected_duplicate": 0,
+      "verifier_error": 0,
+      "not_found": 0,
+      "mission_not_ready_to_execute": 0,
+      "journal_duplicate": 0,
+      "journal_invalid_json": 0
+    },
+    "browser": {
+      "migrated_and_legacy_live_checks": true,
+      "console_errors": 0,
+      "uncaught_page_errors": 0,
+      "failed_requests": 0,
+      "artifact": "/tmp/agent-lab-ui-read-model-cutover-20260714/reports/browser-live-check.json"
+    },
+    "artifacts": [
+      "/tmp/agent-lab-ui-read-model-cutover-20260714/reports/ui-read-model-soak.json",
+      "/tmp/agent-lab-ui-read-model-cutover-20260714/reports/mission-dual-write-verify-soak.json",
+      "/tmp/agent-lab-ui-read-model-cutover-20260714/reports/mission-dual-write-journal-audit-soak.json",
+      "/tmp/agent-lab-ui-read-model-cutover-20260714/reports/backlog-check.json"
+    ]
+  },
+  "rollback_drill": {
+    "failure_first": true,
+    "action": "Killed UI-on process and restarted with AGENT_LAB_MISSION_UI_READ_MODEL=0 before the soak was claimed.",
+    "flag_off_verified": true,
+    "migrated_read_model_still_200": true,
+    "legacy_session_migrated_false": true,
+    "journal_hash_diff_lines": 0,
+    "run_hash_diff_lines": 0,
+    "allowlist_hash_diff_lines": 0,
+    "artifacts": "/tmp/agent-lab-ui-read-model-cutover-20260714/{rollback-*,journals-*,runs-*,allowlist-*-diff.txt}"
+  },
+  "restoration": {
+    "process": "PID 19951 uvicorn app.server.main:app --host 127.0.0.1 --port 8765",
+    "flag_values": {
+      "AGENT_LAB_MISSION_UI_READ_MODEL": "unset/off",
+      "AGENT_LAB_MISSION_DUAL_WRITE": "1",
+      "AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS": "unset/empty",
+      "AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY": "1",
+      "AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY": "1",
+      "AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY": "1"
+    },
+    "health_ok": true,
+    "port_4173_free": true,
+    "journal_run_allowlist_restore_diffs": 0,
+    "artifacts": "/tmp/agent-lab-ui-read-model-cutover-20260714/restored-{process,flags,daemon}.json"
+  },
+  "coverage": [
+    "overview",
+    "composer",
+    "work",
+    "inbox",
+    "notification",
+    "recovery",
+    "autonomy",
+    "merge_oracle",
+    "SSE inbox/notification"
+  ],
+  "adversarial_classes": {
+    "stale_state": "PASS: restart read-model and journal/run hash checks remained stable.",
+    "dirty_worktree": "N/A: pre-existing dirty worktree was preserved; no source files were changed.",
+    "misleading_success_output": "PASS: inspected JSON fields, migrated/source, verifier counts, and browser errors rather than HTTP status alone.",
+    "long_running_or_hung_command": "N/A: no long-running writer operation was introduced; bounded HTTP probes used timeouts.",
+    "flaky_soak": "PASS: 15/15 deterministic existing Room-turn fixtures plus repeated migrated/legacy browser checks.",
+    "mid_operation_interruption": "PASS: process kill/restart flag-off rollback completed before pass claim.",
+    "generated_artifact": "PASS: evidence JSON and redacted reports were generated and retained.",
+    "prompt_injection": "N/A: no user-authored prompt was executed during operational probes."
+  },
+  "known_residual": {
+    "full_inventory_baseline": "The 776-session full-inventory allowlist is residual baseline evidence only, not a GO gate: it reports hard_mismatch=39 and missing=15 outside the bounded 15-turn allowlist. The exact aggregate counts were identical before and after service restoration; no writes occurred during this cutover and those sessions were excluded from the scoped soak gate.",
+    "artifact": "/tmp/agent-lab-ui-read-model-cutover-20260714/reports/full-inventory-stability.json"
+  },
+  "plan_modified": false,
+  "commit_created": false,
+  "legacy_writer_retired": false
+}

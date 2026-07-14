@@ -1,0 +1,26 @@
+{
+  "approval": {
+    "approved_at": null,
+    "approver_one": null,
+    "approver_two": null,
+    "owner": null
+  },
+  "archive": "m6-final-retire.tar.gz",
+  "archive_mode": "0444",
+  "archive_sha256": "e307101ded174e800a4b3a96b38b0270f140e3e98146228f8c27a91d1c3eaf98",
+  "consumer_inventory": {
+    "baseline_references": 251,
+    "baseline_target_files": 12,
+    "references": 275,
+    "target_files": 18
+  },
+  "deletion_manifest_sha256": "89dad37ae9a523ceaf6ac60c89e26dff6687e40185074a6e54363706d3275176",
+  "manifest_scope": {
+    "candidates": 6,
+    "protected": 12,
+    "source": "current consumer scan"
+  },
+  "packet": "m6-final-retire-2026-07-14",
+  "redaction": "paths, temporary paths, and email-like values redacted; sessions/journals checksum-only",
+  "status": "NO-GO"
+}

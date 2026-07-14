@@ -17,6 +17,16 @@ from agent_lab.human_inbox import (
     supersede_pending_inbox,
     wait_for_inbox_item,
 )
+from agent_lab.mission.application import MissionApplication
+from agent_lab.mission.kernel import (
+    ApproveDiff,
+    MarkDiffReady,
+    OpenExecutionGate,
+    OracleVerdict,
+    RecordMerge,
+    RecordOracle,
+    StartExecution,
+)
 from agent_lab.run.meta import read_run_meta
 from app.server.main import app
 
@@ -176,6 +186,104 @@ def test_inbox_api_resolve(client: TestClient, session_folder: Path):
     assert body["ok"] is True
     assert body["inbox_pending"] is False
     assert "human_decision" in body
+
+
+def _make_terminal_mission(folder: Path) -> MissionApplication:
+    application = MissionApplication(folder, "inbox test")
+    repository = application.repository
+    for command in (MarkDiffReady(), ApproveDiff(), RecordMerge("merge")):
+        repository.dispatch(command)
+    repository.dispatch(RecordOracle(OracleVerdict.PASS, "done"))
+    return application
+
+
+def test_inbox_api_rejects_terminal_orphan_without_mutating_any_store(
+    client: TestClient,
+    session_folder: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
+    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS", session_folder.name)
+    (session_folder / "plan.md").write_text("# Plan\n\n- ship", encoding="utf-8")
+    application = MissionApplication(session_folder, "inbox test")
+    application.approve_plan()
+    application.repository.dispatch(StartExecution())
+    item = create_inbox_item(
+        session_folder,
+        kind="question",
+        source="wave_b",
+        prompt="Late?",
+        options=[{"id": "yes", "label": "Yes"}, {"id": "no", "label": "No"}],
+    )
+    _make_terminal_mission(session_folder)
+    before_run = (session_folder / "run.json").read_bytes()
+    before_journal = (session_folder / ".agent-lab" / "mission-events.jsonl").read_bytes()
+
+    response = client.post(
+        f"/api/sessions/{session_folder.name}/inbox/{item['id']}/resolve",
+        json={"selected": ["yes"]},
+    )
+
+    assert response.status_code == 409
+    assert "terminal_orphan" in response.json()["detail"]
+    assert (session_folder / "run.json").read_bytes() == before_run
+    assert (session_folder / ".agent-lab" / "mission-events.jsonl").read_bytes() == before_journal
+
+
+def test_inbox_api_rejects_missing_and_stale_rows_without_closing_gate(
+    client: TestClient,
+    session_folder: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
+    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS", session_folder.name)
+    (session_folder / "plan.md").write_text("# Plan\n\n- ship", encoding="utf-8")
+    application = MissionApplication(session_folder, "inbox test")
+    application.approve_plan()
+    application.repository.dispatch(StartExecution())
+    missing_id = "missing-row"
+    application.repository.dispatch(OpenExecutionGate(missing_id, "question", "gone"))
+    before_missing = (session_folder / ".agent-lab" / "mission-events.jsonl").read_bytes()
+
+    missing = client.post(
+        f"/api/sessions/{session_folder.name}/inbox/{missing_id}/resolve",
+        json={"selected": ["yes"]},
+    )
+
+    assert missing.status_code == 409
+    assert "missing" in missing.json()["detail"]
+    assert (session_folder / ".agent-lab" / "mission-events.jsonl").read_bytes() == before_missing
+
+    item = create_inbox_item(
+        session_folder,
+        kind="question",
+        source="wave_b",
+        prompt="Old?",
+        options=[{"id": "yes", "label": "Yes"}, {"id": "no", "label": "No"}],
+    )
+    from agent_lab.run.meta import patch_run_meta
+
+    def mark_stale(run: dict[str, object]) -> dict[str, object]:
+        rows = run.get("human_inbox")
+        assert isinstance(rows, list)
+        for row in rows:
+            if isinstance(row, dict) and row.get("id") == item["id"]:
+                row["status"] = "resolved"
+        return run
+
+    patch_run_meta(session_folder, mark_stale)
+    before_stale_run = (session_folder / "run.json").read_bytes()
+    before_stale_journal = (session_folder / ".agent-lab" / "mission-events.jsonl").read_bytes()
+
+    stale = client.post(
+        f"/api/sessions/{session_folder.name}/inbox/{item['id']}/resolve",
+        json={"selected": ["yes"]},
+    )
+
+    assert stale.status_code == 409
+    assert "stale" in stale.json()["detail"]
+    assert (session_folder / "run.json").read_bytes() == before_stale_run
+    assert (session_folder / ".agent-lab" / "mission-events.jsonl").read_bytes() == before_stale_journal
 
 
 def test_build_inbox_mcp_servers(session_folder: Path):

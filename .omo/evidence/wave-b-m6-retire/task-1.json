@@ -1,0 +1,76 @@
+{
+  "task": "wave-b-m6-retire/task-1",
+  "status": "done",
+  "adapter": {
+    "module": "src/agent_lab/mission/projection.py",
+    "function": "apply_mission_loop_status_projection",
+    "compatibility_fields": [
+      "phase",
+      "enabled",
+      "autonomous_segment.active",
+      "pause_reason",
+      "circuit_breaker",
+      "circuit_breaker_reason",
+      "work_phase",
+      "projection_error_count"
+    ],
+    "journal_authority": "MissionRepository.dispatch applies the projection after journal append; projection failures do not roll back the journal event.",
+    "action_queue_fields_emitted": false
+  },
+  "transition_coverage": [
+    "plan approval/reject",
+    "execute",
+    "pause/circuit",
+    "resume",
+    "fail to repair",
+    "merge",
+    "Oracle pass/fail",
+    "terminal success/failure/cancel"
+  ],
+  "commands": [
+    {
+      "command": "./.venv/bin/pytest -q tests/test_mission_projection.py::test_projection_exposes_only_thin_status_fields (before implementation)",
+      "result": "expected red: ImportError for missing project_mission_loop_status"
+    },
+    {
+      "command": "./.venv/bin/pytest -q tests/test_mission_projection.py::test_idempotent_dispatch_reapplies_projection_to_stale_run (before fast-path fix)",
+      "result": "expected red: stale DISCUSS phase remained instead of PLAN_GATE"
+    },
+    {
+      "command": "./.venv/bin/pytest -q tests/test_mission_projection.py::test_duplicate_approval_reapplies_projection_to_stale_run (before fast-path fix)",
+      "result": "expected red: duplicate approve_plan returned without repairing stale DISCUSS phase"
+    },
+    {
+      "command": "./.venv/bin/pytest -q tests/test_mission_projection.py",
+      "result": "6 passed"
+    },
+    {
+      "command": "./.venv/bin/pytest -q tests/test_mission_shadow.py tests/test_plan_workflow.py tests/test_mission_loop.py tests/test_mission_application.py tests/test_mission_projection.py",
+      "result": "85 passed"
+    },
+    {
+      "command": "./.venv/bin/ruff check src/agent_lab/mission/application.py src/agent_lab/mission/projection.py src/agent_lab/mission/repository.py tests/test_mission_projection.py",
+      "result": "All checks passed"
+    },
+    {
+      "command": "curl -fsS http://127.0.0.1:8765/api/sessions/2026-07-13-dw-cohort-kimi-a-supervisor-plan-flow/mission/read-model",
+      "result": "live migrated route returned operational_status=READY and legacy_phase=EXECUTE_QUEUE"
+    }
+  ],
+  "manual_qa": {
+    "surface": "live HTTP read-model route",
+    "observed": "200 JSON response from the running API for a migrated Mission session",
+    "cleanup": "No process started by this task remained; existing API process was not modified. Temporary fixture directories were removed."
+  },
+  "ultraqa": {
+    "stale_state": "probed: projection derives phase/work_phase from journal Mission state and increments projection_error_count for unknown legacy phase",
+    "dirty_worktree": "probed: unrelated pre-existing changes preserved",
+    "misleading_success_output": "probed: pytest and ruff exit/results captured; live curl response inspected",
+    "flaky_tests": "not observed in targeted run; deterministic pure projection tests",
+    "not_applicable": ["browser visual QA", "database migration", "external queue"]
+  },
+  "residual_risks": [
+    "The long-running API process used for curl predates this worktree change; targeted tests exercise the new adapter directly.",
+    "basedpyright reports existing project warnings plus partially-typed legacy run metadata; no new errors."
+  ]
+}

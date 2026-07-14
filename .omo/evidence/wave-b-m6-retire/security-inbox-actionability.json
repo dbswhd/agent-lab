@@ -1,0 +1,65 @@
+{
+  "task": "security-inbox-actionability",
+  "captured_at": "2026-07-14",
+  "status": "PASS",
+  "scope": "Human Inbox UI and resolve API actionability guard for terminal_orphan, missing/missing_row, and stale gate/row joins.",
+  "changed_surfaces": [
+    "src/agent_lab/human_inbox.py",
+    "app/server/routers/human_inbox.py",
+    "tests/test_human_inbox.py",
+    "web/src/api/client.ts",
+    "web/src/components/HumanInboxPanel.tsx",
+    "web/src/components/NotificationCenter.tsx",
+    "web/src/hooks/useRoomSseHandler.ts",
+    "web/src/utils/missionReadModel.ts",
+    "web/e2e/mission-read-model-parity.spec.ts"
+  ],
+  "safety_invariant": "ensure_inbox_item_actionable is read-only and runs before dual-write commit, legacy resolution, or journal mirroring; rejected requests preserve run.json and mission-events.jsonl bytes.",
+  "verification": [
+    {
+      "command": "AGENT_LAB_MOCK_AGENTS=1 python -m pytest -q tests/test_human_inbox.py tests/test_mission_read_model.py tests/test_mission_read_model_api.py tests/test_mission_read_model_wave_b.py",
+      "result": "PASS; 54 passed"
+    },
+    {
+      "command": "python -m ruff check src/agent_lab/human_inbox.py app/server/routers/human_inbox.py tests/test_human_inbox.py",
+      "result": "PASS; All checks passed"
+    },
+    {
+      "command": "npm test -- --run src/utils/missionReadModel.test.ts",
+      "result": "PASS; 41 files, 167 tests"
+    },
+    {
+      "command": "npm run build",
+      "result": "PASS; tsc and Vite build succeeded; chunk-size warning only"
+    },
+    {
+      "command": "npm run lint",
+      "result": "PASS; 0 errors; existing React hook/Fast Refresh warnings remain"
+    },
+    {
+      "command": "npm run test:e2e -- e2e/mission-read-model-parity.spec.ts",
+      "result": "PASS; 9 Playwright scenarios including normal option resolve, legacy/error/disconnect fallback, stale, terminal, and missing rows"
+    }
+  ],
+  "manual_qa": {
+    "browser": "Playwright webServer Chromium fixture run",
+    "observed": "Normal migrated question retained both options and resolved once; stale, terminal_orphan, and missing fixtures rendered no human-inbox composer or resolve controls/counts.",
+    "api": "Terminal orphan, missing gate row, and stale joined row returned HTTP 409 before any state write; byte snapshots of run.json and mission-events.jsonl remained identical."
+  },
+  "probes": {
+    "malformed_input": "PASS; read-model parser still rejects malformed options/composites/gates; mission-state load failure rejects actionability without writes.",
+    "stale_state": "PASS; stale rows are marked non-actionable and hidden; stale resolve returns 409.",
+    "dirty_worktree": "PASS; pre-existing dirty worktree preserved; no commit created.",
+    "misleading_success_output": "PASS; assertions inspect HTTP 409 detail and byte-identical stores, not status alone.",
+    "flaky_tests": "PASS; targeted pytest/Vitest/Playwright runs deterministic.",
+    "interruption": "PASS; Playwright webServer lifecycle cleaned its Vite process; no 4173 listener remains; existing 8765 service was not touched.",
+    "normal_fallback": "PASS; legacy, read-model error, and disconnect fixtures retained normal question/options behavior."
+  },
+  "cleanup": {
+    "browser": "Playwright contexts closed.",
+    "web_server": "Playwright-managed Vite process stopped; port 4173 free.",
+    "api_server": "Existing parent-managed 127.0.0.1:8765 PID 24899 left untouched.",
+    "commit_created": false,
+    "plan_modified": false
+  }
+}

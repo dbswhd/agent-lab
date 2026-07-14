@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException
 from agent_lab.human_inbox import (
     build_inbox_summary,
     create_inbox_item,
+    ensure_inbox_item_actionable,
     public_inbox_payload,
     resolve_inbox_item,
     supersede_pending_inbox,
@@ -139,6 +140,7 @@ def resolve_session_inbox_item(
     )
 
     try:
+        ensure_inbox_item_actionable(folder, item_id)
         if inbox_write_authority_enabled(folder):
             bridge = commit_inbox_resolution(
                 folder,

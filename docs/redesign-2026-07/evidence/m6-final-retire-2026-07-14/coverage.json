@@ -1,0 +1,28 @@
+{
+  "bounded_ui_soak": [
+    "evidence/task-7.json",
+    "reports/ui-soak.md"
+  ],
+  "consumer_inventory": {
+    "baseline_references": 251,
+    "baseline_target_files": 12,
+    "references": 275,
+    "target_files": 18
+  },
+  "consumer_scan": [
+    "evidence/task-4.json",
+    "code-config/docs/redesign-2026-07/m6-compatibility-consumer-allowlist-2026-07-14.json"
+  ],
+  "m6_8_duplicate_patch_stop": "evidence/task-8.json",
+  "m6_9_bridge_flag_retire": "evidence/task-9.json",
+  "redaction": "evidence and reports redact user/temp paths and email-like values; session/journal content is checksum-only",
+  "rollback_recovery": [
+    "evidence/task-7.json",
+    "evidence/task-8.json",
+    "evidence/task-9.json"
+  ],
+  "wave_b_parity": [
+    "evidence/task-5.json",
+    "evidence/task-6.json"
+  ]
+}

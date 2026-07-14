@@ -1,0 +1,108 @@
+{
+  "task": "wave-b-m6-retire/live-clean-restart",
+  "title": "Clean current-code :8765 restart with fail-closed compatibility smoke",
+  "captured_at": "2026-07-14T10:13:00+09:00",
+  "status": "PASS",
+  "scope": "Operational only; no product edits, deletions, or commits.",
+  "repository": {
+    "root": "/Users/yoonjong/Projects/agent-lab",
+    "head": "f5cd68c596c2366a38359795d41a40cbef3a186c",
+    "working_tree": "pre-existing dirty changes preserved; no files changed by this task",
+    "new_process_command": "/Users/yoonjong/Projects/agent-lab/.venv/bin/python3 .venv/bin/uvicorn app.server.main:app --host 127.0.0.1 --port 8765"
+  },
+  "failure_first_old_process": {
+    "pid": 19951,
+    "command": "/Users/yoonjong/Projects/agent-lab/.venv/bin/python3 .venv/bin/uvicorn app.server.main:app --host 127.0.0.1 --port 8765",
+    "cwd": "/Users/yoonjong/Projects/agent-lab",
+    "health": {"http": 200, "ok": true, "port": 8765, "provider": "codex", "model": "gpt-5.6-luna (room:medium, default:medium)"},
+    "flags": {
+      "AGENT_LAB_MISSION_DUAL_WRITE": {"value": "1", "effective": "on"},
+      "AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS": {"value": null, "effective": "off"},
+      "AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY": {"value": "1", "effective": "1"},
+      "AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY": {"value": "1", "effective": "1"},
+      "AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY": {"value": "1", "effective": "1"},
+      "AGENT_LAB_MISSION_UI_READ_MODEL": {"value": null, "effective": "off"}
+    },
+    "compatibility_probe": {
+      "read": {"http": 200, "migrated": false, "source": "legacy", "next_action": "legacy_route"},
+      "answer": {"create_http": 200, "resolve_http": 200, "decision": "go", "mirrored": false, "reason": "cohort_allowlist_empty"},
+      "execute": {"http": 200, "vote": "reject", "status": "rejected", "mirrored": false, "reason": "cohort_allowlist_empty"},
+      "mission_journal_written": false
+    },
+    "log_tail": "/tmp/m6-live-clean-restart-20260714/log-tail.txt"
+  },
+  "rollback_snapshot": {
+    "directory": "/tmp/m6-live-clean-restart-20260714",
+    "files": ["process.txt", "cwd.txt", "env-redacted.txt", "health-old.json", "flags-old.json", "listener-old.txt", "git-head.txt", "git-status.txt", "log-tail.txt"],
+    "env_redaction": "values for keys matching KEY/TOKEN/SECRET/PASSWORD/AUTH/CREDENTIAL/COOKIE were replaced with <REDACTED>; no secret values retained",
+    "restore_command": "cd /Users/yoonjong/Projects/agent-lab && env AGENT_LAB_BOOTSTRAPPED=1 AGENT_LAB_PROVIDER=codex AGENT_LAB_MOCK_AGENTS=1 AGENT_LAB_LOG_DIR=/tmp/agent-lab-dw-execution-authority-20260714/logs AGENT_LAB_MISSION_DUAL_WRITE=1 AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY=1 AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY=1 AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY=1 /Users/yoonjong/Projects/agent-lab/.venv/bin/python3 .venv/bin/uvicorn app.server.main:app --host 127.0.0.1 --port 8765",
+    "note": "Rollback is only needed if the clean process fails; the preexisting process was intentionally replaced per task scope. Do not restore authority flags for normal operation."
+  },
+  "restart": {
+    "stopped_pid": 19951,
+    "stop_result": "SIGTERM; exited cleanly; :8765 was free before restart",
+    "foreground_session_id": 8417,
+    "pid": 24899,
+    "started_at": "2026-07-14T10:10:43+09:00",
+    "command": "/Users/yoonjong/Projects/agent-lab/.venv/bin/python3 .venv/bin/uvicorn app.server.main:app --host 127.0.0.1 --port 8765",
+    "cwd": "/Users/yoonjong/Projects/agent-lab",
+    "env": {
+      "AGENT_LAB_BOOTSTRAPPED": "1",
+      "AGENT_LAB_ROOT": "/Users/yoonjong/Projects/agent-lab",
+      "AGENT_LAB_SESSIONS_DIR": "/Users/yoonjong/Projects/agent-lab/sessions",
+      "AGENT_LAB_PROVIDER": "codex",
+      "AGENT_LAB_API_PORT": "8765",
+      "AGENT_LAB_LOG_DIR": "/tmp/agent-lab-live-clean-restart-20260714/logs",
+      "AGENT_LAB_MOCK_AGENTS": "1",
+      "AGENT_LAB_MISSION_UI_READ_MODEL": "0",
+      "absent": ["AGENT_LAB_MISSION_DUAL_WRITE", "AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS", "AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY", "AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY", "AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY"]
+    },
+    "listener": {"count": 1, "address": "127.0.0.1:8765", "pid": 24899},
+    "logs": "/tmp/agent-lab-live-clean-restart-20260714/logs"
+  },
+  "current_health": {
+    "health_http": 200,
+    "health": {"ok": true, "api_ok": true, "port": 8765, "preflight": false, "provider": "codex", "model": "gpt-5.6-sol (room:high, default:high)", "sessions_dir": "/Users/yoonjong/Projects/agent-lab/sessions"},
+    "flags_http": 200,
+    "active_profile": "balanced",
+    "flags": {
+      "AGENT_LAB_MISSION_DUAL_WRITE": {"value": null, "effective": "off", "set": false},
+      "AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS": {"value": null, "effective": "off", "set": false},
+      "AGENT_LAB_MISSION_UI_READ_MODEL": {"value": "0", "effective": "off", "set": true},
+      "authority_registry_names": []
+    }
+  },
+  "compatibility_smoke": {
+    "fixture": "sessions/m6-live-clean-smoke-20260714-1011 (removed after probe)",
+    "read_before_answer": {"http": 200, "migrated": false, "source": "legacy", "state": null, "next_action": "legacy_route", "work_phase": "plan_draft"},
+    "answer_create": {"http": 200, "kind": "question", "status": "pending"},
+    "answer_resolve": {"http": 200, "status": "resolved", "decision": "go", "mission_dual_write": {"enabled": false, "mirrored": false, "operation": "inbox_resolve"}},
+    "execute": {"http": 200, "vote": "reject", "status": "rejected", "mission_dual_write": {"enabled": false, "mirrored": false, "operation": "execution_reject"}},
+    "read_after_answer_execute": {"http": 200, "migrated": false, "source": "legacy", "state": null, "next_action": "legacy_route", "pending_count": 0},
+    "mission_journal_written": false,
+    "fixture_removed": true
+  },
+  "fail_closed_probe": {
+    "stale_authority_env_and_unselected_cohort": {"dual_write_enabled": false, "mirror_plan_approval": {"enabled": true, "mirrored": false, "reason": "cohort_not_selected"}, "authority": {"plan": false, "inbox": false, "execution": false}, "journal_written": false}
+  },
+  "adversarial_classes": {
+    "stale_state": "PASS: stale authority env plus unselected cohort cannot enable Mission writes.",
+    "interruption": "PASS: old process was stopped before restart; clean process remained healthy after >2 minutes.",
+    "dirty_worktree": "PASS: pre-existing dirty worktree preserved; no product files edited.",
+    "misleading_success_output": "PASS: inspected body fields, mirrored flags, journal absence, and listener count rather than HTTP status alone.",
+    "cleanup": "PASS: isolated fixture removed; exactly one :8765 listener; no spawned retry process remains.",
+    "prompt_injection": "N/A: local fixture text only; no external prompt executed."
+  },
+  "cleanup": {
+    "fixture": "removed sessions/m6-live-clean-smoke-20260714-1011",
+    "processes": "only current PID 24899 remains on :8765; failed detached launch attempts exited and left no listener",
+    "ports": {"8765": "one listener PID 24899", "4173": "not touched"},
+    "source_changes": "none",
+    "commit_created": false
+  },
+  "residuals": [
+    "Pre-existing dirty working tree remains as found.",
+    "Rollback snapshot is retained in /tmp/m6-live-clean-restart-20260714 for operator use; env values are redacted.",
+    "The foreground service is attached to tool session 8417; keep that session alive or restart using the recorded command."
+  ]
+}

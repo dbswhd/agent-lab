@@ -52,46 +52,27 @@ def dual_write_enabled(folder: Path | None = None) -> bool:
     if not is_truthy(os.getenv("AGENT_LAB_MISSION_DUAL_WRITE")):
         return False
     cohort = _cohort_ids()
-    return not cohort or (folder is not None and folder.name in cohort)
+    return bool(cohort) and folder is not None and folder.name in cohort
 
 
 def plan_write_authority_enabled(folder: Path | None = None) -> bool:
-    """Soft retire slice 1: Mission journal owns plan phase writes.
-
-    Requires dual-write (incl. optional session cohort). Authority without the
-    bridge is a hard no — callers must fall back to legacy-first approve/reject.
-    """
-    if not is_truthy(os.getenv("AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY")):
-        return False
-    return dual_write_enabled(folder)
+    return False
 
 
 def inbox_write_authority_enabled(folder: Path | None = None) -> bool:
-    """Soft retire slice 2: Mission journal owns execution-gate open/close.
-
-    Requires dual-write. Legacy ``human_inbox`` remains the UI/compatibility store.
-    """
-    if not is_truthy(os.getenv("AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY")):
-        return False
-    return dual_write_enabled(folder)
+    return False
 
 
 def execution_write_authority_enabled(folder: Path | None = None) -> bool:
-    """Soft retire slice 3: Mission journal must record execute/merge/oracle transitions.
-
-    Requires dual-write. Legacy writers still perform side effects first; this flag
-    fail-closes the HTTP route when the Mission commit does not mirror.
-    """
-    if not is_truthy(os.getenv("AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY")):
-        return False
-    return dual_write_enabled(folder)
+    return False
 
 
 def _blocked_result(folder: Path, operation: str) -> dict[str, Any] | None:
     if not is_truthy(os.getenv("AGENT_LAB_MISSION_DUAL_WRITE")):
         return {"enabled": False, "operation": operation, "mirrored": False}
     if not dual_write_enabled(folder):
-        return _result(operation=operation, mirrored=False, reason="cohort_not_selected")
+        reason = "cohort_allowlist_empty" if not _cohort_ids() else "cohort_not_selected"
+        return _result(operation=operation, mirrored=False, reason=reason)
     return None
 
 

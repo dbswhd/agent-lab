@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 
 import pytest
@@ -23,6 +24,7 @@ def _session(tmp_path: Path) -> Path:
     folder.mkdir()
     (folder / "plan.md").write_text("# Plan\n\n- ship", encoding="utf-8")
     (folder / "run.json").write_text('{"plan_workflow":{"enabled":true,"phase":"HUMAN_PENDING"}}', encoding="utf-8")
+    os.environ["AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS"] = folder.name
     return folder
 
 

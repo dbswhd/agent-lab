@@ -2,6 +2,8 @@
 
 Human cutover 승인 전, 세 가지를 코드 레벨 + 라이브 TestClient 재현으로 직접 검증했다.
 
+> **Historical evidence note (M6-9):** This report captures the 2026-07-13 runtime, when an empty allowlist let the master flag apply globally. Current runtime behavior is fail-closed: `AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS` must be non-empty and select the session; empty/missing disables the bridge. Slice 1–3 authority functions are retired, disabled/fail-closed, and their environment variables are ignored. The observations below are retained unchanged as historical evidence, not operator guidance.
+
 ## 1) `AGENT_LAB_MISSION_DUAL_WRITE=1`이 전역이 아니라 cohort에만 적용되는가
 
 **부분 충족 — 메커니즘은 존재하고 정상 동작하지만, code-enforced가 아니라 운영자가 반드시 함께 설정해야 하는 opt-in이다.**

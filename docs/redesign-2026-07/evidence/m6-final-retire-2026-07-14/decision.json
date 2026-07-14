@@ -1,0 +1,10 @@
+{
+  "approval_artifact": null,
+  "approved_at": null,
+  "approver_one": null,
+  "approver_two": null,
+  "manifest_scope_note": "Deletion manifest retains 6 candidates and 12 protected paths; the authoritative compatibility inventory is 18 scoped files and 275 references, superseding the pre-Todo-5 12-file/251-reference baseline.",
+  "owner": null,
+  "reason": "separate Human approval for irreversible deletion is absent",
+  "status": "NO-GO"
+}

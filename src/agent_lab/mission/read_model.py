@@ -202,23 +202,81 @@ def plan_phase_from_mission(mission: Mission, *, legacy_plan_phase: str | None =
     return "INTAKE"
 
 
-def _inbox_summary_from_run(run: dict[str, Any], *, open_gate_count: int = 0) -> InboxSummaryView:
+def _inbox_summary_from_run(
+    run: dict[str, Any],
+    *,
+    open_gate_count: int = 0,
+    joined_items: tuple[dict[str, Any], ...] | None = None,
+) -> InboxSummaryView:
     from agent_lab.human_inbox import public_inbox_payload
 
     payload = public_inbox_payload(run)
-    pending_count = max(int(payload.get("pending_count") or 0), open_gate_count)
+    if joined_items is None:
+        pending_count = max(int(payload.get("pending_count") or 0), open_gate_count)
+        pending_questions = int(payload.get("pending_questions") or 0)
+        pending_builds = int(payload.get("pending_builds") or 0)
+    else:
+        pending = [
+            item
+            for item in joined_items
+            if item.get("status") == "pending" and item.get("actionable", True) is True
+        ]
+        pending_count = len(pending)
+        pending_questions = sum(1 for item in pending if item.get("kind") == "question")
+        pending_builds = sum(1 for item in pending if item.get("kind") == "build")
     return InboxSummaryView(
         pending_count=pending_count,
-        pending_questions=int(payload.get("pending_questions") or 0),
-        pending_builds=int(payload.get("pending_builds") or 0),
+        pending_questions=pending_questions,
+        pending_builds=pending_builds,
     )
+
+
+def _joined_inbox_items(mission: Mission, run: dict[str, Any]) -> tuple[dict[str, Any], ...]:
+    from agent_lab.human_inbox import inbox_items
+
+    rows_by_id: dict[str, dict[str, Any]] = {}
+    for row in inbox_items(run):
+        item_id = row.get("id")
+        if not isinstance(item_id, str) or not item_id or item_id in rows_by_id:
+            continue
+        rows_by_id[item_id] = row
+
+    terminal = mission.state in _TERMINAL_STATUS
+    joined: list[dict[str, Any]] = []
+    for gate in mission.open_gates:
+        matched_row = rows_by_id.get(gate.gate_id)
+        if matched_row is None:
+            joined.append(
+                {
+                    "id": gate.gate_id,
+                    "kind": gate.kind,
+                    "status": "pending",
+                    "prompt": "Human inbox item unavailable",
+                    "options": [],
+                    "reason": gate.reason,
+                    "actionable": False,
+                    "mission_gate_status": "terminal_orphan" if terminal else "missing_row",
+                }
+            )
+            continue
+
+        item = dict(matched_row)
+        if terminal:
+            item["actionable"] = False
+            item["mission_gate_status"] = "terminal_orphan"
+        elif item.get("status") != "pending":
+            item["actionable"] = False
+            item["mission_gate_status"] = "stale"
+        joined.append(item)
+    return tuple(joined)
 
 
 def _plan_view_from_run_and_mission(
     mission: Mission | None,
     run: dict[str, Any],
 ) -> PlanView:
-    pw = run.get("plan_workflow") if isinstance(run.get("plan_workflow"), dict) else {}
+    raw_plan_workflow = run.get("plan_workflow")
+    pw: dict[str, Any] = raw_plan_workflow if isinstance(raw_plan_workflow, dict) else {}
     legacy_phase = str(pw.get("phase") or "").strip().upper() or None
     if mission is None:
         phase = legacy_phase
@@ -248,7 +306,7 @@ def _overview_from_mission(
     legacy_phase: str | None,
     circuit_breaker: bool = False,
 ) -> MissionOverviewView:
-    phase_label = legacy_phase or operational_status.value
+    phase_label = operational_status.value
     paused = False  # PAUSED reserved; circuit_breaker may imply pause in legacy UI
     return MissionOverviewView(
         phase_label=str(phase_label),
@@ -266,8 +324,14 @@ def build_read_model(
 ) -> MissionReadModel:
     run_meta = run if isinstance(run, dict) else {}
     operational = compute_operational_status(mission)
-    inbox = _inbox_summary_from_run(run_meta, open_gate_count=len(mission.open_gates))
-    ml = run_meta.get("mission_loop") if isinstance(run_meta.get("mission_loop"), dict) else {}
+    joined_items = _joined_inbox_items(mission, run_meta)
+    inbox = _inbox_summary_from_run(
+        run_meta,
+        open_gate_count=len(mission.open_gates),
+        joined_items=joined_items if mission.open_gates else None,
+    )
+    raw_mission_loop = run_meta.get("mission_loop")
+    ml: dict[str, Any] = raw_mission_loop if isinstance(raw_mission_loop, dict) else {}
     circuit = bool(ml.get("circuit_breaker"))
     plan = _plan_view_from_run_and_mission(mission, run_meta)
     overview = _overview_from_mission(
@@ -297,7 +361,7 @@ def build_read_model(
         work_phase=work_phase_from_mission(mission, operational_status=operational),
         mission_overview=overview,
         inbox_summary=inbox,
-        inbox_items=(),
+        inbox_items=joined_items,
     )
 
 
@@ -305,7 +369,8 @@ def build_legacy_composites(run: dict[str, Any]) -> dict[str, Any]:
     """Wave A composites for unmigrated sessions (run.json only)."""
     plan = _plan_view_from_run_and_mission(None, run)
     inbox = _inbox_summary_from_run(run, open_gate_count=0)
-    ml = run.get("mission_loop") if isinstance(run.get("mission_loop"), dict) else {}
+    raw_mission_loop = run.get("mission_loop")
+    ml: dict[str, Any] = raw_mission_loop if isinstance(raw_mission_loop, dict) else {}
     legacy_phase = ml.get("phase") if isinstance(ml.get("phase"), str) else None
     overview = MissionOverviewView(
         phase_label=str(legacy_phase or plan.phase or "LEGACY"),

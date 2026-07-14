@@ -1,0 +1,99 @@
+{
+  "task": "wave-b-m6-retire/task-9",
+  "title": "M6-9 retire fail-open dual-write bridges and authority flag registrations",
+  "captured_at": "2026-07-14",
+  "status": "PASS_WITH_SCOPED_RESIDUALS",
+  "scope": "Empty cohort fail-closed; authority env/profile registrations retired; compatibility mirrors, payload writers, worktree/merge/Oracle implementers, objection BLOCK, rich projections, and UI fallback retained.",
+  "changed_files": [
+    "src/agent_lab/mission/dual_write.py",
+    "src/agent_lab/run/profile.py",
+    "src/agent_lab/runtime_flags.py",
+    "src/agent_lab/plan/workflow_approval.py",
+    "docs/USER-GUIDE.md",
+    "tests/fixtures/runtime-flags-registry-allowlist.json",
+    "tests/test_m6_checkpoint_bridges_flags.py",
+    "tests/test_mission_dual_write.py",
+    "tests/test_mission_dual_write_verify.py",
+    "tests/test_m6_checkpoint_duplicate_patches.py",
+    "tests/test_dual_write_observability.py",
+    "tests/test_mission_read_model_wave_b.py",
+    "tests/test_run_profile.py"
+  ],
+  "verification": [
+    {
+      "command": "PYTHONPATH=src .venv/bin/pytest -q tests/test_m6_checkpoint_bridges_flags.py",
+      "result": "PASS; 2 passed"
+    },
+    {
+      "command": "PYTHONPATH=src .venv/bin/pytest -q tests/test_mission_dual_write.py tests/test_m6_checkpoint_bridges_flags.py tests/test_run_profile.py tests/test_dual_write_observability.py tests/test_mission_read_model.py tests/test_mission_read_model_api.py tests/test_mission_read_model_wave_b.py tests/test_m6_checkpoint_duplicate_patches.py",
+      "result": "PASS; 115 passed"
+    },
+    {
+      "command": "PYTHONPATH=src .venv/bin/pytest -q tests/test_mission_dual_write_verify.py tests/test_mission_dual_write_journal_audit.py tests/test_runtime_flags_registry.py",
+      "result": "PASS; 21 passed"
+    },
+    {
+      "command": "ruff check <changed Python files> && git diff --check",
+      "result": "PASS; All checks passed"
+    },
+    {
+      "command": "npm --prefix web test -- --run src/utils/missionOverviewView.test.ts src/utils/missionReadModel.test.ts",
+      "result": "PASS; 41 files, 167 tests"
+    }
+  ],
+  "fail_closed_probe": {
+    "command": "PYTHONPATH=src .venv/bin/python <empty allowlist + stale authority env probe>",
+    "result": {
+      "dual_write_enabled_with_empty_allowlist": false,
+      "empty_allowlist_result": {
+        "enabled": true,
+        "mirrored": false,
+        "operation": "plan_approve",
+        "reason": "cohort_allowlist_empty"
+      },
+      "authority_results": {
+        "plan": false,
+        "inbox": false,
+        "execution": false
+      },
+      "journal_written": false
+    }
+  },
+  "manual_qa": {
+    "command": "env -u AGENT_LAB_MISSION_DUAL_WRITE -u AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS -u AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY -u AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY -u AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY PYTHONPATH=src .venv/bin/python <read/answer/execute driver>",
+    "result": {
+      "read_before_answer": "RUNNING",
+      "answer_status": "resolved",
+      "execute_after_answer": "SUCCEEDED",
+      "authority_env_absent": true
+    },
+    "cleanup": "TemporaryDirectory fixture removed; no long-running process started. Existing PID 19951 on :8765 was not touched. Temporary restore worktree removed."
+  },
+  "rollback": {
+    "restore_tag": "m6-9-restore-20260714",
+    "restore_sha": "f5cd68c596c2366a38359795d41a40cbef3a186c",
+    "command": "git worktree add --detach /tmp/agent-lab-m6-9-restore m6-9-restore-20260714; env DUAL_WRITE=1 with sessions unset; mirror_plan_approval; git worktree remove --force /tmp/agent-lab-m6-9-restore",
+    "result": "PASS; restore tag legacy behavior returned mirrored=true, state=READY_TO_EXECUTE, and wrote mission-events.jsonl; worktree removed."
+  },
+  "checksums": {
+    "dual_write.py": "ead5cc9a9f92c089fa5f5722b7afafc6ec5e7302e66b898a4d3bd3b30ce989bd",
+    "profile.py": "3c800a9f8977f4f264889b5e74b3bae978c98490b4ff8b8619a44ba73f46ce28",
+    "runtime_flags.py": "60c1847099b5df7db6e74f7c528a9b1bd357a8eb9b1714dc990e71a5e4ee974f",
+    "workflow_approval.py": "06557c90139f189cf6f5f1b38317ce7277fd2b711be77dbf7fdc1b2d5ceb1ae2"
+  },
+  "adversarial_classes": {
+    "stale_state": "PASS; stale authority env and empty allowlist cannot enable Mission writes.",
+    "malformed_input": "N/A; no schema/parser changes.",
+    "dirty_worktree": "N/A; pre-existing dirty worktree preserved.",
+    "misleading_success_output": "PASS; probes inspect mirrored=false and journal_written=false.",
+    "flaky_tests": "PASS; targeted suites deterministic.",
+    "interruption": "N/A; no long-lived operation introduced.",
+    "long_or_hung": "N/A; no daemon started by QA.",
+    "generated_artifact": "PASS; temporary fixtures/worktree cleaned; evidence packet retained.",
+    "prompt_injection": "N/A; static local fixtures only."
+  },
+  "plan_modified": false,
+  "commit_created": false,
+  "payload_writers_retired": false,
+  "execution_implementers_retired": false
+}

@@ -1,11 +1,12 @@
 # Dual-write retire Slice 2 — Inbox execution-gate soft authority
 
 > **작성:** 2026-07-14  
-> **상태:** **Human enable GO** · supersede gate close + harvest OpenExecutionGate completed with Slice 3 batch (2026-07-14).  
+> **상태:** **Historical evidence / retired (2026-07-14; non-runtime).** The Slice 2 authority function is now disabled/fail-closed and its environment variable is ignored. Supersede gate close + harvest OpenExecutionGate evidence remains below for audit.
+> **현재 런타임:** The dual-write bridge requires a non-empty session allowlist; an empty allowlist disables it. This document's enable commands are historical only.
 > **선행:** Slice 1 plan soft authority enable GO · Full traffic soak PASS.  
 > **관련:** [Slice 1 plan](./dual-write-retire-slice-plan-soft-2026-07-14.md) · [ADR-001](../decisions/ADR-001-production-dual-write-cutover.md) · [execution-gate design](./execution-gate-design-draft-2026-07-13.md)
 
-## Slice definition
+## Historical slice definition (non-runtime evidence)
 
 | Item | Value |
 | --- | --- |
@@ -26,24 +27,24 @@ Flag OFF (rollback):
   resolve: resolve_inbox_item → mirror_inbox_resolution
 ```
 
-## Flags
+## Historical flags (non-runtime evidence)
 
 | Flag | Role | Default |
 | --- | --- | --- |
-| `AGENT_LAB_MISSION_DUAL_WRITE` | Bridge | off (process opt-in) |
-| `AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY` | Slice 2 soft retire | **on** in balanced/thorough/autonomous |
+| `AGENT_LAB_MISSION_DUAL_WRITE` | Bridge | off unless a non-empty session allowlist selects the session |
+| `AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY` | **Retired** Slice 2 authority flag (ignored) | disabled/fail-closed |
 
-`inbox_write_authority_enabled(folder)` requires both this flag and `dual_write_enabled(folder)`.
+Historical implementation required both this flag and `dual_write_enabled(folder)`. The current `inbox_write_authority_enabled(folder)` is retired and always disabled/fail-closed.
 
-## Rollback
+## Historical rollback record (non-runtime evidence)
 
 1. Unset / `AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY=0`.
 2. Restart API.
 3. Path reverts to legacy-first + `mirror_inbox_*`. Writers retained.
 
-## Dogfood checklist
+## Historical dogfood checklist (non-runtime evidence)
 
-- [x] API: `DUAL_WRITE=1` + `INBOX_WRITE_AUTHORITY=1` (+ plan authority) — 2026-07-14
+- [x] Historical API run used `DUAL_WRITE=1` + `INBOX_WRITE_AUTHORITY=1` (+ plan authority) — 2026-07-14; these authority flags are now ignored.
 - [x] create question → `inbox_create_commit` · item in `human_inbox` · open_gates contains id
 - [x] resolve → `inbox_resolve_commit` · pending empty · hard_mm=0
 - [x] Artifact: `/tmp/agent-lab-dw-inbox-authority-20260714/reports/enable-smoke.json`

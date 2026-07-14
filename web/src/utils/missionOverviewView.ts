@@ -1,4 +1,14 @@
-import type { MissionLoopState, RoomObjection } from "../api/client";
+import type {
+  MissionLoopState,
+  MissionReadModelPayload,
+  RoomObjection,
+} from "../api/client";
+
+export function missionReadModelPhase(
+  payload: MissionReadModelPayload,
+): string | null {
+  return payload.mission_overview?.phase_label ?? payload.state;
+}
 
 export type MissionOverviewView = {
   enabled: boolean;

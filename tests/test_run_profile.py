@@ -125,14 +125,16 @@ def test_balanced_profile_has_s1_feedback_flags() -> None:
     assert cfg.flags.get("AGENT_LAB_FEEDBACK_ADVISOR") == "1"
 
 
-def test_supervisor_profiles_default_plan_write_authority_on() -> None:
-    """Slice 1–3: authority defaults on; still no-op without DUAL_WRITE."""
+def test_supervisor_profiles_do_not_register_retired_authority_flags() -> None:
     for name in ("balanced", "thorough", "autonomous"):
         cfg = resolve_profile(name)
         assert cfg is not None
-        assert cfg.flags.get("AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY") == "1"
-        assert cfg.flags.get("AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY") == "1"
-        assert cfg.flags.get("AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY") == "1"
+        assert "AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY" not in cfg.flags
+        assert "AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY" not in cfg.flags
+        assert "AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY" not in cfg.flags
+        assert "AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY" not in cfg.owns
+        assert "AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY" not in cfg.owns
+        assert "AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY" not in cfg.owns
     fast = resolve_profile("fast")
     assert fast is not None
     assert "AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY" not in fast.flags

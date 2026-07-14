@@ -141,6 +141,188 @@ def test_wave_a_read_model_composites_join_run() -> None:
     assert model.inbox_items == ()
 
 
+def test_read_model_paused_uses_canonical_mission_and_circuit_state() -> None:
+    awaiting_human = replace(new_mission("m-paused-state", "ship"), state=MissionState.AWAITING_HUMAN)
+    circuit_paused = replace(new_mission("m-circuit", "ship"), state=MissionState.EXECUTING)
+    terminal = replace(new_mission("m-terminal-circuit", "ship"), state=MissionState.SUCCEEDED)
+
+    assert build_read_model(awaiting_human).mission_overview is not None
+    assert build_read_model(awaiting_human).mission_overview.paused is True
+    assert build_read_model(
+        circuit_paused,
+        run={"mission_loop": {"circuit_breaker": True}},
+    ).mission_overview.paused is True
+    assert build_read_model(
+        terminal,
+        run={"mission_loop": {"circuit_breaker": True, "pause_reason": "late"}},
+    ).mission_overview.paused is False
+
+
+def test_read_model_join_excludes_extra_pending_rows_from_gate_projection() -> None:
+    mission = replace(
+        new_mission("m-extra", "ship"),
+        state=MissionState.EXECUTING,
+        open_gates=(GateRecord("gate-1", "question", "pick", MissionState.EXECUTING),),
+    )
+
+    model = build_read_model(
+        mission,
+        run={
+            "human_inbox": [
+                {"id": "gate-1", "kind": "question", "status": "pending", "prompt": "Pick"},
+                {"id": "extra", "kind": "question", "status": "pending", "prompt": "Do not join"},
+            ]
+        },
+    )
+
+    assert [item["id"] for item in model.inbox_items] == ["gate-1"]
+    assert model.inbox_summary is not None
+    assert model.inbox_summary.pending_count == 1
+
+
+def test_read_model_joins_open_gates_to_full_rows_in_gate_order() -> None:
+    mission = replace(
+        new_mission("m-join", "ship"),
+        state=MissionState.EXECUTING,
+        open_gates=(
+            GateRecord("gate-b", "build", "go", MissionState.EXECUTING),
+            GateRecord("gate-a", "question", "pick", MissionState.EXECUTING),
+        ),
+    )
+    run = {
+        "human_inbox": [
+            {
+                "id": "gate-a",
+                "kind": "question",
+                "status": "pending",
+                "prompt": "Pick one",
+                "options": [{"id": "one", "label": "One"}],
+            },
+            {
+                "id": "gate-b",
+                "kind": "build",
+                "status": "pending",
+                "prompt": "Build it?",
+                "options": [],
+            },
+        ]
+    }
+
+    model = build_read_model(mission, run=run)
+
+    assert [item["id"] for item in model.inbox_items] == ["gate-b", "gate-a"]
+    assert model.inbox_items[1]["prompt"] == "Pick one"
+    assert model.inbox_items[1]["options"] == [{"id": "one", "label": "One"}]
+    assert model.inbox_summary is not None
+    assert model.inbox_summary.pending_count == 2
+
+
+def test_read_model_join_uses_first_duplicate_and_non_actionable_placeholders() -> None:
+    mission = replace(
+        new_mission("m-edges", "ship"),
+        state=MissionState.EXECUTING,
+        open_gates=(
+            GateRecord("dup", "question", "pick", MissionState.EXECUTING),
+            GateRecord("missing", "build", "go", MissionState.EXECUTING),
+            GateRecord("stale", "question", "old", MissionState.EXECUTING),
+        ),
+    )
+    run = {
+        "human_inbox": [
+            {"id": "stale", "kind": "question", "status": "resolved", "prompt": "Old"},
+            {"id": "dup", "kind": "question", "status": "pending", "prompt": "First", "options": [{"label": "A"}]},
+            {"id": "dup", "kind": "question", "status": "pending", "prompt": "Second", "options": [{"label": "B"}]},
+        ]
+    }
+
+    model = build_read_model(mission, run=run)
+
+    assert [item["id"] for item in model.inbox_items] == ["dup", "missing", "stale"]
+    assert model.inbox_items[0]["prompt"] == "First"
+    assert model.inbox_items[1]["actionable"] is False
+    assert model.inbox_items[1]["status"] == "pending"
+    assert model.inbox_items[2]["actionable"] is False
+    assert model.inbox_items[2]["status"] == "resolved"
+    assert model.inbox_summary is not None
+    assert model.inbox_summary.pending_count == 1
+    assert model.inbox_summary.pending_questions == 1
+
+
+def test_terminal_open_gate_is_visible_but_not_actionable() -> None:
+    mission = replace(
+        new_mission("m-terminal", "ship"),
+        state=MissionState.SUCCEEDED,
+        open_gates=(GateRecord("gate-terminal", "question", "late", MissionState.EXECUTING),),
+    )
+    model = build_read_model(
+        mission,
+        run={
+            "human_inbox": [
+                {"id": "gate-terminal", "kind": "question", "status": "pending", "prompt": "Late?"}
+            ]
+        },
+    )
+
+    assert model.inbox_items[0]["prompt"] == "Late?"
+    assert model.inbox_items[0]["actionable"] is False
+    assert model.inbox_items[0]["mission_gate_status"] == "terminal_orphan"
+    assert model.inbox_summary is not None
+    assert model.inbox_summary.pending_count == 0
+
+
+def test_missing_row_placeholder_preserves_gate_reason() -> None:
+    mission = replace(
+        new_mission("m-missing-reason", "ship"),
+        state=MissionState.EXECUTING,
+        open_gates=(GateRecord("gate-missing", "question", "Need approval", MissionState.EXECUTING),),
+    )
+
+    model = build_read_model(mission, run={"human_inbox": []})
+
+    assert model.inbox_items == (
+        {
+            "id": "gate-missing",
+            "kind": "question",
+            "status": "pending",
+            "prompt": "Human inbox item unavailable",
+            "options": [],
+            "reason": "Need approval",
+            "actionable": False,
+            "mission_gate_status": "missing_row",
+        },
+    )
+    assert model.inbox_summary is not None
+    assert model.inbox_summary.pending_count == 0
+
+
+def test_terminal_precedence_marks_missing_and_matched_gates_review_only() -> None:
+    mission = replace(
+        new_mission("m-terminal-mixed", "ship"),
+        state=MissionState.CANCELLED,
+        open_gates=(
+            GateRecord("gate-missing", "question", "No row", MissionState.EXECUTING),
+            GateRecord("gate-present", "question", "Late row", MissionState.EXECUTING),
+        ),
+    )
+
+    model = build_read_model(
+        mission,
+        run={
+            "human_inbox": [
+                {"id": "gate-present", "kind": "question", "status": "pending", "prompt": "Late?"}
+            ]
+        },
+    )
+
+    assert [item["mission_gate_status"] for item in model.inbox_items] == [
+        "terminal_orphan",
+        "terminal_orphan",
+    ]
+    assert all(item["actionable"] is False for item in model.inbox_items)
+    assert model.inbox_summary is not None
+    assert model.inbox_summary.pending_count == 0
+
+
 def test_build_legacy_composites_for_unmigrated() -> None:
     out = build_legacy_composites(
         {

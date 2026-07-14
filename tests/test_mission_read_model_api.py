@@ -144,3 +144,52 @@ def test_read_model_route_projects_mission_journal(tmp_path: Path, monkeypatch) 
         "pending_builds": 0,
     }
     assert payload["inbox_items"] == []
+
+
+def test_read_model_route_projects_joined_inbox_rows(tmp_path: Path, monkeypatch) -> None:
+    from agent_lab.mission.kernel import OpenExecutionGate
+
+    monkeypatch.setattr(session_paths, "SESSIONS_DIR", tmp_path)
+    folder = tmp_path / "mission-inbox"
+    folder.mkdir()
+    (folder / "run.json").write_text(
+        json.dumps(
+            {
+                "topic": "joined mission",
+                "human_inbox": [
+                    {
+                        "id": "gate-2",
+                        "kind": "question",
+                        "status": "pending",
+                        "prompt": "Second",
+                        "options": [{"label": "B"}],
+                    },
+                    {
+                        "id": "gate-1",
+                        "kind": "question",
+                        "status": "pending",
+                        "prompt": "First",
+                        "options": [{"label": "A"}],
+                    },
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (folder / "plan.md").write_text("# Plan\n\nship it\n", encoding="utf-8")
+    app = MissionApplication(folder, "joined mission")
+    app.approve_plan()
+    app.repository.dispatch(OpenExecutionGate("gate-1", "question"))
+    app.repository.dispatch(OpenExecutionGate("gate-2", "question"))
+
+    response = TestClient(create_app(bootstrap=False)).get("/api/sessions/mission-inbox/mission/read-model")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert [item["id"] for item in payload["inbox_items"]] == ["gate-1", "gate-2"]
+    assert payload["inbox_items"][0]["prompt"] == "First"
+    assert payload["inbox_summary"] == {
+        "pending_count": 2,
+        "pending_questions": 2,
+        "pending_builds": 0,
+    }

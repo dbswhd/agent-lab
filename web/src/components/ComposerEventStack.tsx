@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import type {
   PlanExecutionRecord,
   PlanWorkflowRecord,
+  RuntimeSnapshot,
   SessionDetail,
 } from "../api/client";
 import type { RoomTasksPayload } from "../api/client";
@@ -35,6 +36,7 @@ import { workFocusElementId } from "../utils/workFocusTargets";
 import { resolveComposerStackSnapshot } from "../utils/composerStackLane";
 import { useLocale } from "../i18n/useLocale";
 import { DecisionQueueHeader } from "./DecisionQueueHeader";
+import { useMissionReadModel } from "../utils/missionReadModel";
 
 function clarifyStripDescriptionText(
   ko: boolean,
@@ -48,6 +50,18 @@ function clarifyStripDescriptionText(
   return workflowPhase === "INTAKE"
     ? "The workflow needs clearer input before it can continue."
     : "The workflow is collecting missing context before continuing.";
+}
+
+function isRuntimeWorkPhase(
+  value: string | null | undefined,
+): value is RuntimeSnapshot["work_phase"] {
+  return (
+    value === "plan_draft" ||
+    value === "review_needed" ||
+    value === "execute_pending" ||
+    value === "merge_verify" ||
+    value === "done"
+  );
 }
 
 type Props = {
@@ -153,6 +167,12 @@ export function ComposerEventStack({
   const rootRef = useRef<HTMLDivElement>(null);
   const hasPlan = Boolean(planMd.trim());
   const { runtime } = useSessionRuntime(sessionId, { run: session?.run });
+  const { model: missionReadModel } = useMissionReadModel(
+    sessionId,
+    inboxReloadKey,
+  );
+  const effectiveInboxPendingCount =
+    missionReadModel?.inbox_summary?.pending_count ?? inboxPendingCount;
 
   function scrollStackRoot() {
     rootRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -189,6 +209,7 @@ export function ComposerEventStack({
   }, [workFocus, onWorkFocusHandled]);
 
   const workflowPhase = (
+    missionReadModel?.plan?.phase ??
     planWorkflow?.phase ??
     runtime?.plan_workflow?.phase ??
     ""
@@ -201,7 +222,7 @@ export function ComposerEventStack({
     (workflowPhase === "CLARIFY" || workflowPhase === "INTAKE") &&
     hasPlanWorkflowClarifySurface({
       phase: workflowPhase,
-      inboxPendingCount,
+      inboxPendingCount: effectiveInboxPendingCount,
       notice: workflowNotice,
     });
 
@@ -224,6 +245,9 @@ export function ComposerEventStack({
       ? executions[executions.length - 1]
       : null;
     return (
+      (isRuntimeWorkPhase(missionReadModel?.work_phase)
+        ? missionReadModel.work_phase
+        : null) ??
       runtime?.work_phase ??
       resolveWorkPhase({
         hasPlan,
@@ -233,7 +257,13 @@ export function ComposerEventStack({
         latestExecution,
       })
     );
-  }, [hasPlan, planMeta.pendingAgreement, runtime, session?.run?.executions]);
+  }, [
+    hasPlan,
+    missionReadModel?.work_phase,
+    planMeta.pendingAgreement,
+    runtime,
+    session?.run?.executions,
+  ]);
 
   const showWorkSurface =
     (planWorkflow?.enabled
@@ -245,7 +275,7 @@ export function ComposerEventStack({
   const { activeLane, queuedLanes, pendingDecisionCount } = useMemo(
     () =>
       resolveComposerStackSnapshot({
-        inboxPendingCount,
+        inboxPendingCount: effectiveInboxPendingCount,
         planApprovalEnabled: Boolean(planApproval?.enabled),
         showClarifyNotice,
         hasPlan,
@@ -259,7 +289,7 @@ export function ComposerEventStack({
       consensusProposal,
       execPending,
       hasPlan,
-      inboxPendingCount,
+      effectiveInboxPendingCount,
       planApproval?.enabled,
       showClarifyNotice,
       showConsensusGate,

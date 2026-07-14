@@ -1,0 +1,74 @@
+{
+  "task": "wave-b-m6-retire/task-10",
+  "status": "NO-GO",
+  "decision": {
+    "status": "NO-GO",
+    "reason": "separate Human approval for irreversible deletion is absent",
+    "owner": null,
+    "approver_one": null,
+    "approver_two": null,
+    "approved_at": null,
+    "deletion_executed": false,
+    "deletion_commit": false
+  },
+  "baseline": {
+    "head": "f5cd68c596c2366a38359795d41a40cbef3a186c",
+    "captured_before_packet": true,
+    "worktree_dirty_paths": 49,
+    "service": "pre-existing API on 127.0.0.1:8765 remained untouched"
+  },
+  "packet": {
+    "path": "docs/redesign-2026-07/evidence/m6-final-retire-2026-07-14/",
+    "archive": "m6-final-retire.tar.gz",
+    "archive_mode": "0444",
+    "archive_sha256": "recorded in packet-index.json and archive.sha256",
+    "deletion_manifest": "deletion-manifest.json",
+    "candidate_count": 6,
+    "protected_count": 12,
+    "session_journal_policy": "checksum-only index; raw session and journal content not copied"
+  },
+  "coverage": {
+    "wave_b_parity": ["task-5", "task-6"],
+    "bounded_ui_soak": ["task-7"],
+    "rollback_recovery": ["task-7", "task-8", "task-9"],
+    "m6_8": "task-8",
+    "m6_9": "task-9",
+    "consumer_scan": "task-4",
+    "redaction": "paths, temporary paths, and email-like values redacted; sessions/journals checksum-only"
+  },
+  "verification": [
+    {"command": ".venv/bin/pytest -q tests/test_m6_final_retire_packet.py", "result": "PASS; 4 passed including SIGTERM cleanup/retry and tampered packet-index rejection"},
+    {"command": ".venv/bin/pytest -q tests/test_m6_final_retire_packet.py tests/test_m6_consumer_inventory.py tests/test_m6_checkpoint_bridges_flags.py tests/test_m6_checkpoint_duplicate_patches.py", "result": "PASS; 12 passed"},
+    {"command": "ruff check scripts/m6_final_retire_packet.py tests/test_m6_final_retire_packet.py && git diff --check", "result": "PASS"},
+    {"command": "PYTHONPATH=src python -m agent_lab.m6_consumer_inventory --check", "result": "PASS; reference_count=275, unknown=[], stale=[]"},
+    {"command": "npm --prefix web run build", "result": "PASS; tsc and Vite build; existing chunk-size warning only"},
+    {"command": "python3 scripts/m6_final_retire_packet.py --verify --root .", "result": "PASS; archive checksum/mode plus packet-index, archive-manifest, deletion-manifest, decision, and approval-field cross-checks"}
+  ],
+  "deletion_guard": {
+    "command": "python3 scripts/m6_final_retire_packet.py --delete --root .",
+    "result": "NO-GO; exit 2; separate Human approval artifact absent; no mutation",
+    "status_before_after": "identical",
+    "red_first": "test initially failed because deletion runner was absent; guard then implemented and test passed"
+  },
+  "manual_qa": {
+    "health": "curl GET /api/health returned ok=true",
+    "service_state": "existing listener/PID was unchanged",
+    "archive_index": "37 tar entries; expected evidence, coverage, manifest, approval, and checksum files present",
+    "redaction_scan": "no /Users or /private/var paths in archived regular files"
+  },
+  "cleanup": {
+    "temporary_packet_copies": "removed",
+    "temporary_mounts_or_processes": "none created; existing API not stopped",
+    "product_files_deleted": false,
+    "sessions_or_journals_deleted": false
+  },
+  "adversarial_classes": {
+    "stale_state": "NO-GO remains persisted in decision and manifest; approval hash is required",
+    "dirty_worktree": "baseline recorded and pre-existing edits preserved",
+    "misleading_success_output": "guard inspected exit code, NO-GO text, and status equality",
+    "interruption": "PASS; SIGTERM during a delayed publish removed partial output and a retry built successfully",
+    "generated_artifact": "archive is checksum-verified and read-only; sidecar index retained",
+    "long_or_hung": "N/A; no daemon or unbounded retry introduced"
+  },
+  "residual_blocker": "Separate explicit Human approval with owner, two approvers, timestamp, and manifest hash is required before any irreversible deletion."
+}

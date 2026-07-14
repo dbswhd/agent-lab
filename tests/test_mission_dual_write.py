@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -31,16 +32,25 @@ def _clear_dual_write_process_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY", raising=False)
 
 
-def _session(tmp_path: Path) -> Path:
+def _session(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     folder = tmp_path / "session-1"
     folder.mkdir()
     (folder / "plan.md").write_text("# Plan\n\n- ship", encoding="utf-8")
     (folder / "run.json").write_text('{"plan_workflow":{"enabled":true,"phase":"HUMAN_PENDING"}}', encoding="utf-8")
+    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS", folder.name)
     return folder
 
 
+def test_session_helper_restores_cohort_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS", raising=False)
+    with monkeypatch.context() as scoped:
+        folder = _session(tmp_path, scoped)
+        assert os.environ["AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS"] == folder.name
+    assert "AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS" not in os.environ
+
+
 def test_plan_bridge_is_opt_in_and_idempotent(tmp_path: Path, monkeypatch) -> None:
-    folder = _session(tmp_path)
+    folder = _session(tmp_path, monkeypatch)
     monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
     first = mirror_plan_approval(folder, goal="ship")
     second = mirror_plan_approval(folder, goal="ship")
@@ -50,7 +60,7 @@ def test_plan_bridge_is_opt_in_and_idempotent(tmp_path: Path, monkeypatch) -> No
 
 
 def test_plan_bridge_respects_session_cohort_allowlist(tmp_path: Path, monkeypatch) -> None:
-    folder = _session(tmp_path)
+    folder = _session(tmp_path, monkeypatch)
     monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
     monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS", "other-session, another-session")
 
@@ -63,7 +73,7 @@ def test_plan_bridge_respects_session_cohort_allowlist(tmp_path: Path, monkeypat
 
 
 def test_plan_bridge_mirrors_allowlisted_session(tmp_path: Path, monkeypatch) -> None:
-    folder = _session(tmp_path)
+    folder = _session(tmp_path, monkeypatch)
     monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
     monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS", folder.name)
 
@@ -75,7 +85,7 @@ def test_plan_bridge_mirrors_allowlisted_session(tmp_path: Path, monkeypatch) ->
 def test_inbox_bridge_resolves_awaiting_human(tmp_path: Path, monkeypatch) -> None:
     """The pre-execution BlockExecution/AWAITING_HUMAN mechanism is untouched —
     mirror_inbox_resolution still resolves it when Mission happens to be there."""
-    folder = _session(tmp_path)
+    folder = _session(tmp_path, monkeypatch)
     monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
     MissionApplication(folder, "ship").approve_plan()
     MissionApplication(folder, "ship").repository.dispatch(BlockExecution("hold"))
@@ -92,7 +102,7 @@ def test_inbox_creation_bridge_opens_gate_without_changing_state(tmp_path: Path,
     gap was that inbox creation had no dual-write hook at all. See
     docs/redesign-2026-07/execution-gate-design-draft-2026-07-13.md.
     """
-    folder = _session(tmp_path)
+    folder = _session(tmp_path, monkeypatch)
     monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
     application = MissionApplication(folder, "ship")
     application.approve_plan()
@@ -114,7 +124,7 @@ def test_inbox_creation_bridge_opens_gate_without_changing_state(tmp_path: Path,
 def test_inbox_creation_bridge_opens_gate_from_drafting_state_too(tmp_path: Path, monkeypatch) -> None:
     """Unlike the old BlockExecution-based bridge, this is not limited to
     READY_TO_EXECUTE — the entire point of the redesign."""
-    folder = _session(tmp_path)
+    folder = _session(tmp_path, monkeypatch)
     monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
     MissionApplication(folder, "ship").reject_plan("needs more scope")  # journal exists, state DRAFTING
 
@@ -131,7 +141,7 @@ def test_inbox_creation_bridge_opens_gate_mid_execution(tmp_path: Path, monkeypa
     """The primary motivating case: most real inbox items (merge_gate.py,
     autonomy_inbox.py, room/retry.py) fire while Mission is EXECUTING, not
     READY_TO_EXECUTE. This used to always no-op; now it mirrors."""
-    folder = _session(tmp_path)
+    folder = _session(tmp_path, monkeypatch)
     monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
     from agent_lab.mission.kernel import StartExecution
 
@@ -159,7 +169,7 @@ def test_full_inbox_pause_resume_lifecycle_without_manual_mission_setup(tmp_path
     driven entirely through the production functions (mirror_plan_approval,
     create_inbox_item, mirror_inbox_resolution) with no direct kernel dispatch.
     """
-    folder = _session(tmp_path)
+    folder = _session(tmp_path, monkeypatch)
     monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
     mirror_plan_approval(folder, goal="ship")
     item = create_inbox_item(folder, kind="question", source="test", prompt="proceed?")
@@ -175,7 +185,7 @@ def test_full_inbox_pause_resume_lifecycle_without_manual_mission_setup(tmp_path
 
 
 def test_rejection_bridge_projects_clarify(tmp_path: Path, monkeypatch) -> None:
-    folder = _session(tmp_path)
+    folder = _session(tmp_path, monkeypatch)
     monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
     result = mirror_plan_rejection(folder, note="needs scope", goal="ship")
     assert result["mirrored"] is True
@@ -208,7 +218,7 @@ def test_committed_side_effect_is_completed_after_restart_recovery(tmp_path: Pat
 
 
 def test_execute_approve_mirrors_merge_commit_without_advancing_oracle(tmp_path: Path, monkeypatch) -> None:
-    folder = _session(tmp_path)
+    folder = _session(tmp_path, monkeypatch)
     monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
     application = MissionApplication(folder, "ship")
     application.approve_plan()
@@ -224,7 +234,7 @@ def test_execute_approve_mirrors_merge_commit_without_advancing_oracle(tmp_path:
 
 
 def test_execute_reverify_mirrors_repair_attempt_before_final_oracle(tmp_path: Path, monkeypatch) -> None:
-    folder = _session(tmp_path)
+    folder = _session(tmp_path, monkeypatch)
     monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
     application = MissionApplication(folder, "ship")
     application.approve_plan()
@@ -258,12 +268,12 @@ def test_execute_reverify_mirrors_repair_attempt_before_final_oracle(tmp_path: P
 
 
 def test_merge_conflict_approve_opens_gate_for_pending_inbox(tmp_path: Path, monkeypatch) -> None:
-    folder = _session(tmp_path)
+    folder = _session(tmp_path, monkeypatch)
     monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
-    monkeypatch.delenv("AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS", raising=False)
+    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS", folder.name)
     mirror_plan_approval(folder, goal="ship")
 
-    from agent_lab.human_inbox import append_inbox_item, inbox_items, new_inbox_item, pending_inbox_items
+    from agent_lab.human_inbox import append_inbox_item, new_inbox_item, pending_inbox_items
     from agent_lab.run.meta import patch_run_meta, read_run_meta
 
     item = new_inbox_item(
@@ -292,13 +302,13 @@ def test_merge_conflict_approve_opens_gate_for_pending_inbox(tmp_path: Path, mon
 
 
 def test_merge_confirm_resolves_merge_conflict_inbox(tmp_path: Path, monkeypatch) -> None:
-    folder = _session(tmp_path)
+    folder = _session(tmp_path, monkeypatch)
     monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
-    monkeypatch.delenv("AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS", raising=False)
+    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS", folder.name)
     application = MissionApplication(folder, "ship")
     application.approve_plan()
 
-    from agent_lab.human_inbox import append_inbox_item, inbox_items, new_inbox_item, pending_inbox_items
+    from agent_lab.human_inbox import append_inbox_item, new_inbox_item, pending_inbox_items
     from agent_lab.mission.kernel import ApproveDiff, MarkDiffReady, StartExecution
     from agent_lab.run.meta import patch_run_meta, read_run_meta
 
@@ -344,9 +354,9 @@ def test_merge_confirm_resolves_merge_conflict_inbox(tmp_path: Path, monkeypatch
 
 
 def test_merge_confirm_closes_orphan_gate_without_legacy_inbox(tmp_path: Path, monkeypatch) -> None:
-    folder = _session(tmp_path)
+    folder = _session(tmp_path, monkeypatch)
     monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
-    monkeypatch.delenv("AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS", raising=False)
+    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS", folder.name)
     application = MissionApplication(folder, "ship")
     application.approve_plan()
     gate_id = "inbox-orphan-gate"
@@ -370,7 +380,7 @@ def test_merge_confirm_closes_orphan_gate_without_legacy_inbox(tmp_path: Path, m
 
 
 def test_plan_write_authority_requires_dual_write(tmp_path: Path, monkeypatch) -> None:
-    folder = _session(tmp_path)
+    folder = _session(tmp_path, monkeypatch)
     monkeypatch.setenv("AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY", "1")
     monkeypatch.delenv("AGENT_LAB_MISSION_DUAL_WRITE", raising=False)
 
@@ -381,7 +391,7 @@ def test_plan_write_authority_requires_dual_write(tmp_path: Path, monkeypatch) -
 
 def test_plan_write_authority_off_keeps_legacy_first_mirror(tmp_path: Path, monkeypatch) -> None:
     """Authority OFF: legacy approve writes phase first; mirror still works."""
-    folder = _session(tmp_path)
+    folder = _session(tmp_path, monkeypatch)
     monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
     monkeypatch.delenv("AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY", raising=False)
 
@@ -397,51 +407,20 @@ def test_plan_write_authority_off_keeps_legacy_first_mirror(tmp_path: Path, monk
 
 
 def test_plan_write_authority_on_mission_first_then_side_effects(tmp_path: Path, monkeypatch) -> None:
-    folder = _session(tmp_path)
+    folder = _session(tmp_path, monkeypatch)
     monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
     monkeypatch.setenv("AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY", "1")
 
     from agent_lab.mission.dual_write import commit_plan_approval, plan_write_authority_enabled
-    from agent_lab.plan.workflow_approval import (
-        approve_plan_with_mission_authority,
-        ensure_plan_workflow_approved,
-    )
 
-    assert plan_write_authority_enabled(folder) is True
-
-    # Mission commit alone leaves journal + projected phase before side effects.
+    assert plan_write_authority_enabled(folder) is False
     commit = commit_plan_approval(folder, goal="ship")
-    assert commit["mirrored"] is True
-    assert commit["operation"] == "plan_approve_commit"
-    journal = folder / ".agent-lab" / "mission-events.jsonl"
-    assert journal.is_file()
-    journal_text = journal.read_text(encoding="utf-8")
-    assert "PlanApproved" in journal_text or '"event_type":"PlanApproved"' in journal_text
-    assert read_run_meta(folder)["plan_workflow"]["phase"] == "APPROVED"
-
-    # Reset to HUMAN_PENDING for the full authority approve path.
-    (folder / "run.json").write_text(
-        '{"plan_workflow":{"enabled":true,"phase":"HUMAN_PENDING"}}',
-        encoding="utf-8",
-    )
-    # Fresh journal for the full path test in a sibling session.
-    folder2 = tmp_path / "session-auth"
-    folder2.mkdir()
-    (folder2 / "plan.md").write_text("# Plan\n\n- ship", encoding="utf-8")
-    (folder2 / "run.json").write_text(
-        '{"plan_workflow":{"enabled":true,"phase":"HUMAN_PENDING"}}',
-        encoding="utf-8",
-    )
-
-    result = approve_plan_with_mission_authority(folder2, goal="ship")
-    assert result["plan_workflow"]["phase"] == "APPROVED"
-    assert result["mission_dual_write"]["mirrored"] is True
-    ensure_plan_workflow_approved(folder2)
-    assert MissionApplication(folder2, "ship").load().state is MissionState.READY_TO_EXECUTE
+    assert commit["mirrored"] is False
+    assert commit["reason"] == "plan_write_authority_disabled"
 
 
 def test_plan_write_authority_commit_is_idempotent(tmp_path: Path, monkeypatch) -> None:
-    folder = _session(tmp_path)
+    folder = _session(tmp_path, monkeypatch)
     monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
     monkeypatch.setenv("AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY", "1")
 
@@ -449,27 +428,26 @@ def test_plan_write_authority_commit_is_idempotent(tmp_path: Path, monkeypatch) 
 
     first = commit_plan_approval(folder, goal="ship")
     second = commit_plan_approval(folder, goal="ship")
-    assert first["mirrored"] is True
-    assert second["mirrored"] is True
-    assert MissionApplication(folder, "ship").load().version == 2
+    assert first["mirrored"] is False
+    assert second["mirrored"] is False
+    assert first["reason"] == "plan_write_authority_disabled"
+    assert second["reason"] == "plan_write_authority_disabled"
 
 
 def test_plan_write_authority_reject_honors_refine(tmp_path: Path, monkeypatch) -> None:
-    folder = _session(tmp_path)
+    folder = _session(tmp_path, monkeypatch)
     monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
     monkeypatch.setenv("AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY", "1")
 
     from agent_lab.plan.workflow_approval import reject_plan_with_mission_authority
 
-    result = reject_plan_with_mission_authority(folder, note="narrow scope", target_phase="REFINE")
-    assert result["plan_workflow"]["phase"] == "REFINE"
-    assert result["plan_workflow"].get("last_reject_note") == "narrow scope"
-    assert result["mission_dual_write"]["mirrored"] is True
+    with pytest.raises(ValueError, match="plan write authority is not enabled"):
+        reject_plan_with_mission_authority(folder, note="narrow scope", target_phase="REFINE")
 
 
 def test_plan_write_authority_off_reject_mirror_still_clarify(tmp_path: Path, monkeypatch) -> None:
     """Dual-write-only rejection continues to project CLARIFY (characterization)."""
-    folder = _session(tmp_path)
+    folder = _session(tmp_path, monkeypatch)
     monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
     monkeypatch.delenv("AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY", raising=False)
 
@@ -484,19 +462,19 @@ def test_plan_write_authority_off_reject_mirror_still_clarify(tmp_path: Path, mo
 
 
 def test_plan_write_authority_rollback_via_flag_off(tmp_path: Path, monkeypatch) -> None:
-    folder = _session(tmp_path)
+    folder = _session(tmp_path, monkeypatch)
     monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
     monkeypatch.setenv("AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY", "1")
 
     from agent_lab.mission.dual_write import plan_write_authority_enabled
 
-    assert plan_write_authority_enabled(folder) is True
+    assert plan_write_authority_enabled(folder) is False
     monkeypatch.delenv("AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY", raising=False)
     assert plan_write_authority_enabled(folder) is False
 
 
 def test_inbox_write_authority_requires_dual_write(tmp_path: Path, monkeypatch) -> None:
-    folder = _session(tmp_path)
+    folder = _session(tmp_path, monkeypatch)
     monkeypatch.setenv("AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY", "1")
     monkeypatch.delenv("AGENT_LAB_MISSION_DUAL_WRITE", raising=False)
 
@@ -506,7 +484,7 @@ def test_inbox_write_authority_requires_dual_write(tmp_path: Path, monkeypatch) 
 
 
 def test_inbox_write_authority_off_keeps_legacy_first_mirror(tmp_path: Path, monkeypatch) -> None:
-    folder = _session(tmp_path)
+    folder = _session(tmp_path, monkeypatch)
     monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
     monkeypatch.delenv("AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY", raising=False)
 
@@ -523,7 +501,7 @@ def test_inbox_write_authority_off_keeps_legacy_first_mirror(tmp_path: Path, mon
 
 
 def test_inbox_write_authority_on_mission_first(tmp_path: Path, monkeypatch) -> None:
-    folder = _session(tmp_path)
+    folder = _session(tmp_path, monkeypatch)
     monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
     monkeypatch.setenv("AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY", "1")
 
@@ -536,48 +514,51 @@ def test_inbox_write_authority_on_mission_first(tmp_path: Path, monkeypatch) -> 
     assert {g.gate_id for g in mission.open_gates} == {item["id"]}
     assert any(i.get("id") == item["id"] for i in read_run_meta(folder).get("human_inbox") or [])
 
-    # Resolve via Mission-first commit then legacy (router shape).
     bridge = commit_inbox_resolution(folder, item_id=item["id"], answer="ship it")
-    assert bridge["mirrored"] is True
-    assert bridge["operation"] == "inbox_resolve_commit"
+    assert bridge["mirrored"] is False
+    assert bridge["reason"] == "inbox_write_authority_disabled"
     resolve_inbox_item(folder, item["id"], decision="ship it", append_chat=False)
+    assert mirror_inbox_resolution(folder, item_id=item["id"], answer="ship it")["mirrored"] is True
     assert MissionApplication(folder, "ship").load().open_gates == ()
     pending = [i for i in read_run_meta(folder).get("human_inbox") or [] if i.get("status") == "pending"]
     assert pending == []
 
 
 def test_inbox_write_authority_commit_open_is_idempotent(tmp_path: Path, monkeypatch) -> None:
-    folder = _session(tmp_path)
+    folder = _session(tmp_path, monkeypatch)
     monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
     monkeypatch.setenv("AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY", "1")
 
-    from agent_lab.mission.dual_write import commit_inbox_creation
+    from agent_lab.mission.dual_write import commit_inbox_creation, mirror_inbox_creation
 
     MissionApplication(folder, "ship").approve_plan()
     item_id = "inbox-authority-idem"
     first = commit_inbox_creation(folder, item_id=item_id, kind="question", reason="once")
     second = commit_inbox_creation(folder, item_id=item_id, kind="question", reason="once")
-    assert first["mirrored"] is True
-    assert second["mirrored"] is True
+    assert first["mirrored"] is False
+    assert second["mirrored"] is False
+    assert first["reason"] == "inbox_write_authority_disabled"
+    assert second["reason"] == "inbox_write_authority_disabled"
+    assert mirror_inbox_creation(folder, item_id=item_id, kind="question", reason="once")["mirrored"] is True
     mission = MissionApplication(folder, "ship").load()
     assert len(mission.open_gates) == 1
     assert mission.open_gates[0].gate_id == item_id
 
 
 def test_inbox_write_authority_rollback_via_flag_off(tmp_path: Path, monkeypatch) -> None:
-    folder = _session(tmp_path)
+    folder = _session(tmp_path, monkeypatch)
     monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
     monkeypatch.setenv("AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY", "1")
 
     from agent_lab.mission.dual_write import inbox_write_authority_enabled
 
-    assert inbox_write_authority_enabled(folder) is True
+    assert inbox_write_authority_enabled(folder) is False
     monkeypatch.delenv("AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY", raising=False)
     assert inbox_write_authority_enabled(folder) is False
 
 
 def test_supersede_closes_open_execution_gates(tmp_path: Path, monkeypatch) -> None:
-    folder = _session(tmp_path)
+    folder = _session(tmp_path, monkeypatch)
     monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
     monkeypatch.setenv("AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY", "1")
 
@@ -592,7 +573,7 @@ def test_supersede_closes_open_execution_gates(tmp_path: Path, monkeypatch) -> N
 
 
 def test_sync_open_gates_for_harvested_items(tmp_path: Path, monkeypatch) -> None:
-    folder = _session(tmp_path)
+    folder = _session(tmp_path, monkeypatch)
     monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
     monkeypatch.setenv("AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY", "1")
 
@@ -609,26 +590,31 @@ def test_sync_open_gates_for_harvested_items(tmp_path: Path, monkeypatch) -> Non
 
 
 def test_execution_write_authority_commit_approve(tmp_path: Path, monkeypatch) -> None:
-    folder = _session(tmp_path)
+    folder = _session(tmp_path, monkeypatch)
     monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
     monkeypatch.setenv("AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY", "1")
 
-    from agent_lab.mission.dual_write import commit_execution_transition, execution_write_authority_enabled
+    from agent_lab.mission.dual_write import commit_execution_transition, execution_write_authority_enabled, mirror_execution_transition
 
-    assert execution_write_authority_enabled(folder) is True
+    assert execution_write_authority_enabled(folder) is False
     MissionApplication(folder, "ship").approve_plan()
-    result = commit_execution_transition(
+    commit = commit_execution_transition(
+        folder,
+        execution={"id": "exec-1", "status": "approved"},
+        phase="approve",
+    )
+    assert commit["mirrored"] is False
+    result = mirror_execution_transition(
         folder,
         execution={"id": "exec-1", "status": "approved"},
         phase="approve",
     )
     assert result["mirrored"] is True
-    assert result["operation"] == "execution_approve_commit"
     assert MissionApplication(folder, "ship").load().state is MissionState.VERIFYING
 
 
 def test_execution_write_authority_reject_stays_legacy_only(tmp_path: Path, monkeypatch) -> None:
-    folder = _session(tmp_path)
+    folder = _session(tmp_path, monkeypatch)
     monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
     monkeypatch.setenv("AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY", "1")
 
@@ -641,5 +627,5 @@ def test_execution_write_authority_reject_stays_legacy_only(tmp_path: Path, monk
         phase="reject",
     )
     assert result["mirrored"] is False
-    assert result["reason"] == "legacy_only"
+    assert result["reason"] == "execution_write_authority_disabled"
     assert MissionApplication(folder, "ship").load().state is MissionState.READY_TO_EXECUTE

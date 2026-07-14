@@ -19,6 +19,7 @@ import {
 import { resolveWorkPhase } from "../utils/workStatusPhase";
 import { hasPlanWorkflowClarifySurface } from "../utils/planWorkflowView";
 import { useSessionRuntime } from "../hooks/useSessionRuntime";
+import { useMissionReadModel } from "../utils/missionReadModel";
 import { PlanExecutePanel } from "./PlanExecutePanel";
 import { WorkDecisionPanel } from "./WorkDecisionPanel";
 import {
@@ -34,6 +35,18 @@ import {
 } from "../utils/gjcPipelinePhase";
 
 export type { WorkFocusTarget } from "../utils/workFocusTargets";
+
+function isRuntimeWorkPhase(
+  value: string | null | undefined,
+): value is RuntimeSnapshot["work_phase"] {
+  return (
+    value === "plan_draft" ||
+    value === "review_needed" ||
+    value === "execute_pending" ||
+    value === "merge_verify" ||
+    value === "done"
+  );
+}
 
 type Props = {
   sessionId: string;
@@ -116,6 +129,7 @@ export function WorkToolPanel({
     enabled: ownsRuntimeFetch,
   });
   const runtime = ownsRuntimeFetch ? fetchedRuntime : runtimeSnapshot;
+  const { model: missionReadModel } = useMissionReadModel(sessionId);
   const executions = useMemo(
     () => (session?.run?.executions as PlanExecutionRecord[] | undefined) ?? [],
     [session?.run],
@@ -123,22 +137,39 @@ export function WorkToolPanel({
   const latestExecution = executions.length
     ? executions[executions.length - 1]
     : null;
+  const readModelExecution =
+    latestExecution && missionReadModel?.oracle_verdict
+      ? {
+          ...latestExecution,
+          oracle: {
+            ...latestExecution.oracle,
+            verdict: missionReadModel.oracle_verdict,
+          },
+          oracle_verdict: missionReadModel.oracle_verdict,
+        }
+      : latestExecution;
+  const readModelExecutions = readModelExecution
+    ? executions.slice(0, -1).concat(readModelExecution)
+    : executions;
   const gjcPhase = resolveGjcPipelinePhase({
     planWorkflow,
     runtime,
-    latestExecution,
+    latestExecution: readModelExecution,
     hasPlan,
   });
   const gjcMeta = gjcPipelineMetaLine(gjcPhase, planWorkflow?.notice);
   const externalRunnerEnabled = Boolean(runtime?.external?.runner_enabled);
   const workPhase =
+    (isRuntimeWorkPhase(missionReadModel?.work_phase)
+      ? missionReadModel.work_phase
+      : null) ??
     runtime?.work_phase ??
     resolveWorkPhase({
       hasPlan,
       hasPendingExecution: Boolean(runtime?.execute.has_pending),
       hasDryRunDiff: Boolean(runtime?.execute.has_dry_run_diff),
       pendingAgreement: Boolean(planMeta.pendingAgreement),
-      latestExecution,
+      latestExecution: readModelExecution,
     });
   const workPhaseMeta = workPhaseMetaLine(
     runtime?.orchestration,
@@ -161,13 +192,13 @@ export function WorkToolPanel({
           isFailed: false,
         },
         runtime,
-        executions,
+        executions: readModelExecutions,
         mergeChecks: runtime?.merge_checks ?? null,
         workHookAlert,
         roomTasks,
       }),
     [
-      executions,
+      readModelExecutions,
       hasPlan,
       planMeta,
       planStaleNotice,
@@ -205,6 +236,7 @@ export function WorkToolPanel({
   );
 
   const workflowPhase = (
+    missionReadModel?.plan?.phase ??
     planWorkflow?.phase ??
     runtime?.plan_workflow?.phase ??
     ""
@@ -264,8 +296,13 @@ export function WorkToolPanel({
               phase={workPhase}
               metaLine={workPhaseMeta}
               hasPlan={hasPlan}
+              missionPaused={
+                missionReadModel?.mission_overview?.paused ??
+                runtime?.mission.paused ??
+                false
+              }
             />
-            <GjcExternalHandoffStrip execution={latestExecution} />
+            <GjcExternalHandoffStrip execution={readModelExecution} />
           </div>
         ) : null}
         {showPlanStalePanel ? (
@@ -300,8 +337,13 @@ export function WorkToolPanel({
             phase={workPhase}
             metaLine={workPhaseMeta}
             hasPlan={hasPlan}
+            missionPaused={
+              missionReadModel?.mission_overview?.paused ??
+              runtime?.mission.paused ??
+              false
+            }
           />
-          <GjcExternalHandoffStrip execution={latestExecution} />
+          <GjcExternalHandoffStrip execution={readModelExecution} />
           <WorkDecisionPanel
             summary={decisionSummary}
             onAction={handleDecisionAction}

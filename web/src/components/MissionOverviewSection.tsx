@@ -19,6 +19,10 @@ const PHASE_LABELS_KO: Record<string, string> = {
   REPAIR: "수정 중",
   VERIFY: "검증 중",
   DISCUSS: "토론 중",
+  WAITING_FOR_HUMAN: "답변 대기",
+  RUNNING: "실행 중",
+  REPAIRING: "수정 중",
+  VERIFYING: "검증 중",
 };
 
 const PHASE_LABELS_EN: Record<string, string> = {
@@ -30,6 +34,10 @@ const PHASE_LABELS_EN: Record<string, string> = {
   REPAIR: "Repair",
   VERIFY: "Verify",
   DISCUSS: "Discuss",
+  WAITING_FOR_HUMAN: "Waiting for answer",
+  RUNNING: "Executing",
+  REPAIRING: "Repair",
+  VERIFYING: "Verifying",
 };
 
 function phaseLabel(phase: string | null, ko: boolean): string {

@@ -1,0 +1,14 @@
+{
+  "schema_version": 2,
+  "active_work_id": "wave-b-m6-retire-plan",
+  "works": {
+    "wave-b-m6-retire-plan": {
+      "work_id": "wave-b-m6-retire-plan",
+      "active_plan": ".omo/plans/wave-b-m6-retire-plan.md",
+      "plan_name": "wave-b-m6-retire-plan",
+      "session_ids": ["codex:wave-b-m6-retire-plan"],
+      "status": "active",
+      "worktree_path": null
+    }
+  }
+}

@@ -1,0 +1,601 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-07-14",
+  "purpose": "M6 deletion gate: every compatibility read/write in the scoped surfaces must remain classified until its retirement checkpoint.",
+  "scope": {
+    "target_files": [
+      "src/agent_lab/mission/tick.py",
+      "src/agent_lab/mission/advance.py",
+      "src/agent_lab/runtime/transitions.py",
+      "src/agent_lab/runtime/orchestration.py",
+      "src/agent_lab/clarity.py",
+      "app/server/routers/room.py",
+      "web/src/components/ComposerEventStack.tsx",
+      "web/src/components/WorkToolPanel.tsx",
+      "web/src/components/HumanInboxPanel.tsx",
+      "web/src/hooks/useRoomSseHandler.ts",
+      "web/src/hooks/useRoomChatInteractions.ts",
+      "web/src/utils/workStatusPhase.ts",
+      "web/src/components/ContextOverviewPanel.tsx",
+      "web/src/components/NotificationCenter.tsx",
+      "web/src/components/MissionOverviewSection.tsx",
+      "web/src/hooks/useAutonomySession.ts",
+      "web/src/utils/missionReadModel.ts",
+      "web/src/utils/missionOverviewView.ts"
+    ],
+    "legacy_patterns": [
+      "run.json",
+      "mission_loop",
+      "human_inbox",
+      "plan_workflow",
+      "read_run_meta",
+      "patch_run_meta",
+      "get_mission_loop",
+      "pending_inbox_items",
+      "fan_out_inbox_item",
+      "create_inbox_item",
+      "mergeChecks",
+      "oracle"
+    ]
+  },
+  "entries": [
+    {
+      "id": "mission.tick",
+      "path": "src/agent_lab/mission/tick.py",
+      "owner": "Mission scheduler",
+      "operation": "read/write",
+      "thin_projection_fields": [
+        "phase",
+        "enabled",
+        "autonomous_segment",
+        "circuit_breaker",
+        "discuss_recovery",
+        "schedule"
+      ],
+      "rich_compatibility_fields": [
+        "human_inbox harvest payload"
+      ],
+      "deferred": [
+        "full mission_loop action queue"
+      ],
+      "retirement_checkpoint": "M6-8 after duplicate lifecycle patches are stopped and recovery is proven"
+    },
+    {
+      "id": "mission.advance",
+      "path": "src/agent_lab/mission/advance.py",
+      "owner": "Mission advance/conductor",
+      "operation": "read/write",
+      "thin_projection_fields": [
+        "phase",
+        "enabled",
+        "circuit_breaker",
+        "pause/recovery status"
+      ],
+      "rich_compatibility_fields": [
+        "execution rows",
+        "oracle evidence",
+        "repair metadata",
+        "human inbox escalation"
+      ],
+      "deferred": [
+        "execute/merge/Oracle implementers and side effects"
+      ],
+      "retirement_checkpoint": "M6-8; retain side-effect writers and rich execution compatibility data"
+    },
+    {
+      "id": "runtime.transitions",
+      "path": "src/agent_lab/runtime/transitions.py",
+      "owner": "Runtime transition guards",
+      "operation": "read",
+      "thin_projection_fields": [
+        "mission phase",
+        "mission enabled",
+        "plan_workflow phase"
+      ],
+      "rich_compatibility_fields": [],
+      "deferred": [
+        "standalone run.json event compatibility"
+      ],
+      "retirement_checkpoint": "M6-8 after guards consume the Mission adapter"
+    },
+    {
+      "id": "runtime.orchestration",
+      "path": "src/agent_lab/runtime/orchestration.py",
+      "owner": "Orchestration read model",
+      "operation": "read/write",
+      "thin_projection_fields": [
+        "mission phase",
+        "mission enabled",
+        "plan substate",
+        "work phase"
+      ],
+      "rich_compatibility_fields": [
+        "orchestration observability stamp"
+      ],
+      "deferred": [
+        "drift reconcile fallback"
+      ],
+      "retirement_checkpoint": "M6-8 after Mission operational status is authoritative"
+    },
+    {
+      "id": "clarity",
+      "path": "src/agent_lab/clarity.py",
+      "owner": "Clarifier/clarity panel",
+      "operation": "read/write",
+      "thin_projection_fields": [
+        "clarity threshold inputs"
+      ],
+      "rich_compatibility_fields": [
+        "mission_loop.clarity.panel",
+        "mission_loop.clarity.facts"
+      ],
+      "deferred": [
+        "journal-first clarity facts adapter"
+      ],
+      "retirement_checkpoint": "M6-9; preserve durable facts until all clarify consumers migrate"
+    },
+    {
+      "id": "room.disconnect",
+      "path": "app/server/routers/room.py",
+      "owner": "Room SSE disconnect guard",
+      "operation": "read/write",
+      "thin_projection_fields": [
+        "budget_exhausted",
+        "pending human gate status"
+      ],
+      "rich_compatibility_fields": [
+        "human_inbox full rows",
+        "room timeout/preset metadata"
+      ],
+      "deferred": [
+        "human_inbox row projection"
+      ],
+      "retirement_checkpoint": "M6-8; inbox row writer remains until HumanInboxPanel migration"
+    },
+    {
+      "id": "web.composer",
+      "path": "web/src/components/ComposerEventStack.tsx",
+      "owner": "Composer event stack",
+      "operation": "read",
+      "thin_projection_fields": [
+        "plan phase",
+        "plan notice"
+      ],
+      "rich_compatibility_fields": [
+        "runtime event payload"
+      ],
+      "deferred": [
+        "read-model UI flag and per-payload fallback"
+      ],
+      "retirement_checkpoint": "M6-5"
+    },
+    {
+      "id": "web.work",
+      "path": "web/src/components/WorkToolPanel.tsx",
+      "owner": "Work status and merge panel",
+      "operation": "read",
+      "thin_projection_fields": [
+        "plan phase",
+        "work phase"
+      ],
+      "rich_compatibility_fields": [
+        "merge_checks",
+        "oracle/execution details"
+      ],
+      "deferred": [
+        "read-model UI flag and per-payload fallback"
+      ],
+      "retirement_checkpoint": "M6-5"
+    },
+    {
+      "id": "web.inbox",
+      "path": "web/src/components/HumanInboxPanel.tsx",
+      "owner": "Human inbox panel",
+      "operation": "read",
+      "thin_projection_fields": [
+        "inbox summary/count"
+      ],
+      "rich_compatibility_fields": [
+        "human_inbox full prompt/options rows"
+      ],
+      "deferred": [
+        "joined Mission gate to inbox-row projection"
+      ],
+      "retirement_checkpoint": "M6-5 then M6-8; row writer cannot retire before rich join"
+    },
+    {
+      "id": "web.sse",
+      "path": "web/src/hooks/useRoomSseHandler.ts",
+      "owner": "Room SSE notification/recovery",
+      "operation": "read",
+      "thin_projection_fields": [
+        "plan workflow events",
+        "pending inbox summary"
+      ],
+      "rich_compatibility_fields": [
+        "human_inbox event rows"
+      ],
+      "deferred": [
+        "read-model SSE adapter with legacy fallback"
+      ],
+      "retirement_checkpoint": "M6-5"
+    },
+    {
+      "id": "web.chat",
+      "path": "web/src/hooks/useRoomChatInteractions.ts",
+      "owner": "Room chat autonomy/recovery",
+      "operation": "read",
+      "thin_projection_fields": [
+        "mission phase",
+        "discuss recovery",
+        "autonomy enabled"
+      ],
+      "rich_compatibility_fields": [
+        "mission_loop recovery payload"
+      ],
+      "deferred": [
+        "read-model autonomy/recovery adapter"
+      ],
+      "retirement_checkpoint": "M6-5"
+    },
+    {
+      "id": "web.work_phase",
+      "path": "web/src/utils/workStatusPhase.ts",
+      "owner": "Work phase mapper",
+      "operation": "read",
+      "thin_projection_fields": [
+        "mission phase to work phase"
+      ],
+      "rich_compatibility_fields": [
+        "execution oracle verdict/status"
+      ],
+      "deferred": [
+        "read-model work phase fallback"
+      ],
+      "retirement_checkpoint": "M6-5"
+    },
+    {
+      "id": "web.overview",
+      "path": "web/src/components/ContextOverviewPanel.tsx",
+      "owner": "Mission overview panel",
+      "operation": "read",
+      "thin_projection_fields": ["mission overview phase", "pause/circuit status"],
+      "rich_compatibility_fields": ["legacy overview fallback"],
+      "deferred": ["read-model UI flag and per-payload fallback"],
+      "retirement_checkpoint": "M6-5"
+    },
+    {
+      "id": "web.notifications",
+      "path": "web/src/components/NotificationCenter.tsx",
+      "owner": "Notification center",
+      "operation": "read",
+      "thin_projection_fields": ["open execution gate count"],
+      "rich_compatibility_fields": ["local activity notifications"],
+      "deferred": ["read-model gate notification adapter"],
+      "retirement_checkpoint": "M6-5"
+    },
+    {
+      "id": "web.mission_overview_view",
+      "path": "web/src/utils/missionOverviewView.ts",
+      "owner": "Mission overview projection helper",
+      "operation": "read",
+      "thin_projection_fields": ["canonical phase label"],
+      "rich_compatibility_fields": ["legacy run mission loop"],
+      "deferred": ["read-model UI flag and per-payload fallback"],
+      "retirement_checkpoint": "M6-5"
+    },
+    {
+      "id": "web.mission_overview_section",
+      "path": "web/src/components/MissionOverviewSection.tsx",
+      "owner": "Mission overview renderer",
+      "operation": "read",
+      "thin_projection_fields": ["localized phase labels"],
+      "rich_compatibility_fields": ["legacy overview view"],
+      "deferred": ["read-model UI flag and per-payload fallback"],
+      "retirement_checkpoint": "M6-5"
+    },
+    {
+      "id": "web.autonomy",
+      "path": "web/src/hooks/useAutonomySession.ts",
+      "owner": "Autonomy session hook",
+      "operation": "read",
+      "thin_projection_fields": ["paused canonical mission status"],
+      "rich_compatibility_fields": ["runtime autonomy payload"],
+      "deferred": ["read-model autonomy projection"],
+      "retirement_checkpoint": "M6-5"
+    },
+    {
+      "id": "web.read_model_adapter",
+      "path": "web/src/utils/missionReadModel.ts",
+      "owner": "Mission read-model adapter",
+      "operation": "read",
+      "thin_projection_fields": ["flag, migration, gate, and join validation"],
+      "rich_compatibility_fields": ["legacy per-payload fallback"],
+      "deferred": ["global default-on cutover"],
+      "retirement_checkpoint": "M6-5"
+    }
+  ],
+  "baseline": {
+    "captured_before_allowlist": true,
+    "command": "rg -n --glob '*.py' --glob '*.ts' --glob '*.tsx' '(run\\\\.json|mission_loop|human_inbox|plan_workflow|patch_run_meta|read_run_meta|write_run_meta|create_inbox_item|pending_inbox_items|fan_out_inbox_item)' src app web",
+    "broad_match_count": 1596,
+    "note": "Broad scan includes unrelated legacy consumers outside this M6 surface; the static gate intentionally scopes to the target_files above."
+  },
+  "references": [
+    "src/agent_lab/mission/tick.py:1:mission_loop",
+    "src/agent_lab/mission/tick.py:10:legacy_import",
+    "src/agent_lab/mission/tick.py:10:read_run_meta",
+    "src/agent_lab/mission/tick.py:10:patch_run_meta",
+    "src/agent_lab/mission/tick.py:39:legacy_import",
+    "src/agent_lab/mission/tick.py:39:pending_inbox_items",
+    "src/agent_lab/mission/tick.py:39:human_inbox",
+    "src/agent_lab/mission/tick.py:41:pending_inbox_items",
+    "src/agent_lab/mission/tick.py:47:legacy_import",
+    "src/agent_lab/mission/tick.py:66:legacy_import",
+    "src/agent_lab/mission/tick.py:67:get_mission_loop",
+    "src/agent_lab/mission/tick.py:74:read_run_meta",
+    "src/agent_lab/mission/tick.py:75:get_mission_loop",
+    "src/agent_lab/mission/tick.py:87:read_run_meta",
+    "src/agent_lab/mission/tick.py:87:get_mission_loop",
+    "src/agent_lab/mission/tick.py:93:read_run_meta",
+    "src/agent_lab/mission/tick.py:93:get_mission_loop",
+    "src/agent_lab/mission/tick.py:131:read_run_meta",
+    "src/agent_lab/mission/tick.py:131:get_mission_loop",
+    "src/agent_lab/mission/tick.py:138:read_run_meta",
+    "src/agent_lab/mission/tick.py:138:get_mission_loop",
+    "src/agent_lab/mission/tick.py:149:mission_loop",
+    "src/agent_lab/mission/tick.py:150:read_run_meta",
+    "src/agent_lab/mission/tick.py:163:patch_run_meta",
+    "src/agent_lab/mission/tick.py:166:mission_loop",
+    "src/agent_lab/mission/tick.py:172:mission_loop",
+    "src/agent_lab/mission/advance.py:8:legacy_import",
+    "src/agent_lab/mission/advance.py:8:read_run_meta",
+    "src/agent_lab/mission/advance.py:8:patch_run_meta",
+    "src/agent_lab/mission/advance.py:11:legacy_import",
+    "src/agent_lab/mission/advance.py:38:legacy_import",
+    "src/agent_lab/mission/advance.py:38:get_mission_loop",
+    "src/agent_lab/mission/advance.py:41:read_run_meta",
+    "src/agent_lab/mission/advance.py:42:get_mission_loop",
+    "src/agent_lab/mission/advance.py:49:get_mission_loop",
+    "src/agent_lab/mission/advance.py:58:mission_loop",
+    "src/agent_lab/mission/advance.py:61:patch_run_meta",
+    "src/agent_lab/mission/advance.py:71:patch_run_meta",
+    "src/agent_lab/mission/advance.py:76:read_run_meta",
+    "src/agent_lab/mission/advance.py:76:get_mission_loop",
+    "src/agent_lab/mission/advance.py:81:legacy_import",
+    "src/agent_lab/mission/advance.py:81:get_mission_loop",
+    "src/agent_lab/mission/advance.py:83:read_run_meta",
+    "src/agent_lab/mission/advance.py:84:get_mission_loop",
+    "src/agent_lab/mission/advance.py:88:get_mission_loop",
+    "src/agent_lab/mission/advance.py:91:mission_loop",
+    "src/agent_lab/mission/advance.py:94:patch_run_meta",
+    "src/agent_lab/mission/advance.py:98:read_run_meta",
+    "src/agent_lab/mission/advance.py:98:get_mission_loop",
+    "src/agent_lab/mission/advance.py:103:legacy_import",
+    "src/agent_lab/mission/advance.py:103:get_mission_loop",
+    "src/agent_lab/mission/advance.py:106:read_run_meta",
+    "src/agent_lab/mission/advance.py:107:get_mission_loop",
+    "src/agent_lab/mission/advance.py:111:get_mission_loop",
+    "src/agent_lab/mission/advance.py:114:mission_loop",
+    "src/agent_lab/mission/advance.py:117:patch_run_meta",
+    "src/agent_lab/mission/advance.py:122:read_run_meta",
+    "src/agent_lab/mission/advance.py:122:get_mission_loop",
+    "src/agent_lab/mission/advance.py:134:legacy_import",
+    "src/agent_lab/mission/advance.py:137:get_mission_loop",
+    "src/agent_lab/mission/advance.py:144:read_run_meta",
+    "src/agent_lab/mission/advance.py:145:get_mission_loop",
+    "src/agent_lab/mission/advance.py:173:read_run_meta",
+    "src/agent_lab/mission/advance.py:173:get_mission_loop",
+    "src/agent_lab/mission/advance.py:194:legacy_import",
+    "src/agent_lab/mission/advance.py:194:get_mission_loop",
+    "src/agent_lab/mission/advance.py:197:read_run_meta",
+    "src/agent_lab/mission/advance.py:198:get_mission_loop",
+    "src/agent_lab/mission/advance.py:252:read_run_meta",
+    "src/agent_lab/mission/advance.py:252:get_mission_loop",
+    "src/agent_lab/mission/advance.py:263:legacy_import",
+    "src/agent_lab/mission/advance.py:263:get_mission_loop",
+    "src/agent_lab/mission/advance.py:265:read_run_meta",
+    "src/agent_lab/mission/advance.py:266:get_mission_loop",
+    "src/agent_lab/mission/advance.py:299:legacy_import",
+    "src/agent_lab/mission/advance.py:299:get_mission_loop",
+    "src/agent_lab/mission/advance.py:302:read_run_meta",
+    "src/agent_lab/mission/advance.py:303:get_mission_loop",
+    "src/agent_lab/mission/advance.py:367:legacy_import",
+    "src/agent_lab/mission/advance.py:367:get_mission_loop",
+    "src/agent_lab/mission/advance.py:370:read_run_meta",
+    "src/agent_lab/mission/advance.py:371:get_mission_loop",
+    "src/agent_lab/mission/advance.py:401:read_run_meta",
+    "src/agent_lab/mission/advance.py:401:get_mission_loop",
+    "src/agent_lab/mission/advance.py:417:legacy_import",
+    "src/agent_lab/mission/advance.py:417:get_mission_loop",
+    "src/agent_lab/mission/advance.py:420:get_mission_loop",
+    "src/agent_lab/mission/advance.py:430:mission_loop",
+    "src/agent_lab/mission/advance.py:433:patch_run_meta",
+    "src/agent_lab/mission/advance.py:434:read_run_meta",
+    "src/agent_lab/mission/advance.py:434:get_mission_loop",
+    "src/agent_lab/mission/advance.py:446:legacy_import",
+    "src/agent_lab/mission/advance.py:446:get_mission_loop",
+    "src/agent_lab/mission/advance.py:448:read_run_meta",
+    "src/agent_lab/mission/advance.py:449:get_mission_loop",
+    "src/agent_lab/mission/advance.py:462:get_mission_loop",
+    "src/agent_lab/mission/advance.py:464:mission_loop",
+    "src/agent_lab/mission/advance.py:467:patch_run_meta",
+    "src/agent_lab/mission/advance.py:468:read_run_meta",
+    "src/agent_lab/mission/advance.py:468:get_mission_loop",
+    "src/agent_lab/mission/advance.py:474:read_run_meta",
+    "src/agent_lab/mission/advance.py:474:get_mission_loop",
+    "src/agent_lab/mission/advance.py:485:legacy_import",
+    "src/agent_lab/mission/advance.py:485:get_mission_loop",
+    "src/agent_lab/mission/advance.py:493:get_mission_loop",
+    "src/agent_lab/mission/advance.py:498:mission_loop",
+    "src/agent_lab/mission/advance.py:501:patch_run_meta",
+    "src/agent_lab/mission/advance.py:502:read_run_meta",
+    "src/agent_lab/mission/advance.py:502:get_mission_loop",
+    "src/agent_lab/mission/advance.py:510:legacy_import",
+    "src/agent_lab/mission/advance.py:510:pending_inbox_items",
+    "src/agent_lab/mission/advance.py:510:human_inbox",
+    "src/agent_lab/mission/advance.py:512:read_run_meta",
+    "src/agent_lab/mission/advance.py:516:pending_inbox_items",
+    "src/agent_lab/mission/advance.py:560:read_run_meta",
+    "src/agent_lab/mission/advance.py:560:get_mission_loop",
+    "src/agent_lab/mission/advance.py:566:legacy_import",
+    "src/agent_lab/mission/advance.py:566:get_mission_loop",
+    "src/agent_lab/mission/advance.py:582:read_run_meta",
+    "src/agent_lab/mission/advance.py:583:get_mission_loop",
+    "src/agent_lab/mission/advance.py:589:get_mission_loop",
+    "src/agent_lab/mission/advance.py:592:mission_loop",
+    "src/agent_lab/mission/advance.py:595:patch_run_meta",
+    "src/agent_lab/mission/advance.py:614:legacy_import",
+    "src/agent_lab/mission/advance.py:617:get_mission_loop",
+    "src/agent_lab/mission/advance.py:632:get_mission_loop",
+    "src/agent_lab/mission/advance.py:636:mission_loop",
+    "src/agent_lab/mission/advance.py:639:patch_run_meta",
+    "src/agent_lab/mission/advance.py:640:read_run_meta",
+    "src/agent_lab/mission/advance.py:640:get_mission_loop",
+    "src/agent_lab/mission/advance.py:670:read_run_meta",
+    "src/agent_lab/mission/advance.py:670:get_mission_loop",
+    "src/agent_lab/mission/advance.py:682:get_mission_loop",
+    "src/agent_lab/mission/advance.py:694:mission_loop",
+    "src/agent_lab/mission/advance.py:697:patch_run_meta",
+    "src/agent_lab/mission/advance.py:698:read_run_meta",
+    "src/agent_lab/mission/advance.py:698:get_mission_loop",
+    "src/agent_lab/mission/advance.py:724:read_run_meta",
+    "src/agent_lab/mission/advance.py:724:get_mission_loop",
+    "src/agent_lab/mission/advance.py:752:read_run_meta",
+    "src/agent_lab/mission/advance.py:752:get_mission_loop",
+    "src/agent_lab/runtime/transitions.py:72:legacy_import",
+    "src/agent_lab/runtime/transitions.py:73:get_mission_loop",
+    "src/agent_lab/runtime/transitions.py:79:get_mission_loop",
+    "src/agent_lab/runtime/transitions.py:122:legacy_import",
+    "src/agent_lab/runtime/transitions.py:122:get_mission_loop",
+    "src/agent_lab/runtime/transitions.py:124:get_mission_loop",
+    "src/agent_lab/runtime/transitions.py:180:plan_workflow",
+    "src/agent_lab/runtime/transitions.py:476:run.json",
+    "src/agent_lab/runtime/transitions.py:476:mission_loop",
+    "src/agent_lab/runtime/transitions.py:476:web_mission_loop",
+    "src/agent_lab/runtime/orchestration.py:28:plan_workflow",
+    "src/agent_lab/runtime/orchestration.py:56:plan_workflow",
+    "src/agent_lab/runtime/orchestration.py:70:mission_loop",
+    "src/agent_lab/runtime/orchestration.py:70:plan_workflow",
+    "src/agent_lab/runtime/orchestration.py:71:legacy_import",
+    "src/agent_lab/runtime/orchestration.py:71:get_mission_loop",
+    "src/agent_lab/runtime/orchestration.py:78:get_mission_loop",
+    "src/agent_lab/runtime/orchestration.py:121:legacy_import",
+    "src/agent_lab/runtime/orchestration.py:121:get_mission_loop",
+    "src/agent_lab/runtime/orchestration.py:128:get_mission_loop",
+    "src/agent_lab/runtime/orchestration.py:156:run.json",
+    "src/agent_lab/runtime/orchestration.py:166:run.json",
+    "src/agent_lab/runtime/orchestration.py:167:legacy_import",
+    "src/agent_lab/runtime/orchestration.py:167:read_run_meta",
+    "src/agent_lab/runtime/orchestration.py:167:patch_run_meta",
+    "src/agent_lab/runtime/orchestration.py:176:patch_run_meta",
+    "src/agent_lab/runtime/orchestration.py:177:read_run_meta",
+    "src/agent_lab/runtime/orchestration.py:184:read_run_meta",
+    "src/agent_lab/clarity.py:130:mission_loop",
+    "src/agent_lab/clarity.py:412:run.json",
+    "src/agent_lab/clarity.py:412:mission_loop",
+    "src/agent_lab/clarity.py:415:legacy_import",
+    "src/agent_lab/clarity.py:415:patch_run_meta",
+    "src/agent_lab/clarity.py:418:mission_loop",
+    "src/agent_lab/clarity.py:429:mission_loop",
+    "src/agent_lab/clarity.py:432:patch_run_meta",
+    "src/agent_lab/clarity.py:443:legacy_import",
+    "src/agent_lab/clarity.py:443:read_run_meta",
+    "src/agent_lab/clarity.py:451:read_run_meta",
+    "src/agent_lab/clarity.py:474:read_run_meta",
+    "src/agent_lab/clarity.py:490:run.json",
+    "src/agent_lab/clarity.py:490:mission_loop",
+    "src/agent_lab/clarity.py:491:mission_loop",
+    "src/agent_lab/clarity.py:498:mission_loop",
+    "src/agent_lab/clarity.py:506:legacy_import",
+    "src/agent_lab/clarity.py:506:read_run_meta",
+    "src/agent_lab/clarity.py:506:patch_run_meta",
+    "src/agent_lab/clarity.py:510:read_run_meta",
+    "src/agent_lab/clarity.py:538:mission_loop",
+    "src/agent_lab/clarity.py:552:mission_loop",
+    "src/agent_lab/clarity.py:555:patch_run_meta",
+    "src/agent_lab/clarity.py:556:read_run_meta",
+    "app/server/routers/room.py:170:legacy_import",
+    "app/server/routers/room.py:170:patch_run_meta",
+    "app/server/routers/room.py:188:patch_run_meta",
+    "app/server/routers/room.py:254:legacy_import",
+    "app/server/routers/room.py:254:read_run_meta",
+    "app/server/routers/room.py:256:read_run_meta",
+    "app/server/routers/room.py:260:human_inbox",
+    "app/server/routers/room.py:270:legacy_import",
+    "app/server/routers/room.py:270:read_run_meta",
+    "app/server/routers/room.py:272:read_run_meta",
+    "app/server/routers/room.py:272:human_inbox",
+    "app/server/routers/room.py:283:legacy_import",
+    "app/server/routers/room.py:798:legacy_import",
+    "app/server/routers/room.py:798:patch_run_meta",
+    "app/server/routers/room.py:802:patch_run_meta",
+    "app/server/routers/room.py:809:legacy_import",
+    "app/server/routers/room.py:811:run.json",
+    "app/server/routers/room.py:818:legacy_import",
+    "app/server/routers/room.py:818:patch_run_meta",
+    "app/server/routers/room.py:851:patch_run_meta",
+    "app/server/routers/room.py:860:legacy_import",
+    "app/server/routers/room.py:860:read_run_meta",
+    "app/server/routers/room.py:863:read_run_meta",
+    "app/server/routers/room.py:1088:legacy_import",
+    "app/server/routers/room.py:1088:read_run_meta",
+    "app/server/routers/room.py:1090:read_run_meta",
+    "app/server/routers/room.py:1176:run.json",
+    "app/server/routers/room.py:1212:legacy_import",
+    "web/src/components/ComposerEventStack.tsx:213:web_plan_workflow",
+    "web/src/components/ComposerEventStack.tsx:214:plan_workflow",
+    "web/src/components/ComposerEventStack.tsx:214:web_plan_workflow",
+    "web/src/components/ComposerEventStack.tsx:219:plan_workflow",
+    "web/src/components/ComposerEventStack.tsx:219:web_plan_workflow",
+    "web/src/components/ComposerEventStack.tsx:269:web_plan_workflow",
+    "web/src/components/ComposerEventStack.tsx:432:web_plan_workflow",
+    "web/src/components/WorkToolPanel.tsx:160:web_plan_workflow",
+    "web/src/components/WorkToolPanel.tsx:196:web_merge_oracle",
+    "web/src/components/WorkToolPanel.tsx:240:web_plan_workflow",
+    "web/src/components/WorkToolPanel.tsx:241:plan_workflow",
+    "web/src/components/WorkToolPanel.tsx:241:web_plan_workflow",
+    "web/src/components/WorkToolPanel.tsx:250:plan_workflow",
+    "web/src/components/WorkToolPanel.tsx:250:web_plan_workflow",
+    "web/src/components/WorkToolPanel.tsx:407:web_merge_oracle",
+    "web/src/components/HumanInboxPanel.tsx:623:human_inbox",
+    "web/src/components/HumanInboxPanel.tsx:623:web_human_inbox",
+    "web/src/hooks/useRoomSseHandler.ts:796:human_inbox",
+    "web/src/hooks/useRoomSseHandler.ts:796:web_human_inbox",
+    "web/src/hooks/useRoomSseHandler.ts:837:human_inbox",
+    "web/src/hooks/useRoomChatInteractions.ts:347:mission_loop",
+    "web/src/hooks/useRoomChatInteractions.ts:347:web_mission_loop",
+    "web/src/hooks/useRoomChatInteractions.ts:349:mission_loop",
+    "web/src/hooks/useRoomChatInteractions.ts:349:web_mission_loop",
+    "web/src/hooks/useRoomChatInteractions.ts:600:mission_loop",
+    "web/src/hooks/useRoomChatInteractions.ts:600:web_mission_loop",
+    "web/src/hooks/useRoomChatInteractions.ts:670:web_plan_workflow",
+    "web/src/utils/workStatusPhase.ts:10:mission_loop",
+    "web/src/utils/workStatusPhase.ts:10:web_mission_loop",
+    "web/src/utils/workStatusPhase.ts:49:web_merge_oracle",
+    "web/src/components/ComposerEventStack.tsx:39:mission_ui_read_model",
+    "web/src/components/ComposerEventStack.tsx:170:mission_ui_read_model",
+    "web/src/components/WorkToolPanel.tsx:22:mission_ui_read_model",
+    "web/src/components/WorkToolPanel.tsx:132:mission_ui_read_model",
+    "web/src/components/HumanInboxPanel.tsx:11:mission_ui_read_model",
+    "web/src/components/HumanInboxPanel.tsx:606:mission_ui_read_model",
+    "web/src/hooks/useRoomSseHandler.ts:33:mission_ui_read_model",
+    "web/src/hooks/useRoomSseHandler.ts:792:mission_ui_read_model",
+    "web/src/hooks/useRoomChatInteractions.ts:45:mission_ui_read_model",
+    "web/src/hooks/useRoomChatInteractions.ts:333:mission_ui_read_model",
+    "web/src/components/ContextOverviewPanel.tsx:22:mission_ui_read_model",
+    "web/src/components/ContextOverviewPanel.tsx:31:mission_ui_read_model",
+    "web/src/components/ContextOverviewPanel.tsx:82:mission_ui_read_model",
+    "web/src/components/ContextOverviewPanel.tsx:86:mission_ui_read_model",
+    "web/src/components/NotificationCenter.tsx:9:mission_ui_read_model",
+    "web/src/components/NotificationCenter.tsx:45:mission_ui_read_model",
+    "web/src/hooks/useAutonomySession.ts:5:mission_ui_read_model",
+    "web/src/hooks/useAutonomySession.ts:42:mission_ui_read_model",
+    "web/src/utils/missionReadModel.ts:164:run.json",
+    "web/src/utils/missionReadModel.ts:166:mission_ui_read_model",
+    "web/src/utils/missionReadModel.ts:191:mission_ui_read_model",
+    "web/src/utils/missionReadModel.ts:219:mission_ui_read_model",
+    "web/src/utils/missionOverviewView.ts:7:mission_ui_read_model",
+    "web/src/utils/missionOverviewView.ts:61:mission_loop"
+  ]
+}

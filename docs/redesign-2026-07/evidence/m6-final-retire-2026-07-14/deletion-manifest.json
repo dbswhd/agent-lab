@@ -1,0 +1,30 @@
+{
+  "approval_required": {
+    "separate_human": true,
+    "two_person_confirmation": true
+  },
+  "candidates": [
+    "src/agent_lab/mission/tick.py",
+    "src/agent_lab/mission/advance.py",
+    "src/agent_lab/runtime/transitions.py",
+    "src/agent_lab/runtime/orchestration.py",
+    "src/agent_lab/clarity.py",
+    "app/server/routers/room.py"
+  ],
+  "decision": "NO-GO",
+  "protected_never_delete_in_m6": [
+    "src/agent_lab/human_inbox.py",
+    "app/server/routers/human_inbox.py",
+    "app/server/routers/plan_execute.py",
+    "src/agent_lab/merge_gate.py",
+    "src/agent_lab/oracle_core.py",
+    "src/agent_lab/plan/execute_merge.py",
+    "src/agent_lab/plan/execute_verify.py",
+    "src/agent_lab/mission/dual_write.py",
+    "src/agent_lab/run/profile.py",
+    "src/agent_lab/runtime_flags.py",
+    "src/agent_lab/plan/workflow_approval.py",
+    "src/agent_lab/mission/read_model.py"
+  ],
+  "schema_version": 1
+}

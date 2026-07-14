@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted — **Controlled cohort GO (v3d). Full traffic soak PASS. Slice 1–3 soft authority implemented (profile defaults on; dogfood API enable). Journal-first Wave A read-model composites shipped. M6 hard retire still pending separate Human approval.**
+Accepted — **Controlled cohort GO (v3d) and Full traffic soak PASS (historical evidence). Slice 1–3 soft-authority implementation is a retired compatibility record. Journal-first Wave A read-model composites shipped. M6 hard retire still pending separate Human approval.**
+
+> **Current runtime (M6-9, 2026-07-14):** Slice 1–3 authority functions are retired and disabled/fail-closed. The corresponding authority environment variables are no longer registered or honored. Any authority enable commands, profile-default statements, or empty-allowlist examples retained below are **historical evidence only**, not operator configuration. The dual-write bridge itself requires a non-empty session allowlist; an empty allowlist disables it.
 
 ## Date
 
@@ -51,6 +53,9 @@ Agent Lab은 기존 `run.json`·`plan_workflow`·`mission_loop` writer를 유지
 4. 그 외(Room dogfood·fail→repair·merge parity·G3·ActivityQueue·로그/메트릭/검증쿼리)는 **기술 evidence GO**로 유지한다. **2026-07-14 operational cohort v3d는 GO**([cohort run report](../redesign-2026-07/dual-write-cohort-run-report-2026-07-13.md)). 다음 Human gate는 **Full traffic (bounded cutover + soak)** — [full-traffic runbook](../redesign-2026-07/dual-write-full-traffic-bounded-cutover-2026-07-14.md). **Legacy writer retire는 soak 완료 후 별도 Human 승인 전까지 금지.**
 5. 기존 writer와 compatibility projection은 유지한다. flag OFF rollback이 통과했으므로 즉시(재시작 후) legacy-only로 되돌릴 수 있다.
 6. Full traffic soak **통과 후**에만 Human이 legacy writer retire 시점·irreversible cleanup 범위를 승인한다.
+
+> **Historical/non-runtime record:** Decisions 7–9 and their linked Slice runbooks preserve the 2026-07-14 enable evidence. They are retained for audit and do not authorize current runtime configuration; Slice 1–3 authority functions now remain disabled/fail-closed.
+
 7. **Slice 1 (M4 plan soft authority) — Human enable GO (2026-07-14); profile default ON.** Dogfood/production API runs with `AGENT_LAB_MISSION_DUAL_WRITE=1` + `AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY=1`. balanced/thorough/autonomous apply `PLAN_WRITE_AUTHORITY=1` as fill-in default (still no-op without dual-write). Live smoke: approve → `plan_approve_commit` / `APPROVED` / `PlanApproved`; reject `REFINE` → `plan_reject_commit`. Inbox/execute soft slices and M6 hard delete remain separate Human gates. Runbook: [dual-write-retire-slice-plan-soft-2026-07-14](../redesign-2026-07/dual-write-retire-slice-plan-soft-2026-07-14.md). Artifact: `/tmp/agent-lab-dw-plan-authority-20260714/`.
 8. **Slice 2 (inbox execution-gate soft authority) — enable GO (2026-07-14).** Mission-first gate open/close + `human_inbox` projection. Supersede gate close + harvest gate sync completed with Decision 9. Runbook: [dual-write-retire-slice-inbox-soft-2026-07-14](../redesign-2026-07/dual-write-retire-slice-inbox-soft-2026-07-14.md).
 9. **Slice 3 (execute/merge soft authority) + Slice 2 leftovers — GO for implementation (2026-07-14).** `AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY` fail-closes approve/merge/reverify when Mission commit does not mirror (legacy side effects still first; reject stays `legacy_only`). Supersede closes gates; turn harvest opens gates for new items. M6 hard delete remains separate. Runbook: [dual-write-retire-slice-execution-soft-2026-07-14](../redesign-2026-07/dual-write-retire-slice-execution-soft-2026-07-14.md).

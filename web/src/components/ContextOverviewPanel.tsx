@@ -17,13 +17,18 @@ import {
 import { ContextLayerBars } from "./ContextLayerBars";
 import type { PlanMetaView } from "../utils/planMeta";
 import type { GoalLoopView } from "../utils/goalLoopView";
-import { buildMissionOverviewView } from "../utils/missionOverviewView";
+import {
+  buildMissionOverviewView,
+  missionReadModelPhase,
+} from "../utils/missionOverviewView";
 import { MissionOverviewSection } from "./MissionOverviewSection";
 import { TurnBudgetSection } from "./TurnBudgetSection";
 import { MissionBoardStrip } from "./MissionBoardStrip";
 import { GateProfileChips } from "./GateProfileChips";
 import { RoutingDiagnostics } from "./RoutingDiagnostics";
 import { useSessionRuntime } from "../hooks/useSessionRuntime";
+import { NotificationCenter } from "./NotificationCenter";
+import { useMissionReadModel } from "../utils/missionReadModel";
 
 type Props = {
   session: SessionDetail | null;
@@ -70,10 +75,36 @@ export function ContextOverviewPanel({
 }: Props) {
   const { locale } = useLocale();
   const ko = locale === "ko";
-  const missionView = buildMissionOverviewView({
+  const legacyMissionView = buildMissionOverviewView({
     run: session?.run,
     planMd: session?.plan_md,
   });
+  const { model: missionReadModel } = useMissionReadModel(sessionId);
+  const missionView = missionReadModel
+    ? {
+        enabled: true,
+        phase: missionReadModelPhase(missionReadModel),
+        goalText: missionReadModel.goal,
+        verifiedStatus: missionReadModel.oracle_verdict,
+        nextActionIndex: null,
+        nextActionWhat: missionReadModel.next_action,
+        pendingCount:
+          missionReadModel.mission_overview?.pending_inbox_count ??
+          missionReadModel.inbox_summary?.pending_count ??
+          0,
+        circuitBreaker:
+          missionReadModel.mission_overview?.circuit_breaker ?? false,
+        circuitBreakerReason: null,
+        pauseReason: missionReadModel.mission_overview?.paused
+          ? ko
+            ? "미션이 일시정지되었습니다."
+            : "Mission is paused."
+          : null,
+        resumePhase: null,
+        autonomousActive: false,
+        openBlocks: [],
+      }
+    : legacyMissionView;
   const [layerToggles, setLayerToggles] = useState<LayerToggles>({
     mission_wisdom: true,
     repo_tree: true,
@@ -245,6 +276,8 @@ export function ContextOverviewPanel({
             run={session?.run as Record<string, unknown> | undefined}
             runtimeSnapshot={diagnosticsRuntime}
           />
+
+          <NotificationCenter sessionId={sessionId} hideEmpty />
 
           <section className="ctx-section">
             <div className="ctx-section__label">

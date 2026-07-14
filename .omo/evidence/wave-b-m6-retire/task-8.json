@@ -1,0 +1,69 @@
+{
+  "task": "wave-b-m6-retire/task-8",
+  "title": "M6-8 duplicate lifecycle patch stop with retry repair",
+  "captured_at": "2026-07-14",
+  "status": "PASS_WITH_SCOPED_RESIDUALS",
+  "scope": "Only duplicate Mission-derived lifecycle patches were suppressed. Payload writers, human_inbox rows, execution side effects, worktree/merge/Oracle implementers, objection BLOCK, compatibility reads, and bridges remain.",
+  "changed_files": [
+    "src/agent_lab/mission/application.py",
+    "src/agent_lab/mission/projection.py",
+    "tests/test_m6_checkpoint_duplicate_patches.py"
+  ],
+  "verification": [
+    {
+      "command": "pytest -q tests/test_m6_checkpoint_duplicate_patches.py",
+      "result": "PASS; 5 passed"
+    },
+    {
+      "command": "pytest -q tests/test_m6_checkpoint_duplicate_patches.py tests/test_mission_projection.py tests/test_mission_dual_write.py tests/test_human_inbox.py tests/test_inbox_execute_e2e.py tests/test_room_disconnect_inbox_guard.py tests/test_crash_recovery.py",
+      "result": "PASS; 88 passed in 6.98s"
+    },
+    {
+      "command": "PYTHONPATH=src AGENT_LAB_MOCK_AGENTS=1 .venv/bin/pytest -q tests/test_mission_dual_write.py tests/test_human_inbox.py tests/test_inbox_execute_e2e.py tests/test_room_disconnect_inbox_guard.py tests/test_plan_execute.py tests/test_plan_execute_reverify_api.py tests/test_crash_recovery.py",
+      "result": "PASS; 104 passed in 7.04s"
+    },
+    {
+      "command": "ruff check src/agent_lab/mission/application.py src/agent_lab/mission/projection.py tests/test_m6_checkpoint_duplicate_patches.py",
+      "result": "PASS; All checks passed"
+    },
+    {
+      "command": "basedpyright src/agent_lab/mission/application.py src/agent_lab/mission/projection.py tests/test_m6_checkpoint_duplicate_patches.py",
+      "result": "NOT RUN; basedpyright executable unavailable in this environment"
+    }
+  ],
+  "behavior": {
+    "duplicate_status_patch": "Identical Mission-loop compatibility projection returns without patch_run_meta; stale phase still patches once.",
+    "duplicate_plan_patch": "Idempotent approved Mission retry repairs stale plan_workflow phase/hash without appending Mission events; already-correct phase/hash is not rewritten.",
+    "mission_commit_to_row_patch": "Injected exception after durable Mission approval commit was repaired by idempotent approve retry; journal bytes remained unchanged and plan phase became APPROVED.",
+    "side_effect_to_mission_commit": "Injected exception after human-inbox row resolution and before gate close was repaired by retry; gate closed exactly once and prompt/options row remained resolved. This is reconciliation/idempotency, not transactional rollback."
+  },
+  "manual_qa": {
+    "surface": "Minimal production-function driver through MissionApplication, projection, and human inbox dual-write bridge.",
+    "command": "PYTHONPATH=src AGENT_LAB_MOCK_AGENTS=1 .venv/bin/python - <<'PY' ... boundary driver ... PY",
+    "observed": "Injected mission-commit->row-patch and side-effect->mission-commit exceptions were both followed by retry; retry_state=READY_TO_EXECUTE, plan_phase=APPROVED, journal_event_lines=2 with unique event IDs, inbox_status=resolved, resolved_gate_commit=true, open_gate_ids=[]",
+    "cleanup": "Temporary driver fixture removed; no process started by this checkpoint. Existing PID 19951 uvicorn was pre-existing and left untouched."
+  },
+  "startup_recovery_and_rollback": {
+    "command": "PYTHONPATH=src AGENT_LAB_MOCK_AGENTS=1 .venv/bin/pytest -q tests/test_crash_recovery.py tests/test_mission_dual_write.py::test_plan_write_authority_off_keeps_legacy_first_mirror tests/test_mission_dual_write.py::test_plan_write_authority_on_mission_first_then_side_effects tests/test_mission_dual_write.py::test_plan_write_authority_commit_is_idempotent",
+    "result": "PASS; 13 passed in 2.46s",
+    "interpretation": "Boot reconcile landed/rollback/quarantine paths and process-restart rollback flag path remain green; authority flags/bridges and legacy writers were not removed."
+  },
+  "adversarial_classes": {
+    "stale_state": "PASS: stale mission_loop and plan_workflow rows repaired on retry.",
+    "malformed_input": "N/A: no parser/schema change in this checkpoint.",
+    "dirty_worktree": "N/A: pre-existing dirty worktree preserved; no unrelated files reverted.",
+    "misleading_success_output": "PASS: assertions inspect journal bytes, Mission state/version, gate IDs, and full prompt row.",
+    "flaky_tests": "PASS: targeted suite deterministic; 88 passed.",
+    "mid_operation_interruption": "PASS: injected boundary exceptions followed by retry/reconciliation.",
+    "long_or_hung": "N/A: no long-running process introduced.",
+    "generated_artifacts": "PASS: this evidence packet only; tmp_path fixtures cleaned.",
+    "prompt_injection": "N/A: static fixture prompts only."
+  },
+  "rollback": {
+    "process_restart": "Not exercised in this code-only checkpoint; authority/bridge flags and legacy writers remain available for restart rollback.",
+    "irreversible_deletion": false
+  },
+  "plan_modified": false,
+  "commit_created": false,
+  "legacy_writer_retired": false
+}

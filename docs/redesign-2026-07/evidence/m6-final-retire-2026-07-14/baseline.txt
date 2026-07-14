@@ -1,0 +1,63 @@
+2026-07-14T00:37:37Z
+f5cd68c596c2366a38359795d41a40cbef3a186c
+## main...origin/main
+ M docs/USER-GUIDE.md
+ M scripts/mission_dual_write_journal_audit.py
+ M scripts/mission_dual_write_verify.py
+ M src/agent_lab/mission/application.py
+ M src/agent_lab/mission/dual_write.py
+ M src/agent_lab/mission/journal.py
+ M src/agent_lab/mission/read_model.py
+ M src/agent_lab/mission/repository.py
+ M src/agent_lab/plan/workflow_approval.py
+ M src/agent_lab/run/profile.py
+ M src/agent_lab/runtime_flags.py
+ M tests/fixtures/runtime-flags-registry-allowlist.json
+ M tests/test_dual_write_observability.py
+ M tests/test_mission_dual_write.py
+ M tests/test_mission_dual_write_journal_audit.py
+ M tests/test_mission_dual_write_verify.py
+ M tests/test_mission_journal.py
+ M tests/test_mission_read_model.py
+ M tests/test_mission_read_model_api.py
+ M tests/test_run_profile.py
+ M web/src/api/client.ts
+ M web/src/components/ComposerEventStack.tsx
+ M web/src/components/ContextOverviewPanel.tsx
+ M web/src/components/HumanInboxPanel.tsx
+ M web/src/components/MissionOverviewSection.tsx
+ M web/src/components/NotificationCenter.tsx
+ M web/src/components/WorkToolPanel.tsx
+ M web/src/hooks/useAutonomySession.ts
+ M web/src/hooks/useRoomChatInteractions.ts
+ M web/src/hooks/useRoomSseHandler.ts
+ M web/src/utils/missionOverviewView.ts
+ M web/src/utils/missionReadModel.ts
+?? .omo/boulder.json
+?? .omo/drafts/
+?? .omo/evidence/wave-b-m6-retire/
+?? .omo/plans/
+?? .omo/start-work/
+?? docs/redesign-2026-07/dual-write-ui-read-model-bounded-cutover-evidence-2026-07-14.md
+?? docs/redesign-2026-07/m6-compatibility-consumer-allowlist-2026-07-14.json
+?? src/agent_lab/m6_consumer_inventory.py
+?? src/agent_lab/mission/projection.py
+?? tests/test_m6_checkpoint_bridges_flags.py
+?? tests/test_m6_checkpoint_duplicate_patches.py
+?? tests/test_m6_consumer_inventory.py
+?? tests/test_mission_projection.py
+?? tests/test_mission_read_model_wave_b.py
+?? web/e2e/mission-read-model-parity.spec.ts
+?? web/src/utils/missionOverviewView.test.ts
+?? web/src/utils/missionReadModel.test.ts
+      49
+tracked=    2740 untracked=17
+.omo/evidence/wave-b-m6-retire/task-1.json
+.omo/evidence/wave-b-m6-retire/task-2.json
+.omo/evidence/wave-b-m6-retire/task-3.json
+.omo/evidence/wave-b-m6-retire/task-4.json
+.omo/evidence/wave-b-m6-retire/task-5.json
+.omo/evidence/wave-b-m6-retire/task-6.json
+.omo/evidence/wave-b-m6-retire/task-7.json
+.omo/evidence/wave-b-m6-retire/task-8.json
+.omo/evidence/wave-b-m6-retire/task-9.json

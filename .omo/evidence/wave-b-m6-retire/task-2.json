@@ -1,0 +1,45 @@
+{
+  "task": "wave-b-m6-retire/task-2",
+  "title": "Deterministic Mission execution-gate to human_inbox row join",
+  "status": "complete_with_dependency",
+  "changed_files": [
+    "src/agent_lab/mission/read_model.py",
+    "tests/test_mission_read_model.py",
+    "tests/test_mission_read_model_api.py"
+  ],
+  "policy": {
+    "authority": "Mission.open_gates controls inclusion and pending/actionable counts; human_inbox rows are payload projection only",
+    "ordering": "Mission open_gates tuple order; row order does not affect output ordering",
+    "duplicates": "first valid human_inbox row per id wins; duplicate rows never duplicate output",
+    "missing_row": "emit a deterministic placeholder with prompt/options and GateRecord.reason preserved as an explicit unavailable, non-actionable item",
+    "stale_row": "retain full row payload, add actionable=false and mission_gate_status=stale",
+    "terminal_orphan": "terminal status wins for both matched and missing gates; retain full matched payload or reason-bearing placeholder, add actionable=false and mission_gate_status=terminal_orphan",
+    "summary_parity": "when gates exist, pending summary counts only joined pending rows with actionable=true"
+  },
+  "red_green": {
+    "baseline": "pytest -q tests/test_mission_read_model.py tests/test_mission_read_model_api.py tests/test_mission_dual_write_verify.py -> 35 passed",
+    "red": "pytest -q tests/test_mission_read_model.py -k 'joins_open_gates or join_uses_first_duplicate' -> 2 failed (inbox_items was empty)",
+    "edge_red": "pytest -q tests/test_mission_read_model.py -k 'missing_row_placeholder_preserves_gate_reason or terminal_precedence_marks_missing' -> 2 failed before hardening",
+    "green": "pytest -q tests/test_mission_read_model.py -k 'missing_row_placeholder_preserves_gate_reason or terminal_precedence_marks_missing' -> 2 passed; selected suite -> 40 passed, 1 deselected before Todo 1 projection edits"
+  },
+  "verification": {
+    "stable_suite": "selected suite after hardening -> 40 passed, 1 deselected; the one deselected test is the Todo 1 projection-dependent legacy phase assertion",
+    "ruff": "ruff check src/agent_lab/mission/read_model.py tests/test_mission_read_model.py tests/test_mission_read_model_api.py -> All checks passed",
+    "malformed_input": "run human_inbox as a dict; returned missing-row placeholder and pending_count=0 without exception",
+    "stale_state": "repeated read-model computation is deterministic; gate order and duplicate first-row selection are covered by tests",
+    "misleading_success_output": "curl returned HTTP 200 with non-empty joined gate row, pending_count=1, pending_questions=1",
+    "dirty_worktree": "detected pre-existing parent-agent edits in application.py, repository.py, projection files, and .omo artifacts; no unrelated files changed by this task",
+    "flaky_tests": "pre-hardening selected suite repeated three times with identical 38 passed / 1 deselected result; post-hardening targeted edge tests passed"
+  },
+  "manual_qa": {
+    "command": "curl -sS http://127.0.0.1:8766/api/sessions/curl-session/mission/read-model",
+    "observed": {
+      "http_status": 200,
+      "open_execution_gates": [{"gate_id": "gate-curl", "kind": "question"}],
+      "inbox_summary": {"pending_count": 1, "pending_questions": 1, "pending_builds": 0},
+      "inbox_items": [{"id": "gate-curl", "status": "pending", "prompt": "Curl question", "options": [{"id": "yes", "label": "Yes"}]}]
+    },
+    "cleanup": "stopped uvicorn on port 8766 and removed /tmp/agent-lab-m6-inbox-curl plus curl captures"
+  },
+  "dependency": "The existing test_read_model_route_projects_mission_journal currently expects phase_label=READY, but concurrent Todo 1 projection changes mission_loop.phase to EXECUTE_QUEUE. This failing assertion is outside the join files and was left untouched per parent instruction."
+}

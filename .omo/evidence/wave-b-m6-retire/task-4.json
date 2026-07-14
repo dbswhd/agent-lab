@@ -1,0 +1,124 @@
+{
+  "task": "wave-b-m6-retire/task-4",
+  "title": "Compatibility-consumer inventory and deletion allowlist",
+  "captured_at": "2026-07-14",
+  "status": "PASS",
+  "changed_files": [
+    "docs/redesign-2026-07/m6-compatibility-consumer-allowlist-2026-07-14.json",
+    "src/agent_lab/m6_consumer_inventory.py",
+    "tests/test_m6_consumer_inventory.py",
+    ".omo/evidence/wave-b-m6-retire/task-4.json",
+    "scripts/m6_final_retire_packet.py",
+    "docs/redesign-2026-07/evidence/m6-final-retire-2026-07-14/packet-index.json",
+    "docs/redesign-2026-07/evidence/m6-final-retire-2026-07-14/README.md",
+    "docs/redesign-2026-07/evidence/m6-final-retire-2026-07-14/decision.json",
+    "docs/redesign-2026-07/evidence/m6-final-retire-2026-07-14/coverage.json"
+  ],
+  "baseline": {
+    "phase": "pre_todo5_ui_scope",
+    "unchanged_code": true,
+    "command": "rg -n --glob '*.py' --glob '*.ts' --glob '*.tsx' '(run\\.json|mission_loop|human_inbox|plan_workflow|patch_run_meta|read_run_meta|write_run_meta|create_inbox_item|pending_inbox_items|fan_out_inbox_item)' src app web",
+    "broad_match_count": 1596,
+    "scoped_target_files": 12,
+    "scoped_reference_count": 251
+  },
+  "red_first": {
+    "fixture": "temporary rogue.py importing agent_lab.run.meta.read_run_meta",
+    "observed": "EXPECTED RED: unclassified legacy reference",
+    "exit_code": 1,
+    "cleanup": "temporary fixture removed"
+  },
+  "allowlist": {
+    "phase": "post_todo5_authoritative",
+    "path": "docs/redesign-2026-07/m6-compatibility-consumer-allowlist-2026-07-14.json",
+    "entries": 18,
+    "references": 275,
+    "unknown": 0,
+    "stale": 0,
+    "coverage": "Each scoped consumer names owner, operation, thin projection fields, rich compatibility fields, deferred fields, and retirement checkpoint."
+  },
+  "post_todo5_reconciliation": {
+    "reason": "Todo 5 moved scoped UI consumer lines after the original inventory was checked in.",
+    "pre_reconciliation": {
+      "unknown": 27,
+      "stale": 29
+    },
+    "action": "Expanded the checked-in inventory with six Todo 5 UI read-model consumers and regenerated source-line reference anchors; no product behavior or plan changed.",
+    "post_reconciliation": {
+      "unknown": 0,
+      "stale": 0,
+      "target_files": 18,
+      "reference_count": 275
+    }
+  },
+  "verification": [
+    {
+      "command": "PYTHONPATH=src python -m agent_lab.m6_consumer_inventory --check",
+      "result": "PASS; target_files=18, reference_count=275, unknown=[], stale=[]"
+    },
+    {
+      "command": ".venv/bin/pytest -q tests/test_m6_consumer_inventory.py",
+      "result": "PASS; 3 passed"
+    },
+    {
+      "command": "repeat pytest invocation three times",
+      "result": "PASS; 3/3 runs green (3 passed each)"
+    },
+    {
+      "command": "temporary rogue fixture probe",
+      "result": "PASS; unknown=['rogue.py:1:legacy_import', 'rogue.py:1:read_run_meta'] and stale=[]"
+    },
+    {
+      "command": ".venv/bin/ruff check src/agent_lab/m6_consumer_inventory.py tests/test_m6_consumer_inventory.py",
+      "result": "PASS"
+    },
+    {
+      "command": "git diff --check",
+      "result": "PASS"
+    },
+    {
+      "command": ".venv/bin/python scripts/m6_final_retire_packet.py --verify --root . --output docs/redesign-2026-07/evidence/m6-final-retire-2026-07-14",
+      "result": "PASS; immutable archive checksum/mode, sidecars, redaction, and packet index verified"
+    },
+    {
+      "command": ".venv/bin/pytest -q tests/test_m6_consumer_inventory.py tests/test_m6_final_retire_packet.py",
+      "result": "PASS; 7 passed"
+    }
+  ],
+  "risk_probes": {
+    "dirty_worktree": "DETECTED pre-existing edits in mission read-model files plus this task's untracked files; no unrelated files modified by this task.",
+    "stale_state": "PASS; scanner reports stale=[] and repeated checks are deterministic.",
+    "misleading_success_output": "PASS; failure-fixture probe requires and observes a non-empty unknown result.",
+    "flaky_tests": "PASS; targeted pytest passed in three consecutive runs.",
+    "other_classes": "Not applicable to this static inventory boundary: network, database corruption, browser rendering, and concurrency races."
+  },
+  "manual_qa": {
+    "surface": "Inventory CLI",
+    "command": "PYTHONPATH=src python -m agent_lab.m6_consumer_inventory --check",
+    "observed": "JSON output showed 18 target files and 275 scoped references with no unknown or stale keys."
+  },
+  "packet_reconciliation": {
+    "packet": "docs/redesign-2026-07/evidence/m6-final-retire-2026-07-14",
+    "consumer_inventory": {
+      "baseline_target_files": 12,
+      "baseline_references": 251,
+      "authoritative_target_files": 18,
+      "authoritative_references": 275
+    },
+    "index_and_readme": "Updated to distinguish the historical 12/251 pre-Todo-5 baseline from the authoritative 18/275 post-Todo-5 inventory.",
+    "packet_verify": "PASS"
+  },
+  "cleanup_receipt": {
+    "temporary_fixture": "removed by TemporaryDirectory cleanup",
+    "temporary_baseline_file": "not retained as a product artifact",
+    "product_code_deleted": false,
+    "plan_modified": false,
+    "commit_created": false,
+    "packet_staging": "removed after rebuild and verification"
+  },
+  "risks": [
+    "The broad baseline includes unrelated consumers outside the scoped M6 surfaces; those remain intentionally outside this deletion allowlist.",
+    "The 12-file/251-reference values are historical pre-Todo-5 baseline evidence only; 18 files/275 references is the authoritative post-Todo-5 inventory.",
+    "Line-key references require an allowlist update when a scoped consumer moves lines; this is deliberate fail-closed behavior before deletion checkpoints."
+  ]
+}

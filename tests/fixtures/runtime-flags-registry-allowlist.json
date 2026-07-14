@@ -1,7 +1,7 @@
 {
   "version": 2,
-  "scanned_count": 237,
-  "registry_count": 239,
+  "scanned_count": 238,
+  "registry_count": 240,
   "code_not_registry_allowlist": [],
   "trading_lane_internal": [
     "AGENT_LAB_ALLOW_BACKTEST_RUN",

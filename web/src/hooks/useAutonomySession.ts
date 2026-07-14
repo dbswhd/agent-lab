@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { patchSessionAutonomy, type RuntimeSnapshot } from "../api/client";
 import { useLocale } from "../i18n/useLocale";
 import { useSessionRuntime } from "./useSessionRuntime";
+import { useMissionReadModel } from "../utils/missionReadModel";
 import {
   autonomyFromSessionRun,
   buildAutonomySessionView,
@@ -38,15 +39,23 @@ export function useAutonomySession({
     reloadKey: reloadKey + tick,
     run: sessionRun,
   });
+  const { model: missionReadModel } = useMissionReadModel(
+    sessionId,
+    reloadKey + tick,
+  );
 
   const view = useMemo(() => {
     const fromRuntime = buildAutonomySessionView(runtime?.autonomy, locale);
-    if (fromRuntime) return fromRuntime;
-    return buildAutonomySessionView(
-      autonomyFromSessionRun(sessionRun ?? undefined),
-      locale,
-    );
-  }, [locale, runtime?.autonomy, sessionRun]);
+    const legacy =
+      fromRuntime ??
+      buildAutonomySessionView(
+        autonomyFromSessionRun(sessionRun ?? undefined),
+        locale,
+      );
+    if (!legacy || !missionReadModel) return legacy;
+    const paused = missionReadModel.mission_overview?.paused === true;
+    return paused ? { ...legacy, autonomousSegmentActive: false } : legacy;
+  }, [locale, missionReadModel, runtime?.autonomy, sessionRun]);
 
   const setLevel = useCallback(
     async (level: AutonomyLevel) => {

@@ -1,0 +1,96 @@
+{
+  "task": "wave-b-m6-retire/task-6",
+  "title": "Browser and live API parity/fallback scenarios",
+  "status": "PASS",
+  "captured_at": "2026-07-14",
+  "changed_files": [
+    "web/e2e/mission-read-model-parity.spec.ts",
+    "web/src/utils/missionReadModel.test.ts",
+    "tests/test_mission_read_model_wave_b.py",
+    ".omo/evidence/wave-b-m6-retire/task-6.json"
+  ],
+  "coverage": {
+    "browser": [
+      "plan approval/read-model contract",
+      "mid-execution question with two options",
+      "answer and resume (POST resolve, reload, gate cleared)",
+      "pause/circuit projection",
+      "reconnect after aborted read-model request",
+      "fail to repair",
+      "merge/Oracle fail and pass",
+      "migrated=false legacy fallback",
+      "read-model 503 fallback",
+      "read-model disconnect fallback",
+      "stale migrated gate join falls back to legacy prompt/options",
+      "canonical pause/circuit label is visible in the browser"
+    ],
+    "live_api": [
+      "plan approval -> READY read-model",
+      "mid-execution gate -> WAITING_FOR_HUMAN with prompt/options",
+      "answer -> RUNNING and gate cleared",
+      "circuit_breaker compatibility field preserved",
+      "Oracle fail -> REPAIRING -> Oracle pass -> COMPLETED",
+      "mission_not_ready_to_execute classified expected_boundary (error=0)"
+    ]
+  },
+  "verification": [
+    {
+      "command": "npm --prefix web run test -- --run",
+      "result": "PASS; 41 test files, 161 tests"
+    },
+    {
+      "command": "npm --prefix web run test:e2e -- web/e2e/plan-approval.spec.ts web/e2e/mission-read-model-parity.spec.ts",
+      "result": "PASS; 13 tests"
+    },
+    {
+      "command": "npm --prefix web run build",
+      "result": "PASS; tsc and Vite production build completed"
+    },
+    {
+      "command": "PYTHONPATH=src AGENT_LAB_MOCK_AGENTS=1 .venv/bin/pytest -q tests/test_mission_read_model.py tests/test_mission_read_model_api.py tests/test_mission_read_model_wave_b.py tests/test_mission_dual_write.py tests/test_mission_dual_write_verify.py tests/test_human_inbox.py tests/test_room_disconnect_inbox_guard.py",
+      "result": "PASS; 107 passed in 4.24s"
+    },
+    {
+      "command": "ruff check tests/test_mission_read_model_wave_b.py",
+      "result": "PASS; All checks passed"
+    },
+    {
+      "command": "AGENT_LAB_MOCK_AGENTS=1 AGENT_LAB_SESSIONS_DIR=/Users/yoonjong/Projects/agent-lab/sessions .venv/bin/uvicorn app.server.main:app --host 127.0.0.1 --port 8876; curl -fsS http://127.0.0.1:8876/api/health; curl -fsS http://127.0.0.1:8876/api/sessions/dw-c3c-004-execute-resolve/mission/read-model",
+      "result": "PASS; live health ok=true and read-model returned migrated=true, source=mission_journal, state=VERIFYING, operational_status=RUNNING, work_phase=merge_verify, event_cursor=6, inbox_summary pending_count=0"
+    },
+    {
+      "command": "git diff --check",
+      "result": "PASS"
+    }
+  ],
+  "manual_qa": {
+    "browser_surface": "Playwright Chromium via web/e2e/mission-read-model-parity.spec.ts",
+    "browser_observed": "13 combined plan/read-model tests passed with no page errors in fallback cases; migrated question retained both options and cleared after answer + reload; stale gate join retained legacy prompt/options; canonical pause label visible",
+    "api_surface": "real uvicorn process on 127.0.0.1:8876 with curl GET /api/health and GET /mission/read-model",
+    "api_observed": "HTTP 200 JSON was non-empty and reported migrated journal source plus normalized operational/work phase",
+    "cleanup": "uvicorn stopped with SIGINT; port 8876 confirmed free; Playwright server exited; no temporary fixture or browser process retained"
+  },
+  "adversarial_classes": {
+    "malformed_input": "N/A for browser fixtures; malformed run/journal boundaries are covered by existing mission verifier/audit tests in the targeted suite",
+    "stale_state": "covered by fallback reload and answer/resume gate-clear assertions",
+    "dirty_worktree": "pre-existing Wave B edits preserved; only three test files plus this evidence artifact added by this task",
+    "misleading_success_output": "live curl body inspected for migrated/source/state/summary fields, not status code alone",
+    "flaky_tests": "combined Playwright run passed 11/11; Vitest 158/158; Python 107/107",
+    "cancel_resume": "N/A; reconnect/answer-resume covered, no cancel mutation introduced",
+    "generated_artifact": "N/A; tests use in-memory route fixtures and tmp_path sessions",
+    "mid_operation_interruption": "browser read-model request abort exercises reconnect fallback; no long-running writer added",
+    "prompt_injection": "N/A; fixture prompts are static test data"
+  },
+  "accepted_boundary": {
+    "reason": "mission_not_ready_to_execute",
+    "classification": "expected_boundary",
+    "hard_error_count": 0,
+    "test": "test_expected_mid_execution_boundary_is_not_a_parity_failure"
+  },
+  "risks": [
+    "Browser tests stub API responses to deterministically exercise migrated/legacy/error branches; the separate live curl checks the running backend route but not a full browser against production data.",
+    "The read-model UI remains reversible behind AGENT_LAB_MISSION_UI_READ_MODEL and keeps legacy payload fallback; no writer or bridge was removed."
+  ],
+  "plan_modified": false,
+  "commit_created": false
+}

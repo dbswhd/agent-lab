@@ -8,6 +8,7 @@ import {
 import { Avatar } from "./Avatar";
 import { useLocale } from "../i18n/useLocale";
 import type { AgentRole } from "../utils/transcript";
+import { useMissionReadModel } from "../utils/missionReadModel";
 
 type Props = {
   sessionId: string | null;
@@ -40,7 +41,13 @@ function nextQuestionOptionIndex(
 }
 
 function pendingItems(items: HumanInboxItem[]): HumanInboxItem[] {
-  return items.filter((item) => item.status === "pending");
+  return items.filter(
+    (item) => item.status === "pending" && item.actionable !== false,
+  );
+}
+
+function isActionableInboxItem(item: HumanInboxItem): boolean {
+  return item.status === "pending" && item.actionable !== false;
 }
 
 function parseActionRef(
@@ -601,6 +608,16 @@ export function HumanInboxPanel({
     {},
   );
   const [composerExpanded, setComposerExpanded] = useState(true);
+  const [modelReloadTick, setModelReloadTick] = useState(0);
+  const { model: missionReadModel } = useMissionReadModel(
+    sessionId,
+    reloadKey + modelReloadTick,
+  );
+
+  useEffect(() => {
+    const rows = missionReadModel?.inbox_items;
+    if (rows) setItems(rows);
+  }, [missionReadModel]);
 
   const reload = useCallback(async (): Promise<number> => {
     if (!sessionId) {
@@ -609,7 +626,7 @@ export function HumanInboxPanel({
     }
     try {
       const payload = await fetchSessionInbox(sessionId);
-      const rows = payload.human_inbox ?? [];
+      const rows = missionReadModel?.inbox_items ?? payload.human_inbox ?? [];
       setItems(rows);
       setError(null);
       return pendingItems(rows).length;
@@ -617,7 +634,7 @@ export function HumanInboxPanel({
       setError(e instanceof Error ? e.message : String(e));
       throw e;
     }
-  }, [sessionId]);
+  }, [missionReadModel?.inbox_items, sessionId]);
 
   useEffect(() => {
     void reload();
@@ -652,11 +669,12 @@ export function HumanInboxPanel({
 
   const handleQuestion = useCallback(
     async (item: HumanInboxItem, optionId: string) => {
-      if (!sessionId || disabled) return;
+      if (!sessionId || disabled || !isActionableInboxItem(item)) return;
       setBusyId(item.id);
       try {
         await resolveInboxItem(sessionId, item.id, { selected: [optionId] });
         const remaining = await reload();
+        setModelReloadTick((value) => value + 1);
         onResolved?.({ pendingCount: remaining });
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
@@ -669,7 +687,7 @@ export function HumanInboxPanel({
 
   const handleFreeform = useCallback(
     async (item: HumanInboxItem) => {
-      if (!sessionId || disabled) return;
+      if (!sessionId || disabled || !isActionableInboxItem(item)) return;
       const note = (freeformDraft[item.id] ?? "").trim();
       if (!note) return;
       setBusyId(item.id);
@@ -681,6 +699,7 @@ export function HumanInboxPanel({
           return next;
         });
         const remaining = await reload();
+        setModelReloadTick((value) => value + 1);
         onResolved?.({ pendingCount: remaining });
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
@@ -688,18 +707,19 @@ export function HumanInboxPanel({
         setBusyId(null);
       }
     },
-    [sessionId, disabled, reload, onResolved],
+    [sessionId, disabled, freeformDraft, reload, onResolved],
   );
 
   const handleSkillDraft = useCallback(
     async (item: HumanInboxItem, decision: "approve" | "reject") => {
-      if (!sessionId || disabled) return;
+      if (!sessionId || disabled || !isActionableInboxItem(item)) return;
       setBusyId(item.id);
       try {
         await resolveInboxItem(sessionId, item.id, {
           selected: decision === "approve" ? ["approve"] : ["reject"],
         });
         const remaining = await reload();
+        setModelReloadTick((value) => value + 1);
         onResolved?.({ pendingCount: remaining });
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
@@ -712,7 +732,7 @@ export function HumanInboxPanel({
 
   const handleBuild = useCallback(
     async (item: HumanInboxItem, decision: "go" | "defer" | "reject") => {
-      if (!sessionId || disabled) return;
+      if (!sessionId || disabled || !isActionableInboxItem(item)) return;
       setBusyId(item.id);
       try {
         if (decision === "go") {
@@ -726,6 +746,7 @@ export function HumanInboxPanel({
         }
         await resolveInboxItem(sessionId, item.id, { decision });
         const remaining = await reload();
+        setModelReloadTick((value) => value + 1);
         onResolved?.({ pendingCount: remaining });
         if (decision === "go") onBuildStarted?.();
       } catch (e) {
@@ -739,7 +760,7 @@ export function HumanInboxPanel({
 
   const handleDefer = useCallback(
     async (item: HumanInboxItem) => {
-      if (!sessionId || disabled) return;
+      if (!sessionId || disabled || !isActionableInboxItem(item)) return;
       setBusyId(item.id);
       try {
         await resolveInboxItem(sessionId, item.id, {
@@ -747,6 +768,7 @@ export function HumanInboxPanel({
           decision: "defer",
         });
         const remaining = await reload();
+        setModelReloadTick((value) => value + 1);
         onResolved?.({ pendingCount: remaining });
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));

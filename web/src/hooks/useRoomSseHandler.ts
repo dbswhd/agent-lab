@@ -30,6 +30,7 @@ import {
 } from "../utils/hookActivity";
 import { dedupeStreamAppend, mergeAgentReplyBody } from "../utils/liveRoomLog";
 import { planWorkflowPhaseTranscriptLine } from "../utils/planWorkflowView";
+import { fetchMissionReadModelIfEnabled } from "../utils/missionReadModel";
 import { notifyDesktop } from "../utils/desktopNotify";
 import { dispatchNotification } from "../utils/pushNotification";
 import {
@@ -786,11 +787,15 @@ export function createRoomRunEventHandler(
       }
       if (ev.inbox_pending === true) {
         setInboxReloadKey((k) => k + 1);
-        void fetchSessionInbox(scope.activeSessionId)
-          .then((payload) => {
+        void Promise.all([
+          fetchSessionInbox(scope.activeSessionId),
+          fetchMissionReadModelIfEnabled(scope.activeSessionId),
+        ])
+          .then(([payload, readModel]) => {
             const sid = scope.activeSessionId ?? undefined;
-            const pending = (payload.human_inbox ?? []).filter(
-              (item) => item.status === "pending",
+            const rows = readModel?.inbox_items ?? payload.human_inbox ?? [];
+            const pending = rows.filter(
+              (item) => item.status === "pending" && item.actionable !== false,
             );
             const question = pending.find((item) => item.kind === "question");
             const build = pending.find((item) => item.kind === "build");

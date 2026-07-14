@@ -80,10 +80,6 @@ def approve_plan_with_mission_authority(
     criteria: str | None = None,
     plan_md: str | None = None,
 ) -> dict[str, Any]:
-    """Soft-retire Slice 1: Mission journal writes plan phase, then legacy side effects.
-
-    Requires ``AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY`` + dual-write cohort gate.
-    """
     from agent_lab.mission.dual_write import commit_plan_approval, plan_write_authority_enabled
 
     if not plan_write_authority_enabled(session_folder):

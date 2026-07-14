@@ -1,9 +1,11 @@
 # Dual-write controlled cohort runbook — 2026-07-13
 
-## 판정
+> **Current runtime note (M6-9):** This runbook's v3d GO and any enable evidence are historical records. The dual-write bridge now fails closed unless `AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS` is non-empty and contains the session ID; an empty or missing allowlist disables the bridge. Slice 1–3 authority functions and their environment variables are retired, ignored, and fail-closed. Do not use historical authority examples as configuration.
 
-- Evidence gate: **GO** (operational cohort **v3d** — [cohort run report](./dual-write-cohort-run-report-2026-07-13.md))
-- `AGENT_LAB_MISSION_DUAL_WRITE=1`: controlled cohort 전용 process/allowlist에서 GO; Full traffic은 **별도** Human 승인 ([full-traffic runbook](./dual-write-full-traffic-bounded-cutover-2026-07-14.md), soak ≥15 Room turns)
+## 판정 (historical evidence; non-runtime)
+
+- Historical evidence gate: **GO** (operational cohort **v3d** — [cohort run report](./dual-write-cohort-run-report-2026-07-13.md))
+- `AGENT_LAB_MISSION_DUAL_WRITE=1`: controlled cohort 전용 process에서 **non-empty allowlist와 함께** 사용해야 함; Full traffic은 **별도** Human 승인 ([full-traffic runbook](./dual-write-full-traffic-bounded-cutover-2026-07-14.md), soak ≥15 Room turns)
 - legacy writer: cohort·Full traffic soak 전체 기간 **항상 유지**
 - legacy writer 제거·irreversible cleanup: **Human 승인 전 금지** (Full traffic soak 이후 별도 gate)
 
@@ -21,13 +23,13 @@ cohort 시작 전·이전 운영분이 있으면 `scripts/mission_dual_write_ver
 
 ## 운영 경계
 
-`AGENT_LAB_MISSION_DUAL_WRITE`는 프로세스 단위 master flag이고, `AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS`는 코드가 매 호출마다 적용하는 session allowlist다. allowlist가 비어 있으면 master flag가 켜진 모든 session이 대상이 된다. controlled cohort는 다음 중 하나로 격리한다.
+`AGENT_LAB_MISSION_DUAL_WRITE`는 프로세스 단위 master flag이고, `AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS`는 코드가 매 호출마다 적용하는 session allowlist다. 현재 코드는 allowlist가 비어 있거나 누락되면 **fail-closed**로 bridge를 끈다. controlled cohort는 다음처럼 항상 non-empty allowlist로 격리한다.
 
-1. cohort traffic만 전달하는 전용 API 프로세스에 flag를 켠다.
-2. 공유 API 프로세스를 사용할 경우 `AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS=session-a,session-b`처럼 non-empty allowlist를 반드시 설정한다.
+1. cohort traffic만 전달하는 전용 API 프로세스에도 `AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS=session-a,session-b`처럼 non-empty allowlist를 설정한다.
+2. 공유 API 프로세스를 사용할 때도 cohort session ID만 포함하는 non-empty allowlist를 반드시 설정한다.
 3. cohort session identity를 전용 deployment/route로 고정하고, 나머지 traffic은 legacy-only 프로세스로 보낸다.
 
-공유 production process에서 allowlist 없이 임의로 master flag만 켜는 것은 controlled cohort가 아니다.
+allowlist 없이 master flag만 켜는 것은 controlled cohort가 아니며, 현재 런타임에서는 bridge가 동작하지 않는다.
 
 ## Cohort 규모
 

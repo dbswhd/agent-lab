@@ -1,0 +1,54 @@
+{
+  "task": "wave-b-m6-retire/task-3",
+  "title": "Freeze read-model API parity contract and verification harness",
+  "status": "complete",
+  "changed_files": [
+    "src/agent_lab/mission/read_model.py",
+    "src/agent_lab/mission/journal.py",
+    "scripts/mission_dual_write_verify.py",
+    "scripts/mission_dual_write_journal_audit.py",
+    "tests/test_mission_dual_write_verify.py",
+    "tests/test_mission_dual_write_journal_audit.py",
+    "tests/test_mission_journal.py",
+    "web/src/api/client.ts"
+  ],
+  "red_green": {
+    "baseline": "pytest -q tests/test_mission_read_model.py tests/test_mission_read_model_api.py tests/test_mission_dual_write_verify.py tests/test_mission_dual_write_journal_audit.py -> 1 failed, 42 passed; known migrated phase_label EXECUTE_QUEUE vs READY",
+    "red": "new verifier/audit contract tests failed with KeyError for not_found/error_count/invalid_json and missing normalized option finding; malformed run.json initially exited successfully with error_count=0",
+    "green": "pytest -q tests/test_mission_read_model.py tests/test_mission_read_model_api.py tests/test_mission_dual_write_verify.py tests/test_mission_dual_write_journal_audit.py tests/test_mission_journal.py tests/test_mission_projection.py -> 71 passed"
+  },
+  "verification": {
+    "pytest": "exact suite 71 passed in 1.61s; core suite repeated three times with identical results",
+    "ruff": "ruff check changed Python files -> All checks passed",
+    "web_build": "npm --prefix web run build --if-present -> tsc and vite build passed",
+    "git_diff_check": "git diff --check -> passed",
+    "verifier_clean": "mission_dual_write_verify.py against isolated legacy session -> checked=1, error_count=0, not_found=0, exit 0",
+    "malformed_journal": "verifier exit 1 with error_count=1; journal audit exit 1 with invalid_json=1 and error_count=0",
+    "malformed_run_metadata": "verifier exit 1 with error_count=1 and result severity=error; read_run_meta compatibility behavior unchanged",
+    "truncated_journal": "live TestClient read-model returned HTTP 200/state READY_TO_EXECUTE after torn-tail recovery; journal lock file present and tail truncated",
+    "live_api": "isolated uvicorn on 127.0.0.1:8880 + curl GET /api/sessions/curl-session/mission/read-model returned HTTP 200 and migrated=true/source=mission_journal/state=READY_TO_EXECUTE/operational_status=READY/phase_label=READY"
+  },
+  "contract": {
+    "counters": [
+      "mismatch",
+      "missing",
+      "unexpected_duplicate",
+      "error_count",
+      "checked",
+      "not_found",
+      "mission_not_ready_to_execute"
+    ],
+    "journal_audit": ["invalid_json", "error_count", "not_found"],
+    "compatibility": "legacy_phase and legacy payload fields retained; migrated overview phase_label is normalized operational_status"
+  },
+  "adversarial_probes": {
+    "malformed_input": "covered by malformed journal audit and malformed run.json verifier error tests; both CLI paths exit 1 with explicit counters",
+    "stale_state": "covered by projection/read-model phase-label integration regression",
+    "dirty_worktree": "pre-existing parent edits observed; no unrelated files reverted",
+    "long_running_or_hung_command": "not applicable; no new subprocess or retry loop",
+    "misleading_success_output": "malformed verifier/audit reports exit 1 despite duplicate_count=0",
+    "flaky_tests": "targeted suite repeated three times without variance",
+    "mid_operation_interruption": "torn JSONL tail recovery exercised through read-model API"
+  },
+  "cleanup": "isolated uvicorn processes, temporary sessions, curl captures, and malformed fixtures removed; no listener left on ports 8879/8880"
+}

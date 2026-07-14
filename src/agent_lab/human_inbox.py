@@ -56,6 +56,45 @@ def find_inbox_item(run: dict[str, Any], item_id: str) -> dict[str, Any] | None:
     return None
 
 
+def ensure_inbox_item_actionable(folder: Path, item_id: str) -> dict[str, Any]:
+    """Validate that an inbox resolve targets a live, joined human gate.
+
+    This is a read-only preflight.  It runs before any legacy ``run.json`` or
+    mission-journal write so terminal orphan, missing-row, and stale-row
+    requests cannot close a gate or resolve an item as a side effect.
+    """
+    run = read_run_meta(folder)
+    item = find_inbox_item(run, item_id)
+    journal_path = folder / ".agent-lab" / "mission-events.jsonl"
+    mission = None
+    if journal_path.is_file():
+        from agent_lab.mission.application import MissionApplication
+
+        goal = str(run.get("goal") or run.get("topic") or folder.name)
+        try:
+            mission = MissionApplication(folder, goal).load()
+        except (OSError, ValueError) as exc:
+            raise ValueError(f"inbox item not actionable: mission_state_unknown: {item_id}") from exc
+
+    if item is None:
+        if mission is not None and any(gate.gate_id == item_id for gate in mission.open_gates):
+            status = "terminal_orphan" if mission.state.value in {"SUCCEEDED", "FAILED", "CANCELLED"} else "missing"
+            raise ValueError(f"inbox item not actionable: {status}: {item_id}")
+        raise ValueError(f"inbox item not found: {item_id}")
+
+    terminal = mission is not None and mission.state.value in {"SUCCEEDED", "FAILED", "CANCELLED"}
+    gate = next((candidate for candidate in mission.open_gates if candidate.gate_id == item_id), None) if mission else None
+    if terminal and item.get("status") == "pending":
+        raise ValueError(f"inbox item not actionable: terminal_orphan: {item_id}")
+    if mission is not None and gate is None and item.get("status") == "pending":
+        raise ValueError(f"inbox item not actionable: missing_row: {item_id}")
+    if item.get("status") != "pending":
+        if gate is not None and not terminal:
+            raise ValueError(f"inbox item not actionable: stale: {item_id}")
+        raise ValueError(f"inbox item not pending: {item_id}")
+    return item
+
+
 def latest_mcp_build_item(run: dict[str, Any]) -> dict[str, Any] | None:
     """Most recent execute-lane ``propose_build`` inbox item, if any."""
     found: dict[str, Any] | None = None

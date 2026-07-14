@@ -7,11 +7,27 @@ from pathlib import Path
 from agent_lab.mission.decision_queue import AnswerDecision, new_decision
 from agent_lab.mission.decision_repository import DecisionRepository
 from agent_lab.mission.kernel import ApprovePlan, Mission, MissionState, OpenPlan, RejectPlan
+from agent_lab.mission.projection import (
+    MissionLoopStatusProjection,
+    apply_mission_loop_status_projection,
+    project_mission_loop_status as _project_status,
+)
 from agent_lab.mission.repository import MissionRepository
 from agent_lab.plan.pending import plan_content_hash
-from agent_lab.run.meta import patch_run_meta
-from agent_lab.run.state import RunState
+from agent_lab.run.meta import patch_run_meta, read_run_meta
+from agent_lab.run.state import RunState, RunStateLike
 from agent_lab.plan.workflow_state import apply_plan_substate_patch
+
+
+def project_mission_loop_status(
+    mission: Mission,
+    run: RunStateLike,
+) -> MissionLoopStatusProjection:
+    return _project_status(mission, run)
+
+
+def _project_mission_loop_status(folder: Path, mission: Mission) -> None:
+    apply_mission_loop_status_projection(folder, mission)
 
 
 class MissionApplicationError(Exception):
@@ -44,6 +60,8 @@ class MissionApplication:
         current = self.load()
         plan_hash = plan_content_hash(plan)
         if current.state is MissionState.READY_TO_EXECUTE and current.approved_plan_hash == plan_hash:
+            _project_mission_loop_status(self.session_folder, current)
+            self._project_plan(current)
             return current
         if not (current.state is MissionState.AWAITING_PLAN_DECISION and current.current_plan_hash == plan_hash):
             open_key = f"plan-open:{plan_hash}:{current.plan_revision + 1}"
@@ -112,6 +130,25 @@ class MissionApplication:
             allowed = {"CLARIFY", "REFINE", "DRAFT"}
             candidate = (phase or "CLARIFY").strip().upper()
             projected = candidate if candidate in allowed else "CLARIFY"
+
+        current = read_run_meta(self.session_folder)
+        workflow = current.get("plan_workflow")
+        workflow = workflow if isinstance(workflow, dict) else {}
+        if projected == "APPROVED":
+            if (
+                workflow.get("enabled") is True
+                and workflow.get("phase") == projected
+                and workflow.get("plan_hash_at_approval") == mission.approved_plan_hash
+                and bool(workflow.get("approved_at"))
+                and bool(workflow.get("approved_by"))
+            ):
+                return
+        elif (
+            workflow.get("enabled") is True
+            and workflow.get("phase") == projected
+            and (not note or workflow.get("last_reject_note") == note.strip()[:500])
+        ):
+            return
 
         def update(run: RunState) -> RunState:
             if projected == "APPROVED":

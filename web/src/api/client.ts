@@ -2653,6 +2653,8 @@ export type HumanInboxItem = {
   plan_revision?: string | null;
   created_at?: string;
   resolved_at?: string | null;
+  actionable?: boolean;
+  mission_gate_status?: "terminal_orphan" | "missing_row" | "stale";
 };
 
 export type HumanInboxPayload = {
@@ -2701,7 +2703,7 @@ export async function fetchInboxSummary(includeArchived = false) {
 export type MissionReadModelPayload = {
   session_id: string;
   migrated: boolean;
-  source: "mission_journal" | "legacy" | string;
+  source: "mission_journal" | "legacy";
   mission_id: string | null;
   goal: string | null;
   state: string | null;

@@ -42,6 +42,7 @@ import {
 } from "./useRoomRecoveryHandlers";
 import { useRoomNotificationRouting } from "./useRoomNotificationRouting";
 import type { useRoomChatBootstrap } from "./useRoomChatBootstrap";
+import { useMissionReadModel } from "../utils/missionReadModel";
 
 type Bootstrap = ReturnType<typeof useRoomChatBootstrap>;
 
@@ -329,9 +330,23 @@ export function useRoomChatInteractions(bootstrap: Bootstrap) {
       pushMacNotification,
     });
 
+  const { model: missionReadModel } = useMissionReadModel(sessionId);
+
   const discussRecovery = useMemo(
-    () => discussRecoveryFromMissionLoop(session?.run?.mission_loop),
-    [session?.run?.mission_loop],
+    () => {
+      if (
+        missionReadModel?.state === "REPAIRING" ||
+        missionReadModel?.state === "REPAIR"
+      ) {
+        return {
+          pending: true,
+          reason: missionReadModel.next_action,
+          action_index: null,
+        };
+      }
+      return discussRecoveryFromMissionLoop(session?.run?.mission_loop);
+    },
+    [missionReadModel, session?.run?.mission_loop],
   );
 
   const {

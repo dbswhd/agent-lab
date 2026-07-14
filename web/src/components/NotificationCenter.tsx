@@ -6,6 +6,7 @@ import {
   unreadNotificationCount,
   type AppNotification,
 } from "../utils/notificationStore";
+import { useMissionReadModel } from "../utils/missionReadModel";
 
 function useNotificationStore() {
   const subscribe = useCallback(
@@ -31,12 +32,24 @@ function tierClass(tier: AppNotification["tier"]): string {
 
 type Props = {
   onOpen?: (notification: AppNotification) => void;
+  sessionId?: string | null;
+  hideEmpty?: boolean;
 };
 
-export function NotificationCenter({ onOpen }: Props = {}) {
+export function NotificationCenter({
+  onOpen,
+  sessionId = null,
+  hideEmpty = false,
+}: Props = {}) {
   const { items, unread, markAllRead } = useNotificationStore();
+  const { model } = useMissionReadModel(sessionId);
+  const gateCount =
+    model?.inbox_items?.filter(
+      (item) => item.status === "pending" && item.actionable !== false,
+    ).length ?? 0;
 
-  if (items.length === 0) {
+  if (items.length === 0 && gateCount === 0) {
+    if (hideEmpty) return null;
     return (
       <p className="inspector-pane__empty notification-center__empty">
         아직 알림이 없습니다. 턴 완료·합의·execute 상태가 여기에 쌓입니다.
@@ -58,6 +71,11 @@ export function NotificationCenter({ onOpen }: Props = {}) {
           </button>
         ) : null}
       </div>
+      {gateCount > 0 ? (
+        <p className="notification-center__body" role="status">
+          {gateCount} human decision{gateCount === 1 ? "" : "s"} pending
+        </p>
+      ) : null}
       <ul className="notification-center__list">
         {items.map((n) => (
           <li

@@ -2,7 +2,7 @@
 
 실제 provider 검증 기록: [live supervisor dual-read report](./dual-read-live-report-2026-07-13.md) — timeout·partial persistence·lock recovery는 통과했지만 production dual-write 증거는 아니다. 최종 판정은 [ADR-001](../decisions/ADR-001-production-dual-write-cutover.md) 참조.
 
-현재 상태: controlled cohort **v3d GO** · Full traffic soak **PASS** · Slice 1–3 soft authority **implemented** · journal-first Wave A **API composites** · hard retire **Human 승인 전 금지**.  
+현재 상태: controlled cohort **v3d GO (historical evidence)** · Full traffic soak **PASS (historical evidence)** · Slice 1–3 soft authority **retired compatibility record; funcs disabled/fail-closed** · journal-first Wave A **API composites** · hard retire **Human 승인 전 금지**. Dual-write runtime requires a non-empty session allowlist; empty/missing disables the bridge.
 운영: [Slice 1 plan](./dual-write-retire-slice-plan-soft-2026-07-14.md) · [Slice 2 inbox](./dual-write-retire-slice-inbox-soft-2026-07-14.md) · [Slice 3 execution](./dual-write-retire-slice-execution-soft-2026-07-14.md) · [journal-first read/projection](./journal-first-read-projection-design-2026-07-14.md) · [m6-precheck](./m6-precheck-retire-scope-2026-07-14.md) · [full-traffic](./dual-write-full-traffic-bounded-cutover-2026-07-14.md).
 
 > **상태:** In progress / D0 — Wave 0~1 계약·shadow spike 착수, legacy cutover는 Human gate 유지  

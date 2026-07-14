@@ -125,6 +125,10 @@ class MissionJournal:
         return self.path.with_suffix(f"{self.path.suffix}.lock")
 
     def load(self) -> tuple[StoredEvent, ...]:
+        with _JOURNAL_LOCK, _file_lock(self.lock_path):
+            return self._load_unlocked()
+
+    def _load_unlocked(self) -> tuple[StoredEvent, ...]:
         if not self.path.is_file():
             return ()
         events: list[StoredEvent] = []
@@ -139,6 +143,10 @@ class MissionJournal:
         return tuple(events)
 
     def recover_tail(self) -> tuple[StoredEvent, ...]:
+        with _JOURNAL_LOCK, _file_lock(self.lock_path):
+            return self._recover_tail_unlocked()
+
+    def _recover_tail_unlocked(self) -> tuple[StoredEvent, ...]:
         if not self.path.is_file():
             return ()
         data = self.path.read_bytes()
@@ -154,7 +162,10 @@ class MissionJournal:
             except JournalCorruptionError:
                 if index != len(lines) - 1 or line.endswith((b"\n", b"\r")):
                     raise
-                self.path.write_bytes(data[:offset])
+                with self.path.open("r+b") as stream:
+                    stream.truncate(offset)
+                    stream.flush()
+                    os.fsync(stream.fileno())
                 break
             for event in record:
                 self._validate_identity(event, index + 1)
@@ -187,7 +198,7 @@ class MissionJournal:
         if idempotency_key is not None and not idempotency_key.strip():
             raise ValueError("idempotency_key must not be empty")
         with _JOURNAL_LOCK, _file_lock(self.lock_path):
-            current = self.load()
+            current = self._load_unlocked()
             if idempotency_key is not None:
                 existing = tuple(event for event in current if event.idempotency_key == idempotency_key)
                 if existing:

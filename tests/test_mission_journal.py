@@ -49,6 +49,7 @@ def test_journal_recovers_incomplete_tail(tmp_path: Path) -> None:
     recovered = journal.recover_tail()
     assert [event.sequence for event in recovered] == [1]
     assert json.loads(path.read_text(encoding="utf-8").splitlines()[0])["sequence"] == 1
+    assert journal.lock_path.is_file()
 
 
 def test_journal_stores_multi_event_append_as_one_atomic_record(tmp_path: Path) -> None:

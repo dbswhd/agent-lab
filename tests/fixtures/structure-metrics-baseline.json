@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "agent_lab_root_py_files": 134,
+  "agent_lab_root_py_files": 135,
   "agent_lab_subpackages": [
     "agent",
     "agents",
@@ -59,7 +59,7 @@
     },
     {
       "path": "web/src/components/HumanInboxPanel.tsx",
-      "lines": 795
+      "lines": 884
     },
     {
       "path": "web/src/components/WorkspaceFilesPanel.tsx",
@@ -77,7 +77,7 @@
     },
     {
       "path": "src/agent_lab/plan/workflow.py",
-      "lines": 114
+      "lines": 118
     },
     {
       "path": "src/agent_lab/room/turn_flow.py",
@@ -111,7 +111,7 @@
     },
     {
       "path": "web/src/hooks/useRoomChatInteractions.ts",
-      "lines": 717
+      "lines": 732
     },
     {
       "path": "web/src/hooks/useRoomChatPresentation.ts",

@@ -142,7 +142,11 @@ def test_fast_bucket_collection_budget():
     # 2026-07-12: raised 3029 -> 3039 for plan substate transition table tests.
     # 2026-07-12: raised 3039 -> 3046 for orchestration drift auto-reconcile tests.
     # 2026-07-12: raised 3046 -> 3050 for orchestration work_phase unify tests.
-    assert count <= 3050, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-14: raised 3050 -> 3295 for Wave B/M6 journal-first read-model coverage
+    # (test_mission_read_model.py, test_mission_dual_write_verify.py,
+    # test_m6_consumer_inventory.py, test_m6_checkpoint_duplicate_patches.py,
+    # test_m6_final_retire_packet.py, test_mission_projection.py, and related suites).
+    assert count <= 3295, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

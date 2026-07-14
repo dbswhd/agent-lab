@@ -1,14 +1,18 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Final, TypedDict, assert_never
+from typing import TYPE_CHECKING, Final, TypedDict, assert_never
 
 from agent_lab.core.mission_loop import get_mission_loop
 from agent_lab.mission.kernel import Mission, MissionState
 from agent_lab.mission.read_model import work_phase_from_mission
 from agent_lab.run.meta import patch_run_meta, read_run_meta
 from agent_lab.run.state import RunState, RunStateLike
-from agent_lab.runtime.work_phase import WorkPhase
+
+if TYPE_CHECKING:
+    # Type-only: keeps `mission` from depending on `runtime` at module-import time
+    # (runtime already depends on mission via runtime/snapshot.py — see layer_cycle_check.py).
+    from agent_lab.runtime.work_phase import WorkPhase
 
 
 class MissionLoopAutonomousProjection(TypedDict):

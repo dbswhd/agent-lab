@@ -57,7 +57,13 @@ def delivery_guarantee(kind: MessageKind) -> DeliveryGuarantee:
     match kind:
         case MessageKind.PROGRESS:
             return DeliveryGuarantee.BEST_EFFORT
-        case MessageKind.COMMAND | MessageKind.EVENT | MessageKind.WORK_REQUEST | MessageKind.HUMAN_DECISION | MessageKind.ARTIFACT_REF:
+        case (
+            MessageKind.COMMAND
+            | MessageKind.EVENT
+            | MessageKind.WORK_REQUEST
+            | MessageKind.HUMAN_DECISION
+            | MessageKind.ARTIFACT_REF
+        ):
             return DeliveryGuarantee.AT_LEAST_ONCE
         case _ as unreachable:
             assert_never(unreachable)

@@ -12,7 +12,9 @@ import pytest
 from scripts.mission_dual_write_verify import run_verification
 
 
-def _run_verify_cli(sessions_root: Path, *, cohort: bool, env: dict[str, str | None]) -> subprocess.CompletedProcess[str]:
+def _run_verify_cli(
+    sessions_root: Path, *, cohort: bool, env: dict[str, str | None]
+) -> subprocess.CompletedProcess[str]:
     from agent_lab.subprocess_env import subprocess_env
 
     child_env = subprocess_env()
@@ -22,7 +24,13 @@ def _run_verify_cli(sessions_root: Path, *, cohort: bool, env: dict[str, str | N
         else:
             child_env[key] = value
     return subprocess.run(
-        [sys.executable, "scripts/mission_dual_write_verify.py", "--sessions", str(sessions_root), *( ["--cohort"] if cohort else [])],
+        [
+            sys.executable,
+            "scripts/mission_dual_write_verify.py",
+            "--sessions",
+            str(sessions_root),
+            *(["--cohort"] if cohort else []),
+        ],
         cwd=Path(__file__).resolve().parents[1],
         env=child_env,
         capture_output=True,
@@ -50,7 +58,14 @@ def test_unmigrated_session_reported_without_findings(tmp_path: Path) -> None:
 
 def test_matching_merged_commit_and_oracle_verdict_is_ok(tmp_path: Path) -> None:
     from agent_lab.mission.application import MissionApplication
-    from agent_lab.mission.kernel import ApproveDiff, MarkDiffReady, OracleVerdict, RecordMerge, RecordOracle, StartExecution
+    from agent_lab.mission.kernel import (
+        ApproveDiff,
+        MarkDiffReady,
+        OracleVerdict,
+        RecordMerge,
+        RecordOracle,
+        StartExecution,
+    )
 
     sessions_root = tmp_path / "sessions"
     folder = sessions_root / "sess-ok"
@@ -120,7 +135,9 @@ def test_mission_not_yet_recorded_merge_is_behind_not_hard_mismatch(tmp_path: Pa
     folder = sessions_root / "sess-behind"
     folder.mkdir(parents=True)
     (folder / "plan.md").write_text("# Plan\n\n- ship", encoding="utf-8")
-    _write_run(folder, {"executions": [{"id": "exec-1", "status": "merged", "merge": {"commit_sha": "legacy-only-sha"}}]})
+    _write_run(
+        folder, {"executions": [{"id": "exec-1", "status": "merged", "merge": {"commit_sha": "legacy-only-sha"}}]}
+    )
     MissionApplication(folder, "ship").approve_plan()  # Mission never advanced past READY_TO_EXECUTE
 
     report = run_verification(sessions_root, only_session=None, cohort_only=False)
@@ -131,7 +148,9 @@ def test_mission_not_yet_recorded_merge_is_behind_not_hard_mismatch(tmp_path: Pa
     assert any(f["dimension"] == "merge_commit_sha" and f["severity"] == "mission_behind" for f in result["findings"])
 
 
-def test_pending_inbox_item_created_via_real_path_is_no_longer_a_mismatch(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_pending_inbox_item_created_via_real_path_is_no_longer_a_mismatch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Regression test: create_inbox_item() now carries a dual-write hook
     (mirror_inbox_creation), so a real, unscripted inbox pause opens a Mission
     execution gate for that exact item id — this used to be a hard_mismatch
@@ -162,7 +181,9 @@ def test_pending_inbox_item_created_via_real_path_is_no_longer_a_mismatch(tmp_pa
     assert result["findings"] == []
 
 
-def test_mission_gate_open_but_legacy_item_missing_is_hard_mismatch(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_mission_gate_open_but_legacy_item_missing_is_hard_mismatch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Mission opened a gate but the legacy item isn't (or is no longer) pending —
     the 'stale_in_mission' direction of the item-level diff."""
     from agent_lab.mission.application import MissionApplication

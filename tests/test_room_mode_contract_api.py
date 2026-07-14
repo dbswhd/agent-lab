@@ -6,6 +6,16 @@ from pathlib import Path
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def _isolate_run_lock(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    # /api/room/runs's streaming success path drives _run_with_lock() ->
+    # try_begin_run(), a real cross-process fcntl lock at config_dir()/
+    # run.lock. Without a private dir per test, concurrent xdist workers
+    # race on the shared machine-wide lock file (see
+    # tests/test_run_control.py's _isolate_run_lock for the full story).
+    monkeypatch.setenv("AGENT_LAB_CONFIG_DIR", str(tmp_path / ".agent-lab-config"))
+
+
 def test_room_run_rejects_loop_without_plan_before_session_creation(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

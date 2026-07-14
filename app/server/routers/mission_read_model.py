@@ -142,6 +142,7 @@ def _payload(session_id: str, model: MissionReadModel, *, legacy_phase: str | No
 
 def folder_or_404(session_id: str) -> Path:
     from app.server.deps import session_folder_or_404
+
     return session_folder_or_404(session_id)
 
 

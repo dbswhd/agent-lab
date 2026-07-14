@@ -83,7 +83,9 @@ def ensure_inbox_item_actionable(folder: Path, item_id: str) -> dict[str, Any]:
         raise ValueError(f"inbox item not found: {item_id}")
 
     terminal = mission is not None and mission.state.value in {"SUCCEEDED", "FAILED", "CANCELLED"}
-    gate = next((candidate for candidate in mission.open_gates if candidate.gate_id == item_id), None) if mission else None
+    gate = (
+        next((candidate for candidate in mission.open_gates if candidate.gate_id == item_id), None) if mission else None
+    )
     if terminal and item.get("status") == "pending":
         raise ValueError(f"inbox item not actionable: terminal_orphan: {item_id}")
     if mission is not None and gate is None and item.get("status") == "pending":

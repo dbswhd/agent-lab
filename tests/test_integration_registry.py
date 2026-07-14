@@ -142,7 +142,18 @@ def test_fast_bucket_collection_budget():
     # 2026-07-12: raised 3029 -> 3039 for plan substate transition table tests.
     # 2026-07-12: raised 3039 -> 3046 for orchestration drift auto-reconcile tests.
     # 2026-07-12: raised 3046 -> 3050 for orchestration work_phase unify tests.
-    assert count <= 3050, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-14: raised 3050 -> 3295 for Wave B/M6 journal-first read-model coverage
+    # (test_mission_read_model.py, test_mission_dual_write_verify.py,
+    # test_m6_consumer_inventory.py, test_m6_checkpoint_duplicate_patches.py,
+    # test_m6_final_retire_packet.py, test_mission_projection.py, and related suites).
+    # 2026-07-14: raised 3295 -> 3302 for the coordination-topology shadow decision
+    # (test_coordination_topology_report.py, test_coordination_topology_dogfood_run.py,
+    # plus test_turn_routing.py/test_topic_router.py additions).
+    # 2026-07-14: raised 3302 -> 3305 for the human-decision message/dispatcher
+    # wiring in mirror_inbox_resolution() (test_mission_dual_write.py additions).
+    # 2026-07-14: raised 3305 -> 3309 for the coordination-topology-authority
+    # shadow-to-real promotion (test_turn_routing.py additions).
+    assert count <= 3309, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

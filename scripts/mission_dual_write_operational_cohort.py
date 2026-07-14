@@ -380,7 +380,9 @@ def main() -> int:
         baseline = _run_verify(args.sessions, allowlist, cohort=True)
         journal_audit = _run_journal_audit(args.sessions, allowlist, cohort=True)
         health = _health(args.base_url)
-        inbox_errors = int((((health.get("dual_write") or {}).get("operations") or {}).get("inbox_create") or {}).get("error") or 0)
+        inbox_errors = int(
+            (((health.get("dual_write") or {}).get("operations") or {}).get("inbox_create") or {}).get("error") or 0
+        )
         report["traffic"] = {
             "mirrored_ops": state.mirrored_ops,
             "mirrored_ops_health_total": _mirrored_ops_from_health(health),

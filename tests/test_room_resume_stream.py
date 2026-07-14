@@ -31,6 +31,15 @@ def _drain(agen):
     return asyncio.run(_run())
 
 
+@pytest.fixture(autouse=True)
+def _isolate_run_lock(tmp_path, monkeypatch: pytest.MonkeyPatch):
+    # try_begin_run() holds a real cross-process fcntl lock at
+    # config_dir()/run.lock; without a private dir per test, concurrent
+    # xdist workers can race on the same shared machine-wide lock file (see
+    # tests/test_run_control.py's _isolate_run_lock for the full story).
+    monkeypatch.setenv("AGENT_LAB_CONFIG_DIR", str(tmp_path / ".agent-lab-config"))
+
+
 def setup_function(_fn):
     clear_cancel()
     force_reset_run_lock()

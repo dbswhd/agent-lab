@@ -60,7 +60,11 @@ _PATTERNS: Final[tuple[tuple[str, str, str], ...]] = (
     ("web_human_inbox", r"(?:payload\.human_inbox|human_inbox \?\?)", "read"),
     ("web_plan_workflow", r"(?:runtime\?\.plan_workflow|planWorkflow\?\.)", "read"),
     ("web_merge_oracle", r"(?:mergeChecks|exec\?\.oracle)", "read"),
-    ("mission_ui_read_model", r"\b(?:useMissionReadModel|fetchMissionReadModelIfEnabled|missionReadModelPhase)\b", "read"),
+    (
+        "mission_ui_read_model",
+        r"\b(?:useMissionReadModel|fetchMissionReadModelIfEnabled|missionReadModelPhase)\b",
+        "read",
+    ),
 )
 
 

@@ -121,7 +121,9 @@ def _wait_for_port_closed(base_url: str, *, timeout_s: float = 15.0) -> bool:
     return False
 
 
-def _http_json(method: str, url: str, *, json_body: dict[str, Any] | None = None, timeout: float = 20.0) -> tuple[int, dict[str, Any]]:
+def _http_json(
+    method: str, url: str, *, json_body: dict[str, Any] | None = None, timeout: float = 20.0
+) -> tuple[int, dict[str, Any]]:
     import urllib.request
     import urllib.error
 
@@ -141,7 +143,9 @@ def _http_json(method: str, url: str, *, json_body: dict[str, Any] | None = None
         return exc.code, body
 
 
-def _start_server(*, port: int, sessions_dir: Path, config_dir: Path, daemon_state_path: Path, log_path: Path) -> subprocess.Popen:
+def _start_server(
+    *, port: int, sessions_dir: Path, config_dir: Path, daemon_state_path: Path, log_path: Path
+) -> subprocess.Popen:
     env = dict(os.environ)
     env.update(
         {
@@ -193,14 +197,22 @@ def run_evidence(sessions_root: Path, repos_root: Path, *, port: int) -> dict[st
 
     result: dict[str, Any] = {"session_id": session_name, "port": port}
 
-    proc_a = _start_server(port=port, sessions_dir=sessions_root, config_dir=config_dir, daemon_state_path=daemon_state_path, log_path=log_path)
+    proc_a = _start_server(
+        port=port,
+        sessions_dir=sessions_root,
+        config_dir=config_dir,
+        daemon_state_path=daemon_state_path,
+        log_path=log_path,
+    )
     try:
         healthy = _wait_for_health(base_url)
         result["process_a"] = {"pid": proc_a.pid, "healthy": healthy}
         if not healthy:
             raise RuntimeError(f"process A never became healthy; see {log_path}")
 
-        status, body = _http_json("POST", f"{base_url}/api/sessions/{session_name}/plan/approve", json_body={"goal": "kill/restart demo"})
+        status, body = _http_json(
+            "POST", f"{base_url}/api/sessions/{session_name}/plan/approve", json_body={"goal": "kill/restart demo"}
+        )
         result["plan_approve_before_kill"] = {
             "status_code": status,
             "mirrored": body.get("mission_dual_write", {}).get("mirrored"),
@@ -276,8 +288,14 @@ def run_evidence(sessions_root: Path, repos_root: Path, *, port: int) -> dict[st
             raise RuntimeError("activity was not claimed")
         queue.record_side_effect(activity.activity_id, "worker-a", claimed.lease.token, SideEffectState.COMMITTED)
 
-        pre_kill_read_model_status, pre_kill_read_model = _http_json("GET", f"{base_url}/api/sessions/{session_name}/mission/read-model")
-        result["read_model_before_kill"] = {"status_code": pre_kill_read_model_status, "state": pre_kill_read_model.get("state"), "migrated": pre_kill_read_model.get("migrated")}
+        pre_kill_read_model_status, pre_kill_read_model = _http_json(
+            "GET", f"{base_url}/api/sessions/{session_name}/mission/read-model"
+        )
+        result["read_model_before_kill"] = {
+            "status_code": pre_kill_read_model_status,
+            "state": pre_kill_read_model.get("state"),
+            "migrated": pre_kill_read_model.get("migrated"),
+        }
 
         # --- Real, ungraceful crash: SIGKILL, not terminate().
         pid_a = proc_a.pid
@@ -299,10 +317,20 @@ def run_evidence(sessions_root: Path, repos_root: Path, *, port: int) -> dict[st
             proc_a.wait(timeout=10)
 
     # --- Fresh process, new PID, same sessions dir and daemon-state path.
-    proc_b = _start_server(port=port, sessions_dir=sessions_root, config_dir=config_dir, daemon_state_path=daemon_state_path, log_path=log_path)
+    proc_b = _start_server(
+        port=port,
+        sessions_dir=sessions_root,
+        config_dir=config_dir,
+        daemon_state_path=daemon_state_path,
+        log_path=log_path,
+    )
     try:
         healthy_b = _wait_for_health(base_url)
-        result["process_b"] = {"pid": proc_b.pid, "healthy": healthy_b, "different_pid_than_a": proc_b.pid != result["kill"]["pid"]}
+        result["process_b"] = {
+            "pid": proc_b.pid,
+            "healthy": healthy_b,
+            "different_pid_than_a": proc_b.pid != result["kill"]["pid"],
+        }
         if not healthy_b:
             raise RuntimeError(f"process B never became healthy; see {log_path}")
 
@@ -331,7 +359,8 @@ def run_evidence(sessions_root: Path, repos_root: Path, *, port: int) -> dict[st
             "status_code": status,
             "state": read_model_after.get("state"),
             "migrated": read_model_after.get("migrated"),
-            "matches_before_kill": read_model_after.get("state") == pre_kill_read_model.get("state") and read_model_after.get("migrated") == pre_kill_read_model.get("migrated"),
+            "matches_before_kill": read_model_after.get("state") == pre_kill_read_model.get("state")
+            and read_model_after.get("migrated") == pre_kill_read_model.get("migrated"),
         }
 
         # Distinct route (not plan/approve again — the plan is already APPROVED, so

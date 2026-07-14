@@ -73,62 +73,54 @@
 
 ## 7. 구현 순서
 
-1. ✅ `/api/sessions/{id}/mission/read-model`과 legacy projection parity를 고정한다.
-2. ✅ `ComposerEventStack`에 Decision Queue precedence를 연결한다.
+1. `/api/sessions/{id}/mission/read-model`과 legacy projection parity를 고정한다. — **완료** (`AGENT_LAB_MISSION_UI_READ_MODEL` default on, 2026-07-14)
+2. `ComposerEventStack`에 Decision Queue precedence를 연결한다. — 완료 (§8 join 규약 참고)
 3. `WorkStatusBar`/`WorkspaceCard`에 activity·merge·Oracle evidence를 추가한다.
-4. SSE cursor/reconnect와 durable event merge를 연결한다. (미착수)
+4. SSE cursor/reconnect와 durable event merge를 연결한다. — **미착수.** `event_cursor`는 payload에 존재하고 파싱 시 타입 검증만 되지만, 어떤 consumer도 SSE 쪽 버전과 비교해 사용하지 않는다. §8 참고.
 5. Playwright journey로 plan reject, diff approve, Oracle repair, Human resume을 검증한다.
 
-## 8. Wave B join / cross-source 우선순위 계약
+## 8. Wave B join 규약 (as-built, 2026-07-14)
 
-> 이 섹션은 2026-07-14 커밋 `32c9f3d` 이후 편입되었다.  
-> 현재 상태: payload parsing boundary + read-model field precedence까지 구현, browser SSE cursor wiring은 미착수.
+`AGENT_LAB_MISSION_UI_READ_MODEL` default on 시점 기준, 실제 코드가 수행하는 두 종류의 join을 명문화한다. 이 절은 §5의 설계 원칙("UI는 여러 소스를 조합하지 않는다")이 실제로 어떻게 구현됐는지의 as-built 기록이며, §5를 대체하지 않는다.
 
-### 8.1 내부 join: `inbox_items` ↔ `open_execution_gates`
+### 8.1 내부 join — `inbox_items` ↔ `open_execution_gates`
 
-`mission/read_model.py`의 `_joined_inbox_items`는 세 범주를 모두 노출한다.
+파싱 경계(`parseMissionReadModel`, `web/src/utils/missionReadModel.ts`)에서 강제한다. payload 전체가 이 조건을 만족하지 않으면 **`null`을 반환** — 부분 적용 없이 legacy 경로로 fail-closed.
 
-| 범주 | `mission_gate_status` | 처리 |
-|------|-----------------------|------|
-| inbox row가 open gate에 매칭됨 | `open_gate` | gate row의 데이터를 유지하고 tag 추가 |
-| open gate에 inbox row가 없음 | `missing_row` / `terminal_orphan` | placeholder item 생성 |
-| inbox row가 어떤 gate에도 매칭되지 않음 | `unrelated` | 원본 row 유지, tag 추가 |
+- 모든 `open_execution_gates[j].gate_id`는 비어 있지 않고 중복 없음.
+- actionable한 `inbox_items[i]` (i.e. `actionable !== false && mission_gate_status`가 `"stale"`/`"unrelated"`가 아님)는 반드시 어떤 `open_execution_gates[j].gate_id`와 `id`가 일치해야 한다.
+- stale/non-actionable item은 매칭되는 gate가 없어도 허용 — 조회 전용으로 남아 있는 지난 항목이기 때문.
+- `mission_gate_status === "unrelated"` item도 매칭되는 gate 없이 허용 — Mission의 `open_gates`는 execution-level 게이트만 다루는 개념이라, plan-approval 질문 등 gate에 안 걸리는 `human_inbox` row가 정상적으로 존재할 수 있음 (main 커밋 `2a50ecd1`의 `_joined_inbox_items` unrelated 카테고리). `actionable`은 건드리지 않음 — unrelated pending item도 `inbox_summary.pending_count`에 잡혀야 하기 때문 (2026-07-14 리뷰에서 발견: 이 예외가 없으면 `hasValidInboxJoin`이 unrelated row가 하나라도 있는 payload 전체를 폐기해서 Wave B가 조용히 legacy로 fallback됨).
+- `inbox_items[i].id` 중복 금지.
 
-`app/server/routers/mission_read_model.py`는 `_payload_integrity_ok`에서 강제 검증한다.  
-위반이면 payload 전체를 `null`로 폐기하고 `_legacy_payload`로 fail-closed한다.
+### 8.2 cross-source 우선순위 join — read-model vs legacy/runtime
 
-### 8.2 cross-source 우선순위: 7 consumer
+7개 consumer(`ComposerEventStack`, `HumanInboxPanel`, `WorkToolPanel`, `ContextOverviewPanel`, `NotificationCenter`, `useRoomChatInteractions`, `useAutonomySession`) 모두 동일한 패턴을 쓴다:
 
-모든 React consumer는 `missionReadModel?.field ?? legacy` 패턴을 따른다.  
-presence 기반: `migrated && source === "mission_journal"`이면 개별 필드(빈 배열 포함)가 무조건 이긴다.  
-legacy fallback은 read-model 자체가 `null`일 때만 발동한다.
+```
+missionReadModel?.<field> ?? legacy/runtime의 동등 필드
+```
 
-| consumer | 파일 | 사용 필드 | fallback |
-|----------|------|-----------|----------|
-| HumanInboxPanel | `components/HumanInboxPanel.tsx` | `inbox_items` | `payload.human_inbox` |
-| NotificationCenter | `components/NotificationCenter.tsx` | 전체 model | legacy payload |
-| WorkToolPanel | `components/WorkToolPanel.tsx` | `work_phase`, `plan.phase`, `mission_overview.paused`, `oracle_verdict` | run.json / 기존 state |
-| missionOverviewView | `utils/missionOverviewView.ts` | `operational_status`, `mission_overview` | legacy phase |
-| useMissionReadModel | `utils/missionReadModel.ts` | 파싱된 payload | `null` |
-| (6) | (reserved) | | |
-| (7) | (reserved) | | |
+규약은 **presence 기반이지 freshness 기반이 아니다**:
 
-### 8.3 epoch guard
+- `missionReadModel`이 non-null인 조건은 `isUsableMissionReadModel()` — `migrated === true && source === "mission_journal"`. 이 조건을 만족하는 순간 그 세션은 "journal-authoritative"로 취급된다.
+- `missionReadModel`이 non-null이면, 그 안의 **개별 필드 값**(빈 배열/`false`/`0` 포함)이 그대로 이긴다. Legacy로의 fallback은 `missionReadModel` 자체가 `null`일 때(flag off, 미마이그레이션, fetch 실패, 파싱 실패)만 발생한다. 필드 단위 병합(item-by-item merge)은 없다 — 예: `HumanInboxPanel`이 `missionReadModel.inbox_items === []`를 받으면 legacy `human_inbox`에 항목이 남아 있어도 `[]`로 완전히 교체한다. Journal 기준으로는 "pending 없음"이 사실이므로 이는 의도된 동작이다.
+- `event_cursor`는 payload에 실려 오고 숫자 타입 검증만 받는다 — **어떤 consumer도 SSE/runtime 쪽 커서·버전과 비교하지 않는다.** 두 소스 중 어느 쪽이 실제로 더 최신인지 판단하는 로직은 없다. §7 항목 4(SSE cursor/reconnect merge)가 이 자리를 메울 예정이며, 아직 미착수다.
 
-`useMissionReadModel`의 `shouldApplyMissionReadModelEpoch`는 **동일 스트림 내부** 시간순만 보장한다.  
-오래된 응답이 늦게 와도 버린다. 8.2의 cross-source 최신성 문제와는 별개.
+### 8.3 durable 스트림 내부 순서 보장 — epoch guard
 
-### 8.4 보장/비보장 한눈에 보기
+`useMissionReadModel`(`web/src/utils/missionReadModel.ts`)은 2.5초 간격 폴링이다. 8.2의 cross-source join과는 별개로, **같은 스트림 내부**에서의 순서만 별도로 보장한다:
 
-| 보장 | 구현 위치 | 비고 |
-|------|-----------|------|
-| `inbox_items` + `open_execution_gates` cross join | `mission/read_model.py` | `unrelated` / `missing_row` / `open_gate` tag |
-| migrated payload integrity fail-closed | `app/server/routers/mission_read_model.py` | `_payload_integrity_ok` + `try/except` |
-| consumer field precedence | `web/src/utils/missionReadModel.ts`, `components/*` | `?. ??` 패턴 |
-| epoch guard | `web/src/utils/missionReadModel.ts` | 동일 스트림 시간순 |
+- `requestEpoch` ref는 poll마다 단조 증가.
+- 응답 적용 조건은 `shouldApplyMissionReadModelEpoch(requestEpoch.current, epoch)` → `epoch >= requestEpoch.current`.
+- 즉, 오래된 poll이 최신 poll보다 늦게 resolve돼도(네트워크 지연) 버려진다 — `missionReadModel.test.ts`의 durable race 시나리오 테스트로 고정됨.
+- 이 guard는 "durable 스트림이 자기 자신에 대해 시간순인지"만 보장한다. 8.2의 "read-model vs legacy/runtime 중 뭐가 최신인지"는 별개 문제이며 아직 풀리지 않았다.
 
-| 비보장 / 미착수 | 이유 | 다음 단계 |
-|----------------|------|-----------|
-| `event_cursor` vs SSE 쪽 비교 | 현재 server는 cursor를 검증만 하고, client의 SSE stream과 조합하지 않음 | §7.4 SSE cursor/reconnect wiring |
-| durable event merge on reconnect | SSE progress와 Mission event의 시각적 구분 규약이 미정 | §7.4 + §6.4 |
-| `HumanInboxPanel` answer가 `decision_id`, `expected_version` 전송 | 아직 command endpoint contract가 없음 | §7.3 이후 |
+### 8.4 요약 — 지금 안전한 것과 아닌 것
+
+| 보장 대상                                  | 상태                                            |
+| ------------------------------------------- | ------------------------------------------------ |
+| `inbox_items` ↔ `open_execution_gates` 정합 | 파싱 경계에서 강제, 위반 시 payload 전체 폐기    |
+| durable poll 내부 순서 (stale response 무시) | epoch guard로 보장, 테스트 있음                  |
+| read-model vs legacy/runtime 중 최신 판정   | **없음** — presence만 보고 판단, cursor 비교 없음 |
+| SSE reconnect 후 durable event 중복 방지    | **없음** — §7 항목 4 미착수                       |

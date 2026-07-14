@@ -55,6 +55,103 @@ def test_prepare_turn_routing_sets_roles_and_topology(monkeypatch, run_meta):
     assert "task_type" in (run_meta.get("_turn_category") or {})
 
 
+# --- coordination-topology shadow refinement --------------------------------
+# _build_route() only sees the expert-pool *hint* (deep/critical/trading always
+# hint None -> read as 0 specialists). finalize_turn_routing() knows the real
+# active roster and refines the shadow decision — this is the fix for the
+# critical/deep "reads as nobody's around" bug found during dogfooding.
+
+
+def test_full_roster_critical_review_refines_to_peer_quorum(monkeypatch, run_meta):
+    """critical carries no subset hint, so the pre-refinement estimate can only
+    read 0 available specialists. With the real 3-agent roster known, high risk
+    + >=2 specialists correctly reaches PEER_QUORUM instead of ACTOR_CRITIC."""
+    monkeypatch.setenv("AGENT_LAB_TOPIC_ROUTER", "1")
+    run_meta["turn_profile"] = ""  # avoid _PROFILE_CATEGORY["analyze"] short-circuiting to "standard"
+    topic = "프로덕션 DB 마이그레이션 PR 코드 리뷰해줘 — 보안 취약점 검토 필요"
+    result = prepare_turn_routing(topic, run_meta, ["cursor", "codex", "claude"], min_agents=1)
+    assert result.route.category == "critical"
+    assert result.route.task_type == "review"
+    assert result.active == ["cursor", "codex", "claude"]
+    assert result.route.coordination_topology == "peer_quorum"
+    assert result.route.coordination_topology_reason == "high risk requires independent perspectives"
+
+
+def test_narrowed_subset_standard_review_keeps_manager_specialists(monkeypatch, run_meta):
+    """standard/review narrows to a real claude+codex subset — available_specialists
+    reflects that narrowed, finalized roster, not the full pool."""
+    monkeypatch.setenv("AGENT_LAB_TOPIC_ROUTER", "1")
+    run_meta["turn_profile"] = ""  # classify from topic text, not the "analyze" profile shortcut
+    topic = "이 PR 코드 리뷰해줘 — 유저 프로필 업데이트 모듈 변경사항에 대해 피드백 부탁드립니다."
+    result = prepare_turn_routing(topic, run_meta, ["cursor", "codex", "claude"], min_agents=1)
+    assert result.route.category == "standard"
+    assert result.active == ["codex", "claude"]
+    assert result.route.coordination_topology == "manager_specialists"
+
+
+# --- coordination-topology authority (first shadow -> real promotion) -------
+# AGENT_LAB_COORDINATION_TOPOLOGY_AUTHORITY, default off. PEER_QUORUM only ever
+# fires for critical-risk turns, and disagrees with _resolve_topology()'s
+# existing rule specifically for task_type=="code" (which says
+# producer_reviewer — a narrow 2-agent chain, contradicting the project's own
+# "critical = full participation" policy). This is the one case promoted.
+
+
+def test_authority_flag_off_by_default_keeps_producer_reviewer(monkeypatch, run_meta):
+    monkeypatch.delenv("AGENT_LAB_COORDINATION_TOPOLOGY_AUTHORITY", raising=False)
+    monkeypatch.setenv("AGENT_LAB_TOPIC_ROUTER", "1")
+    run_meta["turn_profile"] = ""
+    topic = "프로덕션 결제 시스템 보안 취약점 수정 기능 구현해줘"
+    result = prepare_turn_routing(topic, run_meta, ["cursor", "codex", "claude"], min_agents=1)
+    assert result.route.category == "critical"
+    assert result.route.task_type == "code"
+    assert result.route.coordination_topology == "peer_quorum"
+    assert result.route.topology == "producer_reviewer"  # unchanged — flag is off
+
+
+def test_authority_flag_on_overrides_to_parallel_for_peer_quorum(monkeypatch, run_meta):
+    monkeypatch.setenv("AGENT_LAB_COORDINATION_TOPOLOGY_AUTHORITY", "1")
+    monkeypatch.setenv("AGENT_LAB_TOPIC_ROUTER", "1")
+    run_meta["turn_profile"] = ""
+    topic = "프로덕션 결제 시스템 보안 취약점 수정 기능 구현해줘"
+    result = prepare_turn_routing(topic, run_meta, ["cursor", "codex", "claude"], min_agents=1)
+    assert result.route.coordination_topology == "peer_quorum"
+    assert result.route.topology == "parallel"  # overridden
+
+
+def test_authority_flag_on_does_not_touch_non_peer_quorum_decisions(monkeypatch, run_meta):
+    """standard/review is manager_specialists, not peer_quorum — the flag must
+    not touch topology decisions it wasn't designed for."""
+    monkeypatch.setenv("AGENT_LAB_COORDINATION_TOPOLOGY_AUTHORITY", "1")
+    monkeypatch.setenv("AGENT_LAB_TOPIC_ROUTER", "1")
+    run_meta["turn_profile"] = ""
+    topic = "이 PR 코드 리뷰해줘 — 유저 프로필 업데이트 모듈 변경사항에 대해 피드백 부탁드립니다."
+    result = prepare_turn_routing(topic, run_meta, ["cursor", "codex", "claude"], min_agents=1)
+    assert result.route.coordination_topology == "manager_specialists"
+    assert result.route.topology == "parallel"  # already parallel via task_type=="review", untouched
+
+
+def test_authority_flag_on_is_noop_when_already_parallel(monkeypatch, run_meta):
+    """critical/review already resolves to parallel without the flag — the
+    override must not fire (and not emit a spurious event) when there's
+    nothing to change."""
+    monkeypatch.setenv("AGENT_LAB_COORDINATION_TOPOLOGY_AUTHORITY", "1")
+    monkeypatch.setenv("AGENT_LAB_TOPIC_ROUTER", "1")
+    run_meta["turn_profile"] = ""
+    events: list[tuple[str, dict]] = []
+    topic = "프로덕션 DB 마이그레이션 PR 코드 리뷰해줘 — 보안 취약점 검토 필요"
+    result = prepare_turn_routing(
+        topic,
+        run_meta,
+        ["cursor", "codex", "claude"],
+        min_agents=1,
+        on_event=lambda name, payload: events.append((name, payload)),
+    )
+    assert result.route.coordination_topology == "peer_quorum"
+    assert result.route.topology == "parallel"
+    assert not any(name == "coordination_topology_authority_applied" for name, _ in events)
+
+
 def test_refresh_routing_after_escalation_reassigns_roles(monkeypatch, run_meta):
     monkeypatch.setenv("AGENT_LAB_TOPIC_ROUTER", "1")
     monkeypatch.setenv("AGENT_LAB_ROOM_ROLES", "1")

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "module_level_edges": 24,
+  "module_level_edges": 25,
   "two_cycles": [],
   "notes": {
     "module_level_edges": "Module-level import edges among orchestration packages only (lazy imports excluded).",

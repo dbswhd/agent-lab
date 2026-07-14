@@ -46,8 +46,8 @@
     "claude_": 0
   },
   "tracked_pycache_files": 0,
-  "makefile_lines": 542,
-  "makefile_targets": 112,
+  "makefile_lines": 554,
+  "makefile_targets": 114,
   "large_tsx_files": [
     {
       "path": "web/src/components/ChatComposer.tsx",
@@ -59,7 +59,7 @@
     },
     {
       "path": "web/src/components/HumanInboxPanel.tsx",
-      "lines": 884
+      "lines": 888
     },
     {
       "path": "web/src/components/WorkspaceFilesPanel.tsx",
@@ -111,7 +111,7 @@
     },
     {
       "path": "web/src/hooks/useRoomChatInteractions.ts",
-      "lines": 732
+      "lines": 729
     },
     {
       "path": "web/src/hooks/useRoomChatPresentation.ts",

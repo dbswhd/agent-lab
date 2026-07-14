@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 from agent_lab.run.state import RunStateLike
 
+from agent_lab.mission.topology import TopologyKind
 from agent_lab.topic_router import (
     CategoryRoute,
+    coordination_topology_authority_enabled,
     enrich_route_with_role_plan,
+    refine_coordination_shadow_decision,
     resolve_active_subset,
     resolve_topic_route,
 )
@@ -116,6 +119,7 @@ def finalize_turn_routing(
         _room_preset = str(run_meta.get("room_preset") or "").strip().lower()
         hint = advise_setup(topic, route.category, pool, room_preset=_room_preset, run_meta=run_meta)
 
+    applied_subset: tuple[str, ...] | None = None
     if apply_subset:
         # Default/global roster expansion is not an explicit multi-select. Only skip
         # topic-router expert pools when the caller (or session pin) chose the roster.
@@ -133,6 +137,44 @@ def finalize_turn_routing(
                         "task_type": route.task_type,
                         "category": route.category,
                         "message": (f"Expert Pool — {route.task_type} 작업으로 감지: {', '.join(pool)} 우선 참여."),
+                    },
+                )
+        else:
+            applied_subset = None
+
+    if pool:
+        decision = refine_coordination_shadow_decision(
+            route.category,
+            route.task_type,
+            debate_rounds=route.debate_rounds,
+            max_rounds=route.max_rounds,
+            max_calls=route.max_calls,
+            active_roster=pool,
+            applied_subset=applied_subset,
+        )
+        route = replace(
+            route,
+            coordination_topology=decision.kind.value,
+            coordination_topology_reason=decision.reason,
+        )
+        # First (and currently only) case promoted from shadow to real behavior —
+        # see coordination_topology_authority_enabled()'s docstring for why
+        # PEER_QUORUM specifically. Default off.
+        previous_topology = route.topology
+        if (
+            decision.kind is TopologyKind.PEER_QUORUM
+            and previous_topology != "parallel"
+            and coordination_topology_authority_enabled()
+        ):
+            route = replace(route, topology="parallel")
+            if on_event:
+                on_event(
+                    "coordination_topology_authority_applied",
+                    {
+                        "from_topology": previous_topology,
+                        "to_topology": "parallel",
+                        "reason": decision.reason,
+                        "category": route.category,
                     },
                 )
 

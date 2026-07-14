@@ -829,7 +829,11 @@ export function HumanInboxPanel({
         onClick={() => setComposerExpanded((open) => !open)}
       >
         {lead ? <Avatar role={inboxAgent(lead)} size={20} /> : null}
-        <span className="human-inbox__composer-headline composer-dock-card__headline">
+        <span
+          className="human-inbox__composer-headline composer-dock-card__headline"
+          role="status"
+          aria-live="polite"
+        >
           <span className="human-inbox__composer-kicker">
             {lead?.kind === "question"
               ? ko

@@ -66,17 +66,27 @@ def _audit_journal(folder: Path) -> dict[str, Any]:
             continue
         if not isinstance(record, dict):
             error_count += 1
-            findings.append({"dimension": "journal", "severity": "error", "detail": f"line {line_number}: record must be an object"})
+            findings.append(
+                {"dimension": "journal", "severity": "error", "detail": f"line {line_number}: record must be an object"}
+            )
             continue
         rows = record.get("events") if record.get("record_type") == "batch" else [record]
         if not isinstance(rows, list) or not rows:
             error_count += 1
-            findings.append({"dimension": "journal", "severity": "error", "detail": f"line {line_number}: batch events must be a non-empty list"})
+            findings.append(
+                {
+                    "dimension": "journal",
+                    "severity": "error",
+                    "detail": f"line {line_number}: batch events must be a non-empty list",
+                }
+            )
             continue
         for row in rows:
             if not isinstance(row, dict) or not row.get("event_type"):
                 error_count += 1
-                findings.append({"dimension": "journal", "severity": "error", "detail": f"line {line_number}: event is invalid"})
+                findings.append(
+                    {"dimension": "journal", "severity": "error", "detail": f"line {line_number}: event is invalid"}
+                )
                 continue
             events.append(row)
 
@@ -220,7 +230,14 @@ def main() -> int:
     args = parser.parse_args()
     report = run_audit(args.sessions, cohort_only=args.cohort)
     print(json.dumps(report, ensure_ascii=False, indent=2))
-    return 0 if report["duplicate_count"] == 0 and report["invalid_json"] == 0 and report["error_count"] == 0 and report["not_found"] == 0 else 1
+    return (
+        0
+        if report["duplicate_count"] == 0
+        and report["invalid_json"] == 0
+        and report["error_count"] == 0
+        and report["not_found"] == 0
+        else 1
+    )
 
 
 if __name__ == "__main__":

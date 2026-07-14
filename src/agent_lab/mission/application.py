@@ -102,7 +102,9 @@ class MissionApplication:
             raise MissionApplicationError(f"inbox item is missing: {item_id}")
         prompt = str(item.get("prompt") or item.get("summary") or item.get("kind") or "Human decision")
         decision = new_decision(item_id, self.session_folder.name, prompt, str(item.get("kind") or "question"))
-        path = self.session_folder / ".agent-lab" / "decisions" / f"{hashlib.sha256(item_id.encode()).hexdigest()}.jsonl"
+        path = (
+            self.session_folder / ".agent-lab" / "decisions" / f"{hashlib.sha256(item_id.encode()).hexdigest()}.jsonl"
+        )
         DecisionRepository(path, decision).answer(AnswerDecision(answer))
         resolve_inbox_item(self.session_folder, item_id, decision=answer, note=note, append_chat=False)
         mission = self.load()

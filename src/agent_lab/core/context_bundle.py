@@ -46,6 +46,10 @@ class ContextBundleMeta:
     repo_layer: str | None = None
     repo_map_enabled: bool | None = None
     compact_tool_output: bool | None = None
+    # context.recipe.select_context() shadow decision — diagnostic only, does
+    # not drive what actually got included above. Plain dict (not the recipe
+    # module's own types) because this package is enforced dependency-zero.
+    context_recipe_shadow: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         row = {
@@ -86,6 +90,8 @@ class ContextBundleMeta:
         row["repo_layer"] = self.repo_layer or ("repo_map" if repo_map_enabled else "repo_tree")
         row["repo_map_enabled"] = repo_map_enabled
         row["compact_tool_output"] = compact_tool_output
+        if self.context_recipe_shadow is not None:
+            row["context_recipe_shadow"] = dict(self.context_recipe_shadow)
         return row
 
 

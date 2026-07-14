@@ -8,6 +8,7 @@ from typing import Any, Literal
 
 from agent_lab.env_flags import is_truthy
 from agent_lab.mission.application import MissionApplication, MissionApplicationError
+from agent_lab.mission.dispatcher import DispatchReceipt, LocalDispatcher
 from agent_lab.mission.dual_write_observability import record_dual_write_event
 from agent_lab.mission.kernel import (
     ApproveDiff,
@@ -22,6 +23,7 @@ from agent_lab.mission.kernel import (
     StartExecution,
 )
 from agent_lab.mission.errors import MissionTransitionError
+from agent_lab.mission.messages import ActorKind, ActorRef, MessageEnvelope, MessageKind
 from agent_lab.mission.repository import MissionRepository
 from agent_lab.run.meta import read_run_meta
 
@@ -189,7 +191,11 @@ def mirror_plan_approval(folder: Path, *, goal: str | None = None) -> dict[str, 
         mission = MissionApplication(folder, _goal(folder, goal)).approve_plan()
     except (MissionApplicationError, MissionTransitionError, OSError, ValueError) as exc:
         return _result(operation="plan_approve", mirrored=False, reason=str(exc)[:240])
-    return {**_result(operation="plan_approve", mirrored=True), "state": mission.state.value, "version": mission.version}
+    return {
+        **_result(operation="plan_approve", mirrored=True),
+        "state": mission.state.value,
+        "version": mission.version,
+    }
 
 
 @_observed
@@ -287,6 +293,42 @@ def mirror_inbox_creation(folder: Path, *, item_id: str, kind: str = "", reason:
     }
 
 
+_INBOX_DECISION_DISPATCHER = LocalDispatcher()
+_INBOX_DECISION_DISPATCHER.register_command("inbox.resolve", lambda _message: None)
+
+
+def _dispatch_inbox_decision_message(folder: Path, *, item_id: str, answer: str) -> DispatchReceipt:
+    """Route the real human-answer event through the doc-08 message/dispatcher
+    contract (mission.messages/mission.dispatcher) — diagnostic only,
+    mirror_inbox_resolution() below remains the sole Mission state mutator.
+
+    Reuses the same idempotency_key mirror_inbox_resolution() already dispatches
+    to the journal with (ResolveBlock, line below) rather than inventing a new
+    one, so the dispatcher's in-memory dedup and the journal's own idempotency
+    check agree on what counts as "the same decision."
+
+    Caveat: LocalDispatcher._seen_commands has no expiry, and this dispatcher
+    is a process-lifetime singleton — its dedup is a same-process fast-path
+    signal, not a substitute for the journal's own per-mission idempotency
+    check (which is what actually protects correctness and is properly
+    bounded). Do not grow reliance on this beyond diagnostics without giving
+    it a real eviction policy first.
+    """
+    envelope = MessageEnvelope(
+        message_id=f"inbox-resolve:{folder.name}:{item_id}",
+        schema_name="inbox.resolve",
+        schema_version=1,
+        kind=MessageKind.HUMAN_DECISION,
+        mission_id=folder.name,
+        sender=ActorRef(kind=ActorKind.HUMAN, id="human", authority_scope="inbox.answer"),
+        recipient=ActorRef(kind=ActorKind.CONDUCTOR, id="mission", authority_scope="mission.write"),
+        correlation_id=f"{folder.name}:{item_id}",
+        payload={"item_id": item_id, "answer": answer},
+        idempotency_key=f"inbox-resolve:{item_id}:{answer.strip()}",
+    )
+    return _INBOX_DECISION_DISPATCHER.dispatch(envelope)
+
+
 @_observed
 def mirror_inbox_resolution(folder: Path, *, item_id: str, answer: str = "") -> dict[str, Any]:
     """Close the execution-level gate for this item, if one is open.
@@ -296,12 +338,17 @@ def mirror_inbox_resolution(folder: Path, *, item_id: str, answer: str = "") -> 
     sitting in it — that mechanism is untouched and still valid, just no
     longer the only thing this bridge understands.
     """
+    receipt = _dispatch_inbox_decision_message(folder, item_id=item_id, answer=answer)
     blocked = _blocked_result(folder, "inbox_resolve")
     if blocked is not None:
-        return blocked
+        return {**blocked, "message_dispatch": {"handled": receipt.handled, "duplicate": receipt.duplicate}}
+    dispatch_diag = {"handled": receipt.handled, "duplicate": receipt.duplicate}
     journal = folder / ".agent-lab" / "mission-events.jsonl"
     if not journal.is_file():
-        return _result(operation="inbox_resolve", mirrored=False, reason="mission_journal_missing")
+        return {
+            **_result(operation="inbox_resolve", mirrored=False, reason="mission_journal_missing"),
+            "message_dispatch": dispatch_diag,
+        }
     repo = MissionRepository(journal, folder.name, _goal(folder))
     mission = repo.load()
     try:
@@ -309,11 +356,15 @@ def mirror_inbox_resolution(folder: Path, *, item_id: str, answer: str = "") -> 
             mission = repo.dispatch(ResolveBlock(), idempotency_key=f"inbox-resolve:{item_id}:{answer.strip()}")
         mission = repo.dispatch(CloseExecutionGate(item_id), idempotency_key=f"gate-close:{item_id}")
     except (MissionTransitionError, OSError, ValueError) as exc:
-        return _result(operation="inbox_resolve", mirrored=False, reason=str(exc)[:240])
+        return {
+            **_result(operation="inbox_resolve", mirrored=False, reason=str(exc)[:240]),
+            "message_dispatch": dispatch_diag,
+        }
     return {
         **_result(operation="inbox_resolve", mirrored=True),
         "state": mission.state.value,
         "open_gate_count": len(mission.open_gates),
+        "message_dispatch": dispatch_diag,
     }
 
 
@@ -518,7 +569,11 @@ def _execution_transition(
             if mission.state is MissionState.VERIFYING and mission.merged_commit_sha is None and commit_sha:
                 mission = repo.dispatch(RecordMerge(commit_sha), idempotency_key=f"merge:{execution_id}:{commit_sha}")
             repair_history_raw = execution.get("repair_history")
-            repair_history = [row for row in repair_history_raw if isinstance(row, dict)] if isinstance(repair_history_raw, list) else []
+            repair_history = (
+                [row for row in repair_history_raw if isinstance(row, dict)]
+                if isinstance(repair_history_raw, list)
+                else []
+            )
             for repair in repair_history:
                 attempt = int(repair.get("attempt") or 0)
                 before_raw = repair.get("oracle_before")
@@ -530,9 +585,13 @@ def _execution_transition(
                         idempotency_key=f"oracle-fail:{execution_id}:{attempt}:{detail}",
                     )
                 if mission.state is MissionState.REPAIRING:
-                    mission = repo.dispatch(MarkDiffReady(), idempotency_key=f"repair-diff-ready:{execution_id}:{attempt}")
+                    mission = repo.dispatch(
+                        MarkDiffReady(), idempotency_key=f"repair-diff-ready:{execution_id}:{attempt}"
+                    )
                 if mission.state is MissionState.AWAITING_DIFF_DECISION:
-                    mission = repo.dispatch(ApproveDiff(), idempotency_key=f"repair-diff-approve:{execution_id}:{attempt}")
+                    mission = repo.dispatch(
+                        ApproveDiff(), idempotency_key=f"repair-diff-approve:{execution_id}:{attempt}"
+                    )
                 repair_merge_raw = repair.get("merge")
                 repair_merge: dict[str, Any] = repair_merge_raw if isinstance(repair_merge_raw, dict) else {}
                 repair_sha = str(repair_merge.get("commit_sha") or repair.get("exec_commit_sha") or "")
@@ -546,9 +605,13 @@ def _execution_transition(
             if mission.state is MissionState.VERIFYING:
                 oracle_raw = execution.get("oracle")
                 oracle: dict[str, Any] = oracle_raw if isinstance(oracle_raw, dict) else {}
-                verdict = OracleVerdict.PASS if str(oracle.get("verdict") or "").lower() == "pass" else OracleVerdict.FAIL
+                verdict = (
+                    OracleVerdict.PASS if str(oracle.get("verdict") or "").lower() == "pass" else OracleVerdict.FAIL
+                )
                 detail = str(oracle.get("detail") or oracle.get("reason") or "")
-                mission = repo.dispatch(RecordOracle(verdict, detail), idempotency_key=f"oracle:{execution_id}:{verdict.value}:{detail}")
+                mission = repo.dispatch(
+                    RecordOracle(verdict, detail), idempotency_key=f"oracle:{execution_id}:{verdict.value}:{detail}"
+                )
     except (MissionTransitionError, OSError, ValueError) as exc:
         return _result(operation=operation, mirrored=False, reason=str(exc)[:240])
     payload: dict[str, Any] = {

@@ -17,6 +17,15 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     import agent_lab.session as session_mod
     import app.server.deps as deps_mod
 
+    # /api/room/runs drives _run_with_lock() -> try_begin_run(), which holds
+    # a real cross-process fcntl lock at config_dir()/run.lock. Without a
+    # private dir per test, concurrent xdist workers race on the same
+    # shared machine-wide lock file: try_begin_run() spuriously returns
+    # False, the lock-blocked branch fires without ever calling run_body(),
+    # and the mocked synthesize_session_plan never runs (KeyError: 'folder'
+    # on the `called` dict — see tests/test_run_control.py's
+    # _isolate_run_lock for the full story).
+    monkeypatch.setenv("AGENT_LAB_CONFIG_DIR", str(tmp_path / ".agent-lab-config"))
     monkeypatch.setattr(session_mod, "SESSIONS_DIR", tmp_path)
     monkeypatch.setattr(deps_mod, "SESSIONS_DIR", tmp_path)
     folder = tmp_path / "sess-synth"

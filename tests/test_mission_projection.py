@@ -161,6 +161,7 @@ def test_decide_plan_reapplies_projection_before_noop_batch(tmp_path: Path, monk
         "agent_lab.mission.repository.plan_decision_events",
         lambda *_args: (),
     )
+
     def stale(run: RunState) -> RunState:
         run["mission_loop"] = {"phase": "DISCUSS", "work_phase": "plan_draft"}
         return run

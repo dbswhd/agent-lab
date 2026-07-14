@@ -87,7 +87,15 @@ def _decode_event(raw: Any, line_number: int) -> StoredEvent:
         raise JournalCorruptionError(line_number, "mission_id must be text")
     if not isinstance(schema_version, int) or isinstance(schema_version, bool):
         raise JournalCorruptionError(line_number, "schema_version must be an integer")
-    return StoredEvent(sequence=sequence, event_id=event_id, event_type=event_type, payload=payload, idempotency_key=idempotency_key, mission_id=mission_id, schema_version=schema_version)
+    return StoredEvent(
+        sequence=sequence,
+        event_id=event_id,
+        event_type=event_type,
+        payload=payload,
+        idempotency_key=idempotency_key,
+        mission_id=mission_id,
+        schema_version=schema_version,
+    )
 
 
 def _decode_record(line: bytes, line_number: int) -> tuple[StoredEvent, ...]:
@@ -205,9 +213,8 @@ class MissionJournal:
                     if len(existing) != len(events):
                         raise JournalIdempotencyError(idempotency_key, "event count differs")
                     for stored_event, pending in zip(existing, events, strict=True):
-                        if (
-                            stored_event.event_type != pending.event_type
-                            or dict(stored_event.payload) != dict(pending.payload)
+                        if stored_event.event_type != pending.event_type or dict(stored_event.payload) != dict(
+                            pending.payload
                         ):
                             raise JournalIdempotencyError(idempotency_key, "event payload differs")
                     return existing
@@ -226,6 +233,7 @@ class MissionJournal:
                 )
                 for index, event in enumerate(events)
             )
+
             def event_record(event: StoredEvent) -> dict[str, JsonValue]:
                 return {
                     "event_id": event.event_id,

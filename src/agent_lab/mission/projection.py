@@ -10,6 +10,8 @@ from agent_lab.run.meta import patch_run_meta, read_run_meta
 from agent_lab.run.state import RunState, RunStateLike
 
 if TYPE_CHECKING:
+    # Type-only: keeps `mission` from depending on `runtime` at module-import time
+    # (runtime already depends on mission via runtime/snapshot.py — see layer_cycle_check.py).
     from agent_lab.runtime.work_phase import WorkPhase
 
 
@@ -131,7 +133,10 @@ def apply_mission_loop_status_projection(folder: Path, mission: Mission) -> None
     projected_fields = {key: value for key, value in projection.items() if key != "autonomous_segment"}
     autonomous = mission_loop.get("autonomous_segment")
     autonomous_active = autonomous.get("active") if isinstance(autonomous, dict) else None
-    if all(mission_loop.get(key) == value for key, value in projected_fields.items()) and autonomous_active == projection["autonomous_segment"]["active"]:
+    if (
+        all(mission_loop.get(key) == value for key, value in projected_fields.items())
+        and autonomous_active == projection["autonomous_segment"]["active"]
+    ):
         return
 
     def update(run: RunState) -> RunState:
@@ -141,7 +146,10 @@ def apply_mission_loop_status_projection(folder: Path, mission: Mission) -> None
         projected_fields = {key: value for key, value in projection.items() if key != "autonomous_segment"}
         autonomous = dict(mission_loop.get("autonomous_segment") or {})
         autonomous_active = projection["autonomous_segment"]["active"]
-        if all(mission_loop.get(key) == value for key, value in projected_fields.items()) and autonomous.get("active") == autonomous_active:
+        if (
+            all(mission_loop.get(key) == value for key, value in projected_fields.items())
+            and autonomous.get("active") == autonomous_active
+        ):
             return run
         mission_loop.update(projected_fields)
         autonomous["active"] = autonomous_active

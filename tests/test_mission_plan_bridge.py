@@ -18,7 +18,9 @@ def test_plan_bridge_approval_binds_content_hash() -> None:
 
 def test_plan_bridge_rejection_returns_to_drafting() -> None:
     mission = new_mission("m-1", "refactor auth")
-    events = plan_decision_events(mission, "# Plan\n\nfix auth\n", PlanApprovalDecision(approved=False, note="missing test"))
+    events = plan_decision_events(
+        mission, "# Plan\n\nfix auth\n", PlanApprovalDecision(approved=False, note="missing test")
+    )
     assert isinstance(events[-1], PlanRejected)
     current = mission
     for event in events:

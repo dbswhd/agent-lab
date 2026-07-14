@@ -164,6 +164,72 @@ def test_inbox_creation_bridge_opens_gate_mid_execution(tmp_path: Path, monkeypa
     assert mission.open_gates == ()
 
 
+# --- doc-08 message/dispatcher wiring ---------------------------------------
+# mirror_inbox_resolution() routes every real human-answer event through the
+# mission.messages/mission.dispatcher contract (diagnostic only — the mirror
+# call above remains the sole Mission state mutator). These lock the shape and
+# the one behavior genuinely worth having: a repeated identical answer is
+# flagged as a dispatcher-level duplicate.
+
+
+def test_inbox_resolution_reports_message_dispatch(tmp_path: Path, monkeypatch) -> None:
+    folder = _session(tmp_path, monkeypatch)
+    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
+    from agent_lab.mission.kernel import StartExecution
+
+    application = MissionApplication(folder, "ship")
+    application.approve_plan()
+    application.repository.dispatch(StartExecution())
+    item = create_inbox_item(folder, kind="question", source="test", prompt="which approach?")
+    resolve_inbox_item(folder, item["id"], decision="yes", append_chat=False)
+
+    result = mirror_inbox_resolution(folder, item_id=item["id"], answer="yes")
+
+    assert result["message_dispatch"] == {"handled": True, "duplicate": False}
+
+
+def test_repeated_identical_answer_is_flagged_duplicate_at_the_message_layer(tmp_path: Path, monkeypatch) -> None:
+    """A retried/double-submitted answer for the same item+answer is caught by
+    the dispatcher's dedup before it would matter — the underlying mission
+    mutation is separately idempotent too (journal-level), so this specifically
+    proves the message layer agrees, not that it's the only thing protecting
+    correctness."""
+    folder = _session(tmp_path, monkeypatch)
+    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
+    from agent_lab.mission.kernel import StartExecution
+
+    application = MissionApplication(folder, "ship")
+    application.approve_plan()
+    application.repository.dispatch(StartExecution())
+    item = create_inbox_item(folder, kind="question", source="test", prompt="which approach?")
+    resolve_inbox_item(folder, item["id"], decision="yes", append_chat=False)
+
+    first = mirror_inbox_resolution(folder, item_id=item["id"], answer="yes")
+    second = mirror_inbox_resolution(folder, item_id=item["id"], answer="yes")
+
+    assert first["message_dispatch"]["duplicate"] is False
+    assert second["message_dispatch"]["duplicate"] is True
+    # a different answer for a different item is a distinct message, not a duplicate
+    other = create_inbox_item(folder, kind="question", source="test", prompt="another one?")
+    resolve_inbox_item(folder, other["id"], decision="no", append_chat=False)
+    third = mirror_inbox_resolution(folder, item_id=other["id"], answer="no")
+    assert third["message_dispatch"]["duplicate"] is False
+
+
+def test_message_dispatch_present_even_when_dual_write_is_off(tmp_path: Path, monkeypatch) -> None:
+    """The message/dispatcher observation runs regardless of the dual-write
+    cohort gate — it's modeling the real human-decision event, not the mirror
+    bridge's own opt-in scope."""
+    folder = _session(tmp_path, monkeypatch)
+    monkeypatch.delenv("AGENT_LAB_MISSION_DUAL_WRITE", raising=False)
+    item = create_inbox_item(folder, kind="question", source="test", prompt="proceed?")
+
+    result = mirror_inbox_resolution(folder, item_id=item["id"], answer="yes")
+
+    assert result["mirrored"] is False
+    assert result["message_dispatch"] == {"handled": True, "duplicate": False}
+
+
 def test_full_inbox_pause_resume_lifecycle_without_manual_mission_setup(tmp_path: Path, monkeypatch) -> None:
     """End-to-end: plan approve -> a real inbox question fires -> it gets resolved,
     driven entirely through the production functions (mirror_plan_approval,
@@ -360,7 +426,9 @@ def test_merge_confirm_closes_orphan_gate_without_legacy_inbox(tmp_path: Path, m
     application = MissionApplication(folder, "ship")
     application.approve_plan()
     gate_id = "inbox-orphan-gate"
-    mirror_inbox_creation(folder, item_id=gate_id, kind="question", reason="mission circuit_breaker: structural_execution_failure")
+    mirror_inbox_creation(
+        folder, item_id=gate_id, kind="question", reason="mission circuit_breaker: structural_execution_failure"
+    )
     assert {g.gate_id for g in application.load().open_gates} == {gate_id}
 
     result = mirror_execution_transition(
@@ -594,7 +662,11 @@ def test_execution_write_authority_commit_approve(tmp_path: Path, monkeypatch) -
     monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
     monkeypatch.setenv("AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY", "1")
 
-    from agent_lab.mission.dual_write import commit_execution_transition, execution_write_authority_enabled, mirror_execution_transition
+    from agent_lab.mission.dual_write import (
+        commit_execution_transition,
+        execution_write_authority_enabled,
+        mirror_execution_transition,
+    )
 
     assert execution_write_authority_enabled(folder) is False
     MissionApplication(folder, "ship").approve_plan()

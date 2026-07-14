@@ -3,10 +3,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
-from typing import Any, assert_never
+from typing import TYPE_CHECKING, Any, assert_never
 
 from agent_lab.mission.kernel import GateRecord, Mission, MissionState, OracleVerdict
-from agent_lab.runtime.work_phase import WorkPhase
+from agent_lab.run.state import RunStateLike
+
+if TYPE_CHECKING:
+    # Type-only: keeps `mission` from depending on `runtime` at module-import time
+    # (runtime already depends on mission via runtime/snapshot.py — see layer_cycle_check.py).
+    from agent_lab.runtime.work_phase import WorkPhase
 
 
 class MissionOperationalStatus(StrEnum):
@@ -203,7 +208,7 @@ def plan_phase_from_mission(mission: Mission, *, legacy_plan_phase: str | None =
 
 
 def _inbox_summary_from_run(
-    run: dict[str, Any],
+    run: RunStateLike,
     *,
     open_gate_count: int = 0,
     joined_items: tuple[dict[str, Any], ...] | None = None,
@@ -231,7 +236,7 @@ def _inbox_summary_from_run(
     )
 
 
-def _joined_inbox_items(mission: Mission, run: dict[str, Any]) -> tuple[dict[str, Any], ...]:
+def _joined_inbox_items(mission: Mission, run: RunStateLike) -> tuple[dict[str, Any], ...]:
     """Wave B cross join: inbox rows + open execution gates, with gate status tags.
 
     - Gate-matched rows keep their data and receive a ``mission_gate_status`` tag.
@@ -287,7 +292,7 @@ def _joined_inbox_items(mission: Mission, run: dict[str, Any]) -> tuple[dict[str
 
 def _plan_view_from_run_and_mission(
     mission: Mission | None,
-    run: dict[str, Any],
+    run: RunStateLike,
 ) -> PlanView:
     raw_plan_workflow = run.get("plan_workflow")
     pw: dict[str, Any] = raw_plan_workflow if isinstance(raw_plan_workflow, dict) else {}
@@ -337,7 +342,7 @@ def build_read_model(
     mission: Mission,
     *,
     legacy_phase: str | None = None,
-    run: dict[str, Any] | None = None,
+    run: RunStateLike | None = None,
 ) -> MissionReadModel:
     run_meta = run if isinstance(run, dict) else {}
     operational = compute_operational_status(mission)
@@ -382,7 +387,7 @@ def build_read_model(
     )
 
 
-def build_legacy_composites(run: dict[str, Any]) -> dict[str, Any]:
+def build_legacy_composites(run: RunStateLike) -> dict[str, Any]:
     """Wave A composites for unmigrated sessions (run.json only)."""
     plan = _plan_view_from_run_and_mission(None, run)
     inbox = _inbox_summary_from_run(run, open_gate_count=0)

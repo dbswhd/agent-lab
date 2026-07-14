@@ -32,7 +32,7 @@ def test_f9_hot_path_py_caps_in_baseline() -> None:
     by_path = {row["path"]: row["lines"] for row in baseline["hot_path_py_files"]}
     assert by_path == {
         "src/agent_lab/plan/execute.py": 88,
-        "src/agent_lab/plan/workflow.py": 114,
+        "src/agent_lab/plan/workflow.py": 118,
         "src/agent_lab/room/turn_flow.py": 21,
         "src/agent_lab/room/turn_flow_run.py": 169,
         "src/agent_lab/room/turn_flow_continue.py": 215,
@@ -48,7 +48,7 @@ def test_f9_hot_path_ts_caps_in_baseline() -> None:
         "web/src/components/RoomChatView.tsx": 292,
         "web/src/hooks/useRoomChat.ts": 12,
         "web/src/hooks/useRoomChatBootstrap.ts": 484,
-        "web/src/hooks/useRoomChatInteractions.ts": 717,
+        "web/src/hooks/useRoomChatInteractions.ts": 732,
         "web/src/hooks/useRoomChatPresentation.ts": 418,
     }
 

@@ -260,13 +260,32 @@ def run_assertions(worktree: Path, assertions: list[str]) -> list[AssertionResul
 # ---------------------------------------------------------------------------
 
 
+def _xdist_available() -> bool:
+    import importlib.util
+
+    return importlib.util.find_spec("xdist") is not None
+
+
 def run_held_out(worktree: Path, *, exclude_topics: list[str]) -> dict[str, Any]:
     """test-fast in the worktree. ``exclude_topics`` documents the held-in
     scope in the report (dogfood topics aren't pytest node ids, so the actual
     exclusion is enforced by held_in_scope() at candidate-selection time, not
-    by filtering this pytest run — see HS4-2)."""
+    by filtering this pytest run — see HS4-2).
+
+    Mirrors ``make test-fast``'s xdist detection (Makefile ``test-fast``
+    target): plain sequential ``pytest tests/`` only ever gets exercised here,
+    never in day-to-day dev (everyone runs ``-n auto``), so it was the first
+    real run to surface order-dependent test pollution unrelated to any
+    candidate's diff (2026-07-14 HS4 dogfood — 8 mission_read_model/
+    dual_write + 6 mypy-ratchet tests failed sequentially, passed individually
+    and under ``-n auto``). Without ``-n auto`` here, held-out would
+    structurally reject every candidate regardless of its actual diff.
+    """
+    node_ids = ["tests/", "-m", "not live and not integration and not bridge"]
+    if _xdist_available():
+        node_ids += ["-n", "auto"]
     env = _pytest_env(worktree)
-    proc = _run_pytest(["tests/", "-m", "not live and not integration and not bridge"], cwd=worktree, env=env)
+    proc = _run_pytest(node_ids, cwd=worktree, env=env)
     return {
         "scope": "test-fast minus held_in",
         "excluded_topics": list(exclude_topics),

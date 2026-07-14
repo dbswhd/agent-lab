@@ -17,7 +17,7 @@ import re
 from dataclasses import dataclass, field, replace
 from typing import Any, Literal
 
-from agent_lab.env_flags import is_falsy
+from agent_lab.env_flags import is_falsy, is_truthy
 from agent_lab.mission.topology import (
     CoordinationNeed,
     RiskLevel,
@@ -270,6 +270,20 @@ class CategoryRoute:
 
 def topic_router_enabled() -> bool:
     return not is_falsy(os.getenv("AGENT_LAB_TOPIC_ROUTER"))
+
+
+def coordination_topology_authority_enabled() -> bool:
+    """Default off — see AGENT_LAB_COORDINATION_TOPOLOGY_AUTHORITY in runtime_flags.py.
+
+    The only kind currently wired to real behavior is PEER_QUORUM: PEER_QUORUM
+    only ever fires for critical-risk turns (the sole RiskLevel.HIGH category)
+    with >=2 real active agents, and it's the one case that disagrees with
+    _resolve_topology()'s existing rule in a direction the project's own
+    documented critical-category policy ("전원 참여, 다양성 최대화") already
+    calls for: producer_reviewer is a narrow 2-agent sequential chain,
+    parallel is independent simultaneous review by everyone active.
+    """
+    return is_truthy(os.getenv("AGENT_LAB_COORDINATION_TOPOLOGY_AUTHORITY"))
 
 
 def _env_int(key: str) -> int | None:

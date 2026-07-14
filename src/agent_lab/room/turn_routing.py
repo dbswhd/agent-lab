@@ -7,8 +7,10 @@ from typing import Any
 
 from agent_lab.run.state import RunStateLike
 
+from agent_lab.mission.topology import TopologyKind
 from agent_lab.topic_router import (
     CategoryRoute,
+    coordination_topology_authority_enabled,
     enrich_route_with_role_plan,
     refine_coordination_shadow_decision,
     resolve_active_subset,
@@ -155,6 +157,26 @@ def finalize_turn_routing(
             coordination_topology=decision.kind.value,
             coordination_topology_reason=decision.reason,
         )
+        # First (and currently only) case promoted from shadow to real behavior —
+        # see coordination_topology_authority_enabled()'s docstring for why
+        # PEER_QUORUM specifically. Default off.
+        previous_topology = route.topology
+        if (
+            decision.kind is TopologyKind.PEER_QUORUM
+            and previous_topology != "parallel"
+            and coordination_topology_authority_enabled()
+        ):
+            route = replace(route, topology="parallel")
+            if on_event:
+                on_event(
+                    "coordination_topology_authority_applied",
+                    {
+                        "from_topology": previous_topology,
+                        "to_topology": "parallel",
+                        "reason": decision.reason,
+                        "category": route.category,
+                    },
+                )
 
     route = apply_turn_role_plan(route, run_meta, pool, topic=topic, hint=hint)
     return TurnRoutingResult(route=route, active=pool, hint=hint)

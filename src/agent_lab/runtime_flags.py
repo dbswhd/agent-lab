@@ -59,6 +59,14 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         "AGENT_LAB_STAGE_ROUTING", "feature", "Phase-aware single-vs-panel routing (stage-aware selective; default off)"
     ),
     FlagDef(
+        "AGENT_LAB_COORDINATION_TOPOLOGY_AUTHORITY",
+        "feature",
+        "mission.topology PEER_QUORUM shadow decision drives real routing: forces "
+        "critical-risk turns with >=2 active agents to parallel topology instead of "
+        "producer_reviewer (default off — shadow-only until dogfooded)",
+        default="0",
+    ),
+    FlagDef(
         "AGENT_LAB_ANTIDRIFT",
         "feature",
         "Structural anti-drift defenses for panel turns (state re-injection, unanimity red-team, fresh-eyes critic seat; default off)",

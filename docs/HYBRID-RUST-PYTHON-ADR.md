@@ -1,7 +1,7 @@
 # ADR — Hybrid Rust + Python (packaging + conditional native)
 
 > **Status:** Accepted (2026-06-28)  
-> **Baseline:** tag `baseline/pre-hybrid-rust-2026-06-28` · [PACKAGING-BASELINE.md](./PACKAGING-BASELINE.md)  
+> **Baseline:** tag `baseline/pre-hybrid-rust-2026-06-28` · [PACKAGING-BASELINE.md](./archive/legacy/PACKAGING-BASELINE.md)  
 > **Supersedes:** informal “repo_map Rust in 4 weeks” rollout sketch
 
 ---
@@ -81,7 +81,7 @@ Users should not manually manage `:8765`. Desktop shell supervises API lifecycle
 
 ### Phase 1.1 — ADR + doc cross-links
 
-- This document + [PACKAGING-BASELINE.md](./PACKAGING-BASELINE.md) hybrid section
+- This document + [PACKAGING-BASELINE.md](./archive/legacy/PACKAGING-BASELINE.md) hybrid section
 - [ARCHITECTURE.md](./ARCHITECTURE.md) §6.5 link here
 
 **Exit:** merged; team agrees Track 2 is conditional.
@@ -114,7 +114,7 @@ HTTP `:8765` stays canonical. UDS / named pipe only if port conflicts or securit
 >
 > - **syntax_gate**: micro-bench gate **FAIL** (Phase 2.2). CPython `compile()` is already a C fast path; relief ceiling ~0.078% of a mock turn — structurally below the 5% gate regardless of Rust speed.
 > - **repo_map**: the ~98% context-build share / ~800 ms reported in Phase 2.0 below was a **Python over-scan bug**, not an inherent hot path. `bound_python_files` only pruned above `MAX_FILES=2000`, so a 842-file repo parsed the whole tree to fill a 1 KB budget. Fixed in Python — seed + import-hop-1 bounding in [`repo_map_core.py`](../src/agent_lab/repo_map_core.py): **780 ms → 134 ms (5.8×)** on this repo, output richer. No native ROI remains.
-> - **Disposition**: the Rust crate, `AGENT_LAB_SYNTAX_GATE_RUST` flag + shim, `make native-dev/native-test`, the `AGENT_LAB_BUNDLE_NATIVE` guard, and the native micro-bench script/tests are **deleted**. Kept: the decision record ([TRACK2-NATIVE-GATE.md](./TRACK2-NATIVE-GATE.md)) and the Python `*_core` seams — the durable win.
+> - **Disposition**: the Rust crate, `AGENT_LAB_SYNTAX_GATE_RUST` flag + shim, `make native-dev/native-test`, the `AGENT_LAB_BUNDLE_NATIVE` guard, and the native micro-bench script/tests are **deleted**. Kept: the decision record ([TRACK2-NATIVE-GATE.md](./archive/rfcs/TRACK2-NATIVE-GATE.md)) and the Python `*_core` seams — the durable win.
 > - **Durable lesson**: the first optimization is the Python algorithm (over-scan; `compile`→`ast`), never Rust. Re-open only on the documented scan-volume trigger (≥100× file count) — and re-measure the Python path first.
 > - Phase 2.0 / 2.1 / 2.2 below are retained as the historical record that led here.
 
@@ -198,7 +198,7 @@ Adding PyO3 to `.app` implies:
 
 ### Phase 2.0 — Profile — **shipped**
 
-Script: [`scripts/profile_track2_gate.py`](../scripts/profile_track2_gate.py) · Report: [TRACK2-PROFILE.md](./TRACK2-PROFILE.md) · Baseline: [`tests/fixtures/track2-profile-report.json`](../tests/fixtures/track2-profile-report.json)
+Script: [`scripts/profile_track2_gate.py`](../scripts/profile_track2_gate.py) · Report: [TRACK2-PROFILE.md](./archive/rfcs/TRACK2-PROFILE.md) · Baseline: [`tests/fixtures/track2-profile-report.json`](../tests/fixtures/track2-profile-report.json)
 
 **Result (2026-06-28, agent-lab repo):**
 
@@ -244,11 +244,11 @@ The crate and flag below were deleted after Phase 2.2 FAIL + the repo_map over-s
 
 **Not in scope:** bundled `.app` maturin (never shipped).
 
-**Outcome:** Track 2 closed — see [TRACK2-NATIVE-GATE.md](./TRACK2-NATIVE-GATE.md).
+**Outcome:** Track 2 closed — see [TRACK2-NATIVE-GATE.md](./archive/rfcs/TRACK2-NATIVE-GATE.md).
 
 ### Phase 2.2 — Native micro-bench + bundled gate — **CLOSED (gate FAIL, 2026-06-28)**
 
-Decision record: [TRACK2-NATIVE-GATE.md](./TRACK2-NATIVE-GATE.md) (script, baseline JSON, and crate **removed**).
+Decision record: [TRACK2-NATIVE-GATE.md](./archive/rfcs/TRACK2-NATIVE-GATE.md) (script, baseline JSON, and crate **removed**).
 
 **Result (2026-06-28, agent-lab repo, ~40 `.py` files):**
 
@@ -315,10 +315,10 @@ No fixed calendar for Track 2 beyond profile — **t2b/t2c may not happen**.
 
 | Doc | Role |
 |-----|------|
-| [PACKAGING-BASELINE.md](./PACKAGING-BASELINE.md) | Rollback tag + frozen vs living SSOT |
+| [PACKAGING-BASELINE.md](./archive/legacy/PACKAGING-BASELINE.md) | Rollback tag + frozen vs living SSOT |
 | [ARCHITECTURE.md §6.5](./ARCHITECTURE.md) | Desktop summary |
 | [APP.md](./APP.md) | Build / config paths |
-| [ROOM-PACKAGE-REFACTOR-DESIGN.md](./ROOM-PACKAGE-REFACTOR-DESIGN.md) | Python Room layout |
+| [STRUCTURE-REFACTOR-HISTORY.md §Room](./archive/STRUCTURE-REFACTOR-HISTORY.md#room) | Python Room layout |
 
 ---
 

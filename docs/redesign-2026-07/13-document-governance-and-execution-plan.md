@@ -56,7 +56,7 @@
 | `UI-IA-ROADMAP.md`                                          | 기존 UI migration history로 유지하되, 새 UI 판단은 11과 `CONSOLE-PRODUCTIZATION.md`로 이동 |
 | `MISSION-LOOP-C-OMO.md`                                     | shipped legacy loop 근거로 유지; 새 lifecycle 설계 권위는 01/06/12로 이동                  |
 | `RUNTIME-HARNESS-PLAN.md`, `ROOM-DISPATCH-PROTOCOL.md`      | runtime/transport history와 contract 근거로 유지; Mission event authority는 02/08로 이동   |
-| `CONTEXT-PACKAGE-REFACTOR-DESIGN.md`, package refactor docs | 이미 shipped인 구조 이동 기록으로 유지; recipe 정책은 09로 이동                            |
+| `archive/STRUCTURE-REFACTOR-HISTORY.md` (구 package refactor 문서 13개, 2026-07-15 통합) | 이미 shipped인 구조 이동 기록으로 유지; recipe 정책은 09로 이동                            |
 | `HUMAN-INBOX-CLAUDE-HANDOFF.md`                             | handoff/history로 유지; current answer UX는 `HUMAN-INBOX.md`와 11로 이동                   |
 | `ABSORB-CC-CODEX-2026-07.md`                                | provider/UI 패턴 채택 기록으로 유지; Mission state 의미는 01/12로 연결                     |
 

@@ -1,6 +1,6 @@
 # Cleanup SSOT — 2026-07 (한 페이지)
 
-> **운영 모드:** dogfood-first (N1 formal closure **waived** — [CLEANUP-PHASE0-SCOPE-2026-07.md](./CLEANUP-PHASE0-SCOPE-2026-07.md))  
+> **운영 모드:** dogfood-first (N1 formal closure **waived** — [CLEANUP-PHASE0-SCOPE-2026-07.md](./archive/legacy/CLEANUP-PHASE0-SCOPE-2026-07.md))  
 > **방향:** [NORTH-STAR.md](./NORTH-STAR.md) · **shipped:** [EXTERNAL-REFS-TRACEABILITY.md](./EXTERNAL-REFS-TRACEABILITY.md)
 
 ---

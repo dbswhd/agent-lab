@@ -18,10 +18,10 @@
 | **새 작업 시작용 착수 템플릿** | [WORK-TASK-KICKOFF-TEMPLATE.md](./WORK-TASK-KICKOFF-TEMPLATE.md) |
 | **M4/L1 discuss-only trace 기준선 결정** | [M4-L1-DISCUSS-ONLY-TRACE-DECISION.md](./M4-L1-DISCUSS-ONLY-TRACE-DECISION.md) |
 | 시스템 전체 모듈·레이어 지도 | [ARCHITECTURE.md](./ARCHITECTURE.md) |
-| Desktop packaging baseline · hybrid 전 복귀점 | [PACKAGING-BASELINE.md](./PACKAGING-BASELINE.md) |
+| Desktop packaging baseline · hybrid 전 복귀점 | [PACKAGING-BASELINE.md](./archive/legacy/PACKAGING-BASELINE.md) |
 | Hybrid Rust + Python ADR (Track 1 proceed / Track 2 conditional) | [HYBRID-RUST-PYTHON-ADR.md](./HYBRID-RUST-PYTHON-ADR.md) |
-| Track 2.0 profile gate report | [TRACK2-PROFILE.md](./TRACK2-PROFILE.md) |
-| Track 2.2 native gate — CLOSED (native rejected, crate removed) | [TRACK2-NATIVE-GATE.md](./TRACK2-NATIVE-GATE.md) |
+| Track 2.0 profile gate report | [TRACK2-PROFILE.md](./archive/rfcs/TRACK2-PROFILE.md) |
+| Track 2.2 native gate — CLOSED (native rejected, crate removed) | [TRACK2-NATIVE-GATE.md](./archive/rfcs/TRACK2-NATIVE-GATE.md) |
 | **N10 User-Loop Wisdom 설계 상세 (개정 반영됨 — canonical은 NORTH-STAR §2.1 N10)** | [N10-USER-LOOP-WISDOM-DRAFT.md](./N10-USER-LOOP-WISDOM-DRAFT.md) |
 | **N6 Phase 2 — Harness Self-Improvement Loop (Weng / Self-Harness / DGM 변용)** | [DESIGN-HARNESS-SELF-IMPROVE.md](./DESIGN-HARNESS-SELF-IMPROVE.md) |
 | **N7 S3 도구 카드 · `[NEED-TOOL:]` · Inbox mount 설계 (구현은 S1/S2 닫힌 후)** | [S3-TOOL-CARD-SPEC.md](./S3-TOOL-CARD-SPEC.md) |
@@ -29,7 +29,7 @@
 | **Emergence bench 프로토콜 SSOT (N8)** | [EMERGENCE-BENCH.md](./EMERGENCE-BENCH.md) · [REPRODUCTION-REPORT.md](./REPRODUCTION-REPORT.md) |
 | **Fork 가이드 (N8)** | [FORK.md](./FORK.md) · [PACKAGE-FORK-BOUNDARIES.md](./PACKAGE-FORK-BOUNDARIES.md) |
 | **외부 검증 API (N9)** | [VERIFY-API.md](./VERIFY-API.md) · `make n9-verify-consumer` |
-| **2026-07 cleanup · dogfood-first SSOT** | [CLEANUP-SSOT-2026-07.md](./CLEANUP-SSOT-2026-07.md) · [CLEANUP-PHASE0-SCOPE-2026-07.md](./CLEANUP-PHASE0-SCOPE-2026-07.md) |
+| **2026-07 cleanup · dogfood-first SSOT** | [CLEANUP-SSOT-2026-07.md](./CLEANUP-SSOT-2026-07.md) · [CLEANUP-PHASE0-SCOPE-2026-07.md](./archive/legacy/CLEANUP-PHASE0-SCOPE-2026-07.md) |
 | Room transcript UX contract (SSE · lock · activity) | [ROOM-TRANSCRIPT-CONTRACT.md](./ROOM-TRANSCRIPT-CONTRACT.md) |
 | 전략 방향 (Fugu/Harness 대비 포지션 — 배경/이력) | [STRATEGIC-DIRECTION-2026.md](./STRATEGIC-DIRECTION-2026.md) |
 | 역할 오케스트레이션 설계 (P1~P8) | [ROLE-ORCHESTRATION-PLAN.md](./ROLE-ORCHESTRATION-PLAN.md) |
@@ -46,12 +46,12 @@
 | 프론트 컴포넌트·IA·Work 탭 | [developer-agent-console.md](./developer-agent-console.md) · ARCHITECTURE §5–6 |
 | UX productization 로드맵 | [CONSOLE-PRODUCTIZATION.md](./CONSOLE-PRODUCTIZATION.md) · [UI-IA-ROADMAP.md](./UI-IA-ROADMAP.md) |
 | Gateway · scheduler · Mission OS | [MISSION-OS-DIRECTION.md](./MISSION-OS-DIRECTION.md) · OPS-RUNBOOK §daemon |
-| Human Inbox · MCP | [HUMAN-INBOX.md](./HUMAN-INBOX.md) · [HUMAN-INBOX-CLAUDE-HANDOFF.md](./HUMAN-INBOX-CLAUDE-HANDOFF.md) |
+| Human Inbox · MCP | [HUMAN-INBOX.md](./HUMAN-INBOX.md) · [HUMAN-INBOX-CLAUDE-HANDOFF.md](./archive/legacy/HUMAN-INBOX-CLAUDE-HANDOFF.md) |
 | Runtime harness · dispatch | [RUNTIME-HARNESS-PLAN.md](./RUNTIME-HARNESS-PLAN.md) · [ROOM-DISPATCH-PROTOCOL.md](./ROOM-DISPATCH-PROTOCOL.md) |
 | GJC external pipeline entry | [GJC-ENTRY.md](./GJC-ENTRY.md) · [VERIFY-API.md](./VERIFY-API.md) · Work tab Pipeline stepper |
 | CI · regression · live ops · daemon dogfood | [STABILITY.md](./STABILITY.md) · [OPS-RUNBOOK.md](./OPS-RUNBOOK.md) |
 | Mission first-pass redesign · UI/UX · legacy audit · next steps | [redesign-2026-07/README.md](./redesign-2026-07/README.md) · [11 UI surface](./redesign-2026-07/11-ui-ux-surface-map.md) · [12 compatibility audit](./redesign-2026-07/12-compatibility-and-legacy-audit.md) · [13 governance/steps](./redesign-2026-07/13-document-governance-and-execution-plan.md) · [controlled cohort runbook](./redesign-2026-07/evidence/dual-write-controlled-cohort-runbook-2026-07-13.md) · [dual-read report](./redesign-2026-07/evidence/dual-read-report-2026-07-13.md) · [route cohort](./redesign-2026-07/evidence/dual-write-route-cohort-report-2026-07-13.md) · [seeded simulation](./redesign-2026-07/evidence/dual-read-seeded-report-2026-07-13.md) · [mock dogfood](./redesign-2026-07/evidence/dual-read-dogfood-report-2026-07-13.md) · [live timeout report](./redesign-2026-07/evidence/dual-read-live-report-2026-07-13.md) |
-| Repo structure metrics · package refactors | [STRUCTURE-METRICS.md](./STRUCTURE-METRICS.md) · [STRUCTURE-REFACTOR-WAVE.md](./STRUCTURE-REFACTOR-WAVE.md) · [PROVIDER-LANE](./PROVIDER-LANE-DESIGN.md) · [ROOM](./ROOM-PACKAGE-REFACTOR-DESIGN.md) · [PLAN](./PLAN-PACKAGE-REFACTOR-DESIGN.md) · [SESSION](./SESSION-PACKAGE-REFACTOR-DESIGN.md) · [KIMI](./KIMI-PACKAGE-REFACTOR-DESIGN.md) · [MISSION](./MISSION-PACKAGE-REFACTOR-DESIGN.md) · [AGENT](./AGENT-PACKAGE-REFACTOR-DESIGN.md) · [QUANT](./QUANT-PACKAGE-REFACTOR-DESIGN.md) · [WISDOM](./WISDOM-PACKAGE-REFACTOR-DESIGN.md) · [INBOX](./INBOX-PACKAGE-REFACTOR-DESIGN.md) · [CONTEXT](./CONTEXT-PACKAGE-REFACTOR-DESIGN.md) · [RUN](./RUN-PACKAGE-REFACTOR-DESIGN.md) · [WORKSPACE](./WORKSPACE-PACKAGE-REFACTOR-DESIGN.md) · [RESEARCH](./RESEARCH-PACKAGE-REFACTOR-DESIGN.md) |
+| Repo structure metrics · package refactors | [STRUCTURE-METRICS.md](./STRUCTURE-METRICS.md) · [STRUCTURE-REFACTOR-WAVE.md](./STRUCTURE-REFACTOR-WAVE.md) · [PROVIDER-LANE](./PROVIDER-LANE-DESIGN.md) · [archive/STRUCTURE-REFACTOR-HISTORY.md](./archive/STRUCTURE-REFACTOR-HISTORY.md) (Room/Plan/Session/Mission/Agent/Quant/Wisdom/Inbox/Context/Run/Workspace/Research — consolidated, all shipped) |
 | Trading extension | [extensions/QUANT-TRADING.md](./extensions/QUANT-TRADING.md) · [trading-mission/](./trading-mission/) |
 
 ---
@@ -102,7 +102,6 @@
 | [MISSION-OS-DIRECTION.md](./MISSION-OS-DIRECTION.md) | **Mission OS SSOT** — gate_profile, Human Gates 1–5, Gateway 로드맵 |
 | [HUMAN-INBOX.md](./HUMAN-INBOX.md) | Execute MCP + API **shipped**; M1~M6 완료 |
 | [MCP-FIRST-INBOX.md](./MCP-FIRST-INBOX.md) | **MCP-first 방향** — agent MCP SSOT, harvest 축소, Scribe/plan 분리; Phase A **shipped**, B–E **planned** |
-| [HUMAN-INBOX-CLAUDE-HANDOFF.md](./HUMAN-INBOX-CLAUDE-HANDOFF.md) | Inbox handoff 노트 (M3+) — 구현 단계별 AC |
 | [LIVE-ORACLE.md](./LIVE-ORACLE.md) | Oracle prompts, evidence, env 플래그 (mock-first default) |
 | [MISSION-LOOP-C-OMO.md](./MISSION-LOOP-C-OMO.md) | **Shipped** — Layer 6 FSM + Track B/C/D |
 | [MISSION-BOARD-ADOPTION.md](./MISSION-BOARD-ADOPTION.md) | **Shipped** — Mission Board MB-9…MB-11 (P1~P4); P5 backlog |
@@ -146,9 +145,8 @@
 |-----|------|
 | [CONSOLE-PRODUCTIZATION.md](./CONSOLE-PRODUCTIZATION.md) | Productization SSOT: IA P0, Hooks/Response P1, verification P2 |
 | [UI-IA-ROADMAP.md](./UI-IA-ROADMAP.md) | Deprecate list + target IA (P0~P4 대부분 ✅) |
-| [UI-HANDOFF-TEAM-AGENTS.md](./UI-HANDOFF-TEAM-AGENTS.md) | Room UI 핸드오프 — API·SSE 계약, 컴포넌트 props |
 | [developer-agent-console.md](./developer-agent-console.md) | 현재 콘솔 UI 레퍼런스 — 3-pane 레이아웃, **Work 탭 stepper** |
-| [DESIGN-SYSTEM.md](./DESIGN-SYSTEM.md) | 색·타이포·컴포넌트 설계 원칙 |
+| [DESIGN.md](./DESIGN.md) | 프론트 비주얼 설계 원칙 (canonical: `web/DESIGN.md`) |
 
 **규칙:** UI contract 테스트 실패 시 현재 컴포넌트에 맞게 테스트를 수정 (프로토타입 네이밍으로 되돌리지 않음).
 
@@ -158,9 +156,9 @@
 
 | 경로 | 내용 |
 |------|------|
-| `archive/legacy/` | 00~05 초기 가이드, SPRINT-D-CHECKLIST, UI-MIGRATION-GAPS (모든 갭 종료), WORK-TAB-IA (→ developer-agent-console), MISSION-OS-OPS (→ OPS-RUNBOOK), MISSION-DOGFOOD (→ OPS-RUNBOOK), 세션 노트 등 |
-| `archive/rfcs/` | 완료 RFC — EXECUTE-WORKTREE-REFORM, ROOM-REINFORCEMENT, GJC-WORKFLOW-PIPELINE, AGENT-OS-MODE-SIMPLIFICATION-PLAN, PLAN-WORKFLOW (→ FLOW §4), GOAL-LOOP (legacy opt-in), EXTERNAL-REFS-PLAN (→ TRACEABILITY) |
-| `archive/` | 핸드오프 감사 문서 |
+| `archive/legacy/` | 00~05 초기 가이드, SPRINT-D-CHECKLIST, UI-MIGRATION-GAPS (모든 갭 종료), WORK-TAB-IA (→ developer-agent-console), MISSION-OS-OPS (→ OPS-RUNBOOK), MISSION-DOGFOOD (→ OPS-RUNBOOK), 세션 노트, HUMAN-INBOX-CLAUDE-HANDOFF (M3+ handoff, → HUMAN-INBOX.md), UI-HANDOFF-TEAM-AGENTS (Sprint A-D 완료, IA는 DESIGN.md 참고), DESIGN-SYSTEM (→ `web/DESIGN.md`), CLEANUP-PHASE0-SCOPE-2026-07 (→ CLEANUP-SSOT-2026-07), PACKAGING-BASELINE (pre-hybrid-rust rollback point, hybrid 완료) 등 |
+| `archive/rfcs/` | 완료 RFC — EXECUTE-WORKTREE-REFORM, ROOM-REINFORCEMENT, GJC-WORKFLOW-PIPELINE, AGENT-OS-MODE-SIMPLIFICATION-PLAN, PLAN-WORKFLOW (→ FLOW §4), GOAL-LOOP (legacy opt-in), EXTERNAL-REFS-PLAN (→ TRACEABILITY), TRACK2-NATIVE-GATE + TRACK2-PROFILE (Rust native 시도 CLOSED, → HYBRID-RUST-PYTHON-ADR.md) |
+| `archive/` | 핸드오프 감사 문서, [STRUCTURE-REFACTOR-HISTORY.md](./archive/STRUCTURE-REFACTOR-HISTORY.md) (13개 package refactor 문서 통합, 전부 shipped) |
 
 ### Root & `.hermes/` (레포 외부)
 

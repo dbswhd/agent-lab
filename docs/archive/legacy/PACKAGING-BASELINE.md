@@ -136,7 +136,7 @@ flowchart LR
 | [`web/scripts/tauri-dev.sh`](../web/scripts/tauri-dev.sh) | stale :8765 cleanup, `SKIP_TAURI_API` |
 | [`scripts/prepare_bundled_runtime.sh`](../scripts/prepare_bundled_runtime.sh) | `.app` bundled venv |
 | [`app/server/main.py`](../app/server/main.py) | StaticFiles + routers |
-| [`docs/APP.md`](./APP.md) | Desktop install / config paths |
+| [`docs/APP.md`](../../APP.md) | Desktop install / config paths |
 
 ### Env / 플래그 (packaging)
 
@@ -168,7 +168,7 @@ flowchart LR
 
 ## Hybrid work (see ADR)
 
-Rollout plan: **[HYBRID-RUST-PYTHON-ADR.md](./HYBRID-RUST-PYTHON-ADR.md)** — Track 1 packaging **proceed**; Track 2 native **conditional** (profile gate).
+Rollout plan: **[HYBRID-RUST-PYTHON-ADR.md](../../HYBRID-RUST-PYTHON-ADR.md)** — Track 1 packaging **proceed**; Track 2 native **conditional** (profile gate).
 
 ### Track 1 — shipped (Phase 1.2–1.3)
 
@@ -180,7 +180,7 @@ Rollout plan: **[HYBRID-RUST-PYTHON-ADR.md](./HYBRID-RUST-PYTHON-ADR.md)** — T
 
 ### Track 2 — **closed** (2026-06-28)
 
-Native rejected; Python `repo_map_core` seed-bounding is the durable win. See [HYBRID-RUST-PYTHON-ADR.md](./HYBRID-RUST-PYTHON-ADR.md) AMENDMENT + [TRACK2-NATIVE-GATE.md](./TRACK2-NATIVE-GATE.md).
+Native rejected; Python `repo_map_core` seed-bounding is the durable win. See [HYBRID-RUST-PYTHON-ADR.md](../../HYBRID-RUST-PYTHON-ADR.md) AMENDMENT + [TRACK2-NATIVE-GATE.md](../rfcs/TRACK2-NATIVE-GATE.md).
 
 ### Permanent non-goals
 
@@ -201,7 +201,7 @@ Native rejected; Python `repo_map_core` seed-bounding is the durable win. See [H
 
 - Tag 시점: `room/` 패키지 + root shim 전환 **완료**, `room.py` 삭제
 - 불변식: BLOCK→409, worktree 격리, Oracle verify, Human inbox — **Python SSOT**
-- **현재 레이아웃:** 위 Living SSOT · [`ROOM-PACKAGE-REFACTOR-DESIGN.md`](./ROOM-PACKAGE-REFACTOR-DESIGN.md) status banner
+- **현재 레이아웃:** 위 Living SSOT · [STRUCTURE-REFACTOR-HISTORY.md §Room](../STRUCTURE-REFACTOR-HISTORY.md#room) status banner
 
 ---
 
@@ -220,8 +220,8 @@ Native rejected; Python `repo_map_core` seed-bounding is the durable win. See [H
 
 | 문서 | 용도 |
 |------|------|
-| [ARCHITECTURE.md §6.5](./ARCHITECTURE.md) | Desktop 요약 |
-| [APP.md](./APP.md) | `.app` 빌드·설정 |
-| [STABILITY.md](./STABILITY.md) | smoke / regression |
+| [ARCHITECTURE.md §6.5](../../ARCHITECTURE.md) | Desktop 요약 |
+| [APP.md](../../APP.md) | `.app` 빌드·설정 |
+| [STABILITY.md](../../STABILITY.md) | smoke / regression |
 
 **규칙:** hybrid PR은 이 baseline 대비 **무엇이 바뀌었는지** PR 본문에 적고, Room pytest + smoke green을 gate로 둔다.

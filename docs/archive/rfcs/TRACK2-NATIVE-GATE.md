@@ -4,7 +4,7 @@
 > micro-bench script, and the baseline JSON were **deleted**; this file is the
 > durable record so the result is not re-litigated. Code preserved in git history.
 >
-> ADR: [HYBRID-RUST-PYTHON-ADR.md](./HYBRID-RUST-PYTHON-ADR.md) (see AMENDMENT 2026-06-28)
+> ADR: [HYBRID-RUST-PYTHON-ADR.md](../../HYBRID-RUST-PYTHON-ADR.md) (see AMENDMENT 2026-06-28)
 
 ## Outcome
 

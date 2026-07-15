@@ -90,6 +90,6 @@ Strict mypy overrides: `pyproject.toml` `agent_lab.cursor.*`, `agent_lab.codex.*
 
 ## Related docs
 
-- [ROOM-PACKAGE-REFACTOR-DESIGN.md](./ROOM-PACKAGE-REFACTOR-DESIGN.md)
+- [STRUCTURE-REFACTOR-HISTORY.md §Room](./archive/STRUCTURE-REFACTOR-HISTORY.md#room)
 - [STRUCTURE-METRICS.md](./STRUCTURE-METRICS.md)
 - [GJC-ENTRY.md](./GJC-ENTRY.md)

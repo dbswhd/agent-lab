@@ -2,7 +2,7 @@
 
 **대상:** UI 담당 에이전트  
 **범위:** 멀티 에이전트 룸의 팀 조율(Phase 1–3) + Sprint A/B/C/D  
-**백엔드·동작 근거:** [`STABILITY.md`](./STABILITY.md), [`SPRINT-D-CHECKLIST.md`](./SPRINT-D-CHECKLIST.md)
+**백엔드·동작 근거:** [`STABILITY.md`](../../STABILITY.md), [`SPRINT-D-CHECKLIST.md`](./SPRINT-D-CHECKLIST.md)
 
 이 문서는 **이미 코드에 들어간 UI**와 **UI 담당이 맞춰야 할 동작·검증·폴리시**를 구분합니다. 새 API 설계나 워크플로 엔진은 범위 밖입니다.
 
@@ -310,7 +310,7 @@ UI 담당은 아래를 **수동 스모크** 체크리스트로 사용.
 
 | 문서 | 내용 |
 |------|------|
-| [`STABILITY.md`](./STABILITY.md) | Phase 1–3, Sprint A–D 동작·Verify |
+| [`STABILITY.md`](../../STABILITY.md) | Phase 1–3, Sprint A–D 동작·Verify |
 | [`SPRINT-D-CHECKLIST.md`](./SPRINT-D-CHECKLIST.md) | D1–D11 구현 체크 |
 | [`04-multi-agent-room.md`](./04-multi-agent-room.md) | 룸 제품 개요·Figma |
 | [`05-room-agent-roles.md`](./05-room-agent-roles.md) | 3자 역할 (카피 참고) |

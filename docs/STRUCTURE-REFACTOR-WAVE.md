@@ -1,6 +1,6 @@
 # Structure refactor — execute wave (2026-06)
 
-> **Metrics baseline:** [STRUCTURE-METRICS.md](./STRUCTURE-METRICS.md) · **Room package:** [ROOM-PACKAGE-REFACTOR-DESIGN.md](./ROOM-PACKAGE-REFACTOR-DESIGN.md)
+> **Metrics baseline:** [STRUCTURE-METRICS.md](./STRUCTURE-METRICS.md) · **Room package:** [STRUCTURE-REFACTOR-HISTORY.md §Room](./archive/STRUCTURE-REFACTOR-HISTORY.md#room)
 
 Agreed execute order for **구조 점검** scope. Items explicitly **out of scope** for this wave are listed at the bottom.
 

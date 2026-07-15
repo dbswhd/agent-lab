@@ -2,8 +2,8 @@
 
 > **작성:** 2026-07-02 · **상태:** **Closed** → Phase **1a** active  
 > **운영 모드:** **dogfood-first** — N1 formal “운영 닫힘” 의식 **waived** (Human 2026-07)  
-> **한 페이지 SSOT:** [CLEANUP-SSOT-2026-07.md](./CLEANUP-SSOT-2026-07.md)  
-> **방향:** [NORTH-STAR.md](./NORTH-STAR.md) · **구조:** [STRUCTURE-REFACTOR-WAVE.md](./STRUCTURE-REFACTOR-WAVE.md)
+> **한 페이지 SSOT:** [CLEANUP-SSOT-2026-07.md](../../CLEANUP-SSOT-2026-07.md)  
+> **방향:** [NORTH-STAR.md](../../NORTH-STAR.md) · **구조:** [STRUCTURE-REFACTOR-WAVE.md](../../STRUCTURE-REFACTOR-WAVE.md)
 
 ---
 
@@ -68,7 +68,7 @@
 1. 5모트  
 2. NORTH-STAR 6 concepts + §2.3 lifecycle  
 3. TRACEABILITY + code + tests  
-4. [ROOM-TRANSCRIPT-CONTRACT.md](./ROOM-TRANSCRIPT-CONTRACT.md)
+4. [ROOM-TRANSCRIPT-CONTRACT.md](../../ROOM-TRANSCRIPT-CONTRACT.md)
 
 ---
 
@@ -106,8 +106,8 @@ N5–N7 구현 · Mission Gateway 확장 · trading 이전 in core PR · preset 
 ## 7. Phase 0 closure checklist
 
 - [x] dogfood-first Human decision recorded  
-- [x] [CLEANUP-SSOT-2026-07.md](./CLEANUP-SSOT-2026-07.md)  
-- [x] [ROOM-TRANSCRIPT-CONTRACT.md](./ROOM-TRANSCRIPT-CONTRACT.md)  
+- [x] [CLEANUP-SSOT-2026-07.md](../../CLEANUP-SSOT-2026-07.md)  
+- [x] [ROOM-TRANSCRIPT-CONTRACT.md](../../ROOM-TRANSCRIPT-CONTRACT.md)  
 - [x] F4 in CLAUDE.md  
 - [x] NORTH-STAR S1 / §3.3 aligned  
 - [x] Obsolete `artifacts/plans/agent-lab-*-direction.md` ×3 deleted  

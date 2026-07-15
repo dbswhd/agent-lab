@@ -1,7 +1,7 @@
 # Human Inbox — Claude Code 인수인계 (M3+)
 
-> **Handoff doc** — complements [HUMAN-INBOX.md](./HUMAN-INBOX.md). **Index:** [README.md](./README.md)  
-> **전제:** M1·M2 execute path shipped on `main`. **설계 RFC:** [HUMAN-INBOX.md](./HUMAN-INBOX.md) §3.4, §4.6.  
+> **Handoff doc** — complements [HUMAN-INBOX.md](../../HUMAN-INBOX.md). **Index:** [README.md](../../README.md)  
+> **전제:** M1·M2 execute path shipped on `main`. **설계 RFC:** [HUMAN-INBOX.md](../../HUMAN-INBOX.md) §3.4, §4.6.  
 > **경로 (2026-06):** 본문 `room.py` / `plan_execute.py` → **`room/turn_flow.py`** (`continue_room_round`), **`plan/execute.py`**. Living SSOT: [PACKAGING-BASELINE.md](./PACKAGING-BASELINE.md).
 
 ---
@@ -72,7 +72,7 @@ Execute E2E: PlanExecute dry-run (Cursor) → agent `ask_human` / `propose_build
 | `src/agent_lab/human_inbox.py` | `create_inbox_item` with `options=[]` 허용 or UI freeform — **RFC §5.5: M3까지 options 없음** |
 | `web/src/components/HumanInboxPanel.tsx` | options 빈 배열 → freeform/건너뛰기 only |
 
-**트리거 ID:** T-Q1 (harvest), T-Q2 (plan OPEN) — [HUMAN-INBOX.md §5.4](./HUMAN-INBOX.md)
+**트리거 ID:** T-Q1 (harvest), T-Q2 (plan OPEN) — [HUMAN-INBOX.md §5.4](../../HUMAN-INBOX.md)
 
 **AC (M3 core — verify in `tests/test_human_inbox.py`, `inbox_harvest.py`):**
 
@@ -175,9 +175,9 @@ M3 → M4 → M5 순 **작은 PR**이 리뷰하기 좋음. M6는 execute lane �
 
 ## 관련 문서
 
-- [HUMAN-INBOX.md](./HUMAN-INBOX.md) — RFC
+- [HUMAN-INBOX.md](../../HUMAN-INBOX.md) — RFC
 - [04-multi-agent-room.md](./04-multi-agent-room.md)
-- [NOTIFICATION-TAXONOMY.md](./NOTIFICATION-TAXONOMY.md) — Inbox ≠ NotificationCenter
+- [NOTIFICATION-TAXONOMY.md](../../NOTIFICATION-TAXONOMY.md) — Inbox ≠ NotificationCenter
 
 ---
 

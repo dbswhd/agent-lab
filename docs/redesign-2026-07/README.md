@@ -1,9 +1,9 @@
 # Agent Lab 전면 재설계 계획 — 2026-07
 
-실제 provider 검증 기록: [live supervisor dual-read report](./dual-read-live-report-2026-07-13.md) — timeout·partial persistence·lock recovery는 통과했지만 production dual-write 증거는 아니다. 최종 판정은 [ADR-001](../decisions/ADR-001-production-dual-write-cutover.md) 참조.
+실제 provider 검증 기록: [live supervisor dual-read report](./evidence/dual-read-live-report-2026-07-13.md) — timeout·partial persistence·lock recovery는 통과했지만 production dual-write 증거는 아니다. 최종 판정은 [ADR-001](../decisions/ADR-001-production-dual-write-cutover.md) 참조.
 
 현재 상태: controlled cohort **v3d GO (historical evidence)** · Full traffic soak **PASS (historical evidence)** · Slice 1–3 soft authority **retired compatibility record; funcs disabled/fail-closed** · journal-first Wave A **API composites** · hard retire **Human 승인 전 금지**. Dual-write runtime requires a non-empty session allowlist; empty/missing disables the bridge.
-운영: [Slice 1 plan](./dual-write-retire-slice-plan-soft-2026-07-14.md) · [Slice 2 inbox](./dual-write-retire-slice-inbox-soft-2026-07-14.md) · [Slice 3 execution](./dual-write-retire-slice-execution-soft-2026-07-14.md) · [journal-first read/projection](./journal-first-read-projection-design-2026-07-14.md) · [m6-precheck](./m6-precheck-retire-scope-2026-07-14.md) · [full-traffic](./dual-write-full-traffic-bounded-cutover-2026-07-14.md).
+운영: [Slice 1 plan](./evidence/dual-write-retire-slice-plan-soft-2026-07-14.md) · [Slice 2 inbox](./evidence/dual-write-retire-slice-inbox-soft-2026-07-14.md) · [Slice 3 execution](./evidence/dual-write-retire-slice-execution-soft-2026-07-14.md) · [journal-first read/projection](./evidence/journal-first-read-projection-design-2026-07-14.md) · [m6-precheck](./evidence/m6-precheck-retire-scope-2026-07-14.md) · [full-traffic](./evidence/dual-write-full-traffic-bounded-cutover-2026-07-14.md).
 
 > **상태:** In progress / D0 — Wave 0~1 계약·shadow spike 착수, legacy cutover는 Human gate 유지  
 > **작성 기준일:** 2026-07-12  
@@ -180,7 +180,7 @@ Wave 0 기준선: [00-wave0-mission-inventory.md](./00-wave0-mission-inventory.m
 - dispatcher의 authority/authentication, payload provenance/redaction, gateway boundary
 - 기존 plan/mission/execute writer와의 session-facing application adapter 및 parity evidence
 
-read model의 첫 HTTP surface는 `/api/sessions/{id}/mission/read-model`이다. controlled cohort evidence는 **GO(v3d)**; Full traffic soak는 Human 승인 후 진행 중이며, **legacy writer retire는 별도 Human 승인 전 금지** ([full-traffic runbook](./dual-write-full-traffic-bounded-cutover-2026-07-14.md)).
+read model의 첫 HTTP surface는 `/api/sessions/{id}/mission/read-model`이다. controlled cohort evidence는 **GO(v3d)**; Full traffic soak는 Human 승인 후 진행 중이며, **legacy writer retire는 별도 Human 승인 전 금지** ([full-traffic runbook](./evidence/dual-write-full-traffic-bounded-cutover-2026-07-14.md)).
 
 ## 9. 주제별 심화 설계
 
@@ -196,19 +196,19 @@ read model의 첫 HTTP surface는 `/api/sessions/{id}/mission/read-model`이다.
 | 11   | [11-ui-ux-surface-map.md](./11-ui-ux-surface-map.md)                                           | Mission first-pass를 노출하는 UI/UX surface와 accessibility          |
 | 12   | [12-compatibility-and-legacy-audit.md](./12-compatibility-and-legacy-audit.md)                 | 기존 writer·dispatcher·UI와의 충돌·겹침·레거시 리스크                |
 | 13   | [13-document-governance-and-execution-plan.md](./13-document-governance-and-execution-plan.md) | 기존 docs 정리 기준과 다음 실행 단계                                 |
-| —    | [dual-read-report-2026-07-13.md](./dual-read-report-2026-07-13.md)                             | 대표 5개 fixture parity gate 결과                                      |
-| —    | [dual-read-seeded-report-2026-07-13.md](./dual-read-seeded-report-2026-07-13.md)               | 임시 migration simulation parity 결과                                  |
-| —    | [dual-read-dogfood-report-2026-07-13.md](./dual-read-dogfood-report-2026-07-13.md)               | mock supervisor dogfood dual-read 결과                                  |
-| —    | [dual-read-live-report-2026-07-13.md](./dual-read-live-report-2026-07-13.md)                   | live supervisor timeout evidence와 cancellation follow-up               |
-| —    | [dual-write-cohort-run-report-2026-07-13.md](./dual-write-cohort-run-report-2026-07-13.md) | **v3d GO** (v1/v2 NO-GO 이력 포함); Full traffic soak 별도 |
-| —    | [dual-write-full-traffic-bounded-cutover-2026-07-14.md](./dual-write-full-traffic-bounded-cutover-2026-07-14.md) | Full traffic Human gate · soak ≥15 Room turns · retire 금지 |
-| —    | [dual-write-preflight-report-2026-07-13.md](./dual-write-preflight-report-2026-07-13.md) | cutover pre-flight PASS |
-| —    | [dual-write-cutover-scope-limitations-2026-07-13.md](./dual-write-cutover-scope-limitations-2026-07-13.md) | cohort GO/NO-GO 판정 범위 SSOT |
-| —    | [dual-write-evidence-report-2026-07-13.md](./dual-write-evidence-report-2026-07-13.md)       | 동일 identity 10건의 격리 production-like dual-write evidence              |
-| —    | [production-route-dual-write-adapter-2026-07-13.md](./production-route-dual-write-adapter-2026-07-13.md) | opt-in route bridge, scheduler enqueue, live HTTP/SSE 검증                  |
-| —    | [dual-write-route-cohort-report-2026-07-13.md](./dual-write-route-cohort-report-2026-07-13.md) | 실제 `sessions/` route 10건·rollback 2건 및 cutover 경계                   |
-| —    | [dual-write-cutover-followup-2026-07-13.md](./dual-write-cutover-followup-2026-07-13.md) | Room dogfood 2건·fail/repair·durable recovery 후속 판정                   |
-| —    | [journal-first-read-projection-design-2026-07-14.md](./journal-first-read-projection-design-2026-07-14.md) | Journal SSOT · compat projection · Wave A read-model composites · M6 unlock |
-| —    | [m6-precheck-retire-scope-2026-07-14.md](./m6-precheck-retire-scope-2026-07-14.md) | M6 hard-retire NO-GO scope · keep inbox/execute implementers |
+| —    | [dual-read-report-2026-07-13.md](./evidence/dual-read-report-2026-07-13.md)                             | 대표 5개 fixture parity gate 결과                                      |
+| —    | [dual-read-seeded-report-2026-07-13.md](./evidence/dual-read-seeded-report-2026-07-13.md)               | 임시 migration simulation parity 결과                                  |
+| —    | [dual-read-dogfood-report-2026-07-13.md](./evidence/dual-read-dogfood-report-2026-07-13.md)               | mock supervisor dogfood dual-read 결과                                  |
+| —    | [dual-read-live-report-2026-07-13.md](./evidence/dual-read-live-report-2026-07-13.md)                   | live supervisor timeout evidence와 cancellation follow-up               |
+| —    | [dual-write-cohort-run-report-2026-07-13.md](./evidence/dual-write-cohort-run-report-2026-07-13.md) | **v3d GO** (v1/v2 NO-GO 이력 포함); Full traffic soak 별도 |
+| —    | [dual-write-full-traffic-bounded-cutover-2026-07-14.md](./evidence/dual-write-full-traffic-bounded-cutover-2026-07-14.md) | Full traffic Human gate · soak ≥15 Room turns · retire 금지 |
+| —    | [dual-write-preflight-report-2026-07-13.md](./evidence/dual-write-preflight-report-2026-07-13.md) | cutover pre-flight PASS |
+| —    | [dual-write-cutover-scope-limitations-2026-07-13.md](./evidence/dual-write-cutover-scope-limitations-2026-07-13.md) | cohort GO/NO-GO 판정 범위 SSOT |
+| —    | [dual-write-evidence-report-2026-07-13.md](./evidence/dual-write-evidence-report-2026-07-13.md)       | 동일 identity 10건의 격리 production-like dual-write evidence              |
+| —    | [production-route-dual-write-adapter-2026-07-13.md](./evidence/production-route-dual-write-adapter-2026-07-13.md) | opt-in route bridge, scheduler enqueue, live HTTP/SSE 검증                  |
+| —    | [dual-write-route-cohort-report-2026-07-13.md](./evidence/dual-write-route-cohort-report-2026-07-13.md) | 실제 `sessions/` route 10건·rollback 2건 및 cutover 경계                   |
+| —    | [dual-write-cutover-followup-2026-07-13.md](./evidence/dual-write-cutover-followup-2026-07-13.md) | Room dogfood 2건·fail/repair·durable recovery 후속 판정                   |
+| —    | [journal-first-read-projection-design-2026-07-14.md](./evidence/journal-first-read-projection-design-2026-07-14.md) | Journal SSOT · compat projection · Wave A read-model composites · M6 unlock |
+| —    | [m6-precheck-retire-scope-2026-07-14.md](./evidence/m6-precheck-retire-scope-2026-07-14.md) | M6 hard-retire NO-GO scope · keep inbox/execute implementers |
 
 심화 문서는 새로운 독립 로드맵이 아니다. 각 문서의 구현 작업은 Wave 0~4와 해당 섹터 작업에 편입하며, 동일한 command/event/context 계약을 중복 구현하지 않는다.

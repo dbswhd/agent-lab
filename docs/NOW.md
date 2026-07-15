@@ -1,6 +1,6 @@
 # NOW — 지금 무엇을 해야 하는가 (종합 상태 표면)
 
-> **작성:** 2026-07-08 · **갱신:** 2026-07-14 (M6-9 runtime clarification) · **역할:** "오늘/이번 주/다음/동결"을 한 곳에서 판정한다.
+> **작성:** 2026-07-08 · **갱신:** 2026-07-15 (§7.4 SSE cursor + §7.3 Human Inbox optimistic locking 완료 반영) · **역할:** "오늘/이번 주/다음/동결"을 한 곳에서 판정한다.
 > **이 문서가 아닌 것:** 방향·구조·턴·평가 계약의 SSOT가 아니다. 이 문서는 **상태 포인터**만 갖는다.
 > **ID 규칙:** 소스 namespace를 보존한다 (`N*`, `F*`, `HS*`, `TC-*`, `ABS-P2-*`). bare `P1/P2` 신규 사용 금지.
 > **진실 순서:** runtime 동작은 code+tests, 현재 상태는 NOW, 방향·구조·턴·평가는 아래 담당 문서가 각각 소유한다.
@@ -28,14 +28,14 @@
 | 단계 | 상태 | 다음 |
 | --- | --- | --- |
 | Step 0 authority/baseline | ✅ 완료 | 문서 상태·canonical 링크 유지 |
-| Step 1 Mission application adapter | ✅ controlled opt-in cohort | 실제 `sessions/` route 10건·rollback 2건 통과; 전용 process/route에서만 `AGENT_LAB_MISSION_DUAL_WRITE=1` 적용. 운영 절차: [controlled cohort runbook](./redesign-2026-07/dual-write-controlled-cohort-runbook-2026-07-13.md) |
-| Step 2 MissionReadModel/UI contract | ✅ API first pass | SSE cursor·browser QA |
-| Step 3 Decision Queue vertical slice | ✅ route + Room dogfood | production Human Inbox route와 실제 Room dogfood 2건 통과; cross-store atomicity는 pending |
+| Step 1 Mission application adapter | ✅ controlled opt-in cohort | 실제 `sessions/` route 10건·rollback 2건 통과; 전용 process/route에서만 `AGENT_LAB_MISSION_DUAL_WRITE=1` 적용. 운영 절차: [controlled cohort runbook](./redesign-2026-07/evidence/dual-write-controlled-cohort-runbook-2026-07-13.md) |
+| Step 2 MissionReadModel/UI contract | ✅ API + SSE cursor + UI wiring 완료 (2026-07-15) | `web/e2e/wave-b-journey.spec.ts` 4/4 통과(plan reject·diff approve·Oracle repair·human resume); `11-ui-ux-surface-map.md` §7 구현 순서 1~5 전부 완료 |
+| Step 3 Decision Queue vertical slice | ✅ route + Room dogfood + optimistic locking (2026-07-15) | production Human Inbox route와 실제 Room dogfood 2건 통과; `decision_id`/`mission_id`/`expected_version` 라운드트립으로 stale/중복 answer는 409 — `MissionApplication.guard_inbox_answer`. run.json 쓰기와의 완전 원자성(single transaction)은 여전히 별도 트랙 |
 | Step 4 Execute/merge/Oracle | ✅ route parity + repair event | merge parity·fail→repair·RepairScheduled bridge·G3 process kill/restart 통과 |
 | Step 5 Durable runtime hardening | ✅ shadow + fault pass | scheduler ActivityQueue validation, committed-side-effect restart recovery; production daemon opt-in remains |
-| Step 6–7 shadow parity/retire | **Historical Slice 1–3 evidence · M6 NO-GO · Wave A read-model** | Soft dogfood PASS is retained as historical evidence. Current Slice 1–3 authority funcs are disabled/fail-closed; Wave A composites remain on `GET …/mission/read-model`. UI still legacy-read (`AGENT_LAB_MISSION_UI_READ_MODEL` default off). [journal-first design](./redesign-2026-07/journal-first-read-projection-design-2026-07-14.md) · [m6-precheck](./redesign-2026-07/m6-precheck-retire-scope-2026-07-14.md) · [slice-3](./redesign-2026-07/dual-write-retire-slice-execution-soft-2026-07-14.md) |
+| Step 6–7 shadow parity/retire | **Historical Slice 1–3 evidence · M6 NO-GO · Wave A read-model** | Soft dogfood PASS is retained as historical evidence. Current Slice 1–3 authority funcs are disabled/fail-closed; Wave A composites remain on `GET …/mission/read-model`. UI still legacy-read (`AGENT_LAB_MISSION_UI_READ_MODEL` default off). [journal-first design](./redesign-2026-07/evidence/journal-first-read-projection-design-2026-07-14.md) · [m6-precheck](./redesign-2026-07/evidence/m6-precheck-retire-scope-2026-07-14.md) · [slice-3](./redesign-2026-07/evidence/dual-write-retire-slice-execution-soft-2026-07-14.md) |
 
-**안전 경계:** 기존 `plan_workflow`·`mission_loop`·`human_inbox` writer를 **아직 제거하지 않는다**. Slice 1–3 soft authority의 enable/profile-default 문구는 역사적 기록이며, 현재 authority funcs는 disabled/fail-closed다. Dual-write를 사용할 때도 non-empty session allowlist가 필수이고 빈 allowlist는 비활성화한다. execute side effect는 legacy-first이며 M6 hard delete는 금지다. Wave B (`_project_mission_loop` + inbox join + UI flag) 후 재검토. [journal-first design](./redesign-2026-07/journal-first-read-projection-design-2026-07-14.md).
+**안전 경계:** 기존 `plan_workflow`·`mission_loop`·`human_inbox` writer를 **아직 제거하지 않는다**. Slice 1–3 soft authority의 enable/profile-default 문구는 역사적 기록이며, 현재 authority funcs는 disabled/fail-closed다. Dual-write를 사용할 때도 non-empty session allowlist가 필수이고 빈 allowlist는 비활성화한다. execute side effect는 legacy-first이며 M6 hard delete는 금지다. Wave B (`_project_mission_loop` + inbox join + UI flag) 후 재검토. [journal-first design](./redesign-2026-07/evidence/journal-first-read-projection-design-2026-07-14.md).
 
 > **Human 결정 (2026-07-08):** dogfood를 제대로 돌릴 만큼 개발이 성숙하지 않았다고 판단 — **지금 할 수 있는 코드 작업을 우선**한다. dogfood/운영 트랙(구 큐 1~3)은 §「보류 — dogfood 재개 시」로 이동.
 > **Human 결정 (2026-07-09):** 코드 트랙 큐 소진 확인(아래) 후 **보류 해제 — dogfood 재개**. F7 7일 시계 재시작(`make dogfood-track-f7-start` → start_date=2026-07-09, 마감 2026-07-16 — 경과한 07-12 시한은 이 재시작으로 대체). 아래 §「지금 — 라이브 dogfood 트랙」이 신규 실행 큐.

@@ -21,7 +21,7 @@
 | `01` kernel                   | pure aggregate·merge/repair 완료 | session adapter, legacy authority cutover                    | Step 1/6       |
 | `02` durability               | lock·tail guard·idempotency·identity first pass | atomic batch, claim lease                    | Step 5         |
 | `03` runtime/context/memory   | recipe contract 완료             | provider port, memory promotion, provenance                  | Step 2/4       |
-| `04` Human UX/API/UI          | decision model·bridge·read-model route first pass | actual UI wiring, SSE cursor, browser QA               | Step 2/3       |
+| `04` Human UX/API/UI          | decision model·bridge·read-model route·UI wiring·SSE cursor·optimistic locking 완료 (2026-07-15) | 완전한 decision+run.json 단일 트랜잭션 원자성                | Step 2/3 완료  |
 | `05` reliability/ops          | test baseline 완료               | fault injection, telemetry, dogfood SLO                      | Step 4/5/6     |
 | `06` async runtime            | Activity·lease·recovery·queue first pass | daemon/scheduler integration, provider/execute wiring        | Step 4/5       |
 | `07` five principles          | design constraints 완료          | scorecard CI, adoption gate, quarterly review                | Step 5/6       |

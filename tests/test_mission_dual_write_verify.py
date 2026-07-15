@@ -136,8 +136,8 @@ def test_pending_inbox_item_created_via_real_path_is_no_longer_a_mismatch(tmp_pa
     (mirror_inbox_creation), so a real, unscripted inbox pause opens a Mission
     execution gate for that exact item id — this used to be a hard_mismatch
     (Mission never entered AWAITING_HUMAN at all), see
-    docs/redesign-2026-07/dual-write-observability-and-verification-2026-07-13.md
-    and docs/redesign-2026-07/execution-gate-design-draft-2026-07-13.md.
+    docs/redesign-2026-07/evidence/dual-write-observability-and-verification-2026-07-13.md
+    and docs/redesign-2026-07/evidence/execution-gate-design-draft-2026-07-13.md.
     """
     from agent_lab.human_inbox import create_inbox_item
     from agent_lab.mission.application import MissionApplication

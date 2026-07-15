@@ -100,7 +100,7 @@ def test_inbox_creation_bridge_opens_gate_without_changing_state(tmp_path: Path,
     """The actual production path: create_inbox_item alone (no manual kernel dispatch)
     must open an execution gate, regardless of Mission's current state — the original
     gap was that inbox creation had no dual-write hook at all. See
-    docs/redesign-2026-07/execution-gate-design-draft-2026-07-13.md.
+    docs/redesign-2026-07/evidence/execution-gate-design-draft-2026-07-13.md.
     """
     folder = _session(tmp_path, monkeypatch)
     monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")

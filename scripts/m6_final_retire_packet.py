@@ -170,8 +170,14 @@ def build_packet(root: Path, output: Path) -> Path:
                 if not isinstance(payload, dict):
                     raise RuntimeError(f"required evidence must be a JSON object: {filename}")
                 _copy_redacted(root, source.relative_to(root).as_posix(), evidence / source.name)
-            _copy_redacted(root, "docs/redesign-2026-07/m6-precheck-retire-scope-2026-07-14.md", staging / "reports/m6-precheck.md")
-            _copy_redacted(root, "docs/redesign-2026-07/dual-write-ui-read-model-bounded-cutover-evidence-2026-07-14.md", staging / "reports/ui-soak.md")
+            _copy_redacted(
+                root, "docs/redesign-2026-07/evidence/m6-precheck-retire-scope-2026-07-14.md", staging / "reports/m6-precheck.md"
+            )
+            _copy_redacted(
+                root,
+                "docs/redesign-2026-07/evidence/dual-write-ui-read-model-bounded-cutover-evidence-2026-07-14.md",
+                staging / "reports/ui-soak.md",
+            )
             baseline = Path("/tmp/m6-baseline.txt")
             (staging / "baseline.txt").write_text(
                 _redact(baseline.read_text(encoding="utf-8")) if baseline.is_file() else "baseline capture unavailable\n",

@@ -35,7 +35,7 @@ class GateRecord:
     Unlike ``BlockExecution``/``AWAITING_HUMAN`` (valid only from
     READY_TO_EXECUTE, blocks StartExecution), gates can open from any state,
     many can be open at once, and opening/closing one never changes
-    ``mission.state``. See docs/redesign-2026-07/execution-gate-design-draft-2026-07-13.md.
+    ``mission.state``. See docs/redesign-2026-07/evidence/execution-gate-design-draft-2026-07-13.md.
     """
 
     gate_id: str

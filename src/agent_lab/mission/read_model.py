@@ -20,7 +20,7 @@ class MissionOperationalStatus(StrEnum):
     The write model is intentionally split — MissionState covers the mission's
     life-cycle; execution-level human gates (``Mission.open_gates``) are a
     separate, state-independent side-channel (see
-    docs/redesign-2026-07/execution-gate-design-draft-2026-07-13.md). This is
+    docs/redesign-2026-07/evidence/execution-gate-design-draft-2026-07-13.md). This is
     the single, centrally-owned projection that recombines them into one
     value so consumers don't each reinvent the priority rules. Nothing else
     should compute this independently.

@@ -263,7 +263,7 @@ def mirror_inbox_creation(folder: Path, *, item_id: str, kind: str = "", reason:
 
     Uses ``OpenExecutionGate`` — valid from any ``MissionState``, purely
     observational, never blocks other transitions (kernel.py; see
-    docs/redesign-2026-07/execution-gate-design-draft-2026-07-13.md) — instead
+    docs/redesign-2026-07/evidence/execution-gate-design-draft-2026-07-13.md) — instead
     of ``BlockExecution`` (valid only from READY_TO_EXECUTE, blocks
     StartExecution). Most real inbox items fire mid-execution (merge_gate.py,
     autonomy_inbox.py, room/retry.py, ...) where BlockExecution used to

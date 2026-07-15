@@ -1,6 +1,6 @@
 # Sector 4 — Human UX·API·프론트엔드
 
-> **상태:** In progress / D0 — UI surface mapping pending implementation  
+> **상태:** UI surface mapping + wiring 완료 (2026-07-15, `11-ui-ux-surface-map.md` §7 1~5)  
 > **선행:** Mission states/events/projections  
 > **관련 SSOT:** `ROOM-TRANSCRIPT-CONTRACT.md`, `MCP-FIRST-INBOX.md`
 
@@ -10,7 +10,7 @@ Human을 “에이전트 실행자”가 아니라 목표·권한·예외의 감
 
 ## 착수 상태
 
-`decision_queue.py`와 `decision_repository.py`가 질문·답변·만료·stale version conflict를 공통 모델로 고정했고, `human_bridge.py`가 답변을 waiting Activity/Mission block 재개로 연결한다. 기존 Human Inbox API와 UI는 아직 compatibility surface이며, 다음 단계에서 이 bridge를 read/write adapter로 연결한다.
+`decision_queue.py`와 `decision_repository.py`가 질문·답변·만료·stale version conflict를 공통 모델로 고정했고, `human_bridge.py`가 답변을 waiting Activity/Mission block 재개로 연결한다. `MissionApplication.guard_inbox_answer()`(2026-07-15)가 이 CAS 커널을 실제 프로덕션 `/inbox/{item_id}/resolve` 경로에 연결 — `decision_id`/`mission_id`/`expected_version`을 read-model에서 받아 stale/중복 answer를 409로 거부한다. 완전한 단일 트랜잭션(decision journal + `run.json` 원자적 커밋)은 아직 별도 트랙.
 
 ## 2. 현재 평가
 

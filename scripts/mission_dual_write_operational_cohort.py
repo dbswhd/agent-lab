@@ -7,7 +7,7 @@ Unlike mission_dual_write_synthetic_cohort.py (isolated /tmp), this script:
 - requires clean verify baseline before watch
 - records ≥60min observation with a final tick
 
-See docs/redesign-2026-07/dual-write-cutover-scope-limitations-2026-07-13.md
+See docs/redesign-2026-07/evidence/dual-write-cutover-scope-limitations-2026-07-13.md
 """
 
 from __future__ import annotations

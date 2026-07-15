@@ -183,7 +183,7 @@ def _check_session(folder: Path) -> dict[str, Any]:
         )
 
     # Item-level comparison via execution-level gates (see
-    # docs/redesign-2026-07/execution-gate-design-draft-2026-07-13.md) — precise
+    # docs/redesign-2026-07/evidence/execution-gate-design-draft-2026-07-13.md) — precise
     # per-item_id diff instead of a single boolean (legacy pending vs
     # mission.state == AWAITING_HUMAN), which couldn't tell you *which* item
     # was the problem and couldn't represent more than one pending item at once.

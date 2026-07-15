@@ -24,7 +24,7 @@ _DISABLED_TOTAL = 0
 _BUCKETS = ("mirrored", "blocked_cohort", "expected_boundary", "error")
 
 # Documented FSM boundaries — not cohort failures (see
-# docs/redesign-2026-07/dual-write-cutover-scope-limitations-2026-07-13.md).
+# docs/redesign-2026-07/evidence/dual-write-cutover-scope-limitations-2026-07-13.md).
 _EXPECTED_BOUNDARY_REASONS = frozenset({"mission_not_ready_to_execute"})
 
 

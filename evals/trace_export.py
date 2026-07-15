@@ -1,4 +1,4 @@
-"""session folder → EvalTrace (v1 schema, docs/EVAL-SURFACE-V1-PLAN.md).
+"""session folder → EvalTrace (v1 schema, docs/archive/rfcs/EVAL-SURFACE-V1-PLAN.md).
 
 Reads ``run.json`` (+ ``chat.jsonl`` / ``plan.md`` when present) and synthesizes
 the v1 fixed spans from structural evidence already in ``run.json`` — most

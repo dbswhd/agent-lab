@@ -5,7 +5,7 @@
 > **기준일**: 2026-07-07
 > **북극성 근거**: [`NORTH-STAR.md`](./NORTH-STAR.md) §1 Layer 1 S3a~S3d · §2.1 N7
 > **선행 완료**: S3a-0 로컬 인벤토리 (`src/agent_lab/tool_cards.py`, 2026-07-06) — 이 문서가 확장하는 기반
-> **의존 문서**: [`N10-USER-LOOP-WISDOM-DRAFT.md`](./N10-USER-LOOP-WISDOM-DRAFT.md) §4-C4(S3a-0) · [`DESIGN-S1-FEEDBACK-LOOP.md`](./DESIGN-S1-FEEDBACK-LOOP.md)(RECALL/SetupHint 재사용 대상)
+> **의존 문서**: [`N10-USER-LOOP-WISDOM-DRAFT.md`](./N10-USER-LOOP-WISDOM-DRAFT.md) §4-C4(S3a-0) · [`DESIGN-S1-FEEDBACK-LOOP.md`](./archive/rfcs/DESIGN-S1-FEEDBACK-LOOP.md)(RECALL/SetupHint 재사용 대상)
 
 ---
 

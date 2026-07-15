@@ -1,8 +1,8 @@
 # Agent Lab OpenAI식 Eval Surface + 슈퍼샘플 정리 계획
 
-> **Status:** 구현 완료 history — `evals/` local harness, 10 case, 8 deterministic graders, `make eval-surface-local` 반영. 현재 정의는 [EVAL-CONTRACT.md](./EVAL-CONTRACT.md)가 소유한다.
+> **Status:** 구현 완료 history — `evals/` local harness, 10 case, 8 deterministic graders, `make eval-surface-local` 반영. 현재 정의는 [EVAL-CONTRACT.md](../../EVAL-CONTRACT.md)가 소유한다.
 > **SSOT:** local-first JSON/JSONL (`evals/results/latest.json`, `evals/cases.jsonl`)  
-> **Related:** [EVAL-PROGRAM.md](./EVAL-PROGRAM.md) · [NORTH-STAR.md](./NORTH-STAR.md) §0.1 (T0–T2) · [`dogfood-v1.json`](../sessions/_benchmark/topics/dogfood-v1.json)
+> **Related:** [EVAL-PROGRAM.md](../../EVAL-PROGRAM.md) · [NORTH-STAR.md](../../NORTH-STAR.md) §0.1 (T0–T2) · [`dogfood-v1.json`](../../../sessions/_benchmark/topics/dogfood-v1.json)
 
 ---
 
@@ -92,7 +92,7 @@ make eval-surface-local
 
 ### 1. Episode signal 정리
 
-> **이 문서는 episode signal을 재정의하지 않는다.** 정의·field·임계값의 SSOT는 [EVAL-CONTRACT.md](./EVAL-CONTRACT.md)다.
+> **이 문서는 episode signal을 재정의하지 않는다.** 정의·field·임계값의 SSOT는 [EVAL-CONTRACT.md](../../EVAL-CONTRACT.md)다.
 
 요약 (참조용):
 
@@ -116,7 +116,7 @@ make eval-surface-local
 
 ### 3. Dogfood case contract화
 
-- [`sessions/_benchmark/topics/dogfood-v1.json`](../sessions/_benchmark/topics/dogfood-v1.json)의 사람이 읽는 pass criteria는 **유지**한다.
+- [`sessions/_benchmark/topics/dogfood-v1.json`](../../../sessions/_benchmark/topics/dogfood-v1.json)의 사람이 읽는 pass criteria는 **유지**한다.
 - `evals/cases.jsonl`에 v1 핵심 **10개**만 먼저 고정한다:
 
 | case_id | Tier | 요약 |
@@ -209,7 +209,7 @@ v1 grader는 **LLM judge 없이** 시작한다.
 | `advisor_source_mix` | S1.5 비교군 — `feedback_report.turn_source_counts`에서 파생 |
 | `completed_episode_count` | 표시용 이름 — 값은 `feedback_report.verdict_eligible_total`에서 파생 |
 
-- N8/T0/T1용 문서에 “재현 명령 + 기대 report shape”를 추가한다 ([REPRODUCTION-REPORT.md](./REPRODUCTION-REPORT.md), [QUICKSTART.md](./QUICKSTART.md)).
+- N8/T0/T1용 문서에 “재현 명령 + 기대 report shape”를 추가한다 ([REPRODUCTION-REPORT.md](../../REPRODUCTION-REPORT.md), [QUICKSTART.md](../../QUICKSTART.md)).
 
 **Acceptance**
 

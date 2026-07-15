@@ -10,7 +10,7 @@ Fail-open contract:
 - The hint **only** adjusts role text and agent selection — it has no path to
   weaken BLOCK→409, worktree isolation, Oracle gates, or Human Inbox.
 
-See docs/DESIGN-S1-FEEDBACK-LOOP.md (Phase B).
+See docs/archive/rfcs/DESIGN-S1-FEEDBACK-LOOP.md (Phase B).
 """
 
 from __future__ import annotations

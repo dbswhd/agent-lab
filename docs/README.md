@@ -1,6 +1,6 @@
 # Agent Lab documentation index
 
-> **Updated:** 2026-07-10 · **Authority:** code+tests → domain canonical doc → history/reference · **Smoke:** `python scripts/smoke_room.py`
+> **Updated:** 2026-07-15 · **Authority:** code+tests → domain canonical doc → history/reference · **Smoke:** `python scripts/smoke_room.py`
 
 이 페이지에서 질문에 맞는 **하나의 canonical doc**을 찾는다. `archive/`로 이동된 문서는 shipped 상태 판단에 사용 금지.
 
@@ -36,7 +36,7 @@
 | 기능·동작·API·UI 상세 | [USER-GUIDE.md](./USER-GUIDE.md) |
 | **Turn preset · Plan toggle · legacy profile map** | [TURN-MODES.md](./TURN-MODES.md) |
 | TurnPolicy 구현 이력 | [TURN-POLICY.md](./TURN-POLICY.md) — 현재 계약은 [TURN-CONTRACT.md](./TURN-CONTRACT.md) |
-| 4과정·동적 적응 비교·구현 로그 | [WORKFLOW-DYNAMIC-REFERENCE.md](./WORKFLOW-DYNAMIC-REFERENCE.md) — history/reference |
+| 4과정·동적 적응 비교·구현 로그 | [archive/rfcs/WORKFLOW-DYNAMIC-REFERENCE.md](./archive/rfcs/WORKFLOW-DYNAMIC-REFERENCE.md) — history/reference |
 | **Structure refactor execute waves** | [STRUCTURE-REFACTOR-WAVE.md](./STRUCTURE-REFACTOR-WAVE.md) |
 | shipped / partial / future | [EXTERNAL-REFS-TRACEABILITY.md](./EXTERNAL-REFS-TRACEABILITY.md) |
 | Room 합의 / execute / mission 루프 | [FLOW.md](./FLOW.md) §3–7 · [MISSION-LOOP-C-OMO.md](./MISSION-LOOP-C-OMO.md) |
@@ -87,6 +87,7 @@
 | [VERIFY-API.md](./VERIFY-API.md) | **외부 검증 API (N9)** — `/v1/verify` · audit headers · GJC consumer |
 | [FORK.md](./FORK.md) | Fork·upstream 동기화·안전 커스터마이즈 (N8) |
 | [PACKAGE-FORK-BOUNDARIES.md](./PACKAGE-FORK-BOUNDARIES.md) | 분리 fork 패키지 경계 (N8) |
+| [ABSORB-CC-CODEX-2026-07.md](./ABSORB-CC-CODEX-2026-07.md) | **Claude Code·Codex 패턴 흡수 SSOT** — absorb/replace/reject 매트릭스, NORTH-STAR §2.5·분기 리뷰 ②가 참조 |
 | [CLAUDE.md](../CLAUDE.md) | 레포 개발 퀵스타트 (root) |
 
 **규칙:** runtime 사실은 code+tests가 우선한다. `NOW`는 상태, `NORTH-STAR`는 방향, `FLOW`는 구조, `TURN-CONTRACT`는 턴, `EVAL-CONTRACT`는 평가만 소유한다.
@@ -112,15 +113,21 @@
 | [ROOM-DISPATCH-PROTOCOL.md](./ROOM-DISPATCH-PROTOCOL.md) | DELEGATE / parallel dispatch protocol **shipped** |
 | [MCP-TOOL-CONTRACT.md](./MCP-TOOL-CONTRACT.md) | Inbox / session plugin MCP 계약 |
 | [HYBRID-RELAY-WORKER.md](./HYBRID-RELAY-WORKER.md) | Cloudflare hybrid relay worker 배포 |
+| [F5-TRADING-ISOLATION.md](./F5-TRADING-ISOLATION.md) | NORTH-STAR F5 — **decided**; trading extension lane, core PR trading delta 0 |
+| [F7-REPO-MAP-COMPACTION-DOGFOOD.md](./F7-REPO-MAP-COMPACTION-DOGFOOD.md) | NORTH-STAR F7 — 7일 dogfood **진행 중**, 마감 2026-07-16 (`make f7-dogfood-report`) |
+| [F8-COST-VISIBILITY.md](./F8-COST-VISIBILITY.md) | NORTH-STAR F8 — **instrumented**, quarter cost ledger + L0 demotion |
 | [DESIGN-HARNESS-SELF-IMPROVE.md](./DESIGN-HARNESS-SELF-IMPROVE.md) | N6 전용 approved feature spec; HS 작업 시만 참조 |
 
-### History / research (현재 상태 판단에 사용 금지)
+### History / research (현재 상태 판단에 사용 금지 — `archive/`로 이동됨)
 
 | Doc | 보존 이유 |
 |-----|-----------|
-| [WORKFLOW-DYNAMIC-REFERENCE.md](./WORKFLOW-DYNAMIC-REFERENCE.md) | 4과정·동적 적응 비교와 TurnContract 도입 이력 |
-| [EVAL-SURFACE-SUPER-SAMPLE-PLAN.md](./EVAL-SURFACE-SUPER-SAMPLE-PLAN.md) | eval surface 구현 완료 계획; 정의는 EVAL-CONTRACT로 이동 |
-| [REVIEW-LINER-RESEARCH-2026-07.md](./REVIEW-LINER-RESEARCH-2026-07.md) | HSIL 승인에 반영된 연구 검토 스냅샷 |
+| [archive/rfcs/WORKFLOW-DYNAMIC-REFERENCE.md](./archive/rfcs/WORKFLOW-DYNAMIC-REFERENCE.md) | 4과정·동적 적응 비교와 TurnContract 도입 이력 |
+| [archive/rfcs/EVAL-SURFACE-SUPER-SAMPLE-PLAN.md](./archive/rfcs/EVAL-SURFACE-SUPER-SAMPLE-PLAN.md) | eval surface 구현 완료 계획; 정의는 EVAL-CONTRACT로 이동 |
+| [archive/rfcs/EVAL-SURFACE-V1-PLAN.md](./archive/rfcs/EVAL-SURFACE-V1-PLAN.md) | v1 local eval harness 구현 완료 history; 정의는 EVAL-CONTRACT로 이동 |
+| [archive/rfcs/DESIGN-S1-FEEDBACK-LOOP.md](./archive/rfcs/DESIGN-S1-FEEDBACK-LOOP.md) | S1 내부 피드백 루프 Phase A~D + S1.5 구현 완료 (2026-06-26) |
+| [archive/rfcs/S1.5-LANE-CONNECTOR-ADR.md](./archive/rfcs/S1.5-LANE-CONNECTOR-ADR.md) | S1.5 execute lane connector 제안(2026-06) — 채택되지 않음, `s2_role_bandit.py` subset 힌트로 대체 구현 |
+| [archive/legacy/REVIEW-LINER-RESEARCH-2026-07.md](./archive/legacy/REVIEW-LINER-RESEARCH-2026-07.md) | HSIL 승인에 반영된 연구 검토 스냅샷 |
 
 ### Extensions & trading
 
@@ -171,6 +178,7 @@
 | Doc | 역할 |
 |-----|------|
 | [MD-WRITING-PLAN.md](./MD-WRITING-PLAN.md) | PROJECT.md, CLAUDE.md, skills 작성 방법 |
+| [UI-SKILLS.md](./UI-SKILLS.md) | UI craft agent skill 설치·사용 가이드 (`npx skills add`) — CLAUDE.md CC-skills가 참조 |
 | [LIVE-CURSOR-WORKTREE-DRY-RUN.md](./LIVE-CURSOR-WORKTREE-DRY-RUN.md) | Tier B — live dry-run 운영 가이드 |
 | [LIVE-MERGE-OPERATOR.md](./LIVE-MERGE-OPERATOR.md) | Tier C — live merge 운영 가이드 |
 | [LIVE-VERIFICATION-ECONOMICS-SAFETY.md](./LIVE-VERIFICATION-ECONOMICS-SAFETY.md) | launch 전 체크리스트 — cost_ledger · diff 안전 스캔 · judge |

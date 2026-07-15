@@ -1,4 +1,4 @@
-"""Deterministic v1 graders (docs/EVAL-SURFACE-V1-PLAN.md §4). No LLM judge.
+"""Deterministic v1 graders (docs/archive/rfcs/EVAL-SURFACE-V1-PLAN.md §4). No LLM judge.
 
 Each grader takes ``(trace, case)`` and returns a grader-result dict, or
 ``None`` when the case doesn't declare an expectation the grader checks

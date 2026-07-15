@@ -3,7 +3,7 @@
 > **Status:** canonical · current behavior
 > **Last verified:** 2026-07-11
 > **Code SSOT:** `src/agent_lab/room/turn_intent.py` · `turn_contract.py` · `turn_contract_feedback.py` · `turn_policy.py` · `turn_flow_phases.py`
-> **History:** [TURN-POLICY.md](./TURN-POLICY.md) · [WORKFLOW-DYNAMIC-REFERENCE.md](./WORKFLOW-DYNAMIC-REFERENCE.md) §8.2
+> **History:** [TURN-POLICY.md](./TURN-POLICY.md) · [WORKFLOW-DYNAMIC-REFERENCE.md](./archive/rfcs/WORKFLOW-DYNAMIC-REFERENCE.md) §8.2
 
 TurnContract는 한 턴의 품질·비용 경로를 증거로 선택한다. 안전 권한은 학습하지 않으며 TurnPolicy, Plan FSM, Human gate가 계속 소유한다.
 

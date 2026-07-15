@@ -6,7 +6,7 @@ Usage:
 
 Fixture/mock-safe only: cases resolve to committed ``sessions/_regression``
 fixtures or deterministic mock runs in a temporary sessions directory (never a
-live agent run). See docs/EVAL-SURFACE-V1-PLAN.md.
+live agent run). See docs/archive/rfcs/EVAL-SURFACE-V1-PLAN.md.
 """
 
 from __future__ import annotations

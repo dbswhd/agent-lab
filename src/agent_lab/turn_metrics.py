@@ -4,7 +4,7 @@ Pure functions that roll up an already-persisted turn snapshot plus run-level
 objections/executions into a compact ``turn_metrics`` dict. No I/O here; the
 ``outcome_harvester`` module persists the result.
 
-See docs/DESIGN-S1-FEEDBACK-LOOP.md (Phase A).
+See docs/archive/rfcs/DESIGN-S1-FEEDBACK-LOOP.md (Phase A).
 """
 
 from __future__ import annotations

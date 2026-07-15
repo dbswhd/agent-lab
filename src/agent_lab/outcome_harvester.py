@@ -5,7 +5,7 @@ At turn end this module (a) patches ``turn_metrics`` into the just-written
 under the project root. Both writes are independently flag-gated and fail-open:
 any error is swallowed so the feedback machinery never blocks a room turn.
 
-See docs/DESIGN-S1-FEEDBACK-LOOP.md (Phase A).
+See docs/archive/rfcs/DESIGN-S1-FEEDBACK-LOOP.md (Phase A).
 """
 
 from __future__ import annotations

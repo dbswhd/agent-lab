@@ -3,7 +3,7 @@
 
 Answers "did the advisor actually help?" by comparing clean-pass / repair /
 BLOCK rates across default / history / explore buckets. See the S1.5 plan and
-docs/DESIGN-S1-FEEDBACK-LOOP.md.
+docs/archive/rfcs/DESIGN-S1-FEEDBACK-LOOP.md.
 
 Usage:
     python scripts/feedback_report.py [--root DIR] [--json]

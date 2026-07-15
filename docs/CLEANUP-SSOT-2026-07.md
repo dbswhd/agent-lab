@@ -24,7 +24,7 @@
 | Transcript UX | `runSessionRegistry.ts`, `useRoomSseHandler.ts` | [ROOM-TRANSCRIPT-CONTRACT.md](./ROOM-TRANSCRIPT-CONTRACT.md) | Blocker **1a** |
 | Persisted chat | `chat.jsonl` | — | final text only |
 | Turn activity | `live_log` → `live_archives/` | ROOM-TRANSCRIPT-CONTRACT | merge on refresh |
-| S1 flags | `s1_flags.py` | [DESIGN-S1-FEEDBACK-LOOP.md](./DESIGN-S1-FEEDBACK-LOOP.md) | KPI §1.4 NORTH-STAR; no D3 ceremony |
+| S1 flags | `s1_flags.py` | [DESIGN-S1-FEEDBACK-LOOP.md](./archive/rfcs/DESIGN-S1-FEEDBACK-LOOP.md) | KPI §1.4 NORTH-STAR; no D3 ceremony |
 | run.json patch | `patch_run_meta()` | CLAUDE.md F4 · `test_run_meta_write_discipline.py` | no mid-turn disk reload |
 | Structure waves | — | [STRUCTURE-REFACTOR-WAVE.md](./STRUCTURE-REFACTOR-WAVE.md) | Wave B ✅ · Phase D (1c) ✅ |
 | Autonomy Ladder | `autonomy_ladder.py`, `autonomy_inbox.py`, `useAutonomySession.ts` | NORTH-STAR N4 v1/v2 | PATCH ceiling · demotion inbox T-A0 ✅ |

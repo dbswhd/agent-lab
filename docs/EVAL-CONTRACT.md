@@ -3,7 +3,7 @@
 > **Status:** canonical · current behavior
 > **Last verified:** 2026-07-11
 > **Code SSOT:** `src/agent_lab/feedback_report.py` · `evals/schema.py` · `evals/trace_export.py` · `evals/graders.py` · `evals/report.py`
-> **History:** [EVAL-SURFACE-SUPER-SAMPLE-PLAN.md](./EVAL-SURFACE-SUPER-SAMPLE-PLAN.md) · [EVAL-SURFACE-V1-PLAN.md](./EVAL-SURFACE-V1-PLAN.md)
+> **History:** [EVAL-SURFACE-SUPER-SAMPLE-PLAN.md](./archive/rfcs/EVAL-SURFACE-SUPER-SAMPLE-PLAN.md) · [EVAL-SURFACE-V1-PLAN.md](./archive/rfcs/EVAL-SURFACE-V1-PLAN.md)
 
 이 문서는 outcome ledger와 local eval surface에서 사용하는 단어·분모·trace·grader·T0~T2 판정을 정의한다. 구현 계획과 완료 이력은 history 문서가 소유한다.
 

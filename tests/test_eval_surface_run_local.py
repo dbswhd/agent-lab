@@ -1,7 +1,7 @@
 """Eval Surface v1 — run_local integration tests against real sessions/_regression fixtures.
 
 Fixture/mock-safe only: reads existing committed session folders, never runs a
-live agent. See docs/EVAL-SURFACE-V1-PLAN.md.
+live agent. See docs/archive/rfcs/EVAL-SURFACE-V1-PLAN.md.
 """
 
 from __future__ import annotations

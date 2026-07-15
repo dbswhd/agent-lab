@@ -1,9 +1,9 @@
 # Agent Lab Eval Surface + 슈퍼샘플 준비 계획 (v2) — completed history
 
 > **Status:** completed plan · superseded as authority on 2026-07-10
-> **Canonical definitions:** [EVAL-CONTRACT.md](./EVAL-CONTRACT.md)
+> **Canonical definitions:** [EVAL-CONTRACT.md](../../EVAL-CONTRACT.md)
 > **보존 이유:** eval surface와 supersample report를 만든 구현 배경·acceptance·완료 이력. 현재 episode·표본·trace·grader 정의를 이 문서에서 판정하지 않는다.
-> **Related:** [EVAL-PROGRAM.md](./EVAL-PROGRAM.md) · [REPRODUCTION-REPORT.md](./REPRODUCTION-REPORT.md) · [QUICKSTART.md](./QUICKSTART.md)
+> **Related:** [EVAL-PROGRAM.md](../../EVAL-PROGRAM.md) · [REPRODUCTION-REPORT.md](../../REPRODUCTION-REPORT.md) · [QUICKSTART.md](../../QUICKSTART.md)
 
 ---
 
@@ -17,7 +17,7 @@
 
 ## Extracted definitions
 
-Completed episode, `verdict_eligible_total`, `MIN_SAMPLE`, n≥10/30, null lift 정의는 [EVAL-CONTRACT.md](./EVAL-CONTRACT.md) §1~2로 이동했다. 이 계획의 이후 언급은 구현 당시의 historical wording이며 새 정의를 만들지 않는다.
+Completed episode, `verdict_eligible_total`, `MIN_SAMPLE`, n≥10/30, null lift 정의는 [EVAL-CONTRACT.md](../../EVAL-CONTRACT.md) §1~2로 이동했다. 이 계획의 이후 언급은 구현 당시의 historical wording이며 새 정의를 만들지 않는다.
 
 ---
 
@@ -54,7 +54,7 @@ Completed episode, `verdict_eligible_total`, `MIN_SAMPLE`, n≥10/30, null lift 
   - `turn_source_counts = 전체 ledger의 advisor_source 분포`
 - `feedback_advisor`는 completed episode를 우선 사용하되, 표본 부족 시 기존 turn signal fallback을 유지한다 (§1에서 구현 완료).
 - eval surface report(§2)에는 표시용 이름으로 `completed_episode_count`를 써도 되지만, 값은 `feedback_report.verdict_eligible_total`에서 **파생**한다 (재계산 금지).
-- 문서 중복 제거: episode signal 정의·field는 [EVAL-CONTRACT.md](./EVAL-CONTRACT.md)가 SSOT이고, [EVAL-SURFACE-V1-PLAN.md](./EVAL-SURFACE-V1-PLAN.md)는 구현 당시 EvalTrace schema / case contract / grader 스펙을 보존한다.
+- 문서 중복 제거: episode signal 정의·field는 [EVAL-CONTRACT.md](../../EVAL-CONTRACT.md)가 SSOT이고, [EVAL-SURFACE-V1-PLAN.md](./EVAL-SURFACE-V1-PLAN.md)는 구현 당시 EvalTrace schema / case contract / grader 스펙을 보존한다.
 
 ---
 
@@ -62,7 +62,7 @@ Completed episode, `verdict_eligible_total`, `MIN_SAMPLE`, n≥10/30, null lift 
 
 ### 1. Episode 품질 정리 보강 — ✅ 완료
 
-- ~~`feedback_report`에 `turn_signal_total`, `oracle_verdict_coverage`를 추가한다.~~ 완료 ([feedback_report.py](../src/agent_lab/feedback_report.py)).
+- ~~`feedback_report`에 `turn_signal_total`, `oracle_verdict_coverage`를 추가한다.~~ 완료 ([feedback_report.py](../../../src/agent_lab/feedback_report.py)).
 - ~~docs의 `completed_episode_count` 약속을 `verdict_eligible_total`로 정정한다.~~ 완료 (이 문서 + V1-PLAN).
 - ~~`feedback_advisor`의 relevant row selection을 두 단계로.~~ 완료:
   1. 같은 category/topic overlap의 **phase=execute rows**를 먼저 사용.
@@ -85,13 +85,13 @@ Completed episode, `verdict_eligible_total`, `MIN_SAMPLE`, n≥10/30, null lift 
 
 | Artifact | 역할 |
 |----------|------|
-| [`cases.jsonl`](../evals/cases.jsonl) | v1 case contract (10개) |
-| [`cases.py`](../evals/cases.py) | case JSONL loader |
-| [`trace_export.py`](../evals/trace_export.py) | session folder → eval trace 변환 (fail-open, span 합성) |
-| [`graders.py`](../evals/graders.py) | deterministic graders (8개, opt-in 방식) |
-| [`mock_generation.py`](../evals/mock_generation.py) | fixture 없는 case의 deterministic mock session 생성 |
-| [`report.py`](../evals/report.py) | fixture/mock-safe grading + supersample report |
-| [`run_local.py`](../evals/run_local.py) | CLI facade |
+| [`cases.jsonl`](../../../evals/cases.jsonl) | v1 case contract (10개) |
+| [`cases.py`](../../../evals/cases.py) | case JSONL loader |
+| [`trace_export.py`](../../../evals/trace_export.py) | session folder → eval trace 변환 (fail-open, span 합성) |
+| [`graders.py`](../../../evals/graders.py) | deterministic graders (8개, opt-in 방식) |
+| [`mock_generation.py`](../../../evals/mock_generation.py) | fixture 없는 case의 deterministic mock session 생성 |
+| [`report.py`](../../../evals/report.py) | fixture/mock-safe grading + supersample report |
+| [`run_local.py`](../../../evals/run_local.py) | CLI facade |
 | `results/.gitignore` | local result 제외 (committed reference는 mock fixture만) |
 
 - v1 case 10개: S1, S2, S3(`generated_mock`), M3, M4, M5, L1, L2, L3, X2(fixture 매핑 완료).
@@ -147,7 +147,7 @@ Completed episode, `verdict_eligible_total`, `MIN_SAMPLE`, n≥10/30, null lift 
 
 - **T0** — eval report에서 계산: routing pass rate · human gate bypass count · Oracle coverage · trace completeness · objection flow pass rate.
 - **T1** — 재현 report에서 계산하거나 기록: quickstart command list · expected report shape · `fork_time_minutes`.
-  - `fork_time_minutes`는 **v1에서는 수동 측정 기준선**이다: clean clone에서 quickstart 완주까지 걸린 시간을 [REPRODUCTION-REPORT.md](./REPRODUCTION-REPORT.md)에 기록하고 `evals/report.py`의 `FORK_TIME_MINUTES_BASELINE`과 동기화한다. clean-clone 자동 측정은 NORTH-STAR N8 잔여 항목이며 **이 계획의 범위 밖**이다.
+  - `fork_time_minutes`는 **v1에서는 수동 측정 기준선**이다: clean clone에서 quickstart 완주까지 걸린 시간을 [REPRODUCTION-REPORT.md](../../REPRODUCTION-REPORT.md)에 기록하고 `evals/report.py`의 `FORK_TIME_MINUTES_BASELINE`과 동기화한다. clean-clone 자동 측정은 NORTH-STAR N8 잔여 항목이며 **이 계획의 범위 밖**이다.
 - **T2** — 지표 정의만 문서화: external fork/issue/PR count. v1에서는 gate로 쓰지 않는다.
 
 **Acceptance — 검증 완료**
@@ -161,7 +161,7 @@ Completed episode, `verdict_eligible_total`, `MIN_SAMPLE`, n≥10/30, null lift 
 
 ### 4. S1.5 Explore 비교군 운영화 — ✅ 완료
 
-explore mechanism은 **유지하고 재구현하지 않는다** (코드 변경 없음). 운영 절차와 해석 기준을 [EVAL-PROGRAM.md](./EVAL-PROGRAM.md) §4 "S1.5 explore 비교군"에 문서화했다:
+explore mechanism은 **유지하고 재구현하지 않는다** (코드 변경 없음). 운영 절차와 해석 기준을 [EVAL-PROGRAM.md](../../EVAL-PROGRAM.md) §4 "S1.5 explore 비교군"에 문서화했다:
 
 ```bash
 AGENT_LAB_FEEDBACK_EXPLORE_RATE=0.1 make dogfood-feedback-mock
@@ -169,7 +169,7 @@ AGENT_LAB_FEEDBACK_EXPLORE_RATE=0.1 make dogfood-feedback-mock
 AGENT_LAB_FEEDBACK_EXPLORE_RATE=1.0 make dogfood-feedback-mock
 ```
 
-- report 해석 기준 ([EVAL-CONTRACT.md](./EVAL-CONTRACT.md) §2 참조):
+- report 해석 기준 ([EVAL-CONTRACT.md](../../EVAL-CONTRACT.md) §2 참조):
   - `advisor_lift.history_vs_default == null` → below MIN_SAMPLE.
   - `advisor_lift.explore_vs_default == null` → explore 비교군 부족.
   - n≥30 = 비교군 신뢰 기준, n≥10 = early signal (둘 다 사람 해석 기준, 코드 게이트 아님).
@@ -185,11 +185,11 @@ AGENT_LAB_FEEDBACK_EXPLORE_RATE=1.0 make dogfood-feedback-mock
 
 - **문서 drift 제거 — 완료:**
   - 이 문서(v2)가 현행 구현 상태의 SSOT.
-  - 구현 당시 [EVAL-SURFACE-V1-PLAN.md](./EVAL-SURFACE-V1-PLAN.md)의 episode 정의를 이 계획으로 모았다. 2026-07-10 이후 두 계획의 현행 정의는 [EVAL-CONTRACT.md](./EVAL-CONTRACT.md)로 추출됐다.
-- [REPRODUCTION-REPORT.md](./REPRODUCTION-REPORT.md)에 "Eval Surface 재현 (T0/T1)" 섹션 추가 완료 — `make eval-surface-check` 절차 + `fork_time_minutes=12` 기준선 연결(`evals/report.py`의 `FORK_TIME_MINUTES_BASELINE`과 동기화).
-- [QUICKSTART.md](./QUICKSTART.md)의 필수 1~6단계는 그대로 두고, "다음 단계" 표에 eval-surface 재현 링크만 추가 — **최소 경로** 원칙 유지.
-- [FORK.md](./FORK.md) §6에 `make eval-surface-check`를 벤치·KPI 유지 번들에 추가하고, 신뢰 report 표(Quickstart/Emergence/Eval surface/S1.5 feedback × T-layer)를 신설했다.
-- [EVAL-PROGRAM.md](./EVAL-PROGRAM.md) §4에 S1.5 explore 운영 절차를 추가했다 (§4 참조).
+  - 구현 당시 [EVAL-SURFACE-V1-PLAN.md](./EVAL-SURFACE-V1-PLAN.md)의 episode 정의를 이 계획으로 모았다. 2026-07-10 이후 두 계획의 현행 정의는 [EVAL-CONTRACT.md](../../EVAL-CONTRACT.md)로 추출됐다.
+- [REPRODUCTION-REPORT.md](../../REPRODUCTION-REPORT.md)에 "Eval Surface 재현 (T0/T1)" 섹션 추가 완료 — `make eval-surface-check` 절차 + `fork_time_minutes=12` 기준선 연결(`evals/report.py`의 `FORK_TIME_MINUTES_BASELINE`과 동기화).
+- [QUICKSTART.md](../../QUICKSTART.md)의 필수 1~6단계는 그대로 두고, "다음 단계" 표에 eval-surface 재현 링크만 추가 — **최소 경로** 원칙 유지.
+- [FORK.md](../../FORK.md) §6에 `make eval-surface-check`를 벤치·KPI 유지 번들에 추가하고, 신뢰 report 표(Quickstart/Emergence/Eval surface/S1.5 feedback × T-layer)를 신설했다.
+- [EVAL-PROGRAM.md](../../EVAL-PROGRAM.md) §4에 S1.5 explore 운영 절차를 추가했다 (§4 참조).
 - 공개 재현 명령:
 
 ```bash

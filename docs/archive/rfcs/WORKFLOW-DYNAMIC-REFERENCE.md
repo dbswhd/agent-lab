@@ -1,9 +1,9 @@
 # Workflow · 동적 적응 · 슈퍼샘플 비교 — history/reference
 
 > **Status:** historical reference · **작성:** 2026-07-07 · **authority 종료:** 2026-07-10
-> **현재 구조:** [FLOW.md](./FLOW.md) · **턴 제어:** [TURN-CONTRACT.md](./TURN-CONTRACT.md) · **평가:** [EVAL-CONTRACT.md](./EVAL-CONTRACT.md) · **방향:** [NORTH-STAR.md](./NORTH-STAR.md)
+> **현재 구조:** [FLOW.md](../../FLOW.md) · **턴 제어:** [TURN-CONTRACT.md](../../TURN-CONTRACT.md) · **평가:** [EVAL-CONTRACT.md](../../EVAL-CONTRACT.md) · **방향:** [NORTH-STAR.md](../../NORTH-STAR.md)
 > **보존 이유:** 4과정 비교, Fugu/Hermes 대조, TurnContract 도입 배경과 P0~P3 strangler 이력. 현재 상태·계약·착수 순서를 이 문서에서 판정하지 않는다.
-> **검증 명령:** 현행 명령은 [EVAL-CONTRACT.md](./EVAL-CONTRACT.md)와 [NOW.md](./NOW.md)를 우선한다.
+> **검증 명령:** 현행 명령은 [EVAL-CONTRACT.md](../../EVAL-CONTRACT.md)와 [NOW.md](../../NOW.md)를 우선한다.
 
 ---
 
@@ -15,7 +15,7 @@
 | 충분히 동적인가? | **신뢰·검증 모트 안에서는 L2~L3** (규칙+escalation+repair). **Fugu/Hermes/Claude ultraworkflow급 per-query 재설계(L4)는 아님** |
 | 슈퍼샘플 대비 위치 | ② objection · ④ Oracle/worktree **상위** · ① 학습 라우팅 · durable task queue **하위** |
 | Composer preset 필요한가? | **아직 예** (빠른/감독). 목표는 **아니오** — §8.2 TurnContract가 topology·FSM·인원을 신호로 결정하면 UI preset **삭제 가능** |
-| 작업 시 절대 금지 | Human gate 없는 auto-merge · inbox bypass 장기 미션 · main 무 gate sandbox · MoA로 objection 대체 ([NORTH-STAR §2.5](./NORTH-STAR.md)) |
+| 작업 시 절대 금지 | Human gate 없는 auto-merge · inbox bypass 장기 미션 · main 무 gate sandbox · MoA로 objection 대체 ([NORTH-STAR §2.5](../../NORTH-STAR.md)) |
 
 ---
 
@@ -190,7 +190,7 @@ route → role_plan → room_round → objection → plan_update
 
 ### 4.3 Canonical episode (S1 feedback와 공유)
 
-> 현재 SSOT: [EVAL-CONTRACT.md](./EVAL-CONTRACT.md). 아래 내용은 도입 당시 설명이다.
+> 현재 SSOT: [EVAL-CONTRACT.md](../../EVAL-CONTRACT.md). 아래 내용은 도입 당시 설명이다.
 
 - **completed episode** = `outcomes.jsonl`에서 `phase == "execute"` row
 - 구현: `feedback_report._is_verdict_eligible()`
@@ -284,7 +284,7 @@ pytest tests/test_role_plan.py tests/test_dynamic_agent_roster.py -q
 | **Composer 축** | preset: fast/supervisor · Plan toggle: discuss/plan |
 | **Plan OFF** | Scribe skip, read-only overlay, `[PROPOSED:]` |
 | **Plan ON** | Scribe → `plan.md` (`room/plan_scribe.py`) |
-| **preset** | fast: 1 lead, consensus OFF, harvest skip · supervisor: team, consensus ON, Plan 잠금 historically — **signal-only plan으로 전환됨** ([NORTH-STAR §3.5.1](./NORTH-STAR.md)) |
+| **preset** | fast: 1 lead, consensus OFF, harvest skip · supervisor: team, consensus ON, Plan 잠금 historically — **signal-only plan으로 전환됨** ([NORTH-STAR §3.5.1](../../NORTH-STAR.md)) |
 
 #### objection
 
@@ -311,7 +311,7 @@ python scripts/smoke_room.py  # 38 baselines
 
 | 항목 | 내용 |
 |------|------|
-| **SSOT 방향** | [MCP-FIRST-INBOX.md](./MCP-FIRST-INBOX.md) |
+| **SSOT 방향** | [MCP-FIRST-INBOX.md](../../MCP-FIRST-INBOX.md) |
 | **MCP tools** | `ask_human` (≥2 options), `propose_build` (execute GO) |
 | **서버** | `src/agent_lab/inbox/mcp_server.py`, `human_inbox.py` |
 | **UI** | `web/src/components/HumanInboxPanel.tsx` |
@@ -433,7 +433,7 @@ flowchart LR
 ### 8.2 Preset elimination — TurnContract (목표 아키텍처)
 
 > **관측 (2026-07-07 dogfood):** S1 사실 확인(`room.py consensus cap`)에 supervisor preset → trio 1 wave 후 **plan FSM CLARIFY tail**(`skill_first_hold`)이 붙음. 원인은 **겹침 2개:**
-> 1. **`TurnPolicyEngine`이 `route.category`를 모름** — supervisor 첫 턴마다 `init_plan_workflow` ([`turn_policy.py`](../src/agent_lab/room/turn_policy.py) L234–243).
+> 1. **`TurnPolicyEngine`이 `route.category`를 모름** — supervisor 첫 턴마다 `init_plan_workflow` ([`turn_policy.py`](../../../src/agent_lab/room/turn_policy.py) L234–243).
 > 2. **`clarity_short_circuit`이 한글 접미 토픽에서 false** — `room.py에서…`처럼 확장자 직후 CJK가 오면 `_ANCHOR_PATTERNS`의 `\b`가 매치 실패 (실측: `short_circuit=False`, `threshold_met=False`, ambiguity≈0.18). 문서상 “`room.py` anchor 가능”은 **영문 경계 토픽에만** 해당.
 
 #### 논지 (한 줄)
@@ -441,7 +441,7 @@ flowchart LR
 **에이전트 몇 명·누구·어떤 경로(discuss/CLARIFY/plan/execute)를 돌릴지가 토픽+상태 신호로 자동 결정되면, Composer의 preset 선택은 UX가 아니라 중복이다.**  
 목표는 preset을 “내부에서 자동 선택”하는 것이 아니라, **사용자 설정 축 자체를 제거**하는 것이다.
 
-이는 [NORTH-STAR §3.5.1](./NORTH-STAR.md) **B(signal-only plan)** 의 확장 — plan lane만 신호화한 것이 아니라 **topology·인원·합의 깊이**까지 신호화.
+이는 [NORTH-STAR §3.5.1](../../NORTH-STAR.md) **B(signal-only plan)** 의 확장 — plan lane만 신호화한 것이 아니라 **topology·인원·합의 깊이**까지 신호화.
 
 #### Preset이 오늘 묶어 주는 것 (분해)
 
@@ -452,7 +452,7 @@ flowchart LR
 | plan FSM bootstrap | supervisor **첫 턴** → `init_plan_workflow` | `skill_intent` · `proposed_tags` · synthesize_only · **아님** “preset==supervisor” |
 | CLARIFY 진입 | `AGENT_LAB_PLAN_FSM_SKILL_FIRST` + supervisor FSM | `clarity_threshold_met` / `clarity_short_circuit` · `category!=quick` |
 | S1 harvest / advisor | supervisor implicit ON (`s1_flags.py`) | **부분 완료 (§8.2.2, 커밋 `dfb96836`):** `AGENT_LAB_FEEDBACK_ADVISOR`(pre-turn, latency 경로)는 `supervisor_turn` 신호로 전환. `AGENT_LAB_TURN_METRICS`/`AGENT_LAB_OUTCOME_LEDGER`(post-turn write-only)는 raw preset 기본값 유지 — 의도적, `AGENT_LAB_RUN_PROFILE` 전환은 별도 백로그 |
-| 비용·지연 프로파일 | fast ~54s vs supervisor ~281s ([§3.2.1](./NORTH-STAR.md)) | quick path는 **의도적 저비용** — category로 자동, preset 불필요 |
+| 비용·지연 프로파일 | fast ~54s vs supervisor ~281s ([§3.2.1](../../NORTH-STAR.md)) | quick path는 **의도적 저비용** — category로 자동, preset 불필요 |
 
 #### 목표: `TurnContract` (이름만 제안 — SSOT는 구현 시 `turn_policy` 확장)
 
@@ -578,7 +578,7 @@ init_pw = is_supervisor and signals.supervisor_first_turn and not skip_fsm_boots
 
 ## 9. 슈퍼샘플 비교 — 4과정 × 동적 등급
 
-> **SSOT 분리:** 이 절은 시스템 간 **등급 비교 뷰**(점수·상대 위치)만 제공한다. "무엇을 베끼고 무엇은 안 하는가"의 **흡수 판정**은 [NORTH-STAR.md §2.5](./NORTH-STAR.md#25-참고-샘플-흡수-매트릭스)가 SSOT — 두 절이 충돌하면 §2.5가 우선한다.
+> **SSOT 분리:** 이 절은 시스템 간 **등급 비교 뷰**(점수·상대 위치)만 제공한다. "무엇을 베끼고 무엇은 안 하는가"의 **흡수 판정**은 [NORTH-STAR.md §2.5](../../NORTH-STAR.md#25-참고-샘플-흡수-매트릭스)가 SSOT — 두 절이 충돌하면 §2.5가 우선한다.
 
 점수: **0** 없음 · **1** 약 · **2** 보통 · **3** 강 · **4** 매우 강 (해당 제품 핵심)
 
@@ -617,7 +617,7 @@ init_pw = is_supervisor and signals.supervisor_first_turn and not skip_fsm_boots
 - **①③④:** Kanban SQLite WAL — `tasks→events`, dispatcher `BEGIN IMMEDIATE` claim, `kanban_block`/`kanban_complete`.
 - **② L4:** 구조화 핸드오프; 침묵 종료 = 프로토콜 위반.
 - **workspace:** scratch / dir / worktree; CLI lane(Codex/CC)은 플러그인.
-- **Agent Lab 참조:** F11 `run_meta` god-object 대체 모델 — [NORTH-STAR §2.5](./NORTH-STAR.md).
+- **Agent Lab 참조:** F11 `run_meta` god-object 대체 모델 — [NORTH-STAR §2.5](../../NORTH-STAR.md).
 - **차별 유지:** Oracle, BLOCK→409, Human Inbox.
 
 #### Claude Code
@@ -644,7 +644,7 @@ init_pw = is_supervisor and signals.supervisor_first_turn and not skip_fsm_boots
 #### GJC (Gajae Code)
 
 - skill FSM: deep-interview → ralplan → ultragoal; tmux team.
-- Agent Lab: Room 일상 + GJC slash 외부 + `POST /v1/verify` / MB-8 handoff — [GJC-ENTRY.md](./GJC-ENTRY.md).
+- Agent Lab: Room 일상 + GJC slash 외부 + `POST /v1/verify` / MB-8 handoff — [GJC-ENTRY.md](../../GJC-ENTRY.md).
 - P3: phase 권한 skill/MCP 우선.
 
 #### OpenHands / Jules / Factory / 기타
@@ -672,7 +672,7 @@ init_pw = is_supervisor and signals.supervisor_first_turn and not skip_fsm_boots
 
 ### 9.3 흡수 금지 (작업 시 재확인)
 
-[NORTH-STAR §2.5](./NORTH-STAR.md) — 아래는 **PR에서 거부**:
+[NORTH-STAR §2.5](../../NORTH-STAR.md) — 아래는 **PR에서 거부**:
 
 1. Human gate 없이 PR auto-merge (Jules/Devin Auto-Fix 그대로)
 2. fire-and-forget multi-day mission (Factory inbox bypass)
@@ -686,7 +686,7 @@ init_pw = is_supervisor and signals.supervisor_first_turn and not skip_fsm_boots
 | 시스템 | 사용자 노출 제어 | Per-turn 구조 결정 | Agent Lab 관계 |
 |--------|------------------|-------------------|----------------|
 | **Fugu-Ultra** | API만 (모드 없음) | Conductor가 workflow **생성** (L4) | 학습 오케스트레이터 미흡수 — 모트 유지 |
-| **LangGraph** | 그래프를 설계자가 정의 | 런타임이 그래프 따름 (L4*) | substrate 교체는 비추천 ([NORTH-STAR §3.5](./NORTH-STAR.md)) |
+| **LangGraph** | 그래프를 설계자가 정의 | 런타임이 그래프 따름 (L4*) | substrate 교체는 비추천 ([NORTH-STAR §3.5](../../NORTH-STAR.md)) |
 | **Hermes** | task 제목·Kanban | dispatcher claim + `kanban_block` (L3) | durable queue 참고 — objection/Oracle 대체 불가 |
 | **Claude Code** | Plan / Agent / Ask / Debug | 모드 + subagent (L2~L3) | Plan read-only·hooks 참고 — Room objection 없음 |
 | **Cursor** | Plan / Agent / Debug (Shift+Tab) | 모드 매트릭스 (L2) | worktree·multi-agent 참고 — envelope 약함 |
@@ -794,8 +794,8 @@ quadrantChart
 | **P0** | S1 lift live 증거 | — | **P0-5:** supervisor dogfood + `make feedback-report JSON=1` | `by_source.history.n`≥3, lift 관측 기록 |
 | **P0** | explore 비교군 | EVAL-PROGRAM §S1.5 | **P0-5:** `AGENT_LAB_FEEDBACK_EXPLORE_RATE=0.1` dogfood | `turn_source_counts.explore`>0 (**2026-07-07 mock 관측:** `1`) |
 | **P1** | **Composer preset 제거** (TurnContract) | Fugu/Hermes implicit · Cursor 반례 | §8.2 P1–P2: contract 스냅샷 → UI preset 삭제 | `roomPresets.ts` 미사용 · S1–S3 eval green |
-| **P1** | trace completeness 해석/유지 | — | case-type-aware grader(`trace_profile`) 유지 + 신규 regression은 최소 plan/execute/oracle 신호 보존 | **2026-07-07 기준선:** `trace_completeness_rate=1.0`, 10개 eval case 전부 `trace_completeness=1.0`; `M4/L1`는 discuss-only semantics 유지 + `trace_profile`로 해석 — [M4-L1-DISCUSS-ONLY-TRACE-DECISION.md](./M4-L1-DISCUSS-ONLY-TRACE-DECISION.md) |
-| **P1** | L3 autonomy 미증명 | Codex approval | dogfood `escalation_rate_by_level` n≥10/level | [NORTH-STAR §1.4.1](./NORTH-STAR.md) |
+| **P1** | trace completeness 해석/유지 | — | case-type-aware grader(`trace_profile`) 유지 + 신규 regression은 최소 plan/execute/oracle 신호 보존 | **2026-07-07 기준선:** `trace_completeness_rate=1.0`, 10개 eval case 전부 `trace_completeness=1.0`; `M4/L1`는 discuss-only semantics 유지 + `trace_profile`로 해석 — [M4-L1-DISCUSS-ONLY-TRACE-DECISION.md](../../M4-L1-DISCUSS-ONLY-TRACE-DECISION.md) |
+| **P1** | L3 autonomy 미증명 | Codex approval | dogfood `escalation_rate_by_level` n≥10/level | [NORTH-STAR §1.4.1](../../NORTH-STAR.md) |
 | **P2** | durable task queue 없음 | **Hermes Kanban** | spike: mission board ↔ SQLite task_events (F11 대체) | no `run_meta` god-object 경로 1개 |
 | **P2** | per-query workflow 없음 | Fugu-Ultra, Claude ultraworkflow | **흡수 금지** — TurnContract(규칙+피드백)만. RL Conductor·ultraworkflow 생성기는 제외 | emergence-bench delta ≥ 0 · preset 없이 deep/critical만 multi-round |
 | **P2** | confidence-gated plan 없음 | Devin 2.1 | plan_workflow에 readiness/confidence 필드 설계 | mock fixture 1개 |
@@ -882,18 +882,18 @@ python scripts/smoke_room.py
 
 | 문서 | 용도 |
 |------|------|
-| [FLOW.md](./FLOW.md) | Discuss→Plan→Execute→Verify 상세 |
+| [FLOW.md](../../FLOW.md) | Discuss→Plan→Execute→Verify 상세 |
 | [05-room-agent-roles.md](./05-room-agent-roles.md) | 에이전트 역할 · fast preset |
-| [MCP-FIRST-INBOX.md](./MCP-FIRST-INBOX.md) | Human gate SSOT |
-| [TURN-CONTRACT.md](./TURN-CONTRACT.md) | 현재 TurnPolicy · TurnContract · rollout · safety 권한 |
-| [TURN-MODES.md](./TURN-MODES.md) | legacy preset/Plan UI history |
-| [TURN-POLICY.md](./TURN-POLICY.md) | TurnSignals · TurnEffects 구현 이력 |
-| [EVAL-CONTRACT.md](./EVAL-CONTRACT.md) | 현재 episode · trace · graders · T0/T1/T2 |
-| [REPRODUCTION-REPORT.md](./REPRODUCTION-REPORT.md) | 공개 재현 수치 |
-| [GJC-ENTRY.md](./GJC-ENTRY.md) | Room vs GJC |
-| [VERIFY-API.md](./VERIFY-API.md) | N9 외부 검증 |
-| [NORTH-STAR.md](./NORTH-STAR.md) | 흡수 매트릭스 · 로드맵 |
-| [EXTERNAL-REFS-TRACEABILITY.md](./EXTERNAL-REFS-TRACEABILITY.md) | shipped 증거 |
+| [MCP-FIRST-INBOX.md](../../MCP-FIRST-INBOX.md) | Human gate SSOT |
+| [TURN-CONTRACT.md](../../TURN-CONTRACT.md) | 현재 TurnPolicy · TurnContract · rollout · safety 권한 |
+| [TURN-MODES.md](../../TURN-MODES.md) | legacy preset/Plan UI history |
+| [TURN-POLICY.md](../../TURN-POLICY.md) | TurnSignals · TurnEffects 구현 이력 |
+| [EVAL-CONTRACT.md](../../EVAL-CONTRACT.md) | 현재 episode · trace · graders · T0/T1/T2 |
+| [REPRODUCTION-REPORT.md](../../REPRODUCTION-REPORT.md) | 공개 재현 수치 |
+| [GJC-ENTRY.md](../../GJC-ENTRY.md) | Room vs GJC |
+| [VERIFY-API.md](../../VERIFY-API.md) | N9 외부 검증 |
+| [NORTH-STAR.md](../../NORTH-STAR.md) | 흡수 매트릭스 · 로드맵 |
+| [EXTERNAL-REFS-TRACEABILITY.md](../../EXTERNAL-REFS-TRACEABILITY.md) | shipped 증거 |
 
 ---
 

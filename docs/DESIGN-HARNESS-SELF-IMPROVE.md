@@ -5,7 +5,7 @@
 > **승인:** 2026-07-08 Human 승인 — REVIEW P0 5건 반영 후. HS0~HS5 구현 완료, HS6은 HS-M5 미충족으로 동결.
 > **북극성 근거**: [NORTH-STAR.md](./NORTH-STAR.md) §2.1 **N6** (Self-patch meta-loop — 1단계 관측 ✅, **2단계 HSIL 설계 승인·HS0~HS5(HS5-3 포함) 코드+mock 검증 완료, HS6은 HS-M5 게이트 미충족으로 동결**)  
 > **외부 근거**: [Lilian Weng — Harness Engineering for Self-Improvement](https://lilianweng.github.io/posts/2026-07-04-harness/) · [choi.openai Threads 정리](https://www.threads.com/@choi.openai/post/DafZipXD6aG)  
-> **선행 shipped**: [DESIGN-S1-FEEDBACK-LOOP.md](./DESIGN-S1-FEEDBACK-LOOP.md) · [N10-USER-LOOP-WISDOM-DRAFT.md](./N10-USER-LOOP-WISDOM-DRAFT.md) · `self_patch.py`
+> **선행 shipped**: [DESIGN-S1-FEEDBACK-LOOP.md](./archive/rfcs/DESIGN-S1-FEEDBACK-LOOP.md) · [N10-USER-LOOP-WISDOM-DRAFT.md](./N10-USER-LOOP-WISDOM-DRAFT.md) · `self_patch.py`
 
 ---
 
@@ -353,7 +353,7 @@ outcome_harvester (RECORD)     ✅
 
 `.agent-lab/harness/manifest.json` — git tracked SSOT. `self_patch_allowlist.txt`와 **HS3-2에서 단일화**.
 
-> **분류 원칙 (도구 치환 갭 봉쇄 — [REVIEW-LINER-RESEARCH-2026-07.md](./REVIEW-LINER-RESEARCH-2026-07.md) P0-4):**
+> **분류 원칙 (도구 치환 갭 봉쇄 — [REVIEW-LINER-RESEARCH-2026-07.md](./archive/legacy/REVIEW-LINER-RESEARCH-2026-07.md) P0-4):**
 > 편집 결과가 **subprocess/도구 실행을 유발하는 표면**(hooks, 실행형 skill)은 diff가 아무리 작아도 **Tier B 이상**.
 > Tier A는 **선언적 표면**(프롬프트 텍스트, 수치 파라미터, 비실행 스킬 문서)만.
 > 근거: 실행 표면은 권한 상승 벡터 — hook 1줄 추가로 Tier C frozen 경로를 포함한 임의 표면을 사실상 수정할 수 있다 (도구 치환 공격).
@@ -900,7 +900,7 @@ AGENT_LAB_OUTCOMES_ROOT=/tmp/hsil \
 | 문서 | 관계 |
 |------|------|
 | [NORTH-STAR.md](./NORTH-STAR.md) §2.1 N6 | 이니셔티브 SSOT |
-| [DESIGN-S1-FEEDBACK-LOOP.md](./DESIGN-S1-FEEDBACK-LOOP.md) | RECORD/RECALL |
+| [DESIGN-S1-FEEDBACK-LOOP.md](./archive/rfcs/DESIGN-S1-FEEDBACK-LOOP.md) | RECORD/RECALL |
 | [N10-USER-LOOP-WISDOM-DRAFT.md](./N10-USER-LOOP-WISDOM-DRAFT.md) | user_correction |
 | [RUNTIME-HARNESS-PLAN.md](./RUNTIME-HARNESS-PLAN.md) | Tier C frozen |
 | [S3-TOOL-CARD-SPEC.md](./S3-TOOL-CARD-SPEC.md) | HS7-6 |

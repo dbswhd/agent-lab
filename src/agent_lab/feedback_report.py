@@ -10,7 +10,7 @@ Key questions this answers:
   clean-pass rate? → the advisor is picking better setups.
 - Does ``explore`` surface combos worth promoting? → the seed is working.
 
-See docs/DESIGN-S1-FEEDBACK-LOOP.md and the S1.5 plan.
+See docs/archive/rfcs/DESIGN-S1-FEEDBACK-LOOP.md and the S1.5 plan.
 """
 
 from __future__ import annotations

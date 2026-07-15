@@ -27,7 +27,7 @@ constraints에 정책이 이미 있음 — **「discuss/plan 모드입니다」 
 
 ## Room preset · Inbox
 - **fast** — 1 lead, Scribe 기본 억제, orchestrator harvest 스킵; **team lead MCP** 유지 — [05-room-agent-roles.md §Fast preset](./docs/05-room-agent-roles.md)
-- **supervisor** — team + consensus · **실작업(dogfood) preset** — S1 trio implicit ON ([DESIGN-S1-FEEDBACK-LOOP.md](./docs/DESIGN-S1-FEEDBACK-LOOP.md))
+- **supervisor** — team + consensus · **실작업(dogfood) preset** — S1 trio implicit ON ([DESIGN-S1-FEEDBACK-LOOP.md](./docs/archive/rfcs/DESIGN-S1-FEEDBACK-LOOP.md))
 - **MCP-first Inbox** — Human gate SSOT = agent MCP; harvest default **off** — [MCP-FIRST-INBOX.md](./docs/MCP-FIRST-INBOX.md)
 
 ## Dogfood · cleanup (2026-07)

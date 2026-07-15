@@ -39,6 +39,10 @@ def test_inbox_gate_owner_falls_back_from_cursor_lead() -> None:
 
 def test_discuss_mcp_lead_only_under_mcp_first(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST", raising=False)
+    # discuss_inbox_mcp_enabled's lane check also depends on execute_inbox_mcp_enabled()
+    # defaulting to True; force it so a sibling test's leftover monkeypatch of
+    # AGENT_LAB_EXECUTE_INBOX elsewhere in the same xdist worker can't flip this False.
+    monkeypatch.delenv("AGENT_LAB_EXECUTE_INBOX", raising=False)
     run = _supervisor_run()
     assert discuss_inbox_mcp_enabled(run, agent_id="codex") is True
     assert discuss_inbox_mcp_enabled(run, agent_id="claude") is False

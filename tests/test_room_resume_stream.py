@@ -11,6 +11,7 @@ one that already finished (possibly while the client was disconnected).
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 
 import pytest
 
@@ -29,6 +30,14 @@ def _drain(agen):
         return out
 
     return asyncio.run(_run())
+
+
+@pytest.fixture(autouse=True)
+def _isolate_run_lock(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    # try_begin_run() holds a real cross-process fcntl.flock at config_dir()/run.lock,
+    # which collides across xdist workers without a private dir per test. See
+    # tests/test_run_lock_recovery.py's _reset_lock / commit 2af5e735.
+    monkeypatch.setenv("AGENT_LAB_CONFIG_DIR", str(tmp_path / ".agent-lab-config"))
 
 
 def setup_function(_fn):

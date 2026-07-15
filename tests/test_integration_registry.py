@@ -142,7 +142,13 @@ def test_fast_bucket_collection_budget():
     # 2026-07-12: raised 3029 -> 3039 for plan substate transition table tests.
     # 2026-07-12: raised 3039 -> 3046 for orchestration drift auto-reconcile tests.
     # 2026-07-12: raised 3046 -> 3050 for orchestration work_phase unify tests.
-    assert count <= 3050, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-14/15: raised 3050 -> 3311 for Wave A/B Mission kernel + dual-write + journal-first
+    # read-model + §7.4 SSE cursor wiring (~30 new modules: test_mission_kernel/journal/repository/
+    # lease/messages/projection/scheduler_shadow, dual_write + dual_read variants, activity_queue/
+    # activity_runtime, decision_queue, m6_* retire/consumer-inventory gates, mission_read_model +
+    # mission_read_model_wave_b/api, mission_events_sse, context_recipe, local_dispatcher,
+    # multi_agent_topology, human_resume_bridge).
+    assert count <= 3311, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

@@ -21,6 +21,12 @@ def _isolate_room_models_for_health(monkeypatch: pytest.MonkeyPatch, tmp_path: P
     import agent_lab.app_config as app_config
 
     monkeypatch.setattr(app_config, "config_dir", lambda: tmp_path)
+    # run.control does `from agent_lab.app_config import config_dir`, binding its own
+    # module-local reference — patching the app_config attribute above does not reach
+    # it. try_begin_run()'s real cross-process fcntl.flock at config_dir()/run.lock
+    # needs the env var itself isolated too, or concurrent xdist workers race on the
+    # same shared machine-wide lock file. See commit 2af5e735.
+    monkeypatch.setenv("AGENT_LAB_CONFIG_DIR", str(tmp_path / ".agent-lab-config"))
     monkeypatch.delenv("AGENT_LAB_ROOM_MODELS", raising=False)
     yield
     import os
@@ -240,16 +246,19 @@ def test_health_payload_sessions_dir_uses_active_root(tmp_path: Path, monkeypatc
 
     expected = tmp_path / "sessions"
     expected.mkdir()
-    # Clear every module-level cache — CI sets AGENT_LAB_ROOT and may have
-    # bootstrapped app.server.deps.SESSIONS_DIR to the workspace sessions root.
+    # Clear every module-level cache active_sessions_dir() consults (app.server.deps,
+    # agent_lab.session, agent_lab.workspace.files) — each does its own
+    # `from agent_lab.session.paths import SESSIONS_DIR`, freezing whatever value was
+    # live at first import; a prior test's tmp SESSIONS_DIR can otherwise leak in via
+    # agent_lab.workspace.files and win over AGENT_LAB_SESSIONS_DIR below.
     monkeypatch.setattr(session_mod, "SESSIONS_DIR", None)
     monkeypatch.setattr(paths_mod, "SESSIONS_DIR", None)
-    try:
-        import app.server.deps as deps_mod
+    import app.server.deps as deps_mod
 
-        monkeypatch.setattr(deps_mod, "SESSIONS_DIR", None)
-    except Exception:
-        pass
+    monkeypatch.setattr(deps_mod, "SESSIONS_DIR", None, raising=False)
+    import agent_lab.workspace.files as files_mod
+
+    monkeypatch.setattr(files_mod, "SESSIONS_DIR", None, raising=False)
     monkeypatch.setenv("AGENT_LAB_SESSIONS_DIR", str(expected))
     monkeypatch.delenv("AGENT_LAB_ROOT", raising=False)
 

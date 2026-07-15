@@ -13,6 +13,12 @@ from agent_lab.run.meta import read_run_meta
 @pytest.fixture(autouse=True)
 def _mock_agents(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
+    # These tests assume MCP-first inbox is active with execute-inbox MCP enabled
+    # (both defaults). Force them explicitly so a sibling test's monkeypatch of
+    # AGENT_LAB_EXECUTE_INBOX / AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST elsewhere in
+    # the same xdist worker can't leave `discuss_inbox_mcp_enabled` computing False.
+    monkeypatch.delenv("AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST", raising=False)
+    monkeypatch.delenv("AGENT_LAB_EXECUTE_INBOX", raising=False)
 
 
 def test_inbox_bridge_executes_ask_human_mock(tmp_path: Path) -> None:
@@ -29,15 +35,19 @@ def test_inbox_bridge_executes_ask_human_mock(tmp_path: Path) -> None:
         assert len(pending) == 1
         resolve_inbox_item(folder, pending[0]["id"], selected=["narrow"], append_chat=False)
 
-    threading.Thread(target=_resolve, daemon=True).start()
-    text = kwp.respond(
-        "sys",
-        "[mock-inbox-ask] pick scope",
-        session_folder=folder,
-        inbox_mcp=True,
-    )
-    assert "Inbox resolved" in text
-    assert read_run_meta(folder).get("human_inbox")
+    resolver = threading.Thread(target=_resolve, daemon=True)
+    resolver.start()
+    try:
+        text = kwp.respond(
+            "sys",
+            "[mock-inbox-ask] pick scope",
+            session_folder=folder,
+            inbox_mcp=True,
+        )
+        assert "Inbox resolved" in text
+        assert read_run_meta(folder).get("human_inbox")
+    finally:
+        resolver.join(timeout=5)
 
 
 def test_inbox_bridge_adds_system_addon(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

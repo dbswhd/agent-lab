@@ -17,6 +17,10 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     import agent_lab.session as session_mod
     import app.server.deps as deps_mod
 
+    # /api/room/runs acquires try_begin_run()'s real cross-process fcntl.flock at
+    # config_dir()/run.lock; without a private dir per test, concurrent xdist
+    # workers race on the same shared machine-wide lock file. See commit 2af5e735.
+    monkeypatch.setenv("AGENT_LAB_CONFIG_DIR", str(tmp_path / ".agent-lab-config"))
     monkeypatch.setattr(session_mod, "SESSIONS_DIR", tmp_path)
     monkeypatch.setattr(deps_mod, "SESSIONS_DIR", tmp_path)
     folder = tmp_path / "sess-synth"

@@ -19,7 +19,7 @@
 | ----------------------------- | -------------------------------- | ------------------------------------------------------------ | -------------- |
 | `00` inventory                | 기준선·fixture 완료              | Human review, ordered event 근거 보강                        | Step 0/6       |
 | `01` kernel                   | pure aggregate·merge/repair 완료 | session adapter, legacy authority cutover                    | Step 1/6       |
-| `02` durability               | lock·tail guard·idempotency·identity first pass | atomic batch, claim lease                    | Step 5         |
+| `02` durability               | lock·tail guard·idempotency·identity·atomic batch·claim lease(scheduler + 실 execute merge 경로) 완료 (2026-07-16) | side-effect reconcile 자동화(현재는 lease만 가드, recovery decision 수렴은 daemon 실통합 후) | Step 5         |
 | `03` runtime/context/memory   | recipe contract 완료             | provider port, memory promotion, provenance                  | Step 2/4       |
 | `04` Human UX/API/UI          | decision model·bridge·read-model route·UI wiring·SSE cursor·optimistic locking 완료 (2026-07-15) | 완전한 decision+run.json 단일 트랜잭션 원자성                | Step 2/3 완료  |
 | `05` reliability/ops          | test baseline 완료               | fault injection, telemetry, dogfood SLO                      | Step 4/5/6     |
@@ -144,7 +144,7 @@
 
 ### Step 5 — Durable runtime hardening
 
-**현재 상태:** Journal append에 cross-process lock file, non-monotonic/malformed tail guard, durable idempotency key 재사용·충돌 검사, MissionRepository 경로의 mission/schema identity와 multi-event batch record가 first pass로 적용됨. `mission/lease.py`, `mission/recovery.py`, Activity claim/heartbeat/release 전이와 `activity_queue.py`의 priority/idempotent enqueue/lease-aware recovery도 추가했다. `scheduler_shadow.py`가 기존 `schedule_due`와 새 candidate/idempotency key를 read-only로 비교하며, production daemon enqueue와 실제 side-effect adapter reconcile은 pending.
+**현재 상태:** Journal append에 cross-process lock file, non-monotonic/malformed tail guard, durable idempotency key 재사용·충돌 검사, MissionRepository 경로의 mission/schema identity와 multi-event batch record가 first pass로 적용됨. `activity_lease.py`(root-level — `mission`↔`plan` 2-cycle 회피), `mission/recovery.py`, Activity claim/heartbeat/release 전이와 `activity_queue.py`의 priority/idempotent enqueue/lease-aware recovery도 추가했다. `scheduler_shadow.py`가 기존 `schedule_due`와 새 candidate/idempotency key를 read-only로 비교한다. **2026-07-16:** claim lease가 scheduler shadow 경로뿐 아니라 실제 production merge side effect(`plan/execute_shared.py::_do_worktree_merge`, `plan/execute_resolve.py::confirm_merge_execution`)에도 연결돼, 동일 execution의 동시 merge 시도가 `MergeInProgressError`(409)로 거부된다. Production daemon enqueue와 daemon crash 시 recovery decision 자동 수렴은 여전히 pending(섹터 06).
 
 **산출:** cross-process lock, atomic batch/commit marker, claim lease, heartbeat, side-effect reconcile.
 

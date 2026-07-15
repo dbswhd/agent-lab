@@ -31,7 +31,7 @@ def test_f9_hot_path_py_caps_in_baseline() -> None:
     baseline = json.loads((ROOT / "tests/fixtures/structure-metrics-baseline.json").read_text())
     by_path = {row["path"]: row["lines"] for row in baseline["hot_path_py_files"]}
     assert by_path == {
-        "src/agent_lab/plan/execute.py": 88,
+        "src/agent_lab/plan/execute.py": 90,
         "src/agent_lab/plan/workflow.py": 118,
         "src/agent_lab/room/turn_flow.py": 21,
         "src/agent_lab/room/turn_flow_run.py": 169,

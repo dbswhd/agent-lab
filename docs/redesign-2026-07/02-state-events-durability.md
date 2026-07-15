@@ -10,7 +10,9 @@
 
 ## 착수 상태
 
-`src/agent_lab/mission/journal.py`가 JSONL append, sequence conflict, cross-process lock file, fsync, 손상된 마지막 tail 복구와 durable idempotency key 재사용을 제공한다. 다중 event append는 하나의 batch record로 저장해 logical append 단위로 복구한다. `MissionRepository` 경로에는 mission/schema identity도 기록·검증한다. `event_codec.py`와 `repository.py`가 Mission event replay를 연결하며, 기존 `run.json` writer는 아직 compatibility projection으로 유지한다. claim lease와 side-effect reconcile 통합은 아직 cutover 전 과제다.
+`src/agent_lab/mission/journal.py`가 JSONL append, sequence conflict, cross-process lock file, fsync, 손상된 마지막 tail 복구와 durable idempotency key 재사용을 제공한다. 다중 event append는 하나의 batch record로 저장해 logical append 단위로 복구한다. `MissionRepository` 경로에는 mission/schema identity도 기록·검증한다. `event_codec.py`와 `repository.py`가 Mission event replay를 연결하며, 기존 `run.json` writer는 아직 compatibility projection으로 유지한다.
+
+**2026-07-16 update — claim lease가 실제 production merge side effect에 통합됐다.** `src/agent_lab/activity_lease.py`(구 `mission/lease.py` — `plan`↔`mission` 2-cycle을 피하려 root-level로 이동, `layer_cycle_check.py` 대상 밖)의 file-lock 기반 claim/heartbeat/release가 지금까지 scheduler `ActivityQueue`(비동기 daemon, 섹터 06)에만 연결돼 있었는데, 이제 `plan/execute_shared.py::_do_worktree_merge`와 `plan/execute_resolve.py::confirm_merge_execution`의 실제 git worktree merge 호출도 감싼다. 같은 `execution_id`에 대한 동시 merge 시도는 `MergeInProgressError`(HTTP 409)로 거부되며, 기존 성공 경로는 동작 변화 없음(전체 `execute`/`worktree` 테스트 + 신규 동시성 테스트로 검증). `.agent-lab/activity-leases.json` 파일 하나를 sync HTTP 경로와 async scheduler가 공유하므로, 섹터 06이 나중에 daemon을 실제로 켜도 두 경로가 서로 충돌을 인지한다.
 
 ## 2. 현재 평가
 

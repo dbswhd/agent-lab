@@ -21,6 +21,7 @@ from agent_lab.plan.execute_shared import (
     _do_worktree_merge,
     _exec_id,
     _exec_worktree_from_execution,
+    _execution_merge_lease,
     _merge_conflict_execution,
     _now,
     _resolve_reject,
@@ -534,8 +535,9 @@ def confirm_merge_execution(
     )
     completed = _now()
     ew = _exec_worktree_from_execution(target)
-    _arm_merge_checkpoint(folder, execution_id=execution_id, target=target, op="confirm", worktree=ew)
-    result = confirm_exec_merge(ew, session_folder=folder, exec_id=execution_id)
+    with _execution_merge_lease(folder, execution_id):
+        _arm_merge_checkpoint(folder, execution_id=execution_id, target=target, op="confirm", worktree=ew)
+        result = confirm_exec_merge(ew, session_folder=folder, exec_id=execution_id)
     snapshot_id = str(target.get("snapshot_id") or target.get("id") or "")
     if snapshot_id:
         delete_snapshot(folder, snapshot_id)

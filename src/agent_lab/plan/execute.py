@@ -22,6 +22,7 @@ from agent_lab.plan.execute_resolve import (
 from agent_lab.plan.execute_shared import (
     MAX_DIFF_CHARS,
     MAX_VERIFY_RETRIES,
+    MergeInProgressError,
     _exec_worktree_from_execution,
     _now,
     _rewrite_git_paths_in_text,
@@ -66,6 +67,7 @@ def list_plan_actions(
 __all__ = [
     "MAX_DIFF_CHARS",
     "MAX_VERIFY_RETRIES",
+    "MergeInProgressError",
     "PENDING_STATUS",
     "_call_execute_agent",
     "_exec_worktree_from_execution",

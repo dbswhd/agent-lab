@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from agent_lab.plan.execute import (
+    MergeInProgressError,
     abort_merge_execution,
     confirm_merge_execution,
     list_plan_actions,
@@ -379,6 +380,8 @@ def session_execute_resolve(
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
+    except MergeInProgressError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
     from agent_lab.mission.dual_write import (
         commit_execution_transition,
         execution_write_authority_enabled,
@@ -428,6 +431,8 @@ def session_execute_merge_confirm(
             execution_id=body.execution_id.strip(),
         )
     except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
+    except MergeInProgressError as e:
         raise HTTPException(status_code=409, detail=str(e)) from e
     from agent_lab.mission.dual_write import (
         commit_execution_transition,

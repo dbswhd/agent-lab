@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from agent_lab.mission.lease import ActivityLeaseStore, LeaseConflictError
+from agent_lab.activity_lease import ActivityLeaseStore, LeaseConflictError
 from agent_lab.mission.recovery import RecoveryAction, SideEffectState, decide_recovery
 
 

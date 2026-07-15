@@ -2,12 +2,16 @@ from __future__ import annotations
 
 """Shared execute helpers — worktree, git, merge prep (F9)."""
 
+import time
 import uuid
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
 from agent_lab.run.state import RunState
 
+from agent_lab.activity_lease import ActivityLeaseStore, LeaseConflictError
 from agent_lab.plan.actions import PlanAction
 from agent_lab.plan.execute_git import _run_git
 from agent_lab.time_utils import utc_now_iso as _now
@@ -30,6 +34,46 @@ import agent_lab.plan.execute as plan_execute
 
 MAX_DIFF_CHARS = 120_000
 MAX_VERIFY_RETRIES = 2
+# Local git merge; the lease only needs to outlive the merge call itself. Kept
+# short so a crashed holder is recoverable quickly (see ActivityQueue.recover).
+MERGE_LEASE_TTL_S = 30.0
+
+
+class MergeInProgressError(RuntimeError):
+    """Another caller already holds the merge lease for this execution_id.
+
+    D2 (single writer, optimistic concurrency) covers Mission command
+    dispatch; the worktree git merge itself had no equivalent guard — two
+    concurrent ``resolve_execution``/``confirm_merge_execution`` calls for the
+    same execution could both pass the status check and race on the same
+    git branch. This reuses the durable ``activity_lease`` primitive (already
+    used by the scheduler's ActivityQueue) so both paths share one namespace.
+    """
+
+    def __init__(self, execution_id: str) -> None:
+        self.execution_id = execution_id
+        super().__init__(f"execution is already being merged: {execution_id}")
+
+
+def _merge_lease_store(folder: Path) -> ActivityLeaseStore:
+    return ActivityLeaseStore(folder / ".agent-lab" / "activity-leases.json")
+
+
+@contextmanager
+def _execution_merge_lease(folder: Path, execution_id: str) -> Iterator[None]:
+    store = _merge_lease_store(folder)
+    owner_id = uuid.uuid4().hex
+    try:
+        lease = store.claim(execution_id, folder.name, owner_id, now=time.time(), ttl_s=MERGE_LEASE_TTL_S)
+    except LeaseConflictError as exc:
+        raise MergeInProgressError(execution_id) from exc
+    try:
+        yield
+    finally:
+        try:
+            store.release(execution_id, owner_id, lease.token, now=time.time())
+        except LeaseConflictError:
+            pass  # lease already expired/reclaimed — nothing to release
 
 
 def _exec_id() -> str:
@@ -304,41 +348,42 @@ def _do_worktree_merge(
     """worktree merge 시도. target을 in-place 변경(status, merge, completed_at)."""
     merge = dict(target.get("merge") or {})
     merge["attempted_at"] = completed
-    _arm_merge_checkpoint(folder, execution_id=execution_id, target=target, op="merge")
-    try:
-        merge_result = merge_exec_branch(
-            _exec_worktree_from_execution(target),
-            session_folder=folder,
-            exec_id=execution_id,
-            message=_merge_commit_message(target, session_id=folder.name),
-        )
-    except MergeConflict as e:
-        merge["status"] = "conflict"
-        merge["conflict_files"] = e.conflict_files
-        merge["completed_at"] = _now()
-        target["merge"] = merge
-        target["status"] = "merge_conflict"
-        target["completed_at"] = merge["completed_at"]
-        _clear_merge_checkpoint(target)
-        _notify_merge_conflict_mission(folder, target)
-    else:
-        merge.update(merge_result.to_dict())
-        merge["completed_at"] = _now()
-        target["merge"] = merge
-        target["status"] = "merged"
-        target["completed_at"] = merge["completed_at"]
-        _clear_merge_checkpoint(target)
-        from agent_lab.evidence_sync import on_merge_approved
+    with _execution_merge_lease(folder, execution_id):
+        _arm_merge_checkpoint(folder, execution_id=execution_id, target=target, op="merge")
+        try:
+            merge_result = merge_exec_branch(
+                _exec_worktree_from_execution(target),
+                session_folder=folder,
+                exec_id=execution_id,
+                message=_merge_commit_message(target, session_id=folder.name),
+            )
+        except MergeConflict as e:
+            merge["status"] = "conflict"
+            merge["conflict_files"] = e.conflict_files
+            merge["completed_at"] = _now()
+            target["merge"] = merge
+            target["status"] = "merge_conflict"
+            target["completed_at"] = merge["completed_at"]
+            _clear_merge_checkpoint(target)
+            _notify_merge_conflict_mission(folder, target)
+        else:
+            merge.update(merge_result.to_dict())
+            merge["completed_at"] = _now()
+            target["merge"] = merge
+            target["status"] = "merged"
+            target["completed_at"] = merge["completed_at"]
+            _clear_merge_checkpoint(target)
+            from agent_lab.evidence_sync import on_merge_approved
 
-        on_merge_approved(
-            folder,
-            execution_id,
-            commit_sha=str(merge.get("commit_sha") or "") or None,
-        )
-        _record_verify_after_merge(folder, target)
-        snapshot_id = str(target.get("snapshot_id") or target.get("id") or "")
-        if snapshot_id:
-            delete_snapshot(folder, snapshot_id)
+            on_merge_approved(
+                folder,
+                execution_id,
+                commit_sha=str(merge.get("commit_sha") or "") or None,
+            )
+            _record_verify_after_merge(folder, target)
+            snapshot_id = str(target.get("snapshot_id") or target.get("id") or "")
+            if snapshot_id:
+                delete_snapshot(folder, snapshot_id)
 
 
 def _merge_conflict_execution(

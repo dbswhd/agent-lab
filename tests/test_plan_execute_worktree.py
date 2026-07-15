@@ -472,6 +472,74 @@ def test_resolve_approve_merges_worktree_execution(
     assert len(retry["execution"]["verify_history"]) == 2
 
 
+def test_resolve_approve_rejects_when_merge_lease_already_held(
+    git_repo: Path,
+    session_folder: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """§2 sector 02 claim lease — a concurrent holder blocks a second merge attempt
+    on the same execution_id instead of racing on the same git branch."""
+    import time
+
+    from agent_lab.activity_lease import ActivityLeaseStore
+    from agent_lab.plan.execute import MergeInProgressError
+    from agent_lab.run.meta import read_run_meta
+
+    disable_execute_inbox_mcp(monkeypatch)
+    plan_md = """## 지금 실행
+1.
+   - 무엇을: app.py를 merge한다.
+   - 어디서: `src/app.py`
+   - 검증: `src/app.py` 내용 확인
+"""
+    (session_folder / "plan.md").write_text(plan_md, encoding="utf-8")
+    (session_folder / "run.json").write_text("{}\n", encoding="utf-8")
+    _seed_approved_plan_snapshot(session_folder, plan_md)
+
+    def _respond_merge(**kwargs):
+        (Path(kwargs["cwd"]) / "src" / "app.py").write_text("v2\n", encoding="utf-8")
+        return "VERIFICATION: PASS"
+
+    monkeypatch.setattr("agent_lab.agents.cursor_agent.is_available", lambda: True)
+    monkeypatch.setattr("agent_lab.agents.cursor_agent.respond", _respond_merge)
+    monkeypatch.setattr(
+        "agent_lab.plan.execute.resolve_execute_workspace",
+        lambda _permissions=None, _expected=None: (git_repo, {}),
+    )
+
+    execution = run_dry_run(session_folder, action_index=1, permissions={})
+    worktree_path = Path(execution["worktree_path"])
+
+    lease_store = ActivityLeaseStore(session_folder / ".agent-lab" / "activity-leases.json")
+    lease_store.claim(execution["id"], session_folder.name, "other-caller", now=time.time(), ttl_s=60.0)
+
+    with pytest.raises(MergeInProgressError):
+        resolve_execution(
+            session_folder,
+            execution_id=execution["id"],
+            vote="approve",
+            permissions={},
+        )
+
+    # the conflicting call never touched git or run.json — status/worktree untouched.
+    run = read_run_meta(session_folder)
+    row = next(r for r in run["executions"] if r["id"] == execution["id"])
+    assert row["status"] == "pending_approval"
+    assert worktree_path.exists()
+    assert _git(git_repo, "log", "-1", "--format=%s") == "init"
+
+    # release the held lease and confirm the same execution merges cleanly right after.
+    held = lease_store.snapshot()[0]
+    lease_store.release(held.activity_id, held.owner_id, held.token, now=time.time())
+    result = resolve_execution(
+        session_folder,
+        execution_id=execution["id"],
+        vote="approve",
+        permissions={},
+    )
+    assert result["execution"]["status"] == "merged"
+
+
 def test_resolve_reject_discards_worktree_execution(
     git_repo: Path,
     session_folder: Path,

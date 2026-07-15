@@ -11,7 +11,7 @@ from typing import Any
 
 import fcntl
 
-from agent_lab.mission.lease import ActivityLease, ActivityLeaseStore, LeaseConflictError
+from agent_lab.activity_lease import ActivityLease, ActivityLeaseStore, LeaseConflictError
 from agent_lab.mission.recovery import RecoveryAction, RecoveryDecision, SideEffectState, decide_recovery
 
 

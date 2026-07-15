@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "agent_lab_root_py_files": 135,
+  "agent_lab_root_py_files": 136,
   "agent_lab_subpackages": [
     "agent",
     "agents",
@@ -73,7 +73,7 @@
   "hot_path_py_files": [
     {
       "path": "src/agent_lab/plan/execute.py",
-      "lines": 88
+      "lines": 90
     },
     {
       "path": "src/agent_lab/plan/workflow.py",

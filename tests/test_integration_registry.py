@@ -148,7 +148,11 @@ def test_fast_bucket_collection_budget():
     # activity_runtime, decision_queue, m6_* retire/consumer-inventory gates, mission_read_model +
     # mission_read_model_wave_b/api, mission_events_sse, context_recipe, local_dispatcher,
     # multi_agent_topology, human_resume_bridge).
-    assert count <= 3311, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-15: raised 3311 -> 3316 for §7.3 Human Inbox answer optimistic locking
+    # (guard_inbox_answer/load_decision_version tests in test_mission_application.py,
+    # stale-expected_version HTTP conflict tests in test_human_inbox.py,
+    # decision_version read-model coverage in test_mission_read_model_api.py).
+    assert count <= 3316, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

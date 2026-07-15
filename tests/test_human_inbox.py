@@ -188,6 +188,71 @@ def test_inbox_api_resolve(client: TestClient, session_folder: Path):
     assert "human_decision" in body
 
 
+def test_inbox_api_resolve_rejects_stale_expected_version(
+    client: TestClient, session_folder: Path
+):
+    """§7.3 — a stale ``expected_version`` is a 409 conflict, and the legacy
+    ``resolve_inbox_item`` write path never runs (no double-processing)."""
+    session_id = session_folder.name
+    create = client.post(
+        f"/api/sessions/{session_id}/inbox/items",
+        json={
+            "kind": "question",
+            "prompt": "Pick one",
+            "options": [
+                {"id": "one", "label": "One"},
+                {"id": "two", "label": "Two"},
+            ],
+        },
+    )
+    item_id = create.json()["item"]["id"]
+    before_run = (session_folder / "run.json").read_bytes()
+
+    stale = client.post(
+        f"/api/sessions/{session_id}/inbox/{item_id}/resolve",
+        json={"selected": ["two"], "decision": "go", "expected_version": 5},
+    )
+
+    assert stale.status_code == 409
+    assert "stale answer" in stale.json()["detail"]
+    assert (session_folder / "run.json").read_bytes() == before_run
+
+    resolved = client.post(
+        f"/api/sessions/{session_id}/inbox/{item_id}/resolve",
+        json={"selected": ["two"], "decision": "go", "expected_version": 0},
+    )
+    assert resolved.status_code == 200
+    assert resolved.json()["ok"] is True
+
+
+def test_inbox_api_resolve_with_expected_version_and_no_decision_field(
+    client: TestClient, session_folder: Path
+):
+    """A plain multi-select answer (no separate `decision` verdict) must still
+    succeed when `expected_version` is sent — the guard falls back to
+    `selected`/`status` rather than treating it as an empty answer."""
+    session_id = session_folder.name
+    create = client.post(
+        f"/api/sessions/{session_id}/inbox/items",
+        json={
+            "kind": "question",
+            "prompt": "Pick one",
+            "options": [
+                {"id": "one", "label": "One"},
+                {"id": "two", "label": "Two"},
+            ],
+        },
+    )
+    item_id = create.json()["item"]["id"]
+
+    resolved = client.post(
+        f"/api/sessions/{session_id}/inbox/{item_id}/resolve",
+        json={"selected": ["two"], "expected_version": 0},
+    )
+    assert resolved.status_code == 200
+    assert resolved.json()["ok"] is True
+
+
 def _make_terminal_mission(folder: Path) -> MissionApplication:
     application = MissionApplication(folder, "inbox test")
     repository = application.repository

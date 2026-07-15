@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from agent_lab.mission.application import MissionApplication
+import pytest
+
+from agent_lab.mission.application import MissionApplication, MissionApplicationError
+from agent_lab.mission.decision_repository import load_decision_version
 from agent_lab.mission.kernel import BlockExecution, MissionState
 from agent_lab.human_inbox import create_inbox_item
 from agent_lab.run.meta import read_run_meta
@@ -98,3 +101,52 @@ def test_application_answers_inbox_and_resumes_mission(tmp_path: Path) -> None:
     assert resumed.state is MissionState.READY_TO_EXECUTE
     assert resolved["status"] == "resolved"
     assert resolved["resolved_choice"] == "yes"
+
+
+def test_load_decision_version_defaults_to_zero_for_untouched_item(tmp_path: Path) -> None:
+    folder = _session(tmp_path, "# Plan\n\n- wait")
+    item = create_inbox_item(folder, kind="question", source="test", prompt="Scope?")
+
+    assert load_decision_version(folder, item["id"], mission_id=folder.name) == 0
+
+
+def test_guard_inbox_answer_accepts_matching_version_and_advances_it(tmp_path: Path) -> None:
+    folder = _session(tmp_path, "# Plan\n\n- wait")
+    application = MissionApplication(folder, "wait")
+    item = create_inbox_item(folder, kind="question", source="test", prompt="Scope?")
+
+    application.guard_inbox_answer(item["id"], "narrow", expected_version=0)
+
+    assert load_decision_version(folder, item["id"], mission_id=folder.name) == 1
+    # run.json is untouched — guard_inbox_answer only records the decision event.
+    run = read_run_meta(folder)
+    row = next(r for r in run["human_inbox"] if r["id"] == item["id"])
+    assert row["status"] == "pending"
+
+
+def test_guard_inbox_answer_rejects_stale_expected_version(tmp_path: Path) -> None:
+    folder = _session(tmp_path, "# Plan\n\n- wait")
+    application = MissionApplication(folder, "wait")
+    item = create_inbox_item(folder, kind="question", source="test", prompt="Scope?")
+    application.guard_inbox_answer(item["id"], "narrow", expected_version=0)
+
+    with pytest.raises(MissionApplicationError):
+        application.guard_inbox_answer(item["id"], "broad", expected_version=0)
+
+    # The rejected attempt did not advance the version past the first answer.
+    assert load_decision_version(folder, item["id"], mission_id=folder.name) == 1
+
+
+def test_guard_inbox_answer_rejects_second_answer_even_with_correct_version(
+    tmp_path: Path,
+) -> None:
+    """decide_decision() also rejects non-PENDING decisions outright — a second
+    answer is a stale duplicate even when the caller happens to send the
+    now-current version."""
+    folder = _session(tmp_path, "# Plan\n\n- wait")
+    application = MissionApplication(folder, "wait")
+    item = create_inbox_item(folder, kind="question", source="test", prompt="Scope?")
+    application.guard_inbox_answer(item["id"], "narrow", expected_version=0)
+
+    with pytest.raises(MissionApplicationError):
+        application.guard_inbox_answer(item["id"], "narrow", expected_version=1)

@@ -2672,6 +2672,8 @@ export type HumanInboxItem = {
   resolved_at?: string | null;
   actionable?: boolean;
   mission_gate_status?: "terminal_orphan" | "missing_row" | "stale";
+  /** §7.3 — optimistic-lock version; send back as `expected_version` on resolve. */
+  decision_version?: number;
 };
 
 export type HumanInboxPayload = {
@@ -2832,6 +2834,10 @@ export async function resolveInboxItem(
     note?: string;
     status?: "resolved" | "deferred" | "rejected";
     append_chat?: boolean;
+    /** §7.3 optimistic locking — all three are optional; omit to skip the guard. */
+    decision_id?: string;
+    mission_id?: string;
+    expected_version?: number;
   },
 ): Promise<
   HumanInboxPayload & { human_decision?: string; item: HumanInboxItem }

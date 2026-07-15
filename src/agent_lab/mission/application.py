@@ -4,8 +4,8 @@ import hashlib
 from dataclasses import dataclass
 from pathlib import Path
 
-from agent_lab.mission.decision_queue import AnswerDecision, new_decision
-from agent_lab.mission.decision_repository import DecisionRepository
+from agent_lab.mission.decision_queue import AnswerDecision, DecisionTransitionError, new_decision
+from agent_lab.mission.decision_repository import DecisionRepository, decision_journal_path
 from agent_lab.mission.kernel import ApprovePlan, Mission, MissionState, OpenPlan, RejectPlan
 from agent_lab.mission.projection import (
     MissionLoopStatusProjection,
@@ -92,8 +92,14 @@ class MissionApplication:
         self._project_plan(mission, note=note, phase=target_phase)
         return mission
 
-    def answer_inbox(self, item_id: str, answer: str, *, note: str | None = None) -> Mission:
-        from agent_lab.human_inbox import find_inbox_item, resolve_inbox_item
+    def _inbox_decision_repository(
+        self,
+        item_id: str,
+        *,
+        decision_id: str | None = None,
+        mission_id: str | None = None,
+    ) -> DecisionRepository:
+        from agent_lab.human_inbox import find_inbox_item
         from agent_lab.run.meta import read_run_meta
 
         run = read_run_meta(self.session_folder)
@@ -101,9 +107,19 @@ class MissionApplication:
         if item is None:
             raise MissionApplicationError(f"inbox item is missing: {item_id}")
         prompt = str(item.get("prompt") or item.get("summary") or item.get("kind") or "Human decision")
-        decision = new_decision(item_id, self.session_folder.name, prompt, str(item.get("kind") or "question"))
-        path = self.session_folder / ".agent-lab" / "decisions" / f"{hashlib.sha256(item_id.encode()).hexdigest()}.jsonl"
-        DecisionRepository(path, decision).answer(AnswerDecision(answer))
+        resolved_id = decision_id or item_id
+        decision = new_decision(resolved_id, mission_id or self.session_folder.name, prompt, str(item.get("kind") or "question"))
+        path = decision_journal_path(self.session_folder, resolved_id)
+        return DecisionRepository(path, decision)
+
+    def answer_inbox(self, item_id: str, answer: str, *, note: str | None = None) -> Mission:
+        from agent_lab.human_inbox import resolve_inbox_item
+
+        repo = self._inbox_decision_repository(item_id)
+        try:
+            repo.answer(AnswerDecision(answer))
+        except DecisionTransitionError as exc:
+            raise MissionApplicationError(str(exc)) from exc
         resolve_inbox_item(self.session_folder, item_id, decision=answer, note=note, append_chat=False)
         mission = self.load()
         if mission.state is MissionState.AWAITING_HUMAN:
@@ -111,6 +127,27 @@ class MissionApplication:
 
             return self.repository.dispatch(ResolveBlock())
         return mission
+
+    def guard_inbox_answer(
+        self,
+        item_id: str,
+        answer: str,
+        *,
+        expected_version: int,
+        decision_id: str | None = None,
+        mission_id: str | None = None,
+    ) -> None:
+        """§7.3 optimistic-lock pre-flight — atomically checks + records the
+        decision-answered event against the per-item decision journal so a
+        stale or concurrent duplicate answer is rejected before the legacy
+        ``resolve_inbox_item`` write path runs. Does not touch ``run.json``;
+        callers still own the actual resolve.
+        """
+        repo = self._inbox_decision_repository(item_id, decision_id=decision_id, mission_id=mission_id)
+        try:
+            repo.answer(AnswerDecision(answer), expected_version=expected_version)
+        except DecisionTransitionError as exc:
+            raise MissionApplicationError(str(exc)) from exc
 
     def _read_plan(self) -> str:
         path = self.session_folder / "plan.md"

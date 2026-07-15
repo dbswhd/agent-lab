@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from agent_lab.context.bundle import build_context_bundle
 from agent_lab.repo_tree_context import (
     _collect_per_dir_agents_files,
@@ -78,7 +80,13 @@ def test_build_per_dir_agents_block_from_plan(tmp_path: Path) -> None:
     assert "JWT" in block
 
 
-def test_context_bundle_includes_repo_tree_when_enabled(tmp_path: Path) -> None:
+def test_context_bundle_includes_repo_tree_when_enabled(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A sibling test's AGENT_LAB_REPO_MAP=1 (e.g. test_context_bundle.py /
+    # test_repo_map.py) would otherwise swap this block for repo_map's, which
+    # doesn't emit the literal "[Repo tree]" header this test asserts on.
+    monkeypatch.delenv("AGENT_LAB_REPO_MAP", raising=False)
     ws = tmp_path / "ws"
     ws.mkdir()
     (ws / "app").mkdir()

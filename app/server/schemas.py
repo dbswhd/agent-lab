@@ -108,6 +108,12 @@ class HumanInboxResolveRequest(BaseModel):
     note: str | None = None
     status: Literal["resolved", "deferred", "rejected"] | None = None
     append_chat: bool = True
+    # §7.3 optimistic locking — optional so older clients keep working unchanged.
+    # When expected_version is set, the answer is rejected with 409 if a
+    # concurrent/stale answer already advanced the decision past that version.
+    decision_id: str | None = None
+    mission_id: str | None = None
+    expected_version: int | None = Field(default=None, ge=0)
 
 
 class PlanExecuteIsolationOverrideRequest(BaseModel):

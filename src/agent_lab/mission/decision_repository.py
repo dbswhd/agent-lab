@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from enum import StrEnum
 from pathlib import Path
 from typing import Mapping, assert_never
@@ -16,6 +17,19 @@ from agent_lab.mission.decision_queue import (
 )
 from agent_lab.mission.journal import MissionJournal, PendingEvent
 from agent_lab.mission.messages import JsonValue
+
+
+def decision_journal_path(folder: Path, decision_id: str) -> Path:
+    return folder / ".agent-lab" / "decisions" / f"{hashlib.sha256(decision_id.encode()).hexdigest()}.jsonl"
+
+
+def load_decision_version(folder: Path, decision_id: str, *, mission_id: str) -> int:
+    """Current §7.3 optimistic-lock version for a Human Inbox decision (0 if never answered)."""
+    path = decision_journal_path(folder, decision_id)
+    if not path.is_file():
+        return 0
+    seed = HumanDecision(decision_id, mission_id, "", "question")
+    return DecisionRepository(path, seed).load().version
 
 
 class DecisionEventCodecError(ValueError):

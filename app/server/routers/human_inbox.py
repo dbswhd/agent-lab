@@ -141,6 +141,23 @@ def resolve_session_inbox_item(
 
     try:
         ensure_inbox_item_actionable(folder, item_id)
+        if body.expected_version is not None:
+            from agent_lab.mission.application import MissionApplication, MissionApplicationError
+
+            # AnswerDecision requires non-empty text; legacy resolve allows a
+            # plain `selected` choice with no separate `decision` verdict, so
+            # fall back to that (or `status`) rather than reject a valid answer.
+            guard_answer = body.decision or (", ".join(body.selected) if body.selected else "") or status
+            try:
+                MissionApplication(folder, folder.name).guard_inbox_answer(
+                    item_id,
+                    guard_answer,
+                    expected_version=body.expected_version,
+                    decision_id=body.decision_id,
+                    mission_id=body.mission_id,
+                )
+            except MissionApplicationError as exc:
+                raise HTTPException(status_code=409, detail=f"stale answer: {exc}") from exc
         if inbox_write_authority_enabled(folder):
             bridge = commit_inbox_resolution(
                 folder,

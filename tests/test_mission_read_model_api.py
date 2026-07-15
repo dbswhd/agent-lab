@@ -188,8 +188,51 @@ def test_read_model_route_projects_joined_inbox_rows(tmp_path: Path, monkeypatch
     payload = response.json()
     assert [item["id"] for item in payload["inbox_items"]] == ["gate-1", "gate-2"]
     assert payload["inbox_items"][0]["prompt"] == "First"
+    # §7.3 — every item carries its optimistic-lock version (0 until answered).
+    assert [item["decision_version"] for item in payload["inbox_items"]] == [0, 0]
     assert payload["inbox_summary"] == {
         "pending_count": 2,
         "pending_questions": 2,
         "pending_builds": 0,
     }
+
+
+def test_read_model_route_reflects_decision_version_after_guard_answer(tmp_path: Path, monkeypatch) -> None:
+    """§7.3 — decision_version advances once guard_inbox_answer records an
+    answer, so a client polling the read-model sees the version it must send
+    back on the next (or a stale retried) resolve call."""
+    from agent_lab.mission.kernel import OpenExecutionGate
+
+    monkeypatch.setattr(session_paths, "SESSIONS_DIR", tmp_path)
+    folder = tmp_path / "mission-decision-version"
+    folder.mkdir()
+    (folder / "run.json").write_text(
+        json.dumps(
+            {
+                "topic": "decision version",
+                "human_inbox": [
+                    {
+                        "id": "gate-1",
+                        "kind": "question",
+                        "status": "pending",
+                        "prompt": "Scope?",
+                        "options": [{"label": "A"}],
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (folder / "plan.md").write_text("# Plan\n\nship it\n", encoding="utf-8")
+    app = MissionApplication(folder, "decision version")
+    app.approve_plan()
+    app.repository.dispatch(OpenExecutionGate("gate-1", "question"))
+
+    client = TestClient(create_app(bootstrap=False))
+    before = client.get("/api/sessions/mission-decision-version/mission/read-model").json()
+    assert before["inbox_items"][0]["decision_version"] == 0
+
+    app.guard_inbox_answer("gate-1", "narrow", expected_version=0)
+
+    after = client.get("/api/sessions/mission-decision-version/mission/read-model").json()
+    assert after["inbox_items"][0]["decision_version"] == 1

@@ -10,6 +10,32 @@ import { useLocale } from "../i18n/useLocale";
 import type { AgentRole } from "../utils/transcript";
 import { useMissionReadModel } from "../utils/missionReadModel";
 
+/** §7.3 — attach the optimistic-lock fields only when the read-model actually
+ * supplied a version (legacy inbox rows have none; omitting these fields
+ * entirely skips the server-side guard, same as before this existed). */
+function versionGuardFields(
+  item: HumanInboxItem,
+  missionId: string | null | undefined,
+): { decision_id?: string; mission_id?: string; expected_version?: number } {
+  if (item.decision_version === undefined) return {};
+  return {
+    decision_id: item.id,
+    mission_id: missionId ?? undefined,
+    expected_version: item.decision_version,
+  };
+}
+
+function isStaleAnswerError(e: unknown): boolean {
+  return (
+    e instanceof Error && e.message.toLowerCase().startsWith("stale answer")
+  );
+}
+
+const STALE_ANSWER_MESSAGE_KO =
+  "다른 곳에서 이미 처리된 항목입니다. 최신 상태로 새로고침했습니다.";
+const STALE_ANSWER_MESSAGE_EN =
+  "This item was already answered elsewhere. Refreshed to the current state.";
+
 type Props = {
   sessionId: string | null;
   reloadKey?: number;
@@ -672,17 +698,26 @@ export function HumanInboxPanel({
       if (!sessionId || disabled || !isActionableInboxItem(item)) return;
       setBusyId(item.id);
       try {
-        await resolveInboxItem(sessionId, item.id, { selected: [optionId] });
+        await resolveInboxItem(sessionId, item.id, {
+          selected: [optionId],
+          ...versionGuardFields(item, missionReadModel?.mission_id),
+        });
         const remaining = await reload();
         setModelReloadTick((value) => value + 1);
         onResolved?.({ pendingCount: remaining });
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
+        if (isStaleAnswerError(e)) {
+          setError(ko ? STALE_ANSWER_MESSAGE_KO : STALE_ANSWER_MESSAGE_EN);
+          void reload();
+          setModelReloadTick((value) => value + 1);
+        } else {
+          setError(e instanceof Error ? e.message : String(e));
+        }
       } finally {
         setBusyId(null);
       }
     },
-    [sessionId, disabled, reload, onResolved],
+    [sessionId, disabled, reload, onResolved, missionReadModel?.mission_id, ko],
   );
 
   const handleFreeform = useCallback(
@@ -692,7 +727,10 @@ export function HumanInboxPanel({
       if (!note) return;
       setBusyId(item.id);
       try {
-        await resolveInboxItem(sessionId, item.id, { note });
+        await resolveInboxItem(sessionId, item.id, {
+          note,
+          ...versionGuardFields(item, missionReadModel?.mission_id),
+        });
         setFreeformDraft((prev) => {
           const next = { ...prev };
           delete next[item.id];
@@ -702,12 +740,26 @@ export function HumanInboxPanel({
         setModelReloadTick((value) => value + 1);
         onResolved?.({ pendingCount: remaining });
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
+        if (isStaleAnswerError(e)) {
+          setError(ko ? STALE_ANSWER_MESSAGE_KO : STALE_ANSWER_MESSAGE_EN);
+          void reload();
+          setModelReloadTick((value) => value + 1);
+        } else {
+          setError(e instanceof Error ? e.message : String(e));
+        }
       } finally {
         setBusyId(null);
       }
     },
-    [sessionId, disabled, freeformDraft, reload, onResolved],
+    [
+      sessionId,
+      disabled,
+      freeformDraft,
+      reload,
+      onResolved,
+      missionReadModel?.mission_id,
+      ko,
+    ],
   );
 
   const handleSkillDraft = useCallback(
@@ -717,17 +769,24 @@ export function HumanInboxPanel({
       try {
         await resolveInboxItem(sessionId, item.id, {
           selected: decision === "approve" ? ["approve"] : ["reject"],
+          ...versionGuardFields(item, missionReadModel?.mission_id),
         });
         const remaining = await reload();
         setModelReloadTick((value) => value + 1);
         onResolved?.({ pendingCount: remaining });
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
+        if (isStaleAnswerError(e)) {
+          setError(ko ? STALE_ANSWER_MESSAGE_KO : STALE_ANSWER_MESSAGE_EN);
+          void reload();
+          setModelReloadTick((value) => value + 1);
+        } else {
+          setError(e instanceof Error ? e.message : String(e));
+        }
       } finally {
         setBusyId(null);
       }
     },
-    [sessionId, disabled, reload, onResolved],
+    [sessionId, disabled, reload, onResolved, missionReadModel?.mission_id, ko],
   );
 
   const handleBuild = useCallback(
@@ -744,18 +803,35 @@ export function HumanInboxPanel({
             });
           }
         }
-        await resolveInboxItem(sessionId, item.id, { decision });
+        await resolveInboxItem(sessionId, item.id, {
+          decision,
+          ...versionGuardFields(item, missionReadModel?.mission_id),
+        });
         const remaining = await reload();
         setModelReloadTick((value) => value + 1);
         onResolved?.({ pendingCount: remaining });
         if (decision === "go") onBuildStarted?.();
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
+        if (isStaleAnswerError(e)) {
+          setError(ko ? STALE_ANSWER_MESSAGE_KO : STALE_ANSWER_MESSAGE_EN);
+          void reload();
+          setModelReloadTick((value) => value + 1);
+        } else {
+          setError(e instanceof Error ? e.message : String(e));
+        }
       } finally {
         setBusyId(null);
       }
     },
-    [sessionId, disabled, reload, onResolved, onBuildStarted],
+    [
+      sessionId,
+      disabled,
+      reload,
+      onResolved,
+      onBuildStarted,
+      missionReadModel?.mission_id,
+      ko,
+    ],
   );
 
   const handleDefer = useCallback(
@@ -766,17 +842,24 @@ export function HumanInboxPanel({
         await resolveInboxItem(sessionId, item.id, {
           status: "deferred",
           decision: "defer",
+          ...versionGuardFields(item, missionReadModel?.mission_id),
         });
         const remaining = await reload();
         setModelReloadTick((value) => value + 1);
         onResolved?.({ pendingCount: remaining });
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
+        if (isStaleAnswerError(e)) {
+          setError(ko ? STALE_ANSWER_MESSAGE_KO : STALE_ANSWER_MESSAGE_EN);
+          void reload();
+          setModelReloadTick((value) => value + 1);
+        } else {
+          setError(e instanceof Error ? e.message : String(e));
+        }
       } finally {
         setBusyId(null);
       }
     },
-    [sessionId, disabled, reload, onResolved],
+    [sessionId, disabled, reload, onResolved, missionReadModel?.mission_id, ko],
   );
 
   if (!sessionId) {

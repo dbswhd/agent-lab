@@ -129,10 +129,9 @@ legacy fallback은 read-model 자체가 `null`일 때만 발동한다.
 | `event_cursor` vs durable journal 비교 | `app/server/routers/mission_read_model.py` (`_expected_event_cursor`) | cursor == journal line count; 불일치 시 legacy fail-closed |
 | SSE cursor replay / reconnect | `app/server/routers/mission_events.py`, `web/src/api/client.ts` (`fetchMissionEventsSSE`) | `Last-Event-ID` header로 missed event replay |
 | durable event merge on reconnect | `web/src/utils/missionReadModel.ts` | SSE notification → `fetchMissionReadModel` snapshot + epoch guard |
+| §7.3 `HumanInboxPanel` answer optimistic locking | `agent_lab/mission/application.py` (`guard_inbox_answer`), `app/server/routers/human_inbox.py`, `HumanInboxPanel.tsx` | `decision_id`/`mission_id`/`expected_version` round-trip; stale/duplicate answer → 409 before `resolve_inbox_item` runs; optional field, legacy clients unaffected |
 
-| 비보장 / 미착수 | 이유 | 다음 단계 |
-|----------------|------|-----------|
-| `HumanInboxPanel` answer가 `decision_id`, `expected_version` 전송 | 아직 command endpoint contract가 없음 | §7.3 이후 |
+현재 비보장/미착수 항목 없음 — §7 구현 순서 1~5 전부 완료.
 
 ### §7.4 SSE cursor inventory (2026-07-14)
 

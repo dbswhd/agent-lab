@@ -47,6 +47,30 @@ class MissionReadModelPayload(TypedDict):
     inbox_items: NotRequired[list[dict[str, Any]]]
 
 
+def _with_decision_versions(items: list[dict[str, Any]], folder: Path) -> list[dict[str, Any]]:
+    """§7.3 — attach each item's optimistic-lock ``decision_version`` (0 if never
+    answered) so ``HumanInboxPanel`` can round-trip ``expected_version`` on resolve.
+    ``decision_id`` is intentionally not added: it always equals the item's own
+    ``id`` (see ``MissionApplication._inbox_decision_repository``'s ``decision_id
+    or item_id`` fallback), so callers can send ``item.id`` as-is.
+    """
+    from agent_lab.mission.decision_repository import load_decision_version
+
+    enriched: list[dict[str, Any]] = []
+    for item in items:
+        row = dict(item)
+        item_id = row.get("id")
+        version = 0
+        if isinstance(item_id, str) and item_id:
+            try:
+                version = load_decision_version(folder, item_id, mission_id=folder.name)
+            except Exception:
+                version = 0
+        row["decision_version"] = version
+        enriched.append(row)
+    return enriched
+
+
 def _goal_from_run(folder: Path) -> str:
     run = read_run_meta(folder)
     for key in ("goal", "topic"):
@@ -141,7 +165,7 @@ def _payload(
         "work_phase": composites["work_phase"],
         "mission_overview": composites["mission_overview"],
         "inbox_summary": composites["inbox_summary"],
-        "inbox_items": composites["inbox_items"],
+        "inbox_items": _with_decision_versions(composites["inbox_items"], folder),
     }
     if not _payload_integrity_ok(payload, folder=folder, run=run):
         return _legacy_payload(session_id, folder)
@@ -225,7 +249,7 @@ def _legacy_payload(session_id: str, folder: Path) -> MissionReadModelPayload:
         "work_phase": composites["work_phase"],
         "mission_overview": composites["mission_overview"],
         "inbox_summary": composites["inbox_summary"],
-        "inbox_items": composites["inbox_items"],
+        "inbox_items": _with_decision_versions(composites["inbox_items"], folder),
     }
 
 

@@ -26,6 +26,14 @@ from agent_lab.run.meta import read_run_meta
 from app.server.main import app
 
 
+@pytest.fixture(autouse=True)
+def _isolate_run_lock(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    # try_begin_run() holds a real cross-process fcntl.flock at config_dir()/run.lock,
+    # which collides across xdist workers without a private dir per test. See
+    # tests/test_room_resume_stream.py's _isolate_run_lock / commit 2af5e735.
+    monkeypatch.setenv("AGENT_LAB_CONFIG_DIR", str(tmp_path / ".agent-lab-config"))
+
+
 def _git(cwd: Path, *args: str) -> str:
     r = subprocess.run(
         ["git", "-C", str(cwd), *args],

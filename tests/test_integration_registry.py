@@ -152,7 +152,11 @@ def test_fast_bucket_collection_budget():
     # (guard_inbox_answer/load_decision_version tests in test_mission_application.py,
     # stale-expected_version HTTP conflict tests in test_human_inbox.py,
     # decision_version read-model coverage in test_mission_read_model_api.py).
-    assert count <= 3316, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-16: raised 3316 -> 3319 for sector 02 claim-lease merge guard
+    # (test_resolve_approve_rejects_when_merge_lease_already_held in
+    # test_plan_execute_worktree.py) + sector 08 CM1 message inventory drift
+    # guard (test_message_inventory.py).
+    assert count <= 3319, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

@@ -158,7 +158,9 @@ def test_fast_bucket_collection_budget():
     # guard (test_message_inventory.py).
     # 2026-07-16: raised 3319 -> 3321 for sector 09 CX1 source registry drift
     # guard (test_context_source_registry.py).
-    assert count <= 3321, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-16: raised 3321 -> 3324 for sector 03 A1 provider capability
+    # inventory drift guard (test_provider_capability_inventory.py).
+    assert count <= 3324, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

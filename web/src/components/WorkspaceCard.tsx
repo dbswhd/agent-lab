@@ -1,5 +1,6 @@
 import type { MergeChecksPayload, PlanExecutionRecord } from "../api/client";
 import { MergeChecksPanel } from "./MergeChecksPanel";
+import { OracleEvidencePanel } from "./OracleEvidencePanel";
 import { PlanDiffStat } from "./PlanDiffStat";
 import { ExternalHandoffBadge } from "./PlanExecutePanelSupport";
 import {
@@ -37,6 +38,7 @@ export function WorkspaceCard({
     Boolean(execution.diff_stat?.trim()) ||
     Boolean(mergeChecks?.checks?.length) ||
     Boolean(execution.external_handoff?.evidence_summary) ||
+    Boolean(execution.oracle?.verdict) ||
     Boolean(mergeSha);
 
   if (!hasIdentity) return null;
@@ -113,6 +115,8 @@ export function WorkspaceCard({
       {mergeChecks?.checks?.length ? (
         <MergeChecksPanel checks={mergeChecks} />
       ) : null}
+
+      <OracleEvidencePanel oracle={execution.oracle} />
 
       <ExternalHandoffBadge row={execution} />
 

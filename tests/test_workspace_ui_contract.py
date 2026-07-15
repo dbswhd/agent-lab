@@ -26,6 +26,7 @@ def _plan_execute_bundle() -> str:
             _read("web", "src", "components", "PlanExecutePendingCard.tsx"),
             _read("web", "src", "components", "PlanExecuteDryRunBody.tsx"),
             _read("web", "src", "components", "WorkspaceCard.tsx"),
+            _read("web", "src", "components", "OracleEvidencePanel.tsx"),
             _read("web", "src", "hooks", "usePlanExecutePanel.ts"),
         ]
     )
@@ -217,6 +218,9 @@ def test_workspace_panels_have_distinct_document_wrappers():
     assert "plan-actions-bar" in plan_exec
     assert "WorkspaceCard" in plan_exec
     assert 'data-testid="workspace-card"' in plan_exec or 'data-testid="workspace-card"' in plan_exec
+    # §7 item 3 (11-ui-ux-surface-map.md) — Oracle evidence on the workspace card.
+    assert "OracleEvidencePanel" in plan_exec
+    assert 'data-testid="oracle-evidence-panel"' in plan_exec
     assert "PlanExecutePanel" in work_tool
     assert ".transcript--console" in surfaces
 

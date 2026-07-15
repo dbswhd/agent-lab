@@ -679,6 +679,97 @@
   color: var(--danger);
 }
 
+.oracle-evidence {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-hair);
+  background: var(--surface-inset);
+  overflow: hidden;
+}
+
+.oracle-evidence__toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-10) var(--space-12);
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.oracle-evidence__toggle:disabled {
+  cursor: default;
+}
+
+.oracle-evidence__toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.oracle-evidence__title {
+  font-size: var(--text-footnote);
+  font-weight: 600;
+}
+
+.oracle-evidence__verdict {
+  margin-left: auto;
+  font-size: var(--text-caption);
+}
+
+.oracle-evidence__verdict--pass {
+  color: var(--ok);
+}
+
+.oracle-evidence__verdict--fail {
+  color: var(--danger);
+}
+
+.oracle-evidence__verdict--skipped {
+  color: var(--label-tertiary);
+}
+
+.oracle-evidence__chevron {
+  flex-shrink: 0;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-right: 1.5px solid var(--label-tertiary);
+  border-bottom: 1.5px solid var(--label-tertiary);
+  transform: rotate(-45deg);
+  transition: transform 120ms ease;
+}
+
+.oracle-evidence__chevron--open {
+  transform: rotate(45deg);
+}
+
+.oracle-evidence__body {
+  padding: 0 var(--space-12) var(--space-10);
+  border-top: 1px solid var(--border-hair);
+  padding-top: var(--space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.oracle-evidence__row {
+  display: grid;
+  grid-template-columns: 8rem 1fr;
+  gap: var(--space-8);
+  margin: 0;
+  font-size: var(--text-caption);
+}
+
+.oracle-evidence__label {
+  color: var(--label-secondary);
+}
+
+.oracle-evidence__row--fail .oracle-evidence__value {
+  color: var(--danger);
+}
+
 /* MB-3 Evidence gates */
 .evidence-gates {
   padding: var(--space-8) var(--space-10);

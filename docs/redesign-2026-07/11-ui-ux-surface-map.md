@@ -75,14 +75,14 @@
 
 1. ✅ `/api/sessions/{id}/mission/read-model`과 legacy projection parity를 고정한다.
 2. ✅ `ComposerEventStack`에 Decision Queue precedence를 연결한다.
-3. `WorkStatusBar`/`WorkspaceCard`에 activity·merge·Oracle evidence를 추가한다.
-4. SSE cursor/reconnect와 durable event merge를 연결한다. (미착수)
-5. Playwright journey로 plan reject, diff approve, Oracle repair, Human resume을 검증한다.
+3. ✅ `WorkStatusBar`/`WorkspaceCard`에 activity·merge·Oracle evidence를 추가한다. (merge — `MergeChecksPanel`; activity — `EvidenceTimeline`; Oracle — 신규 `OracleEvidencePanel`, `WorkspaceCard.tsx`에 배선)
+4. ✅ SSE cursor/reconnect와 durable event merge를 연결한다. (§7.4, 2026-07-14/15 완료 — 아래 §7.4 참고)
+5. ✅ Playwright journey로 plan reject, diff approve, Oracle repair, Human resume을 검증한다. (`web/e2e/wave-b-journey.spec.ts`, 4/4 통과)
 
 ## 8. Wave B join / cross-source 우선순위 계약
 
 > 이 섹션은 2026-07-14 커밋 `32c9f3d` 이후 편입되었다.  
-> 현재 상태: payload parsing boundary + read-model field precedence까지 구현, browser SSE cursor wiring은 미착수.
+> 현재 상태: payload parsing boundary + read-model field precedence + browser SSE cursor wiring(§7.4) 모두 완료.
 
 ### 8.1 내부 join: `inbox_items` ↔ `open_execution_gates`
 

@@ -12,6 +12,8 @@
 
 Mission journal tail recovery, stale writer conflict, Oracle fail→repair→merge→pass, Human decision restart를 자동 검증하는 테스트를 추가했다. 기존 대형 mission 모듈의 broad/silent exception과 중복 writer는 발견된 레거시 리스크로 기록하고 이번 slice에서는 수정하지 않는다.
 
+**2026-07-16 update — R1 완료.** [journey reliability matrix](./evidence/r1-journey-reliability-matrix-2026-07-16.md)가 `sessions/_regression/`의 기존 39개 golden fixture를 8개 journey(start/plan/execute/diff/verify/repair/resume/cancel)로 재정리했다. deterministic/mock/live 3계층은 이미 존재했고(README, `make dogfood-suite-mock`, NOW.md 라이브 트랙) 새로 만들 게 없었다 — journey→fixture 매핑 문서화가 R1의 실질 작업이었다. 핵심 발견: **cancel만 regression fixture가 없다**(unit test는 있음) — A1(provider capability inventory)의 "provider-level cancel을 못 찾음"과 같은 축의 gap. `tests/test_regression_journey_matrix.py`가 fixture 존재와 cancel gap을 고정한다.
+
 ## 2. 현재 평가
 
 ### 강점

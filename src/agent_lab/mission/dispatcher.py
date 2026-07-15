@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+"""Prototype in-process dispatcher for messages.py's MessageEnvelope — superseded
+by domain-specific durable dispatch (mission/repository.py for command/event,
+mission/decision_repository.py for human_decision). See
+docs/redesign-2026-07/08-collaboration-messaging.md §13 D6/D10.
+"""
+
 from dataclasses import dataclass
 from collections.abc import Callable
 from typing import assert_never

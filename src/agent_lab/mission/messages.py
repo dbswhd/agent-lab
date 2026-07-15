@@ -1,5 +1,12 @@
 from __future__ import annotations
 
+"""Prototype envelope for a generic message bus — superseded by domain-specific
+durable implementations for command/event/human_decision (see
+docs/redesign-2026-07/08-collaboration-messaging.md §13 D6/D10). Not deleted:
+JsonValue is still reused elsewhere and the ActorKind/MessageKind vocabulary
+stays useful as reference, but nothing new should be built on this envelope.
+"""
+
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Mapping, TypeAlias, assert_never

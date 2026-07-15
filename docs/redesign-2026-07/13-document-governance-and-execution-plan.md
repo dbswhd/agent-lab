@@ -25,7 +25,7 @@
 | `05` reliability/ops          | test baseline 완료               | fault injection, telemetry, dogfood SLO                      | Step 4/5/6     |
 | `06` async runtime            | Activity·lease·recovery·queue first pass | daemon/scheduler integration, provider/execute wiring        | Step 4/5       |
 | `07` five principles          | design constraints 완료          | scorecard CI, adoption gate, quarterly review                | Step 5/6       |
-| `08` messaging                | local envelope/dispatcher 완료 · CM1 콜백 채널 inventory 완료(2026-07-16) | registry(work_request/artifact_ref 필요성 결정 선행), durable delivery, SSE/gateway adapters, 나머지 5채널 항목 단위 inventory | Step 2/5       |
+| `08` messaging                | CM1 inventory 완료 · CM2~CM8 재범위 결정 완료(2026-07-16) — command/event/human_decision은 이미 Mission kernel/decision_queue가 담당해 registry/dispatcher 신규 구축 불필요 | 유일한 실질 gap(agent work request 프로토콜)은 섹터 08 범위 밖 — 새 섹터/RFC 필요 | 종료(신규 섹터로 이관) |
 | `09` context engineering      | selector/manifest 완료           | source registry, redaction/provenance, assembler convergence | Step 2/4       |
 | `10` multi-agent coordination | topology selector 완료           | task/result contract, quorum/critic, lift benchmark          | Step 4/6       |
 

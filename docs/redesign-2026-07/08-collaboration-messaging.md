@@ -357,3 +357,69 @@ reject(delivery, reason)
 - retry와 reconnect가 duplicate effect를 만들지 않는다.
 - 모든 durable 협업 메시지는 actor·correlation·authority·schema version을 가진다.
 - 외부 broker 없이도 같은 계약이 로컬 runtime에서 검증된다.
+
+## 13. CM2~CM8 재범위 결정 (2026-07-16)
+
+> [CM1 message inventory](./evidence/cm1-message-inventory-2026-07-16.md)가 나온 뒤 CM2~CM8을 그대로
+> 진행할지 판단한 결과. §11의 CM2~CM8 산출물/acceptance criteria는 이 절이 대체한다 — 삭제하지 않고
+> 남겨두는 건 "왜 그렇게 계획했었는지" 기록으로만 유효하다.
+
+### D6. Command·Domain Event·Human Decision은 이미 `messages.py` 밖에 durable 구현이 있다
+
+CM2(schema registry)를 `messages.py`/`dispatcher.py` 위에 일반적으로 지으려 했지만, 6종 중 3종은
+이미 도메인 전용으로 더 성숙한 구현이 production에 연결돼 있다:
+
+| kind | 실제 구현 | 상태 |
+| --- | --- | --- |
+| Command | `mission/kernel.py`의 `MissionCommand`(OpenPlan·ApprovePlan·StartExecution·...) | schema-versioned event로 변환, `journal.py`가 append-only 저장 |
+| Domain Event | `mission/kernel.py`의 이벤트(PlanApproved·MergeCommitted·OraclePassed·...) | `event_codec.py`가 encode/decode, replay 가능 |
+| Human Decision | `mission/decision_queue.py` + `decision_repository.py` | durable state machine, optimistic lock(§7.3), production Human Inbox route에 연결(2026-07-15) |
+
+제네릭 envelope 위에 이 세 kind를 다시 만드는 건 이미 테스트되고 실제 라우트에 붙어 있는 도메인 전용
+구현을 퇴화시키는 셈이다. **CM2/CM3는 취소한다** — 만들 필요가 없다.
+
+### D7. Progress는 지금 그대로가 맞다
+
+CM1이 찾은 40개 콜백 이벤트 중 9개가 progress다. §5.1이 이미 "progress: best-effort, gap 허용"이라고
+정의했고, 지금 구현(in-process callback → SSE, journal 없음)이 정확히 그 요구를 만족한다. schema
+versioning이나 durable delivery를 얹으면 복잡도만 늘고 progress의 설계 의도(유실 허용)에 반한다.
+**CM6의 durable delivery는 progress 채널에는 적용하지 않는다.**
+
+### D8. Work Request/Result가 유일한 실질적 gap이지만, 범위가 다른 문제다
+
+`agent/envelope.py::parse_agent_response`가 agent 응답의 자연어와 제어 directive를 같이 파싱하는
+방식이 §2 결함("agent output 텍스트 안의 directive가 routing protocol 역할")에 정확히 해당한다.
+CM1에서도 work_request가 0/40으로 확인됐다 — 구조화된 work request 프로토콜이 지금 어디에도 없다.
+
+하지만 이걸 고치려면 `room/agent_invoke.py`의 실제 agent 호출 hot path와 `agent/envelope.py`를 바꿔야
+한다. 이건 "메시지 스키마 하나 등록"이 아니라 agent 협업 프로토콜 자체의 재설계이고, 살아있는 agent
+호출 경로를 건드리는 만큼 별도 검토·설계가 필요하다. **CM4를 이 섹터 안에서 계속하지 않는다** — 별도
+섹터/RFC로 분리 제안한다(이번 결정 범위 밖).
+
+### D9. Artifact Reference는 이미 기능적으로 존재한다
+
+`plan/execute_snapshot.py`의 manifest(파일별 hash·목록)가 content-addressed artifact 참조 역할을
+사실상 수행하고 있다. 이름이 `ArtifactRef`가 아닐 뿐 기능은 있다. **새로 만들 게 없다.**
+
+### D10. `messages.py`/`dispatcher.py`의 앞으로
+
+Retire하지 않는다 — `tests/test_mission_messages.py`/`test_local_dispatcher.py`가 이미 있고,
+`ActorKind`/`MessageKind` 어휘는 문서 vocabulary로서 여전히 유효하다. 하지만 **CM2 이후 아무것도 이
+파일 위에 짓지 않는다.** 파일 상단에 "prototype, superseded by domain-specific durable
+implementations(mission/kernel·decision_queue)" 주석을 남기는 정도로 충분 — 코드 삭제는 이번
+결정의 범위 밖(별도 실행 승인 필요).
+
+### 재범위 요약
+
+| 원래 마일스톤 | 결정 |
+| --- | --- |
+| CM2 schema registry | 취소 — Mission kernel/decision_queue가 이미 담당(D6) |
+| CM3 typed local dispatcher | 취소 — 동일 이유(D6) |
+| CM4 agent work protocol | 이 섹터에서 분리, 별도 RFC 필요(D8) |
+| CM5 Human decision protocol | 이미 완료됨(§7.3) — CM1이 재확인, 추가 작업 없음 |
+| CM6 durable delivery/replay | Mission journal이 command/event/decision에는 이미 제공. progress에는 적용 안 함(D7) |
+| CM7 SSE/gateway adapters | SSE는 `mission/read_model.py`가 사실상 adapter. gateway(Telegram 등)는 섹터 08 범위 밖 — 별도 문서화 필요 |
+| CM8 legacy protocol 제거 | 대상 없음 — retire 안 하기로 했으므로(D10) |
+
+**결론: 08 sector는 CM1 완료로 사실상 종료.** 남은 유일한 실질 작업(agent work request 프로토콜)은
+새 섹터로 분리해야 다음 실행 단계를 잡을 수 있다.

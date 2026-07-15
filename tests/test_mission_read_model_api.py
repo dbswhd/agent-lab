@@ -3,11 +3,34 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 from agent_lab.mission.application import MissionApplication
 from agent_lab.session import paths as session_paths
 from app.server.main import create_app
+
+
+@pytest.fixture(autouse=True)
+def _isolate_run_lock(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    # try_begin_run() holds a real cross-process fcntl.flock at config_dir()/run.lock,
+    # which collides across xdist workers without a private dir per test. See
+    # tests/test_room_resume_stream.py's _isolate_run_lock / commit 2af5e735.
+    monkeypatch.setenv("AGENT_LAB_CONFIG_DIR", str(tmp_path / ".agent-lab-config"))
+
+
+@pytest.fixture(autouse=True)
+def _isolate_deps_sessions_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    # active_sessions_dir() prefers app.server.deps.SESSIONS_DIR over
+    # session_paths.SESSIONS_DIR when app.server.deps is already imported (see
+    # session/paths.py::active_sessions_dir). A prior test in the same xdist
+    # worker that left deps.SESSIONS_DIR pointed elsewhere (via a non-monkeypatch
+    # assignment) would otherwise shadow this file's own session_paths patch and
+    # 404 every route. Mirror the same tmp_path here so precedence order can't matter.
+    import app.server.deps as deps_mod
+
+    monkeypatch.setattr(deps_mod, "SESSIONS_DIR", tmp_path, raising=False)
+
 
 _LEGACY_COMPOSITE_KEYS = {
     "plan": {

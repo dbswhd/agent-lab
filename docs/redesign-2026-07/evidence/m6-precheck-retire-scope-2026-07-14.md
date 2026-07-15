@@ -64,3 +64,8 @@ Deleting writers **without** richer projection / journal-first UI → **inbox + 
 | Full-path dogfood enough for soft? | **Yes** (route cohort PASS under authority) |
 | UI/gates survive Mission-only writes today? | **Only via run.json projection/legacy writes** — not pure journal |
 | M6 delete now? | **No** — Wave A design+API shipped ([journal-first](./journal-first-read-projection-design-2026-07-14.md)); need Wave B UI dogfood + explicit Human gate |
+
+**2026-07-16 update:** Human 승인으로 재검토를 착수했다 — 판정은 바뀌지 않았다. See
+[m6-ui-read-model-dogfood-2026-07-16.md](./m6-ui-read-model-dogfood-2026-07-16.md): (1) inbox row
+writer는 오늘도 정량적으로 필요함이 재확인됐고, (2) UI Room 풀 dogfood(비-mock)를 처음 실행해
+HumanInboxPanel이 read-model만으로 렌더링됨을 확인했다.

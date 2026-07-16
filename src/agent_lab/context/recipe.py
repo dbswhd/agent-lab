@@ -252,30 +252,113 @@ def _compare_candidates(a: ContextItem, b: ContextItem) -> int:
     return 0
 
 
-def _resolve_group(group: list[ContextItem]) -> tuple[ContextItem | None, list[str], tuple[str, ...] | None]:
-    """Rank a group of items competing for the same exact-content or
-    conflict_key slot. Returns (winner, superseded_ids, tied_group):
+def _cross_source_rank(item: ContextItem) -> tuple[int, int, int]:
+    """Cross-source-safe rank for comparing candidates that may come from
+    different sources: lower §5 tier wins, then higher authority, then higher
+    relevance — as a plain key tuple, not a pairwise comparator.
 
-    - Exactly one item: that item wins outright, nothing superseded/tied.
-    - A clear top item (distinguishable from the rest via
-      _compare_candidates_core): it wins, everyone else is superseded.
-    - Two or more items tied for first on every meaningful signal: NO winner
-      is picked. 09-context-engineering.md §5 requires an unresolvable
-      conflict to escalate to structured ambiguity / Human decision rather
-      than being silently thrown into (or out of) the prompt, so an item_id
-      comparison isn't a legitimate way to decide between them — the whole
-      group (not just the tied leaders) comes back as `tied_group` and none
-      of it is superseded or included.
+    2026-07-16 review round 5 #2 — deliberately excludes freshness.
+    _compare_candidates_core only compares freshness when both items share a
+    source, which makes it a valid total order *within* one source but
+    non-transitive across a group spanning multiple sources (e.g. same-source
+    A beats C on freshness, but neither A nor C is comparable to a
+    same-tier/authority/relevance item B from another source on freshness at
+    all — sorting a mixed group directly by that comparator can rank B
+    between A and C inconsistently). Because this key never touches
+    freshness, plain tuple comparison is transitive by construction, so it's
+    only ever used to rank ONE representative per source (see
+    _resolve_group), after freshness has already done its job settling
+    same-source competition."""
+    return (CONFLICT_TIER.get(item.source, 99), -item.authority, -item.relevance)
+
+
+def _resolve_group(
+    group: list[ContextItem],
+) -> tuple[ContextItem | None, list[tuple[str, str]], tuple[str, ...] | None]:
+    """Rank a group of items competing for the same exact-content or
+    conflict_key slot. Returns (winner, superseded[(loser_id, winner_id)],
+    tied_group).
+
+    2026-07-16 review round 5 #2 — resolved in two passes instead of one flat
+    comparator sort, because a single comparator that gates freshness on
+    "same source" is non-transitive once a group mixes sources (see
+    _cross_source_rank's docstring for the concrete counterexample). Mixing
+    sources into one sort could silently lose a same-source resolution (e.g.
+    A beats C on freshness) whenever a third, cross-source item B happened to
+    tie with both A and C on tier/authority/relevance — B has no business
+    being compared to A/C on freshness at all, but a flat sort could still
+    scramble their relative order.
+
+    Pass 1 — per source: rank that source's own items with
+    _compare_candidates (fully valid here; every pair in a single-source
+    bucket satisfies the "same source" gate, so freshness is always
+    meaningfully comparable). A source that can't settle its own internal tie
+    contributes no single representative — its whole bucket rides through as
+    one contender, unresolved internally.
+
+    Pass 2 — across sources: rank each source's representative (or
+    unresolved bucket) via _cross_source_rank (tier/authority/relevance only,
+    transitive, freshness already spent in pass 1). A source's items that are
+    strictly outranked here are superseded by the winner regardless of any
+    unresolved detail elsewhere — domination on tier/authority/relevance
+    doesn't depend on how an unrelated tie eventually resolves. If more than
+    one source shares the best cross-source rank (or the sole occupant of
+    that rank is itself an internally-ambiguous source), there is no single
+    defensible winner: per 09-context-engineering.md §5 ("해결할 수 없는
+    충돌은 ... structured ambiguity 또는 Human decision으로 승격한다"), that
+    contested top rank is reported as `tied_group` rather than decided.
     """
     if len(group) == 1:
         return group[0], [], None
-    ordered = sorted(group, key=cmp_to_key(_compare_candidates))
-    top = ordered[0]
-    tied_with_top = [item for item in ordered if _compare_candidates_core(top, item) == 0]
-    if len(tied_with_top) > 1:
-        return None, [], tuple(sorted(item.item_id for item in group))
-    superseded_ids = [item.item_id for item in ordered[1:]]
-    return top, superseded_ids, None
+
+    by_source: dict[SourceClass, list[ContextItem]] = {}
+    for item in group:
+        by_source.setdefault(item.source, []).append(item)
+
+    # Each contender is (cross_source_rank, representative_or_None, item_ids).
+    # representative is None when that source's own items are internally
+    # tied (couldn't settle even with freshness) — item_ids then names the
+    # whole ambiguous bucket instead of a single winner.
+    contenders: list[tuple[tuple[int, int, int], ContextItem | None, list[str]]] = []
+    superseded: list[tuple[str, str]] = []
+    for source_items in by_source.values():
+        if len(source_items) == 1:
+            item = source_items[0]
+            contenders.append((_cross_source_rank(item), item, [item.item_id]))
+            continue
+        ordered = sorted(source_items, key=cmp_to_key(_compare_candidates))
+        top = ordered[0]
+        tied = [candidate for candidate in ordered if _compare_candidates_core(top, candidate) == 0]
+        if len(tied) > 1:
+            contenders.append((_cross_source_rank(top), None, [candidate.item_id for candidate in source_items]))
+            continue
+        contenders.append((_cross_source_rank(top), top, [top.item_id]))
+        superseded.extend((loser.item_id, top.item_id) for loser in ordered[1:])
+
+    best_rank = min(rank for rank, _representative, _ids in contenders)
+    top_contenders = [c for c in contenders if c[0] == best_rank]
+    other_contenders = [c for c in contenders if c[0] != best_rank]
+
+    if len(top_contenders) == 1 and top_contenders[0][1] is not None:
+        winner = top_contenders[0][1]
+        for _rank, _representative, ids in other_contenders:
+            superseded.extend((loser_id, winner.item_id) for loser_id in ids)
+        return winner, superseded, None
+
+    # No single clean winner at the top rank — either two-or-more sources
+    # tie there, or the sole top-rank source is itself internally ambiguous.
+    # Everything else is still strictly dominated regardless of how the top
+    # rank's ambiguity would eventually resolve, so it supersedes cleanly;
+    # attribute it to the lexicographically-first top-rank item_id purely as
+    # a stable pointer, not as a claim that item specifically "won" — the
+    # real winner among the top rank is exactly what's being escalated.
+    unresolved_ids: list[str] = []
+    for _rank, _representative, ids in top_contenders:
+        unresolved_ids.extend(ids)
+    pointer_id = min(unresolved_ids)
+    for _rank, _representative, ids in other_contenders:
+        superseded.extend((loser_id, pointer_id) for loser_id in ids)
+    return None, superseded, tuple(sorted(unresolved_ids))
 
 
 def _resolve_conflicts(
@@ -315,13 +398,17 @@ def _resolve_conflicts(
     superseded: list[tuple[str, str]] = []
     unresolved: list[tuple[str, ...]] = []
     for group in by_content.values():
-        winner, superseded_ids, tied_group = _resolve_group(group)
+        winner, group_superseded, tied_group = _resolve_group(group)
+        # Always merge superseded pairs, even when the group also produces a
+        # tied_group: a source strictly dominated at the cross-source rank
+        # (2026-07-16 review round 5 #2) supersedes cleanly regardless of
+        # whether the top rank itself is ambiguous.
+        superseded.extend(group_superseded)
         if tied_group is not None:
             unresolved.append(tied_group)
             continue
         assert winner is not None
         deduped.append(winner)
-        superseded.extend((loser_id, winner.item_id) for loser_id in superseded_ids)
 
     by_conflict_key: dict[str, list[ContextItem]] = {}
     conflict_key_passthrough: list[ContextItem] = []
@@ -337,13 +424,13 @@ def _resolve_conflicts(
             by_conflict_key.setdefault(item.conflict_key, []).append(item)
     survivors = list(conflict_key_passthrough)
     for group in by_conflict_key.values():
-        winner, superseded_ids, tied_group = _resolve_group(group)
+        winner, group_superseded, tied_group = _resolve_group(group)
+        superseded.extend(group_superseded)
         if tied_group is not None:
             unresolved.append(tied_group)
             continue
         assert winner is not None
         survivors.append(winner)
-        superseded.extend((loser_id, winner.item_id) for loser_id in superseded_ids)
     return survivors, superseded, unresolved
 
 
@@ -385,21 +472,48 @@ def select_context(need: ContextNeed, items: tuple[ContextItem, ...]) -> Context
     # resolution), not `candidates`. A required source's sole item can lose a
     # conflict_key contest to a higher-tier item from a different source
     # representing the same fact — by design (a better carrier now speaks for
-    # that fact) — and that shouldn't register as "missing". A required
-    # source whose only representative(s) ended up in an unresolved tie is
-    # likewise not "missing" — it was eligible, resolution just couldn't pick
-    # a winner, which is exactly what unresolved_conflicts surfaces for the
-    # caller to escalate (§5) instead of masking it as a coverage failure.
+    # that fact) — and that shouldn't register as "missing".
     eligible_sources = {item.source for item in eligible}
     missing = sorted(source.value for source in need.required_sources - eligible_sources)
     if missing:
         raise ContextSelectionError(f"missing required sources: {', '.join(missing)}")
+    # 2026-07-16 review round 5 #1 — a required source whose eligible item(s)
+    # ended up entirely inside an unresolved tie (none of them made it into
+    # `candidates`, cleanly superseded or otherwise) must NOT return
+    # silently: unresolved_conflicts is an advisory field, and a caller that
+    # doesn't inspect it would proceed with a required fact simply absent
+    # from the manifest — violating CX3's "excluded required item은 오류로
+    # 드러난다" and §12's "required가 목적에 맞게 들어간다". This is distinct
+    # from the case above (a required source's item cleanly SUPERSEDED by a
+    # different source's higher-priority representative of the same fact,
+    # which is intentional and stays silent) — here nothing at all speaks for
+    # the source, the resolution just couldn't decide who.
+    candidate_sources = {item.source for item in candidates}
+    unresolved_item_ids = {item_id for group in unresolved_conflicts for item_id in group}
+    unresolved_required = sorted(
+        source.value
+        for source in need.required_sources - candidate_sources
+        if any(item.item_id in unresolved_item_ids for item in eligible if item.source == source)
+    )
+    if unresolved_required:
+        raise ContextSelectionError(f"required source unresolved: {', '.join(unresolved_required)}")
     included: list[ContextItem] = []
     total_tokens = 0
     satisfied_required: set[SourceClass] = set()
     for item in sorted(candidates, key=lambda candidate: _rank(candidate, need.required_sources)):
-        content_floor = max(1, (len(item.content) + 3) // 4)
-        next_total = total_tokens + max(content_floor, item.estimated_tokens)
+        # 2026-07-16 review round 5 #5 — the content-floor guard exists to
+        # protect against a caller UNDER-declaring estimated_tokens for real
+        # content. A redacted placeholder's content is exactly known (it's
+        # always REDACTED_CONTENT_PLACEHOLDER), so the floor's protection
+        # doesn't apply; without this exemption _redact_if_needed's
+        # estimated_tokens=1 was always overridden by the placeholder's own
+        # length-derived floor (dead code — REDACTED_CONTENT_PLACEHOLDER is
+        # long enough that its floor is 3, never 1).
+        if item.content == REDACTED_CONTENT_PLACEHOLDER:
+            next_total = total_tokens + item.estimated_tokens
+        else:
+            content_floor = max(1, (len(item.content) + 3) // 4)
+            next_total = total_tokens + max(content_floor, item.estimated_tokens)
         # 2026-07-16 review: only the FIRST (best, since candidates are sorted
         # required-first/authority-desc) item of a still-unsatisfied required
         # source can trip a hard failure. Extra items of an already-satisfied

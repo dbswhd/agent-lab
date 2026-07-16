@@ -184,7 +184,12 @@ def test_fast_bucket_collection_budget():
     # (test_context_selector_review4.py — genuine-tie escalation to
     # unresolved_conflicts, conflict_key-vs-content dedup ordering, excluded/
     # superseded reason/winner tracking, duplicate item_id rejection).
-    assert count <= 3401, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-16: raised 3401 -> 3408 for the round-5 conflict-resolution
+    # fixes (test_context_selector_review4.py required-source-unresolved-tie
+    # hard fail + regression guards; test_context_selector_review5.py —
+    # non-transitive core-comparator fix, partition invariant, redacted
+    # content-floor exemption).
+    assert count <= 3408, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

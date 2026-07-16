@@ -115,11 +115,16 @@ def test_a_real_signal_difference_still_resolves_cleanly_not_a_false_tie() -> No
     assert manifest.unresolved_conflicts == ()
 
 
-def test_required_source_fully_consumed_by_an_unresolved_tie_does_not_false_positive_missing() -> None:
-    """#1 — a required source whose only two candidates are genuinely tied
-    must not raise "missing required sources": the source WAS eligible,
-    resolution just couldn't pick a winner. That's exactly what
-    unresolved_conflicts is for; it isn't a coverage gap."""
+def test_required_source_fully_consumed_by_an_unresolved_tie_raises_not_silently_missing() -> None:
+    """#1 (2026-07-16 review round 5) — a required source whose ONLY
+    candidates are genuinely tied must not return a manifest that simply
+    omits the source. It's not "missing" in the pre-conflict-resolution
+    sense (raising via the generic "missing required sources" message would
+    be misleading, since the source WAS eligible) — but silently succeeding
+    would violate CX3's "excluded required item은 오류로 드러난다" and §12's
+    "required가 목적에 맞게 들어간다": unresolved_conflicts is advisory, and a
+    caller that doesn't inspect it would proceed with no representation of
+    this required fact at all. A dedicated error names the ambiguity."""
     need = ContextNeed(
         activity=ActivityKind.EXECUTE,
         required_sources=frozenset({SourceClass.RUNTIME_STATE}),
@@ -136,10 +141,66 @@ def test_required_source_fully_consumed_by_an_unresolved_tie_does_not_false_posi
         authority=50, relevance=50, estimated_tokens=4, conflict_key="listening-port",
     )
 
-    manifest = select_context(need, (fact_a, fact_b))
+    with pytest.raises(ContextSelectionError, match="required source unresolved: runtime_state"):
+        select_context(need, (fact_a, fact_b))
 
-    assert manifest.included == ()
-    assert manifest.unresolved_conflicts == (("fact-a", "fact-b"),)
+
+def test_required_source_partially_consumed_by_an_unresolved_tie_still_succeeds_via_its_other_item() -> None:
+    """#1 regression guard — if the required source has ANOTHER eligible item
+    that DOES survive into candidates, the source is genuinely represented
+    and must not hard-fail just because a different fact/slot from the same
+    source happened to hit an unresolved tie elsewhere."""
+    need = ContextNeed(
+        activity=ActivityKind.EXECUTE,
+        required_sources=frozenset({SourceClass.RUNTIME_STATE}),
+        optional_sources=frozenset(),
+        forbidden_sources=frozenset(),
+        token_budget=1_000,
+    )
+    tied_a = ContextItem(
+        "tied-a", SourceClass.RUNTIME_STATE, "the port is 8080",
+        authority=50, relevance=50, estimated_tokens=4, conflict_key="listening-port",
+    )
+    tied_b = ContextItem(
+        "tied-b", SourceClass.RUNTIME_STATE, "the port is 9090",
+        authority=50, relevance=50, estimated_tokens=4, conflict_key="listening-port",
+    )
+    clean_fact = ContextItem(
+        "clean-fact", SourceClass.RUNTIME_STATE, "build is green",
+        authority=50, relevance=50, estimated_tokens=4, conflict_key="build-status",
+    )
+
+    manifest = select_context(need, (tied_a, tied_b, clean_fact))
+
+    assert [item.item_id for item in manifest.included] == ["clean-fact"]
+    assert manifest.unresolved_conflicts == (("tied-a", "tied-b"),)
+
+
+def test_required_source_cleanly_superseded_by_a_different_source_still_succeeds() -> None:
+    """#1 regression guard — the original round-2 #2 policy must still hold:
+    a required source's sole item losing a CLEAN (not tied) conflict_key
+    contest to a different, higher-tier source's representative of the same
+    fact is intentional, not a coverage gap, and must not raise."""
+    need = ContextNeed(
+        activity=ActivityKind.EXECUTE,
+        required_sources=frozenset({SourceClass.REPO_CONTEXT}),
+        optional_sources=frozenset({SourceClass.APPROVED_PLAN}),
+        forbidden_sources=frozenset(),
+        token_budget=1_000,
+    )
+    repo_item = ContextItem(
+        "repo-guess", SourceClass.REPO_CONTEXT, "inferred from file",
+        authority=10, relevance=10, estimated_tokens=4, conflict_key="the-fact",
+    )
+    plan_item = ContextItem(
+        "plan-authoritative", SourceClass.APPROVED_PLAN, "the actual fact",
+        authority=100, relevance=100, estimated_tokens=4, conflict_key="the-fact",
+    )
+
+    manifest = select_context(need, (repo_item, plan_item))
+
+    assert [item.item_id for item in manifest.included] == ["plan-authoritative"]
+    assert manifest.unresolved_conflicts == ()
 
 
 def test_different_conflict_keys_are_never_merged_by_incidental_content_equality() -> None:

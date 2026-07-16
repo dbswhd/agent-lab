@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 from enum import StrEnum
+from functools import cmp_to_key
 
 
 class ActivityKind(StrEnum):
@@ -109,11 +110,14 @@ class ContextItem:
     conflict_key: str | None = None
     """CX4 — items sharing a conflict_key represent the same fact/slot (e.g.
     two ContextItems for 'the current plan'). select_context() keeps only the
-    highest-priority one (§5 tier, then authority, then freshness string
-    descending) and drops the rest as superseded — this is the '오래된 plan
-    vs 최신 승인 plan: 오래된 plan 제외' rule. freshness must be lexicographically
-    sortable (zero-padded revision numbers, ISO timestamps) for the tie-break
-    to be meaningful; callers are responsible for that format."""
+    highest-priority one (§5 tier, then authority, then — same-source ties
+    only — freshness string descending, then relevance) and drops the rest as
+    superseded — this is the '오래된 plan vs 최신 승인 plan: 오래된 plan 제외' rule.
+    freshness must be lexicographically sortable (zero-padded revision
+    numbers, ISO timestamps) for the tie-break to be meaningful; callers are
+    responsible for that format. Cross-source ties (e.g. RUNTIME_STATE vs
+    EVIDENCE, both tier 3) never compare freshness — different sources use
+    incompatible formats, so authority/relevance decide instead."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -144,23 +148,47 @@ def _redact_if_needed(item: ContextItem) -> tuple[ContextItem, bool]:
     return replace(item, content=REDACTED_CONTENT_PLACEHOLDER, estimated_tokens=1), True
 
 
+def _compare_candidates(a: ContextItem, b: ContextItem) -> int:
+    """CX4 conflict-winner ordering: lower §5 tier wins, then higher authority,
+    then — ONLY when both items share a source — greater freshness string,
+    then higher relevance, then lower item_id.
+
+    2026-07-16 review: freshness is gated on same-source because different
+    sources use incompatible freshness formats (commit SHA vs ISO timestamp
+    vs plan revision — see ContextItem.freshness docstring); comparing them
+    lexicographically across sources is deterministic but meaningless as a
+    "which is newer" signal. Restricting the comparison to same-source ties
+    keeps it meaningful without inventing a cross-format normalization.
+    """
+    tier_a, tier_b = CONFLICT_TIER.get(a.source, 99), CONFLICT_TIER.get(b.source, 99)
+    if tier_a != tier_b:
+        return -1 if tier_a < tier_b else 1
+    if a.authority != b.authority:
+        return -1 if a.authority > b.authority else 1
+    if a.source == b.source:
+        fa, fb = a.freshness or "", b.freshness or ""
+        if fa != fb:
+            return -1 if fa > fb else 1
+    if a.relevance != b.relevance:
+        return -1 if a.relevance > b.relevance else 1
+    if a.item_id != b.item_id:
+        return -1 if a.item_id < b.item_id else 1
+    return 0
+
+
 def _pick_winner(group: list[ContextItem]) -> ContextItem:
-    """CX4 — highest §5 tier wins, ties broken by authority, then freshness
-    (lexicographically greatest — see ContextItem.conflict_key docstring),
-    then relevance, then item_id. Multi-pass stable sort: least significant
-    key first, so the last pass (tier) decides ties from all prior passes."""
-    ordered = sorted(group, key=lambda item: item.item_id)
-    ordered = sorted(ordered, key=lambda item: -item.relevance)
-    ordered = sorted(ordered, key=lambda item: item.freshness or "", reverse=True)
-    ordered = sorted(ordered, key=lambda item: -item.authority)
-    ordered = sorted(ordered, key=lambda item: CONFLICT_TIER.get(item.source, 99))
-    return ordered[0]
+    return sorted(group, key=cmp_to_key(_compare_candidates))[0]
 
 
 def _resolve_conflicts(candidates: list[ContextItem]) -> tuple[list[ContextItem], list[str]]:
     """CX4 §7.2 trim step 1 (exact duplicates) + §5 conflict resolution
     (same conflict_key = same fact/slot, only the winner survives)."""
-    by_content: dict[tuple[SourceClass, str], list[ContextItem]] = {}
+    # 2026-07-16 review: keyed on content alone, not (source, content) — §7.2's
+    # "exact duplicate 제거" means identical text wastes budget regardless of
+    # which source produced it (e.g. a snippet quoted verbatim in both
+    # PROJECT_DOC and REPO_CONTEXT). The higher-priority source's copy (via
+    # _pick_winner, same rule as conflict_key resolution) survives.
+    by_content: dict[str, list[ContextItem]] = {}
     content_passthrough: list[ContextItem] = []
     for item in candidates:
         # Redacted items all share REDACTED_CONTENT_PLACEHOLDER — grouping by
@@ -169,7 +197,7 @@ def _resolve_conflicts(candidates: list[ContextItem]) -> tuple[list[ContextItem]
         if item.content == REDACTED_CONTENT_PLACEHOLDER:
             content_passthrough.append(item)
         else:
-            by_content.setdefault((item.source, item.content), []).append(item)
+            by_content.setdefault(item.content, []).append(item)
     deduped: list[ContextItem] = list(content_passthrough)
     superseded: list[str] = []
     for group in by_content.values():
@@ -208,20 +236,38 @@ def select_context(need: ContextNeed, items: tuple[ContextItem, ...]) -> Context
         else:
             eligible.append(item)
     candidates, superseded_ids = _resolve_conflicts(eligible)
-    available_sources = {item.source for item in candidates}
-    missing = sorted(source.value for source in need.required_sources - available_sources)
+    # 2026-07-16 review: coverage is checked against `eligible` (pre-conflict-
+    # resolution), not `candidates`. A required source's sole item can lose a
+    # conflict_key contest to a higher-tier item from a different source
+    # representing the same fact — by design (a better carrier now speaks for
+    # that fact) — and that shouldn't register as "missing". This only checks
+    # that some eligible candidate existed for each required source at all.
+    eligible_sources = {item.source for item in eligible}
+    missing = sorted(source.value for source in need.required_sources - eligible_sources)
     if missing:
         raise ContextSelectionError(f"missing required sources: {', '.join(missing)}")
     included: list[ContextItem] = []
     total_tokens = 0
+    satisfied_required: set[SourceClass] = set()
     for item in sorted(candidates, key=lambda candidate: _rank(candidate, need.required_sources)):
         content_floor = max(1, (len(item.content) + 3) // 4)
         next_total = total_tokens + max(content_floor, item.estimated_tokens)
-        if item.source in need.required_sources and next_total > need.token_budget:
+        # 2026-07-16 review: only the FIRST (best, since candidates are sorted
+        # required-first/authority-desc) item of a still-unsatisfied required
+        # source can trip a hard failure. Extra items of an already-satisfied
+        # required source that don't fit just get excluded like any optional
+        # item — the requirement was already met.
+        if (
+            item.source in need.required_sources
+            and item.source not in satisfied_required
+            and next_total > need.token_budget
+        ):
             raise ContextSelectionError(f"required context exceeds token budget: {item.item_id}")
         if next_total <= need.token_budget:
             included.append(item)
             total_tokens = next_total
+            if item.source in need.required_sources:
+                satisfied_required.add(item.source)
         else:
             excluded.append(item.item_id)
     included_ids = {item.item_id for item in included}

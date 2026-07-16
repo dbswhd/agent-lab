@@ -52,13 +52,16 @@ def test_every_activity_requires_system_invariant(activity: ActivityKind) -> Non
 
 def test_each_recipe_is_satisfiable_with_one_item_per_required_source() -> None:
     """Smoke test: select_context() must not raise ContextSelectionError when
-    every required source has at least one minimal item available."""
+    every required source has at least one minimal item available. Content
+    must differ per item — select_context() now dedupes identical content
+    across sources (CX4 §7.2 review), so same-content fixtures here would
+    collapse into one item and defeat the point of this test."""
     for activity, need in ACTIVITY_RECIPES.items():
         items = tuple(
             ContextItem(
                 item_id=f"{activity.value}-{source.value}",
                 source=source,
-                content="x",
+                content=f"x-{source.value}",
                 authority=50,
                 relevance=50,
                 estimated_tokens=1,

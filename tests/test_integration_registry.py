@@ -174,7 +174,10 @@ def test_fast_bucket_collection_budget():
     # tests (test_context_selector_cx4.py).
     # 2026-07-16: raised 3359 -> 3366 for the CX1-CX4 Human review pass (REPO_CONTEXT
     # tier fix, SYSTEM_INVARIANT gap fix, pii redaction policy fix, budget review).
-    assert count <= 3366, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-16: raised 3366 -> 3371 for the select_context() code-review fixes
+    # (test_context_selector_review2.py — required-source/conflict-key/freshness/
+    # cross-source-dedup bugs).
+    assert count <= 3371, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

@@ -4,8 +4,11 @@ stays linked to real fixtures.
 Guards docs/redesign-2026-07/evidence/r1-journey-reliability-matrix-2026-07-16.md
 §1: every sessions/_regression/* fixture named against a journey must still
 exist on disk (R1 acceptance criteria: "CI가 matrix의 fixture/test link
-존재를 검사한다"), and the one confirmed gap (no cancel fixture) stays
-pinned so it can't silently get "fixed" by a stale doc claim.
+존재를 검사한다"). Cancel is deliberately absent from JOURNEY_FIXTURES — its
+gap was closed via tests/test_execute_cancel.py instead of a golden fixture
+(§3 of the matrix doc explains why a fixture would just duplicate
+worktree_reject/); this file pins that it stays a fixture-less journey on
+purpose, not by oversight.
 """
 
 from __future__ import annotations
@@ -52,11 +55,11 @@ def test_all_journey_fixtures_exist_on_disk() -> None:
     assert not missing, f"R1 matrix references missing sessions/_regression fixture(s): {missing}"
 
 
-def test_cancel_journey_still_has_no_regression_fixture() -> None:
-    """Pins the R1 finding — fails loudly (telling you to update the matrix doc
-    too) once someone adds sessions/_regression/cancel*."""
+def test_cancel_journey_has_no_regression_fixture_by_design() -> None:
+    """If someone adds sessions/_regression/cancel*, the matrix doc §3's reasoning
+    (fixture would duplicate worktree_reject/) needs re-checking, not silent drift."""
     cancel_like = [p.name for p in REGRESSION_DIR.iterdir() if p.is_dir() and "cancel" in p.name.lower()]
     assert cancel_like == [], (
-        f"found cancel-like regression fixture(s) {cancel_like} — update "
-        "r1-journey-reliability-matrix-2026-07-16.md §1/§3, this gap is now closed"
+        f"found cancel-like regression fixture(s) {cancel_like} — re-check "
+        "r1-journey-reliability-matrix-2026-07-16.md §3's reasoning before assuming it's needed"
     )

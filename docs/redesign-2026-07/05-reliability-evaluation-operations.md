@@ -12,7 +12,7 @@
 
 Mission journal tail recovery, stale writer conflict, Oracle fail→repair→merge→pass, Human decision restart를 자동 검증하는 테스트를 추가했다. 기존 대형 mission 모듈의 broad/silent exception과 중복 writer는 발견된 레거시 리스크로 기록하고 이번 slice에서는 수정하지 않는다.
 
-**2026-07-16 update — R1 완료.** [journey reliability matrix](./evidence/r1-journey-reliability-matrix-2026-07-16.md)가 `sessions/_regression/`의 기존 39개 golden fixture를 8개 journey(start/plan/execute/diff/verify/repair/resume/cancel)로 재정리했다. deterministic/mock/live 3계층은 이미 존재했고(README, `make dogfood-suite-mock`, NOW.md 라이브 트랙) 새로 만들 게 없었다 — journey→fixture 매핑 문서화가 R1의 실질 작업이었다. 핵심 발견: **cancel만 regression fixture가 없다**(unit test는 있음) — A1(provider capability inventory)의 "provider-level cancel을 못 찾음"과 같은 축의 gap. `tests/test_regression_journey_matrix.py`가 fixture 존재와 cancel gap을 고정한다.
+**2026-07-16 update — R1 완료, R2 first slice 완료.** [journey reliability matrix](./evidence/r1-journey-reliability-matrix-2026-07-16.md)가 `sessions/_regression/`의 기존 39개 golden fixture를 8개 journey(start/plan/execute/diff/verify/repair/resume/cancel)로 재정리했다. deterministic/mock/live 3계층은 이미 존재했고(README, `make dogfood-suite-mock`, NOW.md 라이브 트랙) 새로 만들 게 없었다 — journey→fixture 매핑 문서화가 R1의 실질 작업이었다. 발견한 유일한 gap이었던 cancel(`plan/execute_resolve.py::cancel_open_execution` — 테스트가 전무했음, `test_run_control.py`는 다른 개념인 turn-level cancel을 다룸)은 `tests/test_execute_cancel.py`로 즉시 닫았다 — 8/8 journey 커버. A1(provider capability inventory)의 "provider-level invoke cancel을 못 찾음"은 다른 계층이라 아직 미해결로 남아 있다. R2의 나머지 범위(agent timeout, process kill, partial journal, git merge ambiguity, SSE disconnect, stale Human command)는 미착수.
 
 ## 2. 현재 평가
 

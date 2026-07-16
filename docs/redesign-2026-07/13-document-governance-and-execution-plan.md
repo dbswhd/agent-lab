@@ -22,7 +22,7 @@
 | `02` durability               | lock·tail guard·idempotency·identity·atomic batch·claim lease(scheduler + 실 execute merge 경로) 완료 (2026-07-16) | side-effect reconcile 자동화(현재는 lease만 가드, recovery decision 수렴은 daemon 실통합 후) | Step 5         |
 | `03` runtime/context/memory   | recipe contract 완료 · A1 provider capability inventory 완료(2026-07-16, cancel/resume은 미확인으로 남김) | A2 provider port(cancel/resume 실측 선행), memory promotion, provenance | Step 2/4       |
 | `04` Human UX/API/UI          | decision model·bridge·read-model route·UI wiring·SSE cursor·optimistic locking 완료 (2026-07-15) | 완전한 decision+run.json 단일 트랜잭션 원자성                | Step 2/3 완료  |
-| `05` reliability/ops          | test baseline 완료 · R1 journey reliability matrix 완료(2026-07-16, cancel fixture gap 발견) | R2 fault injection(cancel golden fixture 먼저), telemetry, dogfood SLO | Step 4/5/6     |
+| `05` reliability/ops          | test baseline 완료 · R1 journey reliability matrix 완료(8/8 journey) · R2 cancel first slice 완료(2026-07-16) | R2 나머지(agent timeout, process kill, partial journal, git merge ambiguity, SSE disconnect, stale Human command), telemetry, dogfood SLO | Step 4/5/6     |
 | `06` async runtime            | Activity·lease·recovery·queue first pass | daemon/scheduler integration, provider/execute wiring        | Step 4/5       |
 | `07` five principles          | design constraints 완료          | scorecard CI, adoption gate, quarterly review                | Step 5/6       |
 | `08` messaging                | CM1 inventory 완료 · CM2~CM8 재범위 결정 완료(2026-07-16) — command/event/human_decision은 이미 Mission kernel/decision_queue가 담당해 registry/dispatcher 신규 구축 불필요 | 유일한 실질 gap(agent work request 프로토콜)은 섹터 08 범위 밖 — 새 섹터/RFC 필요 | 종료(신규 섹터로 이관) |

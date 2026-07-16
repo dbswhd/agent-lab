@@ -20,6 +20,16 @@ from agent_lab.run.meta import read_run_meta
 from app.server.main import app
 
 
+@pytest.fixture(autouse=True)
+def _isolate_inbox_mode_env(monkeypatch: pytest.MonkeyPatch):
+    # inbox_mode()/inbox_mode_for_run() read AGENT_LAB_INBOX_MODE at call time with
+    # no run_meta override in these tests, so a leaked non-"sync" value from a
+    # differently-ordered xdist run flips should_pause_discuss()'s early-exit.
+    # Force the documented default explicitly rather than trusting ambient env.
+    monkeypatch.setenv("AGENT_LAB_INBOX_MODE", "sync")
+    monkeypatch.delenv("AGENT_LAB_GATE_SCOPE", raising=False)
+
+
 def _pause_eligible_question(**extra: object) -> dict:
     base = {
         "id": "q1",

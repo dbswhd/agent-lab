@@ -13,6 +13,7 @@ from __future__ import annotations
 from agent_lab.context.adapters import (
     adapt_agents_md_flat,
     adapt_agents_md_hierarchy,
+    adapt_approved_plan,
     adapt_clarify_facts,
     adapt_goal_ledger,
     adapt_mission_notepad,
@@ -55,6 +56,19 @@ def test_adapt_agents_md_flat_and_hierarchy_use_distinct_item_ids_no_shared_conf
     assert flat.conflict_key is None
     assert hierarchy.conflict_key is None
     assert flat.source == hierarchy.source == SourceClass.PROJECT_DOC
+
+
+def test_adapt_approved_plan_maps_to_approved_plan_source() -> None:
+    item = adapt_approved_plan("# Plan\n\nship it")
+    assert item is not None
+    assert item.item_id == "approved_plan"
+    assert item.source == SourceClass.APPROVED_PLAN
+    assert item.provenance == "plan.md"
+
+
+def test_adapt_approved_plan_returns_none_for_empty_plan() -> None:
+    assert adapt_approved_plan("") is None
+    assert adapt_approved_plan("   ") is None
 
 
 def test_adapt_shared_context_md_maps_to_project_doc() -> None:

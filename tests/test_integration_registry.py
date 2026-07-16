@@ -198,7 +198,12 @@ def test_fast_bucket_collection_budget():
     # tool-output-to-artifact-ref, transcript/required-item structured
     # summary, repo-tree-to-symbol-snippets, wired around select_context()
     # via trim_to_budget().
-    assert count <= 3435, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-16: raised 3435 -> 3459 for the CX8 flag-gated shadow slice
+    # (adapt_approved_plan + 2 tests; context/bundle_recipe.py +
+    # test_context_bundle_recipe.py, 22 tests) — NOT wired into
+    # build_context_bundle's live path; a standalone, independently-callable
+    # first step toward CX8 convergence, gated by AGENT_LAB_CONTEXT_RECIPE.
+    assert count <= 3459, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

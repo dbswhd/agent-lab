@@ -56,6 +56,14 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         default="0",
     ),
     FlagDef(
+        "AGENT_LAB_CONTEXT_RECIPE",
+        "feature",
+        "CX8 select_context()-based bundle_recipe.py shadow computation (default off; not yet wired "
+        "into build_context_bundle's live per-turn path -- gates only whether a dogfood/eval harness "
+        "is allowed to opt into calling build_manifest_via_recipe() at all)",
+        default="0",
+    ),
+    FlagDef(
         "AGENT_LAB_STAGE_ROUTING", "feature", "Phase-aware single-vs-panel routing (stage-aware selective; default off)"
     ),
     FlagDef(

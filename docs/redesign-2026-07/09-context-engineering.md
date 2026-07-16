@@ -408,11 +408,22 @@ cache hit보다 stale context 방지가 우선이다.
 
 **Acceptance criteria:**
 
-- agent invocation마다 context assembly path가 하나다.
-- compatibility block은 adapter edge에만 남는다.
-- 중복 trim/token policy가 제거된다.
+- agent invocation마다 context assembly path가 하나다. — **아직 아니다.** 2026-07-16, flag-gated shadow slice(`context/bundle_recipe.py`, 아래 절)를 첫 단추로 놨지만 `build_context_bundle`(live per-turn path)은 전혀 안 건드렸다 — 지금은 경로가 여전히 둘(레거시 문자열 조립 + 신설된, 아직 아무도 안 부르는 typed 경로)이다.
+- compatibility block은 adapter edge에만 남는다. — 미착수(bundle.py의 ~25개 producer 중 14개만 어댑팅됨, 나머지는 bundle.py 내부 string-appender라 이번 슬라이스 범위 밖).
+- 중복 trim/token policy가 제거된다. — 미착수. 레거시는 여전히 진단용 `budget_pct`만 있고 강제하는 예산이 없다(select_context()는 강제한다) — 이 차이를 cutover 전에 어떻게 다룰지 결정 필요.
 
 **검증:** prompt/context snapshot diff, provider contract tests, full CI.
+
+**2026-07-16 — CX8 첫 슬라이스: flag-gated shadow path (`src/agent_lab/context/bundle_recipe.py`, 신규, live path 미변경).** `build_context_bundle`(798줄 레거시 assembler) 전체를 한 번에 수렴하는 건 위험이 너무 크다고 판단해서(라이브 per-turn 경로, 정확한 리터럴 마커 문자열·char 예산·`artifact_only` 억제 계약을 assert하는 기존 스냅샷 테스트 다수) 범위를 좁혔다:
+
+1. **producer 커버리지 조사 결과:** bundle.py는 실제로 ~25개의 서로 다른 producer를 호출하는데, `context/adapters.py`는 그 중 14개만 커버한다. 나머지(mailbox/team_task/objection/challenge_owner/gate_snapshot/dispatch_intent/plugin_allowlist/thread_resume/session_skills/capability_preamble, 그리고 recent/peer/bridge/turn_state 메시지 이력 필드)는 bundle.py 내부의 private string-appender 함수라 독립 호출이 불가능하다 — bundle.py 자체를 리팩터링해야 하는데, 이번 슬라이스는 live path를 건드리지 않는 게 원칙이라 범위 밖으로 뺐다.
+2. **`adapt_approved_plan` 추가(`context/adapters.py`)** — `plan_md`는 CX1 registry의 15개 row에 없었지만(레지스트리는 bundle.py "내부" producer만 카탈로그했음), 모든 `build_context_bundle` 호출부가 이미 파라미터로 받는 값이고 `SourceClass.APPROVED_PLAN`의 유일한 소스다. CLARIFY를 제외한 모든 activity recipe가 APPROVED_PLAN을 요구하는데 CX1이 이 gap을 놓쳤었다.
+3. **`activity_kind_for_mission_phase(phase)`** — `mission_loop.phase`(`CLARIFY/DISCUSS/PLAN_GATE/PLAN_REJECT/EXECUTE_QUEUE/DRY_RUN/MERGE_REVIEW/VERIFY/REPAIR/...`)를 `ActivityKind`로 매핑. DISCUSS/PLAN_GATE/PLAN_REJECT는 전부 PLAN으로 매핑되는데, 이건 `layers.py::should_use_mission_slim_bundle`이 이미 같은 phase 집합으로 "PLAN 단계는 더 가벼운 context" 게이트를 걸고 있는 것과 동일한 그룹핑이다. MERGE_REVIEW/VERIFY → CRITIC은 판단 콜(재검토 대상). MISSION_DEFINE/MISSION_PAUSED/MISSION_DONE은 매핑 없음(활동이 아님). **SCRIBE는 대응하는 phase가 아예 없다** — scribe context는 `core/limits.py`의 `ScribeContextLimits`라는 완전히 별개의, 아직 수렴 안 된 경로로 만들어진다.
+4. **`build_manifest_via_recipe(activity, RecipeBundleInputs)`** — 이미 계산된 producer 출력(adapters.py와 같은 철학: 이 함수는 producer를 직접 호출하지 않는다)을 받아 어댑팅하고 `activity_recipes.py`의 recipe로 `select_context()`를 돌린다.
+5. **아직 못 닫은 gap:** `SourceClass.EVIDENCE`에 대한 어댑터가 없다. CRITIC/REPAIR/SCRIBE recipe 전부 EVIDENCE를 요구하므로 이 슬라이스로는 **CLARIFY/PLAN/EXECUTE만** manifest를 만들 수 있고 나머지 셋은 항상 "missing required sources"로 실패한다 — 감추지 않고 `tests/test_context_bundle_recipe.py`에 그 실패 자체를 테스트로 고정해뒀다. 다음 단계 후보는 `build_artifacts_block`(EVIDENCE에 가장 가까운 기존 producer) 어댑팅.
+6. **`AGENT_LAB_CONTEXT_RECIPE` flag 등록**(`runtime_flags.py`, `run/profile.py` — thorough 소속) — 기본 off, 그리고 **지금 이 flag를 읽는 코드가 없다.** `build_context_bundle`은 이 슬라이스로 전혀 안 건드렸다 — flag는 향후 dogfood/eval harness가 옵트인할 수 있도록 F2 컨벤션에 맞춰 미리 등록만 해둔 것이다. 실제 splice-in(레거시 경로와 병행 실행 → parity 확인 → cutover)은 별도 승인 대상.
+
+`tests/test_context_bundle_recipe.py`(22개)로 검증 — phase 매핑(문서화된 gap 포함), CLARIFY/PLAN/EXECUTE 성공 케이스, CRITIC/REPAIR/SCRIBE의 EVIDENCE 누락 실패를 고정, SEMANTIC_MEMORY(wisdom/playbook)가 지금 시연 가능한 3개 activity 중 어디에도 optional로 허용되지 않는다는 것(PLAN_RECIPE는 EPISODE/EXTERNAL_CONTENT/AGENT_OPINION만 optional — SEMANTIC_MEMORY 없음)까지 확인.
 
 ## 12. 완료 정의
 

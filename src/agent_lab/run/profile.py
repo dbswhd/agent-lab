@@ -89,6 +89,7 @@ _THOROUGH_OWNS: frozenset[str] = frozenset(
         "AGENT_LAB_OUTCOMES_ROOT",
         "AGENT_LAB_PLAN_FSM_SKILL_FIRST",
         "AGENT_LAB_CORRECTION_HARVESTER",
+        "AGENT_LAB_CONTEXT_RECIPE",
     }
 )
 

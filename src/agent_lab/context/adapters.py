@@ -195,6 +195,28 @@ def adapt_session_guidance(content: str) -> ContextItem | None:
     )
 
 
+def adapt_approved_plan(plan_md: str) -> ContextItem | None:
+    """`plan_md` — not one of CX1's original 15 registry rows (the registry
+    only cataloged what `bundle.py` itself produces internally), but every
+    `build_context_bundle`/`build_slim_consensus_bundle` call site already
+    receives `plan_md: str` as a parameter, and it's the only readily
+    available source for `SourceClass.APPROVED_PLAN` — a source every
+    activity recipe except CLARIFY requires (`activity_recipes.py`) but
+    that CX1's registry never identified a producer for. Added while wiring
+    the CX8 convergence slice (2026-07-16)."""
+    if not plan_md.strip():
+        return None
+    return ContextItem(
+        item_id="approved_plan",
+        source=SourceClass.APPROVED_PLAN,
+        content=plan_md,
+        authority=AUTHORITY_TOP,
+        relevance=AUTHORITY_TOP,
+        estimated_tokens=estimate_tokens(plan_md),
+        provenance="plan.md",
+    )
+
+
 def adapt_reply_policy_guidance(parts: list[str]) -> list[ContextItem]:
     """`reply_policy.py::build_guidance_parts` — response-contract/dispatch-
     lead/persona/coordination guidance (registry row 8). Already a

@@ -46,6 +46,24 @@ SECURITY_LABELS: frozenset[str] = frozenset({"public", "project", "secret", "cre
 REDACTED_SECURITY_LABELS: frozenset[str] = frozenset({"secret", "credential", "pii"})
 REDACTED_CONTENT_PLACEHOLDER = "[REDACTED]"
 
+# CX4 — conflict priority tiers, docs/redesign-2026-07/09-context-engineering.md
+# §5 "충돌 우선순위" (1~7, lower tier wins). REPO_CONTEXT isn't named explicitly
+# in §5's list; mapped to tier 3 alongside RUNTIME_STATE/EVIDENCE as "현재
+# runtime fact" — a judgment call, flag on review.
+CONFLICT_TIER: dict[SourceClass, int] = {
+    SourceClass.SYSTEM_INVARIANT: 0,
+    SourceClass.HUMAN_INTENT: 1,
+    SourceClass.APPROVED_PLAN: 2,
+    SourceClass.RUNTIME_STATE: 3,
+    SourceClass.EVIDENCE: 3,
+    SourceClass.REPO_CONTEXT: 3,
+    SourceClass.PROJECT_DOC: 4,
+    SourceClass.SEMANTIC_MEMORY: 5,
+    SourceClass.EPISODE: 5,
+    SourceClass.AGENT_OPINION: 6,
+    SourceClass.EXTERNAL_CONTENT: 6,
+}
+
 
 @dataclass(frozen=True, slots=True)
 class ContextNeed:
@@ -73,6 +91,14 @@ class ContextItem:
     """Invalidation key per the source's row in 09-context-engineering.md §9
     (e.g. commit SHA for repo snippets, plan revision for plan content)."""
     security_label: str = "project"
+    conflict_key: str | None = None
+    """CX4 — items sharing a conflict_key represent the same fact/slot (e.g.
+    two ContextItems for 'the current plan'). select_context() keeps only the
+    highest-priority one (§5 tier, then authority, then freshness string
+    descending) and drops the rest as superseded — this is the '오래된 plan
+    vs 최신 승인 plan: 오래된 plan 제외' rule. freshness must be lexicographically
+    sortable (zero-padded revision numbers, ISO timestamps) for the tie-break
+    to be meaningful; callers are responsible for that format."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,6 +110,11 @@ class ContextManifest:
     redacted: tuple[str, ...] = ()
     """item_ids whose content was replaced with REDACTED_CONTENT_PLACEHOLDER
     before inclusion — still present (provenance preserved), never raw."""
+    superseded: tuple[str, ...] = ()
+    """item_ids dropped before budget selection: lost a conflict_key priority
+    contest (CX4 §5), or were an exact-content duplicate of a kept item
+    (CX4 §7.2 trim step 1). Distinct from `excluded`, which is budget/
+    not-allowed exclusion."""
 
 
 def _rank(item: ContextItem, required: frozenset[SourceClass]) -> tuple[int, int, int, str]:
@@ -97,11 +128,59 @@ def _redact_if_needed(item: ContextItem) -> tuple[ContextItem, bool]:
     return replace(item, content=REDACTED_CONTENT_PLACEHOLDER, estimated_tokens=1), True
 
 
+def _pick_winner(group: list[ContextItem]) -> ContextItem:
+    """CX4 — highest §5 tier wins, ties broken by authority, then freshness
+    (lexicographically greatest — see ContextItem.conflict_key docstring),
+    then relevance, then item_id. Multi-pass stable sort: least significant
+    key first, so the last pass (tier) decides ties from all prior passes."""
+    ordered = sorted(group, key=lambda item: item.item_id)
+    ordered = sorted(ordered, key=lambda item: -item.relevance)
+    ordered = sorted(ordered, key=lambda item: item.freshness or "", reverse=True)
+    ordered = sorted(ordered, key=lambda item: -item.authority)
+    ordered = sorted(ordered, key=lambda item: CONFLICT_TIER.get(item.source, 99))
+    return ordered[0]
+
+
+def _resolve_conflicts(candidates: list[ContextItem]) -> tuple[list[ContextItem], list[str]]:
+    """CX4 §7.2 trim step 1 (exact duplicates) + §5 conflict resolution
+    (same conflict_key = same fact/slot, only the winner survives)."""
+    by_content: dict[tuple[SourceClass, str], list[ContextItem]] = {}
+    content_passthrough: list[ContextItem] = []
+    for item in candidates:
+        # Redacted items all share REDACTED_CONTENT_PLACEHOLDER — grouping by
+        # content would wrongly treat distinct secrets as duplicates of
+        # each other. Each stays its own group; conflict_key still applies.
+        if item.content == REDACTED_CONTENT_PLACEHOLDER:
+            content_passthrough.append(item)
+        else:
+            by_content.setdefault((item.source, item.content), []).append(item)
+    deduped: list[ContextItem] = list(content_passthrough)
+    superseded: list[str] = []
+    for group in by_content.values():
+        winner = _pick_winner(group) if len(group) > 1 else group[0]
+        deduped.append(winner)
+        superseded.extend(item.item_id for item in group if item.item_id != winner.item_id)
+
+    by_conflict_key: dict[str, list[ContextItem]] = {}
+    conflict_key_passthrough: list[ContextItem] = []
+    for item in deduped:
+        if item.conflict_key is None:
+            conflict_key_passthrough.append(item)
+        else:
+            by_conflict_key.setdefault(item.conflict_key, []).append(item)
+    survivors = list(conflict_key_passthrough)
+    for group in by_conflict_key.values():
+        winner = _pick_winner(group) if len(group) > 1 else group[0]
+        survivors.append(winner)
+        superseded.extend(item.item_id for item in group if item.item_id != winner.item_id)
+    return survivors, superseded
+
+
 def select_context(need: ContextNeed, items: tuple[ContextItem, ...]) -> ContextManifest:
     if need.token_budget < 0:
         raise ContextSelectionError("token budget must not be negative")
     allowed = need.required_sources | need.optional_sources
-    candidates: list[ContextItem] = []
+    eligible: list[ContextItem] = []
     excluded: list[str] = []
     redacted_ids: set[str] = set()
     for raw_item in items:
@@ -111,7 +190,8 @@ def select_context(need: ContextNeed, items: tuple[ContextItem, ...]) -> Context
         if item.source in need.forbidden_sources or item.source not in allowed or not item.trusted:
             excluded.append(item.item_id)
         else:
-            candidates.append(item)
+            eligible.append(item)
+    candidates, superseded_ids = _resolve_conflicts(eligible)
     available_sources = {item.source for item in candidates}
     missing = sorted(source.value for source in need.required_sources - available_sources)
     if missing:
@@ -135,6 +215,7 @@ def select_context(need: ContextNeed, items: tuple[ContextItem, ...]) -> Context
         tuple(sorted(excluded)),
         total_tokens,
         redacted=tuple(sorted(redacted_ids & included_ids)),
+        superseded=tuple(sorted(superseded_ids)),
     )
 
 

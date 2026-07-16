@@ -170,7 +170,9 @@ def test_fast_bucket_collection_budget():
     # tests (test_activity_recipes.py).
     # 2026-07-16: raised 3346 -> 3354 for sector 09 CX3 provenance/freshness/
     # security + redaction tests (test_context_manifest_cx3.py).
-    assert count <= 3354, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-16: raised 3354 -> 3359 for sector 09 CX4 deterministic selector
+    # tests (test_context_selector_cx4.py).
+    assert count <= 3359, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

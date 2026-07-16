@@ -203,7 +203,11 @@ def test_fast_bucket_collection_budget():
     # test_context_bundle_recipe.py, 22 tests) — NOT wired into
     # build_context_bundle's live path; a standalone, independently-callable
     # first step toward CX8 convergence, gated by AGENT_LAB_CONTEXT_RECIPE.
-    assert count <= 3459, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-16: raised 3459 -> 3465 for adapt_artifacts (closes the
+    # SourceClass.EVIDENCE gap — room/artifacts.py's recent-artifact rows —
+    # so CRITIC/REPAIR/SCRIBE can now build a manifest through
+    # bundle_recipe.py's slice; previously they always raised).
+    assert count <= 3465, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

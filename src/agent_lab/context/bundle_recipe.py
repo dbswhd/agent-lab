@@ -26,21 +26,24 @@ which is out of scope for a slice that must not touch the live path. This
 module only covers producers that are BOTH already adapted (see
 `context/adapters.py`) AND cleanly callable on their own: session guidance,
 clarify facts, goal ledger, mission notepad, repo tree, wisdom index hits,
-playbook bullets, AGENTS.md hierarchy, reply-policy guidance parts, and
-`plan_md` (via the new `adapt_approved_plan`, added specifically for this
-slice since CX1's registry never catalogued a producer for
+playbook bullets, AGENTS.md hierarchy, reply-policy guidance parts,
+Room artifacts, and `plan_md` (via `adapt_approved_plan`, added specifically
+for this slice since CX1's registry never catalogued a producer for
 `SourceClass.APPROVED_PLAN` even though every activity recipe except CLARIFY
 requires it).
 
-**A real, currently-unclosed gap:** no adapter exists yet for
-`SourceClass.EVIDENCE`. That means CRITIC/REPAIR/SCRIBE — whose recipes all
-require EVIDENCE — can never successfully build a manifest through this
-slice; `build_manifest_via_recipe` will raise "missing required sources" for
-those activities every time. Only CLARIFY, PLAN, and EXECUTE recipes can
-currently be satisfied. This isn't hidden or worked around here; the
-follow-up (adapting `build_artifacts_block`'s output, the closest existing
-EVIDENCE-shaped producer in `bundle.py`) is a separate, explicitly tracked
-next step.
+**2026-07-16 — EVIDENCE gap closed.** `adapt_artifacts` (wrapping
+`room/artifacts.py::recent_artifacts_for_agent`/`list_artifacts`, the
+closest existing EVIDENCE-shaped producer — CX1's registry never catalogued
+it since it lives under `room/`, not `context/`) now feeds
+`SourceClass.EVIDENCE`, so CRITIC/REPAIR/SCRIBE can build a manifest through
+this slice when the caller supplies `artifacts` — previously they could
+never succeed at all. Still not covered by this slice at all: the ~10
+remaining bundle.py producers (mailbox/team_task/objection/challenge_owner/
+gate_snapshot/dispatch_intent/plugin_allowlist/thread_resume/session_skills/
+capability_preamble, plus recent/peer/bridge/turn_state) — those need
+bundle.py's internals refactored into standalone functions first, which
+stays out of scope to keep the live path untouched.
 """
 
 from __future__ import annotations
@@ -52,6 +55,7 @@ from agent_lab.context.activity_recipes import recipe_for
 from agent_lab.context.adapters import (
     adapt_agents_md_hierarchy,
     adapt_approved_plan,
+    adapt_artifacts,
     adapt_clarify_facts,
     adapt_goal_ledger,
     adapt_mission_notepad,
@@ -126,15 +130,17 @@ class RecipeBundleInputs:
     playbook_bullets: list[PlaybookBullet] = field(default_factory=list)
     agents_md_hierarchy: str = ""
     reply_policy_guidance_parts: list[str] = field(default_factory=list)
+    artifacts: list[dict[str, Any]] = field(default_factory=list)
 
 
 def build_manifest_via_recipe(activity: ActivityKind, inputs: RecipeBundleInputs) -> ContextManifest:
     """Adapts `inputs` into `ContextItem`s via the already-shipped CX1
     adapters, then runs `select_context()` against `activity_recipes.py`'s
     recipe for `activity`. Raises `ContextSelectionError` exactly as
-    `select_context()` would for any other caller — in particular, for
-    CRITIC/REPAIR/SCRIBE this will currently always raise "missing required
-    sources" for `SourceClass.EVIDENCE` (see module docstring)."""
+    `select_context()` would for any other caller — in particular,
+    CRITIC/REPAIR/SCRIBE need `inputs.artifacts` non-empty to satisfy their
+    EVIDENCE requirement; without it they still raise "missing required
+    sources"."""
     items: list[ContextItem] = []
 
     if (item := adapt_approved_plan(inputs.plan_md)) is not None:
@@ -152,6 +158,7 @@ def build_manifest_via_recipe(activity: ActivityKind, inputs: RecipeBundleInputs
     if (item := adapt_agents_md_hierarchy(inputs.agents_md_hierarchy)) is not None:
         items.append(item)
     items.extend(adapt_reply_policy_guidance(inputs.reply_policy_guidance_parts))
+    items.extend(adapt_artifacts(inputs.artifacts))
 
     need = recipe_for(activity)
     return select_context(need, tuple(items))

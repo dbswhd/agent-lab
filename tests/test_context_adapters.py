@@ -14,6 +14,7 @@ from agent_lab.context.adapters import (
     adapt_agents_md_flat,
     adapt_agents_md_hierarchy,
     adapt_approved_plan,
+    adapt_artifacts,
     adapt_clarify_facts,
     adapt_goal_ledger,
     adapt_mission_notepad,
@@ -69,6 +70,27 @@ def test_adapt_approved_plan_maps_to_approved_plan_source() -> None:
 def test_adapt_approved_plan_returns_none_for_empty_plan() -> None:
     assert adapt_approved_plan("") is None
     assert adapt_approved_plan("   ") is None
+
+
+def test_adapt_artifacts_maps_to_evidence_source() -> None:
+    rows = [
+        {"id": "art-1", "producer": "codex", "kind": "diff", "summary": "fixed the bug", "ts": "2026-07-16T00:00:00Z", "path": "artifacts/art-1.txt"},
+        {"id": "art-2", "producer": "claude", "kind": "log", "summary": "", "ts": "2026-07-16T00:00:01Z"},
+        {"id": "", "producer": "cursor", "kind": "table", "summary": "no id, dropped", "ts": "2026-07-16T00:00:02Z"},
+    ]
+    items = adapt_artifacts(rows)
+    assert len(items) == 1
+    assert items[0].item_id == "artifact:art-1"
+    assert items[0].source == SourceClass.EVIDENCE
+    assert items[0].content == "fixed the bug"
+    assert items[0].freshness == "2026-07-16T00:00:00Z"
+    assert items[0].provenance == "artifacts/art-1.txt"
+
+
+def test_adapt_artifacts_falls_back_to_module_provenance_without_a_path() -> None:
+    rows = [{"id": "art-3", "summary": "no path here", "ts": "2026-07-16"}]
+    items = adapt_artifacts(rows)
+    assert items[0].provenance == "room/artifacts.py"
 
 
 def test_adapt_shared_context_md_maps_to_project_doc() -> None:

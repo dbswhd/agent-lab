@@ -3,9 +3,10 @@
 This is a standalone slice, NOT wired into build_context_bundle's live
 per-turn path -- these tests exercise it directly, not through bundle.py.
 Covers: mission-phase -> ActivityKind mapping (including the documented
-gaps), and build_manifest_via_recipe's happy path for the activities its
-current adapter coverage can satisfy (CLARIFY/PLAN/EXECUTE), plus the
-documented EVIDENCE gap for CRITIC/REPAIR/SCRIBE.
+gaps), and build_manifest_via_recipe's happy path for all six activities
+now that adapt_artifacts closes the EVIDENCE gap (2026-07-16) -- plus a
+regression guard confirming CRITIC/REPAIR/SCRIBE still fail closed, exactly
+as before, when the caller doesn't supply artifacts.
 """
 
 from __future__ import annotations
@@ -55,6 +56,9 @@ def _full_inputs() -> RecipeBundleInputs:
         repo_tree="[Repo tree] `/repo`\n- src/",
         agents_md_hierarchy="repo-specific AGENTS.md guidance",
         reply_policy_guidance_parts=["respond concisely", "cite sources"],
+        artifacts=[
+            {"id": "art-1", "summary": "ran the test suite, all green", "ts": "2026-07-16T00:00:02Z", "path": "artifacts/art-1.txt"},
+        ],
     )
 
 
@@ -87,24 +91,37 @@ def test_build_manifest_via_recipe_satisfies_execute() -> None:
 
 
 @pytest.mark.parametrize("activity", [ActivityKind.CRITIC, ActivityKind.REPAIR, ActivityKind.SCRIBE])
-def test_build_manifest_via_recipe_raises_missing_evidence_for_unadapted_activities(activity: ActivityKind) -> None:
-    """Documented gap: no adapter exists yet for SourceClass.EVIDENCE, so
-    every recipe requiring it (CRITIC/REPAIR/SCRIBE) must fail closed here,
-    not silently produce an incomplete manifest."""
+def test_build_manifest_via_recipe_satisfies_evidence_requiring_activities(activity: ActivityKind) -> None:
+    """2026-07-16 — adapt_artifacts closed the EVIDENCE gap: CRITIC/REPAIR/
+    SCRIBE (the three recipes requiring EVIDENCE) can now build a manifest
+    given artifacts input, where previously they always raised."""
+    manifest = build_manifest_via_recipe(activity, _full_inputs())
+    included_sources = {item.source for item in manifest.included}
+    assert SourceClass.EVIDENCE in included_sources
+    assert SourceClass.SYSTEM_INVARIANT in included_sources
+
+
+@pytest.mark.parametrize("activity", [ActivityKind.CRITIC, ActivityKind.REPAIR, ActivityKind.SCRIBE])
+def test_build_manifest_via_recipe_still_raises_without_artifacts_input(activity: ActivityKind) -> None:
+    """Regression guard: the gap isn't papered over by a default -- a caller
+    that doesn't supply `artifacts` still gets the same fail-closed
+    behavior as before adapt_artifacts existed."""
+    inputs = RecipeBundleInputs(
+        plan_md="# Plan\n\nship the feature",
+        session_guidance="[PLATFORM.md]\nfollow the rules",
+        clarify_facts=[{"id": "q1", "answer": "use React", "at": "2026-07-16T00:00:00Z"}],
+        reply_policy_guidance_parts=["respond concisely"],
+    )
     with pytest.raises(ContextSelectionError, match="missing required sources"):
-        build_manifest_via_recipe(activity, _full_inputs())
+        build_manifest_via_recipe(activity, inputs)
 
 
 def test_build_manifest_via_recipe_excludes_semantic_memory_items_for_plan_as_not_allowed() -> None:
     """PLAN_RECIPE's optional_sources is {EPISODE, EXTERNAL_CONTENT,
     AGENT_OPINION} -- it does NOT include SEMANTIC_MEMORY, so wisdom-index/
     playbook items (both SEMANTIC_MEMORY) are correctly excluded as
-    "not_allowed", not included. This documents a real current limitation:
-    none of the three activities this slice can currently satisfy
-    (CLARIFY/PLAN/EXECUTE) allow SEMANTIC_MEMORY in their recipe, so wisdom/
-    playbook adapters, while wired here, have no activity to demonstrate
-    inclusion through yet -- REPAIR's recipe allows SEMANTIC_MEMORY but
-    can't build a manifest at all (see the EVIDENCE-gap test above)."""
+    "not_allowed" for PLAN specifically (see the REPAIR test below, which
+    DOES allow SEMANTIC_MEMORY and includes them)."""
     inputs = RecipeBundleInputs(
         plan_md="# Plan\n\nship it",
         session_guidance="guidance text",
@@ -124,6 +141,30 @@ def test_build_manifest_via_recipe_excludes_semantic_memory_items_for_plan_as_no
     excluded = dict(manifest.excluded)
     assert excluded.get("wisdom_index:doc-1") == "not_allowed"
     assert excluded.get("playbook:b1") == "not_allowed"
+
+
+def test_build_manifest_via_recipe_includes_semantic_memory_items_for_repair() -> None:
+    """REPAIR_RECIPE's optional_sources DOES include SEMANTIC_MEMORY --
+    now that adapt_artifacts satisfies REPAIR's EVIDENCE requirement, this
+    is the first activity in this slice that can actually demonstrate
+    wisdom/playbook items being included, not just excluded."""
+    inputs = RecipeBundleInputs(
+        plan_md="# Plan\n\nfix the regression",
+        reply_policy_guidance_parts=["be concise"],
+        clarify_facts=[{"id": "q1", "answer": "root cause found", "at": "2026-07-16"}],
+        artifacts=[{"id": "art-1", "summary": "failing test output", "ts": "2026-07-16"}],
+        wisdom_index_hits=[{"id": "doc-1", "snippet": "similar past fix", "score": 2.0}],
+        playbook_bullets=[
+            PlaybookBullet(
+                id="b1", description="check for off-by-one first", pattern_id="p1",
+                evidence_count=2, status="active", harness_rev="rev1", updated_at="2026-07-15",
+            ),
+        ],
+    )
+    manifest = build_manifest_via_recipe(ActivityKind.REPAIR, inputs)
+    included_ids = {item.item_id for item in manifest.included}
+    assert "wisdom_index:doc-1" in included_ids
+    assert "playbook:b1" in included_ids
 
 
 def test_build_manifest_via_recipe_empty_inputs_reports_missing_required_sources() -> None:

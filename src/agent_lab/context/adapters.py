@@ -309,6 +309,45 @@ def adapt_wisdom_index_hits(hits: list[dict[str, Any]]) -> list[ContextItem]:
     return items
 
 
+def adapt_artifacts(rows: list[dict[str, Any]]) -> list[ContextItem]:
+    """`room/artifacts.py::recent_artifacts_for_agent`/`list_artifacts` — Room
+    agents' recorded work product (diffs/tables/logs/file refs), the closest
+    existing producer to `SourceClass.EVIDENCE`. CX1's registry never
+    catalogued this producer (it lives under `room/`, not `context/`), and no
+    adapter existed for EVIDENCE until this one — added specifically to
+    unblock CRITIC/REPAIR/SCRIBE recipes, which all require EVIDENCE
+    (`activity_recipes.py`) but could never previously build a manifest
+    through `context/bundle_recipe.py::build_manifest_via_recipe`.
+
+    Each row (`room/artifacts.py::normalize_artifact`'s shape: `{id,
+    producer, kind, summary, ts, path?, turn?, refs?, parallel_round?}`) maps
+    its `summary` field to content — NOT the full artifact body some rows
+    persist to disk at `path` (`room/artifacts.py::_read_artifact_body`
+    reads that separately, with its own truncation/session-folder
+    resolution). Reading that body here would violate this module's "take
+    already-computed output, never touch the filesystem" rule; a caller
+    with the body already loaded can pass a pre-expanded `summary` instead."""
+    items: list[ContextItem] = []
+    for row in rows:
+        artifact_id = str(row.get("id") or "").strip()
+        summary = str(row.get("summary") or "").strip()
+        if not artifact_id or not summary:
+            continue
+        items.append(
+            ContextItem(
+                item_id=f"artifact:{artifact_id}",
+                source=SourceClass.EVIDENCE,
+                content=summary,
+                authority=AUTHORITY_HIGH,
+                relevance=AUTHORITY_HIGH,
+                estimated_tokens=estimate_tokens(summary),
+                provenance=str(row.get("path") or "room/artifacts.py"),
+                freshness=str(row.get("ts")) if row.get("ts") else None,
+            )
+        )
+    return items
+
+
 def adapt_playbook_bullets(bullets: list[PlaybookBullet]) -> list[ContextItem]:
     """`wisdom/playbook.py::playbook_bullets_for_topic` — approved playbook
     bullets, already ranked/top-k'd by the producer (registry row 12)."""

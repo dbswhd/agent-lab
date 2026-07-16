@@ -61,6 +61,17 @@ Room의 다른 agent 분석/의견을 컨텍스트에 넣는 경로가 실제로
 (`docs/redesign-2026-07/09-context-engineering.md` §6의 프로즈를 그대로 번역, Human review 대기).
 CX3가 `ContextItem`에 `provenance`/`freshness`/`security_label`을 추가하고 secret/credential
 콘텐츠 자동 redaction을 붙였다(pii는 2026-07-16 review에서 제외 — CX6 pseudonymization 대상,
-파괴적 redaction은 task utility를 깬다). 이 표의 17개 producer를 실제 `ContextItem`으로 변환하는
-어댑터는 여전히 없다 — `select_context()`는 synthetic 데이터로만 검증되고, 이 어댑터는 CX3 범위
-밖(assembler convergence 근처)이다.
+파괴적 redaction은 task utility를 깬다).
+
+**정정 (2026-07-16):** 이 문서 본문이 위에서 "17개 producer"라고 반복해서 적었지만, §1 표는 실제로
+**15개 row**다(AGENTS.md flat/hierarchy, PROJECT.md bootstrap/injection도 각각 별도 row로 세어도
+15개) — 표 작성 당시의 단순 오기다.
+
+**2026-07-16 — CX1 producer→ContextItem 어댑터 완료(`src/agent_lab/context/adapters.py`).** 이 표의
+producer를 실제 `ContextItem`으로 변환하는 어댑터가 이제 있다 — §1의 15개 row 중 14개 함수로 커버
+(PROJECT.md bootstrap+injection을 `adapt_project_md` 하나로 통합; `_format_grounding_block`은 독립
+producer가 아니라 clarify facts + goal ledger의 조건부 재조합이라 어댑터를 만들지 않음, 별도 어댑터를
+만들면 anti-drift 꺼진 turn에서 같은 사실이 두 item_id로 중복 집계됨). `agent_opinion`은 여전히
+producer가 없다(§3 미해결 그대로). 자세한 설계 결정은
+[09-context-engineering.md](../09-context-engineering.md)의 "CX1 producer→ContextItem 어댑터" 절 참고.
+`tests/test_context_adapters.py`(16개)로 검증.

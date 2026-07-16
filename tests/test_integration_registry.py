@@ -189,7 +189,11 @@ def test_fast_bucket_collection_budget():
     # hard fail + regression guards; test_context_selector_review5.py —
     # non-transitive core-comparator fix, partition invariant, redacted
     # content-floor exemption).
-    assert count <= 3408, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-16: raised 3408 -> 3424 for the CX1 producer->ContextItem
+    # adapter (context/adapters.py + test_context_adapters.py, 16 tests) —
+    # the first thing that actually feeds select_context() from real
+    # producer output instead of only synthetic ContextItems.
+    assert count <= 3424, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

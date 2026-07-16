@@ -18,7 +18,15 @@ from agent_lab.context.recipe import ActivityKind, ContextNeed, SourceClass
 CLARIFY_RECIPE = ContextNeed(
     activity=ActivityKind.CLARIFY,
     # §6.1 필수: Human topic, workspace identity, unresolved requirements, prior answers.
-    required_sources=frozenset({SourceClass.HUMAN_INTENT, SourceClass.PROJECT_DOC, SourceClass.RUNTIME_STATE}),
+    # 2026-07-16 review: SYSTEM_INVARIANT was missing — every activity operates
+    # inside the same always-on Human gate/security/worktree boundaries, clarify
+    # included, even though §6.1's prose doesn't call it out explicitly.
+    required_sources=frozenset({
+        SourceClass.SYSTEM_INVARIANT,
+        SourceClass.HUMAN_INTENT,
+        SourceClass.PROJECT_DOC,
+        SourceClass.RUNTIME_STATE,
+    }),
     optional_sources=frozenset(),
     # §6.1 제외: 전체 repo dump, execute trace, 장기 wisdom 대부분.
     forbidden_sources=frozenset({SourceClass.REPO_CONTEXT, SourceClass.EVIDENCE, SourceClass.SEMANTIC_MEMORY, SourceClass.EPISODE}),
@@ -35,10 +43,17 @@ PLAN_RECIPE = ContextNeed(
         SourceClass.PROJECT_DOC,
         SourceClass.RUNTIME_STATE,
     }),
-    # §6.2 선택: 유사 episode, 외부 docs. (+ 다른 agent 제안 — Room 멀티에이전트 특성상 추가)
+    # §6.2 선택: 유사 episode, 외부 docs, 다른 agent 제안/분석 — Room이 멀티에이전트라
+    # plan specialist가 동료 제안을 참고할 수 있어야 함(2026-07-16 §6.2 프로즈에 반영,
+    # AGENT_OPINION을 코드에만 넣고 문서를 안 고쳐서 생긴 drift를 닫음).
     optional_sources=frozenset({SourceClass.EPISODE, SourceClass.EXTERNAL_CONTENT, SourceClass.AGENT_OPINION}),
     forbidden_sources=frozenset(),
-    token_budget=12_000,
+    # 2026-07-16 review: repo map + 관련 파일/API가 이 recipe에서 가장 큰 항목(§7.1
+    # "relevant repo/docs"가 40%로 최대 배분)인데 12000은 그 몫이 좁다 — 16000으로 상향.
+    # 여전히 추정치이고, select_context()는 required item이 예산을 넘으면 조용히 잘라내지
+    # 않고 ContextSelectionError로 실패한다 — 예산이 너무 작으면 품질 저하가 아니라
+    # 에러로 드러난다.
+    token_budget=16_000,
 )
 
 CRITIC_RECIPE = ContextNeed(
@@ -71,13 +86,24 @@ EXECUTE_RECIPE = ContextNeed(
 REPAIR_RECIPE = ContextNeed(
     activity=ActivityKind.REPAIR,
     # §6.5 필수: 원 plan, diff, failure evidence, prior attempts, 변경해야 할 전략.
-    required_sources=frozenset({SourceClass.APPROVED_PLAN, SourceClass.EVIDENCE, SourceClass.RUNTIME_STATE}),
+    # 2026-07-16 review: SYSTEM_INVARIANT was missing — repair re-enters the same
+    # tool-grant/must-not boundaries EXECUTE_RECIPE requires; it's a retry of
+    # execute, not a lighter-weight activity.
+    required_sources=frozenset({
+        SourceClass.SYSTEM_INVARIANT,
+        SourceClass.APPROVED_PLAN,
+        SourceClass.EVIDENCE,
+        SourceClass.RUNTIME_STATE,
+    }),
     # §6.5 전략 후보 — 승인된 패턴이 있다면.
     optional_sources=frozenset({SourceClass.SEMANTIC_MEMORY, SourceClass.HUMAN_INTENT}),
     # §6.5 제외: 실패한 동일 prompt의 무가공 반복 — source class로 강제할 수 없는 절차적
     # 규칙이라 여기서는 무관한 외부 콘텐츠만 배제.
     forbidden_sources=frozenset({SourceClass.EXTERNAL_CONTENT}),
-    token_budget=8_000,
+    # 2026-07-16 review: repair accumulates prior attempts across repeated cycles
+    # (bounded by max_repair_attempts=2 elsewhere) — 8000 risks the required-item
+    # budget error tripping as history grows. 10000 gives more headroom.
+    token_budget=10_000,
 )
 
 SCRIBE_RECIPE = ContextNeed(

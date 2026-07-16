@@ -42,6 +42,14 @@ def test_critic_forbids_agent_opinion_to_keep_self_evaluation_out() -> None:
     assert SourceClass.AGENT_OPINION in CRITIC_RECIPE.forbidden_sources
 
 
+@pytest.mark.parametrize("activity", list(ActivityKind))
+def test_every_activity_requires_system_invariant(activity: ActivityKind) -> None:
+    """2026-07-16 review — clarify/repair were missing SYSTEM_INVARIANT even
+    though every activity operates inside the same always-on Human gate/
+    security/worktree boundaries. Now universal across all six recipes."""
+    assert SourceClass.SYSTEM_INVARIANT in recipe_for(activity).required_sources
+
+
 def test_each_recipe_is_satisfiable_with_one_item_per_required_source() -> None:
     """Smoke test: select_context() must not raise ContextSelectionError when
     every required source has at least one minimal item available."""

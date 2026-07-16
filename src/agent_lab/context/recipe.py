@@ -43,21 +43,36 @@ SECURITY_LABELS: frozenset[str] = frozenset({"public", "project", "secret", "cre
 # acceptance criteria: "manifest에 secret 원문이 없다"). Pattern-based secret
 # scanning inside otherwise-public content is out of scope here — see
 # docs/redesign-2026-07/09-context-engineering.md §8, CX6 territory.
-REDACTED_SECURITY_LABELS: frozenset[str] = frozenset({"secret", "credential", "pii"})
+#
+# 2026-07-16 review: "pii" was removed from this set. Destructively redacting
+# PII to a placeholder breaks task utility that needs the real value (e.g.
+# "email the user") — CX3's own acceptance criteria only names "secret", not
+# PII. Real PII handling is a CX6 adapter concern: stable pseudonymization/
+# tokenization (PERSON_1, EMAIL_1, ...) via a persistent token registry, which
+# preserves referential integrity and rehydration — something a stateless
+# select_context() call can't provide. Until CX6 ships, pii-labeled content
+# passes through select_context() unredacted; that's a known, accepted gap,
+# not a silent guarantee.
+REDACTED_SECURITY_LABELS: frozenset[str] = frozenset({"secret", "credential"})
 REDACTED_CONTENT_PLACEHOLDER = "[REDACTED]"
 
 # CX4 — conflict priority tiers, docs/redesign-2026-07/09-context-engineering.md
 # §5 "충돌 우선순위" (1~7, lower tier wins). REPO_CONTEXT isn't named explicitly
-# in §5's list; mapped to tier 3 alongside RUNTIME_STATE/EVIDENCE as "현재
-# runtime fact" — a judgment call, flag on review.
+# in §5's list.
+#
+# 2026-07-16 review: moved from tier 3 (alongside RUNTIME_STATE/EVIDENCE) to
+# tier 4 (alongside PROJECT_DOC). At tier 3, a stale repo snippet could win a
+# conflict against genuinely current RUNTIME_STATE/EVIDENCE on an authority/
+# freshness tie-break — repo content is commit-bound and can lag behind live
+# runtime fact, so it shouldn't contend at the same tier.
 CONFLICT_TIER: dict[SourceClass, int] = {
     SourceClass.SYSTEM_INVARIANT: 0,
     SourceClass.HUMAN_INTENT: 1,
     SourceClass.APPROVED_PLAN: 2,
     SourceClass.RUNTIME_STATE: 3,
     SourceClass.EVIDENCE: 3,
-    SourceClass.REPO_CONTEXT: 3,
     SourceClass.PROJECT_DOC: 4,
+    SourceClass.REPO_CONTEXT: 4,
     SourceClass.SEMANTIC_MEMORY: 5,
     SourceClass.EPISODE: 5,
     SourceClass.AGENT_OPINION: 6,
@@ -122,7 +137,8 @@ def _rank(item: ContextItem, required: frozenset[SourceClass]) -> tuple[int, int
 
 
 def _redact_if_needed(item: ContextItem) -> tuple[ContextItem, bool]:
-    """CX3 — secret/credential/pii content must never reach a built manifest raw."""
+    """CX3 — secret/credential content must never reach a built manifest raw.
+    PII is handled separately by a CX6 adapter (see REDACTED_SECURITY_LABELS)."""
     if item.security_label not in REDACTED_SECURITY_LABELS or item.content == REDACTED_CONTENT_PLACEHOLDER:
         return item, False
     return replace(item, content=REDACTED_CONTENT_PLACEHOLDER, estimated_tokens=1), True

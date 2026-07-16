@@ -59,7 +59,8 @@ Room의 다른 agent 분석/의견을 컨텍스트에 넣는 경로가 실제로
 취급하지 않음"(§6.3)을 표현하려면 forbidden source로 명시할 대상이 필요했다. 6개 activity별
 `ContextNeed`는 `src/agent_lab/context/activity_recipes.py`에 first draft로 존재한다
 (`docs/redesign-2026-07/09-context-engineering.md` §6의 프로즈를 그대로 번역, Human review 대기).
-CX3가 `ContextItem`에 `provenance`/`freshness`/`security_label`을 추가하고 secret/credential/pii
-콘텐츠 자동 redaction을 붙였다. 이 표의 17개 producer를 실제 `ContextItem`으로 변환하는 어댑터는
-여전히 없다 — `select_context()`는 synthetic 데이터로만 검증되고, 이 어댑터는 CX3 범위 밖(assembler
-convergence 근처)이다.
+CX3가 `ContextItem`에 `provenance`/`freshness`/`security_label`을 추가하고 secret/credential
+콘텐츠 자동 redaction을 붙였다(pii는 2026-07-16 review에서 제외 — CX6 pseudonymization 대상,
+파괴적 redaction은 task utility를 깬다). 이 표의 17개 producer를 실제 `ContextItem`으로 변환하는
+어댑터는 여전히 없다 — `select_context()`는 synthetic 데이터로만 검증되고, 이 어댑터는 CX3 범위
+밖(assembler convergence 근처)이다.

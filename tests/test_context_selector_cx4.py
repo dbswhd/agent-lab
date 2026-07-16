@@ -89,6 +89,40 @@ def test_conflict_resolution_prefers_higher_priority_tier_over_lower() -> None:
     assert manifest.superseded == ("memory-guess",)
 
 
+def test_stale_repo_snippet_cannot_outrank_current_runtime_state_on_a_tie() -> None:
+    """2026-07-16 review — REPO_CONTEXT moved from tier 3 to tier 4 (was sharing
+    a tier with RUNTIME_STATE/EVIDENCE, so a high-authority/fresh-looking but
+    commit-stale repo snippet could win a conflict against genuinely current
+    runtime fact; repo content lags live state and shouldn't contend at the
+    same tier)."""
+    need = ContextNeed(
+        activity=ActivityKind.PLAN,
+        required_sources=frozenset({SourceClass.APPROVED_PLAN}),
+        optional_sources=frozenset({SourceClass.REPO_CONTEXT, SourceClass.RUNTIME_STATE}),
+        forbidden_sources=frozenset(),
+        token_budget=1_000,
+    )
+    stale_repo = ContextItem(
+        "repo-old-sha", SourceClass.REPO_CONTEXT, "old file contents",
+        authority=100, relevance=100, estimated_tokens=4,
+        freshness="9999", conflict_key="current-file-state",
+    )
+    current_runtime = ContextItem(
+        "runtime-now", SourceClass.RUNTIME_STATE, "current file state",
+        authority=10, relevance=10, estimated_tokens=4,
+        freshness="0001", conflict_key="current-file-state",
+    )
+    plan = ContextItem(
+        "plan", SourceClass.APPROVED_PLAN, "ship it", authority=100, relevance=100, estimated_tokens=4,
+    )
+
+    manifest = select_context(need, (stale_repo, current_runtime, plan))
+
+    included_ids = {item.item_id for item in manifest.included}
+    assert included_ids == {"plan", "runtime-now"}
+    assert manifest.superseded == ("repo-old-sha",)
+
+
 def test_exact_duplicate_content_is_deduplicated_before_budget_selection() -> None:
     """§7.2 trim step 1: exact duplicate 제거."""
     items = (

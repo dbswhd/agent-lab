@@ -6,7 +6,14 @@ Covers CX3's three acceptance criteria directly:
   manifest_provenance_gaps() if not
 - an excluded required item surfaces as an error (already true of
   select_context(); pinned here under the CX3 label)
-- a built manifest never carries secret/credential/pii content raw
+- a built manifest never carries secret/credential content raw
+
+2026-07-16 review: PII was removed from the redacted set — CX3's own
+acceptance criteria only names "secret", and destructively redacting PII to
+a placeholder breaks task utility that needs the real value (e.g. "email
+the user"). Real PII handling belongs to a CX6 adapter (stable
+pseudonymization via a token registry, not covered here). See
+REDACTED_SECURITY_LABELS's docstring in recipe.py.
 """
 
 from __future__ import annotations
@@ -57,7 +64,7 @@ def test_secret_labeled_item_is_redacted_in_the_manifest() -> None:
     assert redacted_item.provenance == "evidence.jsonl#7"
 
 
-@pytest.mark.parametrize("label", ["secret", "credential", "pii"])
+@pytest.mark.parametrize("label", ["secret", "credential"])
 def test_no_raw_content_for_any_redacted_label_reaches_the_manifest(label: str) -> None:
     items = (
         ContextItem(
@@ -74,6 +81,28 @@ def test_no_raw_content_for_any_redacted_label_reaches_the_manifest(label: str) 
     manifest = select_context(NEED, items)
 
     assert all("raw sensitive payload" != item.content for item in manifest.included)
+
+
+def test_pii_passes_through_unredacted_pending_cx6_pseudonymization() -> None:
+    """2026-07-16 review — deliberate: destructive redaction would break task
+    utility (e.g. 'email the user'). Real PII handling is CX6's job (stable
+    PERSON_1/EMAIL_1-style tokens via a token registry), not CX3's."""
+    items = (
+        ContextItem(
+            "plan", SourceClass.APPROVED_PLAN, "ship it",
+            authority=100, relevance=100, estimated_tokens=4, provenance="plan.md",
+        ),
+        ContextItem(
+            "contact", SourceClass.EVIDENCE, "jane@example.com",
+            authority=50, relevance=50, estimated_tokens=4,
+            provenance="evidence.jsonl", security_label="pii",
+        ),
+    )
+
+    manifest = select_context(NEED, items)
+
+    assert "jane@example.com" in [item.content for item in manifest.included]
+    assert manifest.redacted == ()
 
 
 def test_public_and_project_labels_are_not_redacted() -> None:

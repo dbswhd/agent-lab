@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import StrEnum
 
 
@@ -36,6 +36,17 @@ class ContextSelectionError(Exception):
         return self.reason
 
 
+# CX3 — matches the security_label vocabulary already used for message
+# envelopes (docs/redesign-2026-07/08-collaboration-messaging.md §9).
+SECURITY_LABELS: frozenset[str] = frozenset({"public", "project", "secret", "credential", "pii"})
+# Labels whose raw content must never appear in a built manifest (CX3
+# acceptance criteria: "manifest에 secret 원문이 없다"). Pattern-based secret
+# scanning inside otherwise-public content is out of scope here — see
+# docs/redesign-2026-07/09-context-engineering.md §8, CX6 territory.
+REDACTED_SECURITY_LABELS: frozenset[str] = frozenset({"secret", "credential", "pii"})
+REDACTED_CONTENT_PLACEHOLDER = "[REDACTED]"
+
+
 @dataclass(frozen=True, slots=True)
 class ContextNeed:
     activity: ActivityKind
@@ -54,6 +65,14 @@ class ContextItem:
     relevance: int
     estimated_tokens: int
     trusted: bool = True
+    # CX3 — provenance/freshness/security additions.
+    provenance: str = ""
+    """Source ref + reason a Human/reviewer can trace this item back to (CX3:
+    "모든 included item에 source ref와 reason이 있다")."""
+    freshness: str | None = None
+    """Invalidation key per the source's row in 09-context-engineering.md §9
+    (e.g. commit SHA for repo snippets, plan revision for plan content)."""
+    security_label: str = "project"
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,10 +81,20 @@ class ContextManifest:
     included: tuple[ContextItem, ...]
     excluded: tuple[str, ...]
     total_tokens: int
+    redacted: tuple[str, ...] = ()
+    """item_ids whose content was replaced with REDACTED_CONTENT_PLACEHOLDER
+    before inclusion — still present (provenance preserved), never raw."""
 
 
 def _rank(item: ContextItem, required: frozenset[SourceClass]) -> tuple[int, int, int, str]:
     return (0 if item.source in required else 1, -item.authority, -item.relevance, item.item_id)
+
+
+def _redact_if_needed(item: ContextItem) -> tuple[ContextItem, bool]:
+    """CX3 — secret/credential/pii content must never reach a built manifest raw."""
+    if item.security_label not in REDACTED_SECURITY_LABELS or item.content == REDACTED_CONTENT_PLACEHOLDER:
+        return item, False
+    return replace(item, content=REDACTED_CONTENT_PLACEHOLDER, estimated_tokens=1), True
 
 
 def select_context(need: ContextNeed, items: tuple[ContextItem, ...]) -> ContextManifest:
@@ -74,7 +103,11 @@ def select_context(need: ContextNeed, items: tuple[ContextItem, ...]) -> Context
     allowed = need.required_sources | need.optional_sources
     candidates: list[ContextItem] = []
     excluded: list[str] = []
-    for item in items:
+    redacted_ids: set[str] = set()
+    for raw_item in items:
+        item, was_redacted = _redact_if_needed(raw_item)
+        if was_redacted:
+            redacted_ids.add(item.item_id)
         if item.source in need.forbidden_sources or item.source not in allowed or not item.trusted:
             excluded.append(item.item_id)
         else:
@@ -95,4 +128,21 @@ def select_context(need: ContextNeed, items: tuple[ContextItem, ...]) -> Context
             total_tokens = next_total
         else:
             excluded.append(item.item_id)
-    return ContextManifest(need.activity, tuple(included), tuple(sorted(excluded)), total_tokens)
+    included_ids = {item.item_id for item in included}
+    return ContextManifest(
+        need.activity,
+        tuple(included),
+        tuple(sorted(excluded)),
+        total_tokens,
+        redacted=tuple(sorted(redacted_ids & included_ids)),
+    )
+
+
+def manifest_provenance_gaps(manifest: ContextManifest) -> tuple[str, ...]:
+    """CX3 acceptance criteria: '모든 included item에 source ref와 reason이 있다'.
+
+    Returns item_ids in the manifest with no provenance recorded — callers
+    decide whether that's a hard error or a warning; select_context() itself
+    stays permissive so synthetic/test data doesn't need provenance filled in.
+    """
+    return tuple(item.item_id for item in manifest.included if not item.provenance.strip())

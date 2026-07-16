@@ -57,6 +57,16 @@ SECURITY_LABELS: frozenset[str] = frozenset({"public", "project", "secret", "cre
 REDACTED_SECURITY_LABELS: frozenset[str] = frozenset({"secret", "credential"})
 REDACTED_CONTENT_PLACEHOLDER = "[REDACTED]"
 
+# 2026-07-16 review #5 — sources whose content wasn't produced by this system
+# and needs the untrusted-by-default posture 09-context-engineering.md §8
+# calls for ("external/tool content는 <untrusted_content> 같은 명시적 data
+# boundary로 전달"). Deliberately doesn't include AGENT_OPINION: a peer Room
+# agent's proposal isn't an injection-safety concern the way raw web/MCP/tool
+# text is — its lower weight is already expressed via tier 6 + low authority,
+# not the trust flag. Only applies when the caller doesn't pass `trusted`
+# explicitly (see ContextItem.__post_init__).
+DEFAULT_UNTRUSTED_SOURCES: frozenset[SourceClass] = frozenset({SourceClass.EXTERNAL_CONTENT})
+
 # CX4 — conflict priority tiers, docs/redesign-2026-07/09-context-engineering.md
 # §5 "충돌 우선순위" (1~7, lower tier wins). REPO_CONTEXT isn't named explicitly
 # in §5's list.
@@ -89,6 +99,20 @@ class ContextNeed:
     forbidden_sources: frozenset[SourceClass]
     token_budget: int
 
+    def __post_init__(self) -> None:
+        # 2026-07-16 review #4 — a source that's both required and forbidden
+        # (or optional and forbidden) is an impossible recipe: select_context()
+        # excludes it as forbidden before the required-coverage check ever
+        # runs, so it fails with a misleading "missing required sources"
+        # instead of the real problem (the recipe itself is malformed). Catch
+        # it at recipe-construction time instead of at selection time.
+        req_forb = self.required_sources & self.forbidden_sources
+        if req_forb:
+            raise ValueError(f"required_sources and forbidden_sources overlap: {sorted(s.value for s in req_forb)}")
+        opt_forb = self.optional_sources & self.forbidden_sources
+        if opt_forb:
+            raise ValueError(f"optional_sources and forbidden_sources overlap: {sorted(s.value for s in opt_forb)}")
+
 
 @dataclass(frozen=True, slots=True)
 class ContextItem:
@@ -98,7 +122,11 @@ class ContextItem:
     authority: int
     relevance: int
     estimated_tokens: int
-    trusted: bool = True
+    trusted: bool | None = None
+    """None means "use the source's default posture" — resolved in
+    __post_init__ to False for DEFAULT_UNTRUSTED_SOURCES, True otherwise.
+    Always a concrete bool once the item is constructed; pass an explicit
+    True/False to override the source default."""
     # CX3 — provenance/freshness/security additions.
     provenance: str = ""
     """Source ref + reason a Human/reviewer can trace this item back to (CX3:
@@ -117,7 +145,21 @@ class ContextItem:
     numbers, ISO timestamps) for the tie-break to be meaningful; callers are
     responsible for that format. Cross-source ties (e.g. RUNTIME_STATE vs
     EVIDENCE, both tier 3) never compare freshness — different sources use
-    incompatible formats, so authority/relevance decide instead."""
+    incompatible formats, so authority/relevance decide instead. An empty
+    string is treated as "no conflict_key" the same as None — see
+    _resolve_conflicts, which would otherwise group all empty-key items
+    together as if they were one contested fact."""
+
+    def __post_init__(self) -> None:
+        # 2026-07-16 review #1 — fail closed on an unrecognized security_label
+        # instead of silently treating it as un-redactable. A typo'd label
+        # ("secrt") would otherwise pass raw secret content straight through
+        # _redact_if_needed, defeating CX3's "manifest에 secret 원문이 없다"
+        # guarantee without any error.
+        if self.security_label not in SECURITY_LABELS:
+            raise ValueError(f"unknown security_label: {self.security_label!r} (expected one of {sorted(SECURITY_LABELS)})")
+        if self.trusted is None:
+            object.__setattr__(self, "trusted", self.source not in DEFAULT_UNTRUSTED_SOURCES)
 
 
 @dataclass(frozen=True, slots=True)
@@ -194,7 +236,10 @@ def _resolve_conflicts(candidates: list[ContextItem]) -> tuple[list[ContextItem]
         # Redacted items all share REDACTED_CONTENT_PLACEHOLDER — grouping by
         # content would wrongly treat distinct secrets as duplicates of
         # each other. Each stays its own group; conflict_key still applies.
-        if item.content == REDACTED_CONTENT_PLACEHOLDER:
+        # Same reasoning for "" (2026-07-16 review #3): an empty file summary,
+        # empty tool result, and empty spreadsheet cell are all legitimately
+        # different items that happen to have no content — not duplicates.
+        if item.content == REDACTED_CONTENT_PLACEHOLDER or item.content == "":
             content_passthrough.append(item)
         else:
             by_content.setdefault(item.content, []).append(item)
@@ -208,7 +253,12 @@ def _resolve_conflicts(candidates: list[ContextItem]) -> tuple[list[ContextItem]
     by_conflict_key: dict[str, list[ContextItem]] = {}
     conflict_key_passthrough: list[ContextItem] = []
     for item in deduped:
-        if item.conflict_key is None:
+        # 2026-07-16 review #2 — "" is treated as "no conflict_key", same as
+        # None (see ContextItem.conflict_key docstring). Without this, every
+        # item defaulted or set to "" would land in one dict entry and get
+        # collapsed to a single survivor by _pick_winner, superseding
+        # unrelated items that never meant to compete for the same slot.
+        if not item.conflict_key:
             conflict_key_passthrough.append(item)
         else:
             by_conflict_key.setdefault(item.conflict_key, []).append(item)

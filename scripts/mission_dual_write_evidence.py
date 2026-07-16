@@ -178,16 +178,26 @@ def _read_model(root: Path, session_id: str) -> dict[str, Any]:
     from agent_lab.session import paths as session_paths
     from agent_lab import session as session_module
     from app.server.main import create_app
+    import app.server.deps as deps_mod
 
+    # active_sessions_dir() checks app.server.deps.SESSIONS_DIR first (see
+    # session/paths.py) — deps.py's own `from ... import SESSIONS_DIR` binds
+    # once at first import and never re-reads session_paths.SESSIONS_DIR
+    # afterward, so create_app() here can leave a stale root baked into deps
+    # for the rest of the process (and, under pytest-xdist, the rest of the
+    # worker) unless it's saved/restored alongside the other two bindings.
     previous_paths = session_paths.SESSIONS_DIR
     previous_session = session_module.SESSIONS_DIR
+    previous_deps = deps_mod.SESSIONS_DIR
     try:
         session_paths.SESSIONS_DIR = root
         session_module.SESSIONS_DIR = root
+        deps_mod.SESSIONS_DIR = root
         response = TestClient(create_app(bootstrap=False)).get(f"/api/sessions/{session_id}/mission/read-model")
         response.raise_for_status()
         return response.json()
     finally:
+        deps_mod.SESSIONS_DIR = previous_deps
         session_paths.SESSIONS_DIR = previous_paths
         session_module.SESSIONS_DIR = previous_session
 

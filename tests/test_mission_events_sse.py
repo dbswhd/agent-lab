@@ -13,6 +13,19 @@ from app.server.main import create_app
 from app.server.routers.mission_events import mission_events_stream
 
 
+@pytest.fixture(autouse=True)
+def _isolate_deps_sessions_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    # active_sessions_dir() prefers app.server.deps.SESSIONS_DIR over
+    # session_paths.SESSIONS_DIR when app.server.deps is already imported (see
+    # session/paths.py::active_sessions_dir). A prior test in the same xdist
+    # worker that left deps.SESSIONS_DIR pointed elsewhere (via a non-monkeypatch
+    # assignment) would otherwise shadow this file's own session_paths patch and
+    # 404 every route. Mirror the same tmp_path here so precedence order can't matter.
+    import app.server.deps as deps_mod
+
+    monkeypatch.setattr(deps_mod, "SESSIONS_DIR", tmp_path, raising=False)
+
+
 @pytest.fixture
 def client() -> TestClient:
     return TestClient(create_app(bootstrap=False))

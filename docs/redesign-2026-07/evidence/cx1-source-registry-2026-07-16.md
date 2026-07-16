@@ -53,8 +53,11 @@ Room의 다른 agent 분석/의견을 컨텍스트에 넣는 경로가 실제로
 | 중복 source와 다중 표현 발견 | §2 완료 — 진짜 버그성 중복은 없었지만, taxonomy 세분화 필요성(§3)과 하드코딩된 경로 이중관리(§2 PROJECT.md) 발견 |
 | provider-specific prompt source 분리 | 미착수 — `bundle.py`가 Claude/Kimi 공용 텍스트만 다루고 provider별 분기는 발견 안 됨(추가 확인 필요, 이번 감사 범위 밖) |
 
-## 5. 다음
+## 5. 다음 — CX2 완료 (2026-07-16)
 
-CX2(ContextNeed/recipe)는 이 표의 producer들을 실제로 `ContextItem`으로 변환하는 어댑터가 필요하다 —
-지금 `select_context()`는 여전히 synthetic `ContextItem` 단위 테스트에서만 쓰인다. `SourceClass`에
-`agent_opinion`을 추가할지(§3)가 CX2 착수 전에 결정돼야 하는 유일한 열린 질문이다.
+`SourceClass`에 `agent_opinion` 추가하기로 결정 — critic recipe가 "actor 자기평가를 authority로
+취급하지 않음"(§6.3)을 표현하려면 forbidden source로 명시할 대상이 필요했다. 6개 activity별
+`ContextNeed`는 `src/agent_lab/context/activity_recipes.py`에 first draft로 존재한다
+(`docs/redesign-2026-07/09-context-engineering.md` §6의 프로즈를 그대로 번역, Human review 대기).
+이 표의 producer들을 실제 `ContextItem`으로 변환하는 어댑터(CX3 영역)는 아직 없다 —
+`select_context()`는 여전히 synthetic 데이터로만 검증된다.

@@ -42,11 +42,10 @@ def test_all_registered_source_producers_still_exist() -> None:
     assert not missing, f"CX1 source registry references removed producer(s): {missing}"
 
 
-def test_source_class_taxonomy_is_missing_agent_opinion() -> None:
-    """§3 finding — recipe.py's SourceClass has 10 members, the doc's taxonomy has 11
-    (agent_opinion is absent). This pins the gap so CX2 has to make an explicit
-    decision instead of it silently staying unresolved."""
+def test_source_class_taxonomy_now_has_all_eleven_members() -> None:
+    """§3 finding, closed by CX2 (2026-07-16) — SourceClass now matches the
+    09 doc's 11-member taxonomy, including agent_opinion."""
     from agent_lab.context.recipe import SourceClass
 
-    assert "agent_opinion" not in {member.value for member in SourceClass}
-    assert len(SourceClass) == 10
+    assert "agent_opinion" in {member.value for member in SourceClass}
+    assert len(SourceClass) == 11

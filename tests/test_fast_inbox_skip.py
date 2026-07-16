@@ -15,6 +15,18 @@ from agent_lab.inbox.harvest import (
 from agent_lab.plan.workflow import plan_workflow_wants_inbox_mcp
 
 
+@pytest.fixture(autouse=True)
+def _isolate_inbox_env(monkeypatch: pytest.MonkeyPatch):
+    # discuss_inbox_mcp_enabled()'s default-True path depends on
+    # execute_inbox_mcp_enabled() reading AGENT_LAB_EXECUTE_INBOX; a leaked "0"
+    # from elsewhere in the same xdist worker flips these tests to False. See
+    # tests/test_kimi_work_inbox_bridge.py's precedent for this env class.
+    monkeypatch.delenv("AGENT_LAB_EXECUTE_INBOX", raising=False)
+    monkeypatch.delenv("AGENT_LAB_PLAN_INBOX", raising=False)
+    monkeypatch.delenv("AGENT_LAB_INBOX_POLICY_LANE", raising=False)
+    monkeypatch.delenv("AGENT_LAB_INBOX_CALLER_AGENT", raising=False)
+
+
 def test_discuss_inbox_mcp_enabled_for_fast_lead() -> None:
     run: dict[str, Any] = {"room_preset": "fast", "team_lead": "codex"}
     assert discuss_inbox_mcp_enabled(run, agent_id="codex") is True

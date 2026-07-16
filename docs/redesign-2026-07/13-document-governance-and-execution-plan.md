@@ -26,7 +26,7 @@
 | `06` async runtime            | Activity·lease·recovery·queue first pass | daemon/scheduler integration, provider/execute wiring        | Step 4/5       |
 | `07` five principles          | design constraints 완료          | scorecard CI, adoption gate, quarterly review                | Step 5/6       |
 | `08` messaging                | CM1 inventory 완료 · CM2~CM8 재범위 결정 완료(2026-07-16) — command/event/human_decision은 이미 Mission kernel/decision_queue가 담당해 registry/dispatcher 신규 구축 불필요 | 유일한 실질 gap(agent work request 프로토콜)은 섹터 08 범위 밖 — 새 섹터/RFC 필요 | 종료(신규 섹터로 이관) |
-| `09` context engineering      | selector/manifest 완료 · CX1 source registry 완료(2026-07-16, 17개 producer 분류·SourceClass gap 발견) | CX2(recipe를 실제 producer에 연결, agent_opinion 결정 선행), redaction/provenance, assembler convergence | Step 2/4       |
+| `09` context engineering      | selector/manifest 완료 · CX1 source registry 완료 · CX2 first draft(6개 activity recipe) 완료(2026-07-16, Human review 대기) | CX2 Human review, CX3(producer→ContextItem 어댑터), redaction/provenance, assembler convergence | Step 2/4       |
 | `10` multi-agent coordination | topology selector 완료           | task/result contract, quorum/critic, lift benchmark          | Step 4/6       |
 
 따라서 11개 문서에서 “더 할 일이 없다”가 아니라, **계약 first pass는 닫혔고 실제 시스템으로 옮기는 application/UI/runtime wave가 남아 있다.**

@@ -23,6 +23,7 @@ class SourceClass(StrEnum):
     REPO_CONTEXT = "repo_context"
     EPISODE = "episode"
     SEMANTIC_MEMORY = "semantic_memory"
+    AGENT_OPINION = "agent_opinion"
     EXTERNAL_CONTENT = "external_content"
 
 

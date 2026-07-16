@@ -166,7 +166,9 @@ def test_fast_bucket_collection_budget():
     # slice (test_execute_cancel.py).
     # 2026-07-16: raised 3329 -> 3331 for sector 03 A1 cancel/resume correction
     # tests (test_provider_capability_inventory.py).
-    assert count <= 3331, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-16: raised 3331 -> 3346 for sector 09 CX2 activity recipe schema
+    # tests (test_activity_recipes.py).
+    assert count <= 3346, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

@@ -164,4 +164,4 @@ def test_untrusted_external_content_is_excluded_from_the_manifest_by_default() -
     manifest = select_context(need, (plan, web))
 
     assert [item.item_id for item in manifest.included] == ["plan"]
-    assert "web-1" in manifest.excluded
+    assert ("web-1", "untrusted") in manifest.excluded

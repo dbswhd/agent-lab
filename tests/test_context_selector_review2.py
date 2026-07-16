@@ -51,7 +51,7 @@ def test_extra_items_of_an_already_satisfied_required_source_are_excluded_not_fa
     manifest = select_context(need, items)
 
     assert [item.item_id for item in manifest.included] == ["slice-0"]
-    assert "slice-1" in manifest.excluded
+    assert ("slice-1", "budget_overflow") in manifest.excluded
 
 
 def test_required_source_with_no_eligible_candidate_at_all_still_raises() -> None:
@@ -94,7 +94,7 @@ def test_required_source_superseded_by_cross_source_conflict_does_not_false_posi
     manifest = select_context(need, (repo_item, plan_item))
 
     assert [item.item_id for item in manifest.included] == ["plan-authoritative"]
-    assert manifest.superseded == ("repo-guess",)
+    assert manifest.superseded == (("repo-guess", "plan-authoritative"),)
 
 
 def test_freshness_tie_break_is_ignored_across_different_sources() -> None:
@@ -123,14 +123,17 @@ def test_freshness_tie_break_is_ignored_across_different_sources() -> None:
     manifest = select_context(need, (runtime_item, evidence_item))
 
     assert [item.item_id for item in manifest.included] == ["evidence-authoritative"]
-    assert manifest.superseded == ("runtime-noisy-freshness",)
+    assert manifest.superseded == (("runtime-noisy-freshness", "evidence-authoritative"),)
 
 
 def test_identical_content_from_different_sources_is_deduplicated() -> None:
     """#4 — the same text quoted in both PROJECT_DOC and REPO_CONTEXT (both
-    tier 4) should only be paid for once. Which copy specifically survives is
-    an item_id tiebreak, not a meaningful business rule — only assert that
-    exactly one does and the budget isn't paid twice for the same text."""
+    tier 4, same authority/relevance) should only be paid for once. There's no
+    meaningful signal to break the tie (tier/authority/relevance all equal,
+    and freshness only compares within a single source) — 2026-07-16 review
+    #1 changed this from "pick one via item_id" to "escalate as an
+    unresolved conflict", so the budget still isn't paid twice, but neither
+    copy silently wins either."""
     need = ContextNeed(
         activity=ActivityKind.PLAN,
         required_sources=frozenset({SourceClass.APPROVED_PLAN}),
@@ -151,7 +154,5 @@ def test_identical_content_from_different_sources_is_deduplicated() -> None:
     manifest = select_context(need, (plan, doc_copy, repo_copy))
 
     included_ids = {item.item_id for item in manifest.included}
-    survivors = included_ids & {"doc-copy", "repo-copy"}
-    assert len(survivors) == 1
-    assert survivors | set(manifest.superseded) == {"doc-copy", "repo-copy"}
-    assert "plan" in included_ids
+    assert included_ids == {"plan"}
+    assert manifest.unresolved_conflicts == (("doc-copy", "repo-copy"),)

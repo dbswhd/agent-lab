@@ -66,7 +66,7 @@ def test_old_plan_revision_is_superseded_by_the_latest_approved_one() -> None:
     manifest = select_context(NEED, (old_plan, latest_plan))
 
     assert [item.item_id for item in manifest.included] == ["plan-rev3"]
-    assert manifest.superseded == ("plan-rev2",)
+    assert manifest.superseded == (("plan-rev2", "plan-rev3"),)
 
 
 def test_conflict_resolution_prefers_higher_priority_tier_over_lower() -> None:
@@ -86,7 +86,7 @@ def test_conflict_resolution_prefers_higher_priority_tier_over_lower() -> None:
     manifest = select_context(NEED, (stale_memory, approved_plan))
 
     assert [item.item_id for item in manifest.included] == ["plan-rev1"]
-    assert manifest.superseded == ("memory-guess",)
+    assert manifest.superseded == (("memory-guess", "plan-rev1"),)
 
 
 def test_stale_repo_snippet_cannot_outrank_current_runtime_state_on_a_tie() -> None:
@@ -120,7 +120,7 @@ def test_stale_repo_snippet_cannot_outrank_current_runtime_state_on_a_tie() -> N
 
     included_ids = {item.item_id for item in manifest.included}
     assert included_ids == {"plan", "runtime-now"}
-    assert manifest.superseded == ("repo-old-sha",)
+    assert manifest.superseded == (("repo-old-sha", "runtime-now"),)
 
 
 def test_exact_duplicate_content_is_deduplicated_before_budget_selection() -> None:
@@ -134,7 +134,7 @@ def test_exact_duplicate_content_is_deduplicated_before_budget_selection() -> No
 
     assert len(manifest.included) == 1
     assert manifest.included[0].item_id == "plan"  # higher authority wins the tie
-    assert manifest.superseded == ("plan-dup",)
+    assert manifest.superseded == (("plan-dup", "plan"),)
 
 
 def test_low_authority_item_is_trimmed_before_high_authority_when_over_budget() -> None:

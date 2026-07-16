@@ -27,7 +27,7 @@ def test_context_selection_keeps_required_items_and_fits_optional_budget() -> No
     )
     manifest = select_context(need, items)
     assert [item.item_id for item in manifest.included] == ["plan", "repo"]
-    assert manifest.excluded == ("episode",)
+    assert manifest.excluded == (("episode", "budget_overflow"),)
 
 
 def test_context_selection_rejects_missing_required_source() -> None:
@@ -56,7 +56,7 @@ def test_context_selection_excludes_forbidden_sources() -> None:
     )
     manifest = select_context(need, items)
     assert [item.item_id for item in manifest.included] == ["repo"]
-    assert manifest.excluded == ("external",)
+    assert manifest.excluded == (("external", "forbidden"),)
 
 
 def test_context_budget_uses_content_floor_not_only_declared_estimate() -> None:

@@ -180,7 +180,11 @@ def test_fast_bucket_collection_budget():
     # 2026-07-16: raised 3371 -> 3390 for the round-3 construction-time validation
     # fixes (test_context_selector_review3.py — security_label/empty-key/empty-
     # content/ContextNeed-overlap/trusted-default).
-    assert count <= 3390, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-16: raised 3390 -> 3401 for the round-4 conflict-resolution fixes
+    # (test_context_selector_review4.py — genuine-tie escalation to
+    # unresolved_conflicts, conflict_key-vs-content dedup ordering, excluded/
+    # superseded reason/winner tracking, duplicate item_id rejection).
+    assert count <= 3401, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

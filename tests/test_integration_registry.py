@@ -193,7 +193,12 @@ def test_fast_bucket_collection_budget():
     # adapter (context/adapters.py + test_context_adapters.py, 16 tests) —
     # the first thing that actually feeds select_context() from real
     # producer output instead of only synthetic ContextItems.
-    assert count <= 3424, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-16: raised 3424 -> 3435 for §7.2 trim steps 3-6
+    # (context/compress.py + test_context_compress.py, 11 tests) —
+    # tool-output-to-artifact-ref, transcript/required-item structured
+    # summary, repo-tree-to-symbol-snippets, wired around select_context()
+    # via trim_to_budget().
+    assert count <= 3435, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

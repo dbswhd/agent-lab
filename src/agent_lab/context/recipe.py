@@ -198,6 +198,13 @@ class ContextManifest:
     etc.) — select_context() only detects and reports them."""
 
 
+def estimate_tokens(content: str) -> int:
+    """Shared content-length heuristic (~4 chars/token, floor of 1) used as
+    select_context()'s own budget floor and reused by adapters.py/compress.py
+    so all three modules estimate consistently instead of drifting."""
+    return max(1, (len(content) + 3) // 4)
+
+
 def _rank(item: ContextItem, required: frozenset[SourceClass]) -> tuple[int, int, int, str]:
     return (0 if item.source in required else 1, -item.authority, -item.relevance, item.item_id)
 
@@ -512,7 +519,7 @@ def select_context(need: ContextNeed, items: tuple[ContextItem, ...]) -> Context
         if item.content == REDACTED_CONTENT_PLACEHOLDER:
             next_total = total_tokens + item.estimated_tokens
         else:
-            content_floor = max(1, (len(item.content) + 3) // 4)
+            content_floor = estimate_tokens(item.content)
             next_total = total_tokens + max(content_floor, item.estimated_tokens)
         # 2026-07-16 review: only the FIRST (best, since candidates are sorted
         # required-first/authority-desc) item of a still-unsatisfied required

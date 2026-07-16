@@ -74,7 +74,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from agent_lab.context.recipe import ContextItem, SourceClass
+from agent_lab.context.recipe import ContextItem, SourceClass, estimate_tokens
 from agent_lab.wisdom.playbook import PlaybookBullet
 from agent_lab.wisdom.store import WisdomEntry
 
@@ -82,14 +82,6 @@ AUTHORITY_TOP = 100
 AUTHORITY_HIGH = 80
 AUTHORITY_MEDIUM_HIGH = 60
 AUTHORITY_MEDIUM = 40
-
-
-def _estimate_tokens(content: str) -> int:
-    """Same content-length heuristic select_context() itself uses as a
-    budget floor (recipe.py's `content_floor`) — keeping estimates in the
-    same units avoids adapters silently under-declaring relative to what
-    the selector would compute anyway."""
-    return max(1, (len(content) + 3) // 4)
 
 
 def adapt_project_md(content: str, *, mtime: float | None = None) -> ContextItem | None:
@@ -104,7 +96,7 @@ def adapt_project_md(content: str, *, mtime: float | None = None) -> ContextItem
         content=content,
         authority=AUTHORITY_MEDIUM_HIGH,
         relevance=AUTHORITY_MEDIUM_HIGH,
-        estimated_tokens=_estimate_tokens(content),
+        estimated_tokens=estimate_tokens(content),
         provenance=".agent-lab/PROJECT.md",
         freshness=str(mtime) if mtime is not None else None,
     )
@@ -121,7 +113,7 @@ def adapt_agents_md_flat(content: str, *, mtime: float | None = None) -> Context
         content=content,
         authority=AUTHORITY_MEDIUM_HIGH,
         relevance=AUTHORITY_MEDIUM_HIGH,
-        estimated_tokens=_estimate_tokens(content),
+        estimated_tokens=estimate_tokens(content),
         provenance="AGENTS.md",
         freshness=str(mtime) if mtime is not None else None,
     )
@@ -141,7 +133,7 @@ def adapt_agents_md_hierarchy(content: str) -> ContextItem | None:
         content=content,
         authority=AUTHORITY_MEDIUM_HIGH,
         relevance=AUTHORITY_MEDIUM_HIGH,
-        estimated_tokens=_estimate_tokens(content),
+        estimated_tokens=estimate_tokens(content),
         provenance="AGENTS.md (per-dir hierarchy)",
     )
 
@@ -157,7 +149,7 @@ def adapt_shared_context_md(content: str) -> ContextItem | None:
         content=content,
         authority=AUTHORITY_MEDIUM_HIGH,
         relevance=AUTHORITY_MEDIUM_HIGH,
-        estimated_tokens=_estimate_tokens(content),
+        estimated_tokens=estimate_tokens(content),
         provenance="SHARED_CONTEXT.md",
     )
 
@@ -175,7 +167,7 @@ def adapt_repo_tree(content: str, *, commit_sha: str | None = None) -> ContextIt
         content=content,
         authority=AUTHORITY_MEDIUM_HIGH,
         relevance=AUTHORITY_MEDIUM_HIGH,
-        estimated_tokens=_estimate_tokens(content),
+        estimated_tokens=estimate_tokens(content),
         provenance="repo tree listing",
         freshness=commit_sha,
     )
@@ -198,7 +190,7 @@ def adapt_session_guidance(content: str) -> ContextItem | None:
         content=content,
         authority=AUTHORITY_HIGH,
         relevance=AUTHORITY_HIGH,
-        estimated_tokens=_estimate_tokens(content),
+        estimated_tokens=estimate_tokens(content),
         provenance="session/guidance.py::build_session_guidance_block",
     )
 
@@ -218,7 +210,7 @@ def adapt_reply_policy_guidance(parts: list[str]) -> list[ContextItem]:
                 content=part,
                 authority=AUTHORITY_TOP,
                 relevance=AUTHORITY_TOP,
-                estimated_tokens=_estimate_tokens(part),
+                estimated_tokens=estimate_tokens(part),
                 provenance="reply_policy.py::build_guidance_parts",
             )
         )
@@ -236,7 +228,7 @@ def adapt_mission_notepad(content: str, *, session_id: str = "") -> ContextItem 
         content=content,
         authority=AUTHORITY_MEDIUM,
         relevance=AUTHORITY_MEDIUM,
-        estimated_tokens=_estimate_tokens(content),
+        estimated_tokens=estimate_tokens(content),
         provenance="mission/notepad.py",
     )
 
@@ -260,7 +252,7 @@ def adapt_steer_queue(entries: list[dict[str, Any]]) -> list[ContextItem]:
                 content=text,
                 authority=AUTHORITY_HIGH,
                 relevance=AUTHORITY_HIGH,
-                estimated_tokens=_estimate_tokens(text),
+                estimated_tokens=estimate_tokens(text),
                 provenance="steer.py (Human steer queue)",
                 freshness=str(entry.get("ts")) if entry.get("ts") else None,
             )
@@ -287,7 +279,7 @@ def adapt_wisdom_index_hits(hits: list[dict[str, Any]]) -> list[ContextItem]:
                 content=snippet,
                 authority=AUTHORITY_MEDIUM_HIGH,
                 relevance=max(1, round(float(hit.get("score") or 0))),
-                estimated_tokens=_estimate_tokens(snippet),
+                estimated_tokens=estimate_tokens(snippet),
                 provenance=str(hit.get("path") or hit.get("source") or "wisdom/index.py"),
                 freshness=str(hit.get("at")) if hit.get("at") else None,
             )
@@ -310,7 +302,7 @@ def adapt_playbook_bullets(bullets: list[PlaybookBullet]) -> list[ContextItem]:
                 content=content,
                 authority=AUTHORITY_MEDIUM_HIGH,
                 relevance=AUTHORITY_MEDIUM_HIGH,
-                estimated_tokens=_estimate_tokens(content),
+                estimated_tokens=estimate_tokens(content),
                 provenance=f"wisdom/playbook.py (pattern={bullet.pattern_id}, harness_rev={bullet.harness_rev})",
                 freshness=bullet.updated_at or None,
             )
@@ -333,7 +325,7 @@ def adapt_wisdom_entries(entries: list[WisdomEntry]) -> list[ContextItem]:
                 content=content,
                 authority=AUTHORITY_MEDIUM,
                 relevance=AUTHORITY_MEDIUM,
-                estimated_tokens=_estimate_tokens(content),
+                estimated_tokens=estimate_tokens(content),
                 provenance=entry.source_ref or "wisdom/store.py",
                 freshness=entry.timestamp or None,
             )
@@ -361,7 +353,7 @@ def adapt_clarify_facts(facts: list[dict[str, Any]]) -> list[ContextItem]:
                 content=answer,
                 authority=AUTHORITY_HIGH,
                 relevance=AUTHORITY_HIGH,
-                estimated_tokens=_estimate_tokens(answer),
+                estimated_tokens=estimate_tokens(answer),
                 provenance="run_meta.mission_loop.clarity.facts",
                 freshness=str(fact.get("at")) if fact.get("at") else None,
                 conflict_key=f"clarify_fact:{fact_id}",
@@ -395,7 +387,7 @@ def adapt_goal_ledger(entries: list[dict[str, Any]]) -> list[ContextItem]:
                 content=content,
                 authority=AUTHORITY_HIGH,
                 relevance=AUTHORITY_HIGH,
-                estimated_tokens=_estimate_tokens(content),
+                estimated_tokens=estimate_tokens(content),
                 provenance="run_meta.goal_ledger",
             )
         )

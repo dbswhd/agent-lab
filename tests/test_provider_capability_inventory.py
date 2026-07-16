@@ -12,6 +12,7 @@ as a support gap).
 from __future__ import annotations
 
 import importlib
+import inspect
 
 
 REGISTERED_PRODUCERS = (
@@ -25,10 +26,25 @@ REGISTERED_PRODUCERS = (
     ("agent_lab.runtime.adapters.execute", "execute_agent_available"),
     ("agent_lab.runtime.adapters.discuss", "invoke_discuss"),
     ("agent_lab.runtime.adapters.discuss", "discuss_agent_available"),
+    ("agent_lab.agent.thread_resume", "normalize_agent_thread_bindings"),
+    ("agent_lab.agent.thread_catalog", "AGENT_IDS"),
 )
 
 HEALTH_ROW_PROVIDER_IDS = frozenset({"cursor", "codex", "claude", "kimi", "kimi_work", "local"})
 CAPABILITY_REGISTERED_PROVIDER_IDS = frozenset({"cursor", "codex", "claude", "kimi_work"})
+
+# §4 (2026-07-16 correction) — cancel is agent_lab.run.control's is_cancelled()/
+# register_child_process(), not a per-provider "cancel" function by name.
+CANCEL_CAPABLE_PROVIDER_MODULES = {
+    "claude": "agent_lab.claude.cli",
+    "codex": "agent_lab.codex.cli",
+    "cursor": "agent_lab.cursor.provider",
+    "kimi_work": "agent_lab.kimi.control_client",
+}
+CANCEL_INCAPABLE_PROVIDER_MODULES = {
+    "kimi": "agent_lab.kimi.provider",
+    "local": "agent_lab.local.provider",
+}
 
 
 def test_all_registered_capability_producers_still_exist() -> None:
@@ -57,3 +73,26 @@ def test_tool_capability_registration_is_still_missing_for_kimi_and_local() -> N
     assert set(_CAPABILITY_AGENTS) == CAPABILITY_REGISTERED_PROVIDER_IDS
     assert "kimi" not in _CAPABILITY_AGENTS
     assert "local" not in _CAPABILITY_AGENTS
+
+
+def test_cancel_support_matches_the_documented_four_provider_split() -> None:
+    """§4 correction — cancel is real, via agent_lab.run.control's is_cancelled()/
+    register_child_process(), for exactly the same 4 providers that have tool
+    capabilities (§2). kimi/local have neither."""
+    for module_name in CANCEL_CAPABLE_PROVIDER_MODULES.values():
+        source = inspect.getsource(importlib.import_module(module_name))
+        assert "is_cancelled" in source, f"{module_name} no longer polls is_cancelled() — update A1 §4"
+
+    for module_name in CANCEL_INCAPABLE_PROVIDER_MODULES.values():
+        source = inspect.getsource(importlib.import_module(module_name))
+        assert "run.control" not in source and "is_cancelled" not in source, (
+            f"{module_name} now references run.control — A1 §4's kimi/local cancel gap is closed, update the doc"
+        )
+
+
+def test_thread_resume_covers_exactly_three_providers() -> None:
+    """§4 — resume (thread continuation) covers cursor/codex/claude only;
+    kimi_work has cancel but not resume, an asymmetry worth keeping visible."""
+    from agent_lab.agent.thread_catalog import AGENT_IDS
+
+    assert set(AGENT_IDS) == {"cursor", "codex", "claude"}

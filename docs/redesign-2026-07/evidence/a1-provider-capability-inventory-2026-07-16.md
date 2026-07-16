@@ -40,14 +40,34 @@ healthy 의미가 통일된다"가 아직 사실이 아니다. `ready=False`가 
 vs 완료 후 일괄 텍스트)은 이번 감사에서 개별 확인하지 않았다 — A2 착수 시 provider별로 직접 코드를
 읽어야 한다.
 
-## 4. Cancel/Resume — 이름으로 찾을 수 있는 provider-level 함수 없음
+## 4. Cancel/Resume — 정정(2026-07-16 후속 조사, 05 R2와 연계)
 
-`cancel_open_execution`(`plan/execute_resolve.py`)은 execution(worktree merge 단위) 취소이지 agent
-invoke(스트리밍 중인 provider 호출) 취소가 아니다. provider 호출 자체를 mid-stream cancel하는 공통
-인터페이스는 코드에서 이름으로 검색되지 않았다 — 있다면 provider별 CLI 프로세스 kill 같은 비공식
-경로일 가능성이 높다. **A1의 "cancel/resume 지원 매트릭스" 칸은 이번 감사로 채우지 못했다** — A2가
-실제로 무엇을 표준화해야 하는지 알려면 provider별 invoke 코드(`claude/cli.py`, `codex/cli.py`,
-`cursor/*`, `kimi/*`)를 직접 읽는 후속 조사가 필요하다.
+**정정:** 처음엔 "이름으로 찾을 수 있는 provider-level cancel 함수 없음"이라고 적었다 — 검색어가
+틀렸다. `cancel_open_execution`은 execution(merge 단위) 취소가 맞지만, provider invoke 자체의
+mid-stream cancel도 실제로 존재한다 — 이름이 "cancel"이 아니라 `agent_lab.run.control`의
+`is_cancelled()`/`register_child_process()`일 뿐이다.
+
+| provider | cancel 메커니즘 | 실측 |
+| --- | --- | --- |
+| `claude` | 실제 subprocess, `register_child_process` + `is_cancelled()` 폴링 → `unregister_child_process` | `claude/cli.py` 2개 respond 경로 모두 |
+| `codex` | 동일 패턴(subprocess kill) | `codex/cli.py` |
+| `cursor` | SDK 호출 — process 없음, `is_cancelled()` 폴링 후 `RoomRunCancelled` raise로 unwind | `cursor/provider.py` |
+| `kimi_work` | bridge 호출 — 동일하게 `is_cancelled()` 폴링 + `RoomRunCancelled` | `kimi/control_client.py` |
+| `kimi`(plain) | **없음** | `kimi/provider.py`에 `run.control` 참조 없음 |
+| `local` | **없음** | `local/provider.py`에 `run.control` 참조 없음 |
+
+cancel이 있는 4개(`claude`/`codex`/`cursor`/`kimi_work`)는 §2의 tool capability 등록 4개와 **정확히
+일치**한다 — 우연이 아니라 이 4개가 "완전히 통합된 provider", 나머지 2개(`kimi`/`local`)가 "최소
+provider"라는 두 계층이 실제로 존재한다는 뜻이다.
+
+**Resume**은 다른 계층: `agent/thread_resume.py` + `agent/thread_catalog.py::AGENT_IDS = ("cursor",
+"codex", "claude")`가 provider CLI thread 재개(예: `claude --resume`)를 담당한다. `kimi_work`는 cancel은
+있지만 thread resume은 없다 — 4-provider cancel 그룹과 정확히 겹치지 않는 3-provider resume 그룹이다.
+
+이건 05(R1/R2, `docs/redesign-2026-07/evidence/r1-journey-reliability-matrix-2026-07-16.md`)에서
+execution 레벨 cancel(`cancel_open_execution`)에 테스트가 전무했던 걸 발견하고 고친 것과 별개 층위다
+— 두 gap 모두 이제 문서화됐고, provider 레벨 cancel은 gap이 아니라 **이미 존재하는데 A1이 못 찾았던
+것**이었다.
 
 ## 5. 이미 있는 부분 invoke 추상화 — `runtime/adapters/`
 
@@ -64,9 +84,13 @@ execute/repair 경로의 provider 호출을 추상화하고 있고, `runtime/ada
 | 모든 provider가 공통 capability vocabulary로 표현 | **아니오** — base 필드 7개는 공통, 나머지는 provider별 ad hoc(§1) |
 | provider-specific 예외가 adapter 내부/외부 중 어디에 속하는지 결정 | **부분** — execute/discuss는 `runtime/adapters/`가 이미 분리(§5), 그 외 경로(Room 직접 호출)는 미확인 |
 | unavailable/degraded/healthy 의미 통일 | **아니오** — `ready=False`가 여러 다른 실패 원인을 구분 안 함(§1) |
+| cancel/resume 지원 매트릭스 | **완료**(§4, 2026-07-16 정정) — cancel 4/6(`claude`/`codex`/`cursor`/`kimi_work`), resume 3/6(`claude`/`codex`/`cursor`) |
+
+`tests/test_provider_capability_inventory.py`가 cancel 4개/resume 3개 provider 집합을 고정한다.
 
 ## 7. 다음
 
-A2(AgentRuntime port)는 `runtime/adapters/execute.py`/`discuss.py`를 일반화하는 것부터 시작하는 게
-맞아 보이지만, cancel/resume 실측(§4)이 안 끝나서 인터페이스를 확정할 수 없다. 다음 단계는 provider별
-invoke 코드에서 cancel/resume이 실제로 어떻게 동작하는지(또는 안 하는지) 확인하는 좁은 후속 조사다.
+A2(AgentRuntime port)는 `runtime/adapters/execute.py`/`discuss.py`를 일반화하는 것부터 시작하면 된다
+— cancel/resume 실측이 끝나서(§4) 인터페이스에 뭘 넣을지는 이제 막힘이 없다. 남은 진짜 설계 결정은
+capability vocabulary 통일(§1, base 7필드 vs provider별 ad hoc 필드)과 `kimi`/`local`을 4-provider
+그룹으로 승격할지(cancel/tool capability 둘 다 없음, §2/§4) 여부다.

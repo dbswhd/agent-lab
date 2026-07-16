@@ -20,7 +20,7 @@
 | `00` inventory                | 기준선·fixture 완료              | Human review, ordered event 근거 보강                        | Step 0/6       |
 | `01` kernel                   | pure aggregate·merge/repair 완료 | session adapter, legacy authority cutover                    | Step 1/6       |
 | `02` durability               | lock·tail guard·idempotency·identity·atomic batch·claim lease(scheduler + 실 execute merge 경로) 완료 (2026-07-16) | side-effect reconcile 자동화(현재는 lease만 가드, recovery decision 수렴은 daemon 실통합 후) | Step 5         |
-| `03` runtime/context/memory   | recipe contract 완료 · A1 provider capability inventory 완료(2026-07-16, cancel/resume은 미확인으로 남김) | A2 provider port(cancel/resume 실측 선행), memory promotion, provenance | Step 2/4       |
+| `03` runtime/context/memory   | recipe contract 완료 · A1 provider capability inventory 완료(2026-07-16, cancel 4/6·resume 3/6 실측 포함) | A2 provider port(`runtime/adapters/execute.py`·`discuss.py` 일반화부터), memory promotion, provenance | Step 2/4       |
 | `04` Human UX/API/UI          | decision model·bridge·read-model route·UI wiring·SSE cursor·optimistic locking 완료 (2026-07-15) | 완전한 decision+run.json 단일 트랜잭션 원자성                | Step 2/3 완료  |
 | `05` reliability/ops          | test baseline 완료 · R1 journey reliability matrix 완료(8/8 journey) · R2 cancel first slice 완료(2026-07-16) | R2 나머지(agent timeout, process kill, partial journal, git merge ambiguity, SSE disconnect, stale Human command), telemetry, dogfood SLO | Step 4/5/6     |
 | `06` async runtime            | Activity·lease·recovery·queue first pass | daemon/scheduler integration, provider/execute wiring        | Step 4/5       |

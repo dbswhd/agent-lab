@@ -255,7 +255,9 @@ def test_fast_bucket_collection_budget():
     # ::estimate_tokens applied to the legacy render) and
     # recipe_to_legacy_token_ratio, closing the last item flagged across
     # four CX8 dogfood-evidence runs.
-    assert count <= 3524, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-18: raised 3524 -> 3526 for core/quant verification-lane
+    # separation contracts (Makefile + GitHub Actions marker parity).
+    assert count <= 3526, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

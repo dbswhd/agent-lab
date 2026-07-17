@@ -21,6 +21,7 @@ def _clear_router_env(monkeypatch: pytest.MonkeyPatch) -> None:
         "AGENT_LAB_MAX_CONSENSUS_CALLS",
         "AGENT_LAB_CLARIFIER_MIN_CHARS",
         "AGENT_LAB_CLARIFIER",
+        "AGENT_LAB_FEEDBACK_ADVISOR",
     ):
         monkeypatch.delenv(key, raising=False)
 
@@ -77,6 +78,7 @@ def test_parallel_discuss_persists_topology_and_roles(monkeypatch: pytest.Monkey
     """Discuss-only (consensus_mode=False) uses prepare_turn_routing and persists category/roles."""
     from agent_lab import room
 
+    monkeypatch.setenv("AGENT_LAB_FEEDBACK_ADVISOR", "1")
     _clear_router_env(monkeypatch)
     monkeypatch.setenv("AGENT_LAB_TOPIC_ROUTER", "1")
     monkeypatch.setenv("AGENT_LAB_ROOM_ROLES", "1")

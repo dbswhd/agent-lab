@@ -161,7 +161,8 @@ make typecheck        # mypy src/agent_lab (full report)
 make typecheck-ratchet # mypy error budget (excludes room.py; gated in CI)
 make web-lint         # eslint (web/src)
 make test-fast        # PR fast lane: no live, no integration, no bridge
-make test-integration # mock integration/worktree/subprocess lane
+make test-integration # core mock integration/worktree/subprocess lane (quant excluded)
+make test-quant       # optional quant-agentic-trading compatibility lane
 make test-bridge      # Cursor bridge/preflight lane (mock-only)
 make test             # full non-live pytest suite
 make ci               # PR gate: lint + format-check + typecheck-ratchet + test-fast + smoke

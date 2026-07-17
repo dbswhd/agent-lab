@@ -220,7 +220,8 @@
   - `live`: opt-in real CLI/SDK/network checks.
 - Targets:
   - `make test-fast`: `not live and not integration and not bridge`.
-  - `make test-integration`: `integration and not live and not bridge`.
+  - `make test-integration`: `integration and not quant and not live and not bridge`.
+  - `make test-quant`: optional quant-agentic-trading compatibility (`quant and not live`).
   - `make test-bridge`: `bridge and not live`.
   - `make ci`: PR gate, fast enough for iteration.
   - `make ci-full`: release gate, full fast + integration + bridge + smoke + score.

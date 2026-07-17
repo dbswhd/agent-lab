@@ -300,7 +300,8 @@ General discuss/plan turns now store `status: partial` when at least one agent s
 | Layer | What | How |
 |-------|------|-----|
 | **PR fast path** | mock unit + API (excludes `integration` + `bridge` + `live`) | `make test-fast` / `pytest tests/ -q -m "not live and not integration and not bridge"` — `-n auto` when `pytest-xdist` installed |
-| **Integration lane** | mock worktree / subprocess / multi-component tests | `make test-integration` / `pytest tests/ -q -m "integration and not live and not bridge"` |
+| **Integration lane** | core mock worktree / subprocess / multi-component tests | `make test-integration` / `pytest tests/ -q -m "integration and not quant and not live and not bridge"` |
+| **Quant compatibility** | optional quant-agentic-trading contract tests | `make test-quant` / `pytest tests/ -q -m "quant and not live"` |
 | **Bridge lane** | Cursor bridge lifecycle / reconnect / preflight | `make test-bridge` / `pytest tests/ -q -m "bridge and not live"` |
 | **Release confidence** | fast + integration + bridge + smoke + score | `make ci-full` |
 | Unit / API | `tests/test_*.py` | `make test` / `pytest tests/ -q -m "not live"` — no live LLM, no secrets |
@@ -309,7 +310,7 @@ General discuss/plan turns now store `status: partial` when at least one agent s
 | Score / guards | regression fixtures + execute worktrees | `scripts/score_session.py --json`, `scripts/check_worktree_orphans.py` |
 | Mock E2E | `scripts/smoke_room_e2e.py` | `tests/test_smoke_room_e2e.py`, `AGENT_LAB_MOCK_AGENTS=1` |
 
-`make test-fast`, `make test-integration`, `make test-bridge`, `make test-live`, and `make ci-full` write the latest local status to `sessions/_reports/verification-latest.json`. The app reads that file through `/api/diagnostics` and shows Fast / Integration / Bridge / CI full in Settings Diagnostics and the rail diagnostics detail.
+`make test-fast`, `make test-integration`, `make test-bridge`, `make test-live`, and `make ci-full` write the latest local status to `sessions/_reports/verification-latest.json`. `make test-quant` is an opt-in compatibility check and does not update the core verification report. The app reads the core report through `/api/diagnostics` and shows Fast / Integration / Bridge / CI full in Settings Diagnostics and the rail diagnostics detail.
 
 `scripts/smoke_room.py` is also runnable locally; use **`--api`** only when uvicorn is already on `:8765`. Treat full room scripts as **nightly / manual** when they need a live API or real CLIs — CI uses pytest wrappers only.
 

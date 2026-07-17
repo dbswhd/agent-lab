@@ -46,8 +46,8 @@
     "claude_": 0
   },
   "tracked_pycache_files": 0,
-  "makefile_lines": 548,
-  "makefile_targets": 114,
+  "makefile_lines": 552,
+  "makefile_targets": 115,
   "large_tsx_files": [
     {
       "path": "web/src/components/ChatComposer.tsx",

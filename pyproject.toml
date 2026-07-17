@@ -37,10 +37,10 @@ where = ["src"]
 [tool.pytest.ini_options]
 markers = [
     "fast: explicit fast unit/API test; unmarked non-live/non-integration/non-bridge tests are also in make test-fast",
-    "integration: mock-only multi-component, subprocess, worktree, or slower API tests owned by make test-integration",
+    "integration: core mock-only multi-component, subprocess, worktree, or slower API tests owned by make test-integration",
     "bridge: Cursor bridge lifecycle, reconnect, and preflight tests owned by make test-bridge and excluded from make test-fast",
     "live: real CLI/SDK/network verification; requires AGENT_LAB_RUN_LIVE=1 and never runs in PR gates",
-    "quant: requires quant-agentic-trading extension (skipped when absent on CI)",
+    "quant: optional quant-agentic-trading compatibility tests owned by make test-quant (skipped when absent)",
 ]
 
 [tool.ruff]

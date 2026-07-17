@@ -79,7 +79,7 @@ jobs:
           AGENT_LAB_MOCK_AGENTS: "1"
           AGENT_LAB_ORACLE_LIVE: ""
           AGENT_LAB_GOAL_ORACLE_LIVE: ""
-        run: pytest tests/ -q -m "integration and not live and not bridge"
+        run: pytest tests/ -q -m "integration and not quant and not live and not bridge"
 
       - name: Pytest bridge (mock-only)
         env:

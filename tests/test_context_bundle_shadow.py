@@ -98,6 +98,27 @@ def test_shadow_compare_bundle_succeeds_for_a_mapped_phase(monkeypatch: pytest.M
     assert isinstance(result["recipe_total_tokens"], int)
     assert isinstance(result["included_sources"], list)
     assert result["legacy_total_chars"] == len(_legacy_bundle().render())
+    assert result["legacy_estimated_tokens"] == max(1, (len(_legacy_bundle().render()) + 3) // 4)
+    assert result["recipe_to_legacy_token_ratio"] == round(
+        result["recipe_total_tokens"] / result["legacy_estimated_tokens"], 3
+    )
+
+
+def test_shadow_compare_bundle_normalizes_legacy_chars_to_the_same_token_unit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """2026-07-16 -- legacy_total_chars and recipe_total_tokens used to be
+    two different units with no way to relate them (flagged across three
+    dogfood-evidence runs). legacy_estimated_tokens applies the same
+    estimate_tokens() heuristic select_context() itself uses, and
+    recipe_to_legacy_token_ratio is the resulting comparable signal."""
+    _patch_reinvoked_producers(monkeypatch)
+    big_legacy_text = "x" * 4000  # -> estimate_tokens gives (4000+3)//4 = 1000
+    result = shadow_compare_bundle(**_base_kwargs(legacy_bundle=_legacy_bundle(big_legacy_text)))
+    assert result["ok"] is True
+    assert result["legacy_total_chars"] == 4000
+    assert result["legacy_estimated_tokens"] == 1000
+    assert result["recipe_to_legacy_token_ratio"] == round(result["recipe_total_tokens"] / 1000, 3)
 
 
 def test_shadow_compare_bundle_includes_recent_messages_and_dispatch_content(monkeypatch: pytest.MonkeyPatch) -> None:

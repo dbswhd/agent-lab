@@ -249,7 +249,13 @@ def test_fast_bucket_collection_budget():
     # path, never in the slim path, and the shadow call sites already
     # passed the correct parallel_round through). No producer is now
     # deliberately excluded from the shadow pass.
-    assert count <= 3523, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-16: raised 3523 -> 3524 for normalizing legacy_total_chars
+    # (chars) and recipe_total_tokens (estimated tokens) into the same unit
+    # -- bundle_shadow.py now also reports legacy_estimated_tokens (recipe.py
+    # ::estimate_tokens applied to the legacy render) and
+    # recipe_to_legacy_token_ratio, closing the last item flagged across
+    # four CX8 dogfood-evidence runs.
+    assert count <= 3524, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

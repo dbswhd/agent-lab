@@ -221,3 +221,23 @@ test_flag_on_captures_real_mailbox_rows_before_build_mailbox_block_mutates_them`
 1. `legacy_total_chars`/`recipe_total_tokens` 단위 정규화 — 여전히 미착수.
 
 다음에 이 dogfood 스크립트를 실행할 여지가 있다면, `_session_folder`에 실제 wisdom 인덱스가 있는 세션(또는 `AGENT_LAB_WISDOM_IN_CONTEXT=1`/`AGENT_LAB_PLAYBOOK=1` 강제)을 하나 추가해서 wisdom_index/playbook이 실제로 included되는 걸 dogfood 표본에서도 시연하는 게 좋겠다.
+
+---
+
+## 2026-07-16 5차 — char/token 단위 정규화
+
+4차례 실행 내내 "legacy_total_chars(문자)와 recipe_total_tokens(추정 토큰)는 단위가 달라 직접 비교할 수 없다"를 미해결로 남겼었다. `bundle_shadow.py`가 이제 `legacy_estimated_tokens`(레거시 렌더 결과에 `select_context()` 자신이 쓰는 것과 동일한 `estimate_tokens()` 공식을 적용)와 `recipe_to_legacy_token_ratio`를 함께 반환한다.
+
+### 재실행 결과 — activity별 recipe/legacy 토큰 비율
+
+| activity | min | max | avg | 해석 |
+| --- | --- | --- | --- | --- |
+| clarify | 1.247 | 1.296 | 1.267 | recipe가 레거시보다 ~1.27배 큰 컨텍스트를 고름 |
+| plan | 1.287 | 1.408 | 1.361 | recipe가 레거시보다 ~1.36배 큰 컨텍스트를 고름 |
+| execute | 0.357 | 0.410 | 0.381 | recipe가 레거시의 ~38%만 고름(훨씬 타이트) |
+| critic | 0.302 | 0.339 | 0.322 | recipe가 레거시의 ~32%만 고름(훨씬 타이트) |
+| repair | 0.900 | 0.908 | 0.903 | 거의 동등(레거시의 ~90%) |
+
+**이건 실제 방향성 있는 신호다** — CLARIFY/PLAN은 recipe가 legacy보다 더 많은 컨텍스트를 포함하는 경향(§7.1이 PLAN에 40% "relevant repo/docs" 배분을 주는 것과 방향은 일치), EXECUTE/CRITIC은 recipe가 훨씬 적게 고르는 경향(legacy가 이 두 activity에서 실제로 필요한 것보다 과하게 담고 있었을 가능성, 또는 recipe가 §6.4/§6.3의 "무관한 전체 context 제외" 원칙을 실제로 지키고 있다는 신호일 수도 있음 — 이번 데이터만으론 어느 쪽인지 구분 안 됨). REPAIR는 거의 동등.
+
+**cutover 판정을 내리기엔 여전히 이르다** — 36개 synthetic 시나리오뿐이고, 이 비율이 "recipe가 더 낫다"는 뜻인지 "recipe가 아직 못 담는 producer가 있어서 작게 나온다"는 뜻인지(예: EXECUTE/CRITIC엔 mailbox/wisdom_index/playbook 트래픽이 원래 적을 수도 있음) 이 실행만으론 분간 안 된다. 실제(또는 더 다양한) 세션 코호트로 표본을 늘리고, 이 비율이 activity별로 안정적인지 확인한 뒤에 판단할 문제다.

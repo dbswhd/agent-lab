@@ -281,12 +281,24 @@ def run_dogfood() -> dict[str, Any]:
             source_frequency[source] = source_frequency.get(source, 0) + 1
 
     per_activity_tokens: dict[str, list[int]] = {}
+    per_activity_ratios: dict[str, list[float]] = {}
     for r in ok_records:
         activity = r["shadow"]["activity"]
         per_activity_tokens.setdefault(activity, []).append(r["shadow"]["recipe_total_tokens"])
+        per_activity_ratios.setdefault(activity, []).append(r["shadow"]["recipe_to_legacy_token_ratio"])
     token_stats = {
         activity: {"min": min(vals), "max": max(vals), "avg": round(sum(vals) / len(vals), 1)}
         for activity, vals in per_activity_tokens.items()
+    }
+    # recipe_to_legacy_token_ratio (both sides in the same estimated-token
+    # unit via recipe.py::estimate_tokens, see bundle_shadow.py) -- <1 means
+    # the recipe pipeline selected a SMALLER context than the legacy bundle
+    # for that activity, >1 means larger. This is the actual "does the new
+    # pipeline pick a tighter or looser context" signal the CX8 evidence doc
+    # flagged as missing across three prior dogfood runs.
+    ratio_stats = {
+        activity: {"min": min(vals), "max": max(vals), "avg": round(sum(vals) / len(vals), 3)}
+        for activity, vals in per_activity_ratios.items()
     }
 
     return {
@@ -296,6 +308,7 @@ def run_dogfood() -> dict[str, Any]:
         "failed_count": len(failed_records),
         "included_source_frequency": source_frequency,
         "recipe_total_tokens_by_activity": token_stats,
+        "recipe_to_legacy_token_ratio_by_activity": ratio_stats,
         "failed_scenarios": [{"scenario": r["scenario"], "error": r["shadow"].get("error")} for r in failed_records],
         "records": records,
     }

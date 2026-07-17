@@ -69,6 +69,19 @@ ALSO receives that same `dispatch_block` text directly — `select_context()`'s
 own exact-content dedup (§7.2 trim step 1) collapses the resulting
 duplicate automatically, so it costs nothing correctness-wise, but it's
 worth knowing this module doesn't bother splitting the two apart itself.
+
+**2026-07-16 — char/token units normalized.** The comparison dict used to
+report `legacy_total_chars` (a character count) next to `recipe_total_
+tokens` (an estimated token count) with no way to relate the two — flagged
+across three dogfood-evidence runs as an unresolved gap. Both are now put
+in the same unit: `legacy_estimated_tokens` applies `recipe.py::
+estimate_tokens` (the same ~4-chars/token heuristic `select_context()`
+itself uses for every item) to the legacy render, and
+`recipe_to_legacy_token_ratio` (`recipe_total_tokens /
+legacy_estimated_tokens`) is the actual "does the recipe pick a tighter or
+looser context than the legacy path" signal a caller can now read
+directly, rather than having to eyeball two numbers in different units.
+`legacy_total_chars` is kept alongside for transparency, not removed.
 """
 
 from __future__ import annotations
@@ -81,6 +94,7 @@ from agent_lab.context.bundle_recipe import (
     activity_kind_for_mission_phase,
     build_manifest_via_recipe,
 )
+from agent_lab.context.recipe import estimate_tokens
 from agent_lab.core.context_bundle import ContextBundle
 from agent_lab.run.state import RunStateLike
 
@@ -263,6 +277,15 @@ def shadow_compare_bundle(
     except Exception as exc:  # never let shadow instrumentation break the live turn
         return {"ok": False, "activity_phase": phase, "error": f"{type(exc).__name__}: {exc}"}
 
+    legacy_text = legacy_bundle.render()
+    legacy_total_chars = len(legacy_text)
+    # Same char->token heuristic select_context() itself uses for every
+    # item (recipe.py::estimate_tokens, ~4 chars/token) -- applying it to
+    # the legacy render puts both sides of the comparison in the same unit.
+    # legacy_total_chars alone was never comparable to recipe_total_tokens
+    # (chars vs. tokens), which the CX8 dogfood evidence doc flagged as an
+    # unresolved gap across three prior runs; this closes it.
+    legacy_estimated_tokens = estimate_tokens(legacy_text)
     return {
         "ok": True,
         "activity": activity.value,
@@ -270,6 +293,8 @@ def shadow_compare_bundle(
         "excluded_count": len(manifest.excluded),
         "unresolved_count": len(manifest.unresolved_conflicts),
         "recipe_total_tokens": manifest.total_tokens,
-        "legacy_total_chars": len(legacy_bundle.render()),
+        "legacy_total_chars": legacy_total_chars,
+        "legacy_estimated_tokens": legacy_estimated_tokens,
+        "recipe_to_legacy_token_ratio": round(manifest.total_tokens / legacy_estimated_tokens, 3),
         "included_sources": sorted({item.source.value for item in manifest.included}),
     }

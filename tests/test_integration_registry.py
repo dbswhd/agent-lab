@@ -220,7 +220,15 @@ def test_fast_bucket_collection_budget():
     # transcript) by decomposing per-message by role: user->HUMAN_INTENT,
     # own agent reply->EPISODE, peer agent reply->AGENT_OPINION,
     # system->RUNTIME_STATE.
-    assert count <= 3504, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-16: raised 3504 -> 3517 for the CX8 AGENT_LAB_CONTEXT_RECIPE
+    # flag splice-in (context/bundle_shadow.py, spliced into BOTH
+    # build_context_bundle's tail AND build_slim_consensus_bundle's tail --
+    # the latter is where DISCUSS/PLAN_GATE/PLAN_REJECT actually land, so
+    # without it the shadow pass would never exercise the PLAN activity
+    # mapping at all). Flag defaults off; when off the added code is a
+    # single env_bool check, verified byte-identical bundle.render() output
+    # on both paths whether the flag is off or on.
+    assert count <= 3517, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

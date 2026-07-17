@@ -308,6 +308,53 @@ def build_slim_consensus_bundle(
         messages_in_session=count_messages(messages),
     )
     _record_context_bundle_metrics(run_meta, meta, agent=agent, mode="slim")
+    # CX8 shadow-parity pass — see the matching block at the end of
+    # build_context_bundle for the full rationale. This is the slim path's
+    # counterpart: DISCUSS/PLAN_GATE/PLAN_REJECT phases redirect here BEFORE
+    # ever reaching build_context_bundle's own tail (should_use_mission_
+    # slim_bundle), so without this second splice point, the single most
+    # common activity mapping (PLAN) would never actually exercise the
+    # shadow pass. `bridge_block`/`peer_block` are "" here (the slim path
+    # never builds them) and `session_skills` is "" (never called in this
+    # path either) — both match this function's own real values, not
+    # placeholders. `recent_msgs=messages` (the full, untrimmed/undeduped
+    # history) is a lower-fidelity stand-in: this path builds its own
+    # human-only summary (`recent_block`) instead of a per-message list, so
+    # there's no already-trimmed message list to reuse here the way the
+    # full path has one.
+    if env_bool("AGENT_LAB_CONTEXT_RECIPE"):
+        from agent_lab.context.bundle_shadow import shadow_compare_bundle
+        from agent_lab.run.meta import stamp_run_meta
+
+        try:
+            shadow_result = shadow_compare_bundle(
+                run_meta=run_meta,
+                agent=agent,
+                topic=topic,
+                plan_md=plan_md,
+                parallel_round=2,
+                session_guidance=session_guidance,
+                session_skills="",
+                resume_block=resume_block,
+                plugin_block=plugin_block,
+                cap_block=cap_block,
+                team_block=team_block,
+                objection_block=objection_block,
+                challenge_block=challenge_block,
+                plan_open=plan_open,
+                turn_state_block=turn_state_block,
+                bridge_block="",
+                peer_block="",
+                guidance_parts=guidance_parts,
+                envelope_block=follow_up,
+                tool_rules=tool_rules,
+                recent_msgs=messages,
+                legacy_bundle=bundle,
+            )
+            if run_meta is not None and shadow_result is not None:
+                stamp_run_meta(run_meta, context_recipe_shadow=shadow_result)
+        except Exception:
+            pass  # shadow instrumentation must never break the live turn
     return bundle
 
 
@@ -749,6 +796,46 @@ def build_context_bundle(
         messages_in_session=count_messages(full),
     )
     _record_context_bundle_metrics(run_meta, meta, agent=agent, mode="full")
+    # CX8 (09-context-engineering.md §11) — flag-gated shadow-parity pass.
+    # Default off: this `env_bool` check is the entire cost when disabled.
+    # When on, computes a parallel select_context()-based manifest from
+    # values already computed above and records a comparison for later
+    # dogfood/eval review — never changes `bundle` itself. See
+    # context/bundle_shadow.py's module docstring for exactly what this
+    # does and does not cover.
+    if env_bool("AGENT_LAB_CONTEXT_RECIPE"):
+        from agent_lab.context.bundle_shadow import shadow_compare_bundle
+        from agent_lab.run.meta import stamp_run_meta
+
+        try:
+            shadow_result = shadow_compare_bundle(
+                run_meta=run_meta,
+                agent=agent,
+                topic=topic,
+                plan_md=plan_md,
+                parallel_round=parallel_round,
+                session_guidance=session_guidance,
+                session_skills=session_skills,
+                resume_block=resume_block,
+                plugin_block=plugin_block,
+                cap_block=cap_block,
+                team_block=team_block,
+                objection_block=objection_block,
+                challenge_block=challenge_block,
+                plan_open=plan_open,
+                turn_state_block=turn_state_block,
+                bridge_block=bridge_block,
+                peer_block=peer_block,
+                guidance_parts=guidance_parts,
+                envelope_block=envelope_block,
+                tool_rules=tool_rules,
+                recent_msgs=recent_msgs,
+                legacy_bundle=bundle,
+            )
+            if run_meta is not None and shadow_result is not None:
+                stamp_run_meta(run_meta, context_recipe_shadow=shadow_result)
+        except Exception:
+            pass  # shadow instrumentation must never break the live turn
     return bundle
 
 

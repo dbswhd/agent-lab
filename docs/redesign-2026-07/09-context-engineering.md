@@ -443,7 +443,17 @@ item_id는 `goal_ledger`와 같은 index 기반(`f"recent:{index}"`) — chat.js
 
 이걸로 CX1 §3가 열어뒀던 taxonomy 질문(agent_opinion 소스 유무)과 09 문서가 반복해서 "매핑 불가"로 남겨뒀던 recent transcript 둘 다 닫혔다 — bundle.py의 실제 producer 25개 전부에 대해 이제 어댑터가 있다(단 `_format_grounding_block`은 여전히 독립 producer가 아니라서 어댑팅 대상 자체가 아님, clarify_facts+goal_ledger로 구성).
 
-## 12. 완료 정의
+**2026-07-16 — `AGENT_LAB_CONTEXT_RECIPE` flag splice-in + parity 확인 (`src/agent_lab/context/bundle_shadow.py`, 신규).** 이전 절에서 "flag는 등록만 해두고 읽는 코드는 없다"고 남겨뒀던 걸 실제로 연결했다 — `build_context_bundle`/`build_slim_consensus_bundle` 둘 다 자기 함수 맨 끝(`return bundle` 직전)에 딱 한 블록씩 추가해서, flag가 켜져 있으면 `select_context()` 기반 병행 manifest를 계산하고 비교 결과를 `run_meta["context_recipe_shadow"]`에 기록한다. **레거시 경로가 실제로 반환하는 `bundle`은 절대 건드리지 않는다** — 이게 이 작업 전체의 안전 불변식이다.
+
+핵심 설계 결정:
+- **함수 끝에서 한 번만 호출, 함수 본문 중간엔 손대지 않음(거의).** `build_context_bundle`이 이미 계산해둔 지역 변수(session_guidance/session_skills/thread_resume/plugin_allowlist/capability_preamble/team_task/objection/challenge_owner/plan_open/turn_state/turn_bridge/peer/envelope_follow_up/agent_tool_rules/recent 메시지 리스트, 총 14개)를 그대로 재사용한다 — 두 번째로 다시 호출해서 근사치를 만드는 것보다 싸고 정확하다. 단 5개(repo tree, mission notepad, AGENTS.md hierarchy, clarify facts, goal ledger)는 bundle.py의 private helper(`_append_mission_track_c_blocks` 등)가 `constraints` 문자열에 바로 병합해버려서 별도 지역 변수로 안 남아 있다 — 이 5개만 읽기 전용 producer를 다시 호출한다(bundle_recipe.py 첫 슬라이스가 이미 caller에게 요구했던 것과 동일).
+- **`build_slim_consensus_bundle`에도 별도로 splice해야 했다** — `should_use_mission_slim_bundle`이 DISCUSS/PLAN_GATE/PLAN_REJECT phase를 `build_context_bundle` 진입 즉시 slim path로 리다이렉트하는데, 이 phase 집합이 정확히 PLAN activity로 매핑되는 phase들이다. `build_context_bundle`의 끝에만 splice했다면, 가장 흔한 activity(PLAN)가 shadow pass를 단 한 번도 실제로 타지 않는다는 걸 통합 테스트로 직접 발견하고 나서 두 번째 splice를 추가했다(`tests/test_context_bundle_shadow_splice.py::test_flag_on_stamps_a_shadow_result_into_run_meta`가 처음엔 이 이유로 실패했었다). slim path는 `bridge_block`/`peer_block`이 원래 `""`이고 `session_skills`를 아예 호출 안 하며, trim된 개별 메시지 리스트 대신 사람 전용 요약(`recent_block`)만 만들기 때문에 `recent_msgs` 대신 원본 `messages`(비trim·비dedup)를 넘긴다 — 문서화된 저-fidelity 근사치.
+- **mailbox와 wisdom_index/playbook은 이번 parity pass에서 제외.** mailbox는 splice 시점이 `build_mailbox_block`(mark_delivered side effect 있음) 호출 **이후**라서, 그 시점에 `unread_for_agent`를 다시 불러도 이미 읽음 처리된 빈 리스트만 나온다 — 이 함수 끝에서 splice하는 접근법 자체의 한계, 숨기지 않고 문서화. wisdom_index/playbook은 R1·topic 게이팅이 있는 optional-only producer라 첫 parity pass에서는 재호출 대상에서 뺐다. 둘 다 "shadow manifest가 실제보다 적게 포함한다"는 방향의 gap이지 잘못된 계산이 아니다.
+- **전부 try/except로 감쌈** — activity 매핑 실패, `ContextSelectionError`, 예상 밖 producer 모양 등 무엇이 나든 `{"ok": False, ...}` 기록으로 남고 절대 raise하지 않는다. flag가 꺼져 있으면(기본값) `env_bool` 체크 하나가 전부 — `bundle.py`의 실제 diff는 **87줄 순수 추가, 기존 라인 변경/삭제 0**.
+
+검증한 것: (1) flag off일 때 기존 `tests/test_context_bundle.py`/`test_efficiency_mode.py`/`test_context_layers.py` 21개 전부 무변경 통과, (2) flag on/off 상태에서 `bundle.render()`가 **byte-identical**함을 두 경로(full path, slim path) 각각 직접 assert, (3) flag on인데 activity 매핑이 없거나 shadow 함수 자체가 raise해도 `build_context_bundle`은 정상적으로 bundle을 반환함, (4) flag on이고 phase가 매핑되면 `run_meta["context_recipe_shadow"]`에 `{ok, activity, included_count, excluded_count, unresolved_count, recipe_total_tokens, legacy_total_chars, included_sources}` 기록됨. `tests/test_context_bundle_shadow.py`(6개, `shadow_compare_bundle` 단위) + `tests/test_context_bundle_shadow_splice.py`(7개, 실제 splice 지점 통합 테스트).
+
+**아직 안 한 것 — 진짜 cutover.** 이 pass는 병행 계산 + 기록만 한다. 레거시 문자열 대신 recipe manifest를 실제로 사용하도록 바꾸는 건 여기서 안 했다 — dogfood/eval harness가 `context_recipe_shadow` 기록을 충분히 모아서 파악한 뒤, 별도 승인을 거쳐야 할 다음 단계.
 
 - 모든 agent activity가 목적에 맞는 versioned Context Recipe를 사용한다.
 - 포함 정보의 source·freshness·authority·선택 이유를 설명할 수 있다.

@@ -10,21 +10,38 @@ CX1 source registry specifies for that producer.
 
 from __future__ import annotations
 
+import pytest
+
 from agent_lab.context.adapters import (
+    adapt_agent_tool_rules_block,
     adapt_agents_md_flat,
     adapt_agents_md_hierarchy,
     adapt_approved_plan,
     adapt_artifacts,
+    adapt_capability_preamble,
+    adapt_challenge_owner_block,
     adapt_clarify_facts,
+    adapt_dispatch_intent_block,
+    adapt_envelope_follow_up_block,
     adapt_goal_ledger,
+    adapt_mailbox_messages,
     adapt_mission_notepad,
+    adapt_objection_block,
+    adapt_peer_block,
+    adapt_plan_open_block,
     adapt_playbook_bullets,
+    adapt_plugin_allowlist_block,
     adapt_project_md,
     adapt_reply_policy_guidance,
     adapt_repo_tree,
     adapt_session_guidance,
+    adapt_session_skills_block,
     adapt_shared_context_md,
     adapt_steer_queue,
+    adapt_team_task_block,
+    adapt_thread_resume_block,
+    adapt_turn_bridge_block,
+    adapt_turn_state_block,
     adapt_wisdom_entries,
     adapt_wisdom_index_hits,
 )
@@ -91,6 +108,67 @@ def test_adapt_artifacts_falls_back_to_module_provenance_without_a_path() -> Non
     rows = [{"id": "art-3", "summary": "no path here", "ts": "2026-07-16"}]
     items = adapt_artifacts(rows)
     assert items[0].provenance == "room/artifacts.py"
+
+
+@pytest.mark.parametrize(
+    "adapter_fn,expected_source",
+    [
+        (adapt_team_task_block, SourceClass.RUNTIME_STATE),
+        (adapt_objection_block, SourceClass.RUNTIME_STATE),
+        (adapt_challenge_owner_block, SourceClass.RUNTIME_STATE),
+        (adapt_plugin_allowlist_block, SourceClass.SYSTEM_INVARIANT),
+        (adapt_capability_preamble, SourceClass.SYSTEM_INVARIANT),
+        (adapt_thread_resume_block, SourceClass.RUNTIME_STATE),
+        (adapt_session_skills_block, SourceClass.EPISODE),
+        (adapt_dispatch_intent_block, SourceClass.RUNTIME_STATE),
+        (adapt_plan_open_block, SourceClass.RUNTIME_STATE),
+        (adapt_turn_state_block, SourceClass.RUNTIME_STATE),
+        (adapt_turn_bridge_block, SourceClass.AGENT_OPINION),
+        (adapt_peer_block, SourceClass.AGENT_OPINION),
+        (adapt_envelope_follow_up_block, SourceClass.SYSTEM_INVARIANT),
+        (adapt_agent_tool_rules_block, SourceClass.SYSTEM_INVARIANT),
+    ],
+)
+def test_single_block_adapters_map_content_to_the_expected_source(adapter_fn, expected_source: SourceClass) -> None:
+    item = adapter_fn("some rendered block content")
+    assert item is not None
+    assert item.source == expected_source
+    assert item.content == "some rendered block content"
+
+
+@pytest.mark.parametrize(
+    "adapter_fn",
+    [
+        adapt_team_task_block, adapt_objection_block, adapt_challenge_owner_block,
+        adapt_plugin_allowlist_block, adapt_capability_preamble, adapt_thread_resume_block,
+        adapt_session_skills_block, adapt_dispatch_intent_block, adapt_plan_open_block,
+        adapt_turn_state_block, adapt_turn_bridge_block, adapt_peer_block,
+        adapt_envelope_follow_up_block, adapt_agent_tool_rules_block,
+    ],
+)
+def test_single_block_adapters_return_none_for_empty_content(adapter_fn) -> None:
+    assert adapter_fn("") is None
+    assert adapter_fn("   \n  ") is None
+
+
+def test_adapt_mailbox_messages_prefixes_sender_and_skips_incomplete_rows() -> None:
+    rows = [
+        {"id": "mail-1", "from": "codex", "body": "found the root cause", "ts": "2026-07-16T00:00:00Z"},
+        {"id": "", "from": "claude", "body": "no id, dropped"},
+        {"id": "mail-2", "from": "claude", "body": "  "},
+    ]
+    items = adapt_mailbox_messages(rows)
+    assert len(items) == 1
+    assert items[0].item_id == "mailbox:mail-1"
+    assert items[0].source == SourceClass.AGENT_OPINION
+    assert items[0].content == "codex: found the root cause"
+    assert items[0].freshness == "2026-07-16T00:00:00Z"
+
+
+def test_adapt_mailbox_messages_falls_back_to_bare_body_without_sender() -> None:
+    rows = [{"id": "mail-3", "body": "anonymous note"}]
+    items = adapt_mailbox_messages(rows)
+    assert items[0].content == "anonymous note"
 
 
 def test_adapt_shared_context_md_maps_to_project_doc() -> None:

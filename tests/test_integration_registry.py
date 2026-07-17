@@ -207,7 +207,15 @@ def test_fast_bucket_collection_budget():
     # SourceClass.EVIDENCE gap — room/artifacts.py's recent-artifact rows —
     # so CRITIC/REPAIR/SCRIBE can now build a manifest through
     # bundle_recipe.py's slice; previously they always raised).
-    assert count <= 3465, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-16: raised 3465 -> 3497 for the 14 remaining bundle.py
+    # producers (team_task/objection/challenge_owner/plugin_allowlist/
+    # capability_preamble/thread_resume/session_skills/dispatch_intent/
+    # plan_open/turn_state/turn_bridge/peer/envelope_follow_up/
+    # agent_tool_rules) — turned out to be standalone functions in their
+    # own modules, not un-adaptable bundle.py internals as first assumed.
+    # adapt_mailbox_messages/adapt_turn_bridge_block/adapt_peer_block also
+    # close CX1 §3's agent_opinion producer gap.
+    assert count <= 3497, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

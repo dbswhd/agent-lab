@@ -170,3 +170,68 @@ def test_build_manifest_via_recipe_includes_semantic_memory_items_for_repair() -
 def test_build_manifest_via_recipe_empty_inputs_reports_missing_required_sources() -> None:
     with pytest.raises(ContextSelectionError, match="missing required sources"):
         build_manifest_via_recipe(ActivityKind.PLAN, RecipeBundleInputs())
+
+
+def test_build_manifest_via_recipe_wires_the_14_newly_adapted_blocks() -> None:
+    """2026-07-16 -- the 14 producers previously assumed to be un-adaptable
+    bundle.py internals (they're actually standalone functions in their own
+    modules) are now wired through RecipeBundleInputs. PLAN_RECIPE's
+    optional_sources includes AGENT_OPINION, so this is the activity that
+    can actually demonstrate mailbox/peer/turn_bridge inclusion, not just
+    exclusion."""
+    inputs = RecipeBundleInputs(
+        plan_md="# Plan\n\nship it",
+        session_guidance="guidance text",
+        clarify_facts=[{"id": "q1", "answer": "fact", "at": "2026-07-16"}],
+        repo_tree="[Repo tree]\n- src/",
+        agents_md_hierarchy="repo-specific AGENTS.md guidance",
+        reply_policy_guidance_parts=["be concise"],
+        team_task_block="[팀 작업 보드]\n- [pending] fix bug (@codex)",
+        objection_block="[미해결 이의]\n- codex BLOCK -> task-1: needs review",
+        challenge_owner_block="[challenge owner]\n- task-1 owner must respond",
+        plugin_allowlist_block="[claude plugins]\n- allowed: web-search",
+        capability_preamble="[capabilities]\n- can run shell commands",
+        thread_resume_block="[Agent thread resume]\ncontinuing from prior session",
+        dispatch_intent_block="[dispatch intents]\n- lead -> codex: investigate",
+        plan_open_block="[plan 미결]\n- open item 1",
+        turn_state_block="[턴 blackboard]\nanchor: claude R1",
+        turn_bridge_block="[R1 요약 · bridge]\n- codex: found the issue",
+        peer_block="[이번 턴 · 동료 발화]\ncodex: I think we should refactor this",
+        envelope_follow_up_block="Respond using the MESSAGE envelope format.",
+        agent_tool_rules_block="[tool rules]\n- shell access granted this turn",
+        mailbox_messages=[{"id": "mail-1", "from": "codex", "body": "check the logs", "ts": "2026-07-16"}],
+    )
+
+    manifest = build_manifest_via_recipe(ActivityKind.PLAN, inputs)
+
+    included_ids = {item.item_id for item in manifest.included}
+    assert "team_task_block" in included_ids
+    assert "objection_block" in included_ids
+    assert "challenge_owner_block" in included_ids
+    assert "plugin_allowlist_block" in included_ids
+    assert "capability_preamble" in included_ids
+    assert "thread_resume_block" in included_ids
+    assert "dispatch_intent_block" in included_ids
+    assert "plan_open_block" in included_ids
+    assert "turn_state_block" in included_ids
+    assert "turn_bridge_block" in included_ids
+    assert "peer_block" in included_ids
+    assert "envelope_follow_up_block" in included_ids
+    assert "agent_tool_rules_block" in included_ids
+    assert "mailbox:mail-1" in included_ids
+
+
+def test_build_manifest_via_recipe_session_skills_block_is_forbidden_for_execute() -> None:
+    """adapt_session_skills_block maps to EPISODE, which EXECUTE_RECIPE
+    explicitly forbids (a session-skill item shouldn't smuggle unreviewed
+    mission-scoped learning into an execute turn)."""
+    inputs = RecipeBundleInputs(
+        plan_md="# Plan\n\nship it",
+        reply_policy_guidance_parts=["be concise"],
+        clarify_facts=[{"id": "q1", "answer": "fact", "at": "2026-07-16"}],
+        repo_tree="[Repo tree]\n- src/",
+        session_skills_block="## Session skills\n- use the new helper",
+    )
+    manifest = build_manifest_via_recipe(ActivityKind.EXECUTE, inputs)
+    excluded = dict(manifest.excluded)
+    assert excluded.get("session_skills_block") == "forbidden"

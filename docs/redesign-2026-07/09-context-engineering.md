@@ -425,7 +425,13 @@ cache hit보다 stale context 방지가 우선이다.
 
 `tests/test_context_bundle_recipe.py`(26개)로 검증 — phase 매핑(문서화된 gap 포함), 6개 activity 전부의 성공 케이스(CRITIC/REPAIR/SCRIBE는 `artifacts` 입력이 있을 때), `artifacts` 없이 호출하면 여전히 실패하는 회귀 가드, SEMANTIC_MEMORY(wisdom/playbook)가 PLAN에선 not_allowed로 배제되지만 REPAIR에선 실제로 included된다는 것까지 확인. `context/adapters.py`도 `adapt_artifacts` 전용 테스트 2개 추가(`tests/test_context_adapters.py`).
 
-여전히 남은 gap: bundle.py의 나머지 ~10개 producer(mailbox/team_task/objection/challenge_owner/gate_snapshot/dispatch_intent/plugin_allowlist/thread_resume/session_skills/capability_preamble, recent/peer/bridge/turn_state)는 이번 슬라이스가 전혀 안 건드렸다 — bundle.py 내부 리팩터링이 선행돼야 한다.
+**2026-07-16 — 나머지 14개 producer 어댑팅 + 앞선 판단 정정.** 직전 절이 "mailbox/team_task/objection/challenge_owner/dispatch_intent/plugin_allowlist/thread_resume/session_skills/capability_preamble/turn_state/plan_open/turn_bridge/peer/envelope_follow_up/agent_tool_rules는 bundle.py 내부의 private string-appender라 독립 호출 불가능"이라고 적었는데, 이 판단은 틀렸다 — 전부 `room/tasks.py`/`room/mailbox.py`/`room/objections.py`/`plugin_discovery.py`/`room/agent_capabilities.py`/`agent/thread_resume.py`/`skill_drafts.py`/`room/dispatch_intents.py`/`room/context/plan_excerpt.py`/`room/turn_state.py`/`room/context/peer_digest.py`/`reply_policy.py`/`room/context/constraints.py` 각자의 독립 함수였다 — `build_artifacts_block`과 정확히 같은 모양(bundle.py는 그냥 호출해서 문자열로 이어붙일 뿐). 이미 만들어져 있는 결과 문자열을 받는 어댑터라 전부 같은 패턴(`_adapt_single_block` 헬퍼 하나로 공유) — 예외 하나는 `build_mailbox_block`: `mark_delivered`라는 side effect(렌더링하면 읽음 처리됨)가 있어서, 그 대신 읽기 전용인 `unread_for_agent()`의 결과를 받는 `adapt_mailbox_messages`를 만들었다(steer_queue 어댑터가 `drain_steer_follow_up` 대신 `list_steer_queue`를 받는 것과 같은 이유).
+
+SourceClass 매핑: team_task/objection/challenge_owner/thread_resume/dispatch_intent/plan_open/turn_state → RUNTIME_STATE(현재 턴/세션 상태), plugin_allowlist/capability_preamble/envelope_follow_up/agent_tool_rules → SYSTEM_INVARIANT(tool 권한 경계·절차 규칙), session_skills → EPISODE(자기 헤더가 "learned this mission"이라고 명시), **mailbox/turn_bridge/peer → AGENT_OPINION** — 이 셋이 CX1 §3가 "producer 없음"으로 남겨뒀던 `agent_opinion` gap을 실제로 닫는다(동료 agent의 mailbox 메시지·R1 요약·이번 턴 발화는 전부 그 agent 자신의 communication이지 시스템이 만든 사실이 아니다).
+
+`RecipeBundleInputs`에 14개 필드 추가, `build_manifest_via_recipe`가 전부 어댑팅해서 넘기도록 배선. PLAN_RECIPE의 optional_sources가 `{EPISODE, EXTERNAL_CONTENT, AGENT_OPINION}`이라 mailbox/turn_bridge/peer가 실제로 included되는 걸 PLAN activity로 시연(전에는 AGENT_OPINION을 optional로 허용하는 activity가 하나도 시연 대상이 아니었다). EXECUTE_RECIPE가 EPISODE를 forbidden하므로 session_skills_block이 EXECUTE에서 실제로 배제되는 것도 확인.
+
+여전히 out of scope: `_format_grounding_block`(독립 producer 아님, 여전히 어댑팅 안 함), `build_recent_turns_block`/`_build_human_only_recent_block`(전체 대화 transcript — 어떤 SourceClass도 "지금 진행 중인 Human+agent 대화"를 깔끔하게 담지 못한다, 진짜 taxonomy 공백이라 억지로 매핑하지 않음). `bundle.py` 자체는 이번에도 전혀 안 건드림(`git diff` 확인). `tests/test_context_adapters.py`에 30개, `tests/test_context_bundle_recipe.py`에 2개 신규 테스트.
 
 ## 12. 완료 정의
 

@@ -15,35 +15,43 @@ step gated on parity results from this slice, per the CX8 discussion in
 09-context-engineering.md.
 
 **Scope of this slice, deliberately narrow.** `bundle.py` makes roughly two
-dozen distinct producer calls, but most of them (mailbox/team_task/
-objection/challenge_owner/gate_snapshot/dispatch_intent/plugin_allowlist/
-thread_resume/session_skills/capability_preamble, plus the recent/peer/
-bridge/turn_state message-history fields) are private, string-appender-style
-helpers inside `bundle.py` itself — they mutate/append to an in-progress
-`constraints` string rather than returning an independently callable value,
-so wiring them here would mean refactoring `bundle.py`'s internals first,
-which is out of scope for a slice that must not touch the live path. This
-module only covers producers that are BOTH already adapted (see
-`context/adapters.py`) AND cleanly callable on their own: session guidance,
-clarify facts, goal ledger, mission notepad, repo tree, wisdom index hits,
-playbook bullets, AGENTS.md hierarchy, reply-policy guidance parts,
-Room artifacts, and `plan_md` (via `adapt_approved_plan`, added specifically
-for this slice since CX1's registry never catalogued a producer for
-`SourceClass.APPROVED_PLAN` even though every activity recipe except CLARIFY
-requires it).
+dozen distinct producer calls. Earlier iterations of this module assumed
+most of them (mailbox/team_task/objection/challenge_owner/dispatch_intent/
+plugin_allowlist/thread_resume/session_skills/capability_preamble/turn_
+state/plan_open/turn_bridge/peer/envelope_follow_up/agent_tool_rules) were
+private, string-appender-style helpers INSIDE `bundle.py` itself — that
+assumption was wrong. Every one of them is actually a standalone,
+independently-callable function living in ITS OWN module (`room/tasks.py`,
+`room/mailbox.py`, `room/objections.py`, `plugin_discovery.py`,
+`room/agent_capabilities.py`, `agent/thread_resume.py`, `skill_drafts.py`,
+`room/dispatch_intents.py`, `room/context/plan_excerpt.py`,
+`room/turn_state.py`, `room/context/peer_digest.py`, `reply_policy.py`,
+`room/context/constraints.py`) that `bundle.py` merely calls and string-
+concatenates — exactly the same shape as `room/artifacts.py::
+build_artifacts_block`, which `adapt_artifacts` already wraps. 2026-07-16
+closed all of them (see `context/adapters.py`'s
+`adapt_team_task_block`/`adapt_objection_block`/`adapt_challenge_owner_
+block`/`adapt_plugin_allowlist_block`/`adapt_capability_preamble`/
+`adapt_thread_resume_block`/`adapt_session_skills_block`/`adapt_dispatch_
+intent_block`/`adapt_plan_open_block`/`adapt_turn_state_block`/`adapt_turn_
+bridge_block`/`adapt_peer_block`/`adapt_envelope_follow_up_block`/`adapt_
+agent_tool_rules_block`/`adapt_mailbox_messages`).
 
-**2026-07-16 — EVIDENCE gap closed.** `adapt_artifacts` (wrapping
-`room/artifacts.py::recent_artifacts_for_agent`/`list_artifacts`, the
-closest existing EVIDENCE-shaped producer — CX1's registry never catalogued
-it since it lives under `room/`, not `context/`) now feeds
-`SourceClass.EVIDENCE`, so CRITIC/REPAIR/SCRIBE can build a manifest through
-this slice when the caller supplies `artifacts` — previously they could
-never succeed at all. Still not covered by this slice at all: the ~10
-remaining bundle.py producers (mailbox/team_task/objection/challenge_owner/
-gate_snapshot/dispatch_intent/plugin_allowlist/thread_resume/session_skills/
-capability_preamble, plus recent/peer/bridge/turn_state) — those need
-bundle.py's internals refactored into standalone functions first, which
-stays out of scope to keep the live path untouched.
+**`adapt_mailbox_messages` closes CX1 §3's `agent_opinion` gap** (so does
+`adapt_turn_bridge_block`/`adapt_peer_block`): a peer Room agent's direct
+mailbox message or in-turn chat is that peer's own communication, not a
+system-produced fact — the CX1 registry flagged `SourceClass.AGENT_OPINION`
+as having no confirmed producer; these three do.
+
+**Still genuinely out of scope:** `_format_grounding_block` (not an
+independent producer — see `context/adapters.py`'s module docstring),
+`agent_opinion` from anywhere OTHER than mailbox/peer/bridge, and
+`build_recent_turns_block`/`_build_human_only_recent_block` (the full
+conversation transcript) — no `SourceClass` cleanly captures "the ongoing
+Human+agent conversation," which is a genuine taxonomy gap, not something
+this module should paper over with a bad mapping. `bundle.py` itself
+remains completely untouched by any of this (verify with `git diff --
+src/agent_lab/context/bundle.py`).
 """
 
 from __future__ import annotations
@@ -53,16 +61,31 @@ from typing import Any
 
 from agent_lab.context.activity_recipes import recipe_for
 from agent_lab.context.adapters import (
+    adapt_agent_tool_rules_block,
     adapt_agents_md_hierarchy,
     adapt_approved_plan,
     adapt_artifacts,
+    adapt_capability_preamble,
+    adapt_challenge_owner_block,
     adapt_clarify_facts,
+    adapt_dispatch_intent_block,
+    adapt_envelope_follow_up_block,
     adapt_goal_ledger,
+    adapt_mailbox_messages,
     adapt_mission_notepad,
+    adapt_objection_block,
+    adapt_peer_block,
+    adapt_plan_open_block,
     adapt_playbook_bullets,
+    adapt_plugin_allowlist_block,
     adapt_repo_tree,
     adapt_reply_policy_guidance,
     adapt_session_guidance,
+    adapt_session_skills_block,
+    adapt_team_task_block,
+    adapt_thread_resume_block,
+    adapt_turn_bridge_block,
+    adapt_turn_state_block,
     adapt_wisdom_index_hits,
 )
 from agent_lab.context.recipe import ActivityKind, ContextItem, ContextManifest, select_context
@@ -131,6 +154,21 @@ class RecipeBundleInputs:
     agents_md_hierarchy: str = ""
     reply_policy_guidance_parts: list[str] = field(default_factory=list)
     artifacts: list[dict[str, Any]] = field(default_factory=list)
+    team_task_block: str = ""
+    objection_block: str = ""
+    challenge_owner_block: str = ""
+    plugin_allowlist_block: str = ""
+    capability_preamble: str = ""
+    thread_resume_block: str = ""
+    session_skills_block: str = ""
+    dispatch_intent_block: str = ""
+    plan_open_block: str = ""
+    turn_state_block: str = ""
+    turn_bridge_block: str = ""
+    peer_block: str = ""
+    envelope_follow_up_block: str = ""
+    agent_tool_rules_block: str = ""
+    mailbox_messages: list[dict[str, Any]] = field(default_factory=list)
 
 
 def build_manifest_via_recipe(activity: ActivityKind, inputs: RecipeBundleInputs) -> ContextManifest:
@@ -159,6 +197,35 @@ def build_manifest_via_recipe(activity: ActivityKind, inputs: RecipeBundleInputs
         items.append(item)
     items.extend(adapt_reply_policy_guidance(inputs.reply_policy_guidance_parts))
     items.extend(adapt_artifacts(inputs.artifacts))
+    if (item := adapt_team_task_block(inputs.team_task_block)) is not None:
+        items.append(item)
+    if (item := adapt_objection_block(inputs.objection_block)) is not None:
+        items.append(item)
+    if (item := adapt_challenge_owner_block(inputs.challenge_owner_block)) is not None:
+        items.append(item)
+    if (item := adapt_plugin_allowlist_block(inputs.plugin_allowlist_block)) is not None:
+        items.append(item)
+    if (item := adapt_capability_preamble(inputs.capability_preamble)) is not None:
+        items.append(item)
+    if (item := adapt_thread_resume_block(inputs.thread_resume_block)) is not None:
+        items.append(item)
+    if (item := adapt_session_skills_block(inputs.session_skills_block)) is not None:
+        items.append(item)
+    if (item := adapt_dispatch_intent_block(inputs.dispatch_intent_block)) is not None:
+        items.append(item)
+    if (item := adapt_plan_open_block(inputs.plan_open_block)) is not None:
+        items.append(item)
+    if (item := adapt_turn_state_block(inputs.turn_state_block)) is not None:
+        items.append(item)
+    if (item := adapt_turn_bridge_block(inputs.turn_bridge_block)) is not None:
+        items.append(item)
+    if (item := adapt_peer_block(inputs.peer_block)) is not None:
+        items.append(item)
+    if (item := adapt_envelope_follow_up_block(inputs.envelope_follow_up_block)) is not None:
+        items.append(item)
+    if (item := adapt_agent_tool_rules_block(inputs.agent_tool_rules_block)) is not None:
+        items.append(item)
+    items.extend(adapt_mailbox_messages(inputs.mailbox_messages))
 
     need = recipe_for(activity)
     return select_context(need, tuple(items))

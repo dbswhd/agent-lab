@@ -92,7 +92,8 @@ test.beforeEach(async ({ page }) => {
 test("workspace-only session and scalable composer models", async ({
   page,
 }) => {
-  await expect(page.locator(".composer-model-chip")).toHaveCount(6);
+  await expect(page.locator(".composer-model-select")).toBeVisible();
+  await expect(page.locator(".composer-model-select__more")).toHaveText("+5");
   await page.getByRole("button", { name: "+ 새 Session" }).click();
   const dialog = page.getByRole("dialog", { name: "새 세션" });
   await expect(dialog).toBeVisible();

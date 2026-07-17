@@ -29,9 +29,7 @@ def test_lease_claim_heartbeat_release_survives_store_restart(tmp_path: Path) ->
     store = ActivityLeaseStore(path)
     lease = store.claim("activity-1", "mission-1", "worker-a", now=10.0, ttl_s=5.0)
 
-    renewed = ActivityLeaseStore(path).heartbeat(
-        "activity-1", "worker-a", lease.token, now=12.0, ttl_s=5.0
-    )
+    renewed = ActivityLeaseStore(path).heartbeat("activity-1", "worker-a", lease.token, now=12.0, ttl_s=5.0)
     assert renewed.expires_at == 17.0
     ActivityLeaseStore(path).release("activity-1", "worker-a", lease.token, now=13.0)
     assert ActivityLeaseStore(path).snapshot() == ()

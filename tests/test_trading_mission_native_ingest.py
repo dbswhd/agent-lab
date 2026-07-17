@@ -16,6 +16,8 @@ from agent_lab.trading_mission.native_ingest import (
 )
 from agent_lab.trading_mission.native_ingest import _normalize_native_report
 
+pytestmark = [pytest.mark.integration, pytest.mark.quant]
+
 
 def _write_ready_session(session: Path, *, mission_id: str = "2026-06-13-native") -> None:
     artifacts = session / "artifacts"

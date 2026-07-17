@@ -191,15 +191,22 @@ def _run_meta(phase: str, variant: Variant, *, enabled: bool = True) -> dict[str
         ]
         run_meta["objections"] = [
             {
-                "id": "obj-1", "from": "codex", "act": "CHALLENGE", "status": "open",
+                "id": "obj-1",
+                "from": "codex",
+                "act": "CHALLENGE",
+                "status": "open",
                 "body": "should /health also report DB connectivity, not just process liveness?",
-                "turn": 1, "ts": "2026-07-16T00:00:05Z",
+                "turn": 1,
+                "ts": "2026-07-16T00:00:05Z",
             }
         ]
         run_meta["mailbox"] = [
             {
-                "id": "mail-1", "from": "codex", "to": variant.agent,
-                "body": "left a comment on the /health PR about timeout handling", "ts": "2026-07-16T00:00:06Z",
+                "id": "mail-1",
+                "from": "codex",
+                "to": variant.agent,
+                "body": "left a comment on the /health PR about timeout handling",
+                "ts": "2026-07-16T00:00:06Z",
                 "read": False,
             }
         ]

@@ -36,3 +36,6 @@ AI 개발 작업을 계획·승인·격리 실행·검증하는 Human-in-the-loo
 
 ## 현재 작업 맥락
 (Human이 채움 — 진행 중 작업·최근 결정)
+
+- 2026-07-17: `make ci` red(포맷 드리프트 65개 파일) 및 통합 lane 4건 실패(model-policy env leak · trading native-ingest quant marker 누락) 수정, macOS Tauri `cargo test` 컴파일 실패(윈도우 전용 테스트 cfg 누락) 수정, GH Actions CI에 웹 vitest(gate)/playwright(non-blocking) 스텝 추가. 상세는 `docs/NOW.md` §"라이브 dogfood 트랙" 최신 스냅샷 참고.
+- 열린 이슈: F7 7일 시계 마감(2026-07-16) 경과 — Human 결정 대기(`make f7-dogfood-report` 실측 FAIL). Playwright question 테스트 1건은 전체 병렬 실행에서 간헐적으로 실패(단독 실행 통과) — root cause 미확정.

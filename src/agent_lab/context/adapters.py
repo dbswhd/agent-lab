@@ -286,8 +286,11 @@ def adapt_team_task_block(content: str) -> ContextItem | None:
     """`room/tasks.py::build_team_task_block` — the current team task
     board (owner/status per task, claimable items)."""
     return _adapt_single_block(
-        content, item_id="team_task_block", source=SourceClass.RUNTIME_STATE,
-        authority=AUTHORITY_HIGH, provenance="room/tasks.py::build_team_task_block",
+        content,
+        item_id="team_task_block",
+        source=SourceClass.RUNTIME_STATE,
+        authority=AUTHORITY_HIGH,
+        provenance="room/tasks.py::build_team_task_block",
     )
 
 
@@ -295,8 +298,11 @@ def adapt_objection_block(content: str) -> ContextItem | None:
     """`room/objections.py::build_objection_block` — unresolved BLOCK/
     CHALLENGE objections from peers, needing Human or AMEND resolution."""
     return _adapt_single_block(
-        content, item_id="objection_block", source=SourceClass.RUNTIME_STATE,
-        authority=AUTHORITY_HIGH, provenance="room/objections.py::build_objection_block",
+        content,
+        item_id="objection_block",
+        source=SourceClass.RUNTIME_STATE,
+        authority=AUTHORITY_HIGH,
+        provenance="room/objections.py::build_objection_block",
     )
 
 
@@ -304,8 +310,11 @@ def adapt_challenge_owner_block(content: str) -> ContextItem | None:
     """`room/objections.py::build_challenge_owner_block` — E3: the task
     owner must AMEND or justify while a CHALLENGE against their task is open."""
     return _adapt_single_block(
-        content, item_id="challenge_owner_block", source=SourceClass.RUNTIME_STATE,
-        authority=AUTHORITY_HIGH, provenance="room/objections.py::build_challenge_owner_block",
+        content,
+        item_id="challenge_owner_block",
+        source=SourceClass.RUNTIME_STATE,
+        authority=AUTHORITY_HIGH,
+        provenance="room/objections.py::build_challenge_owner_block",
     )
 
 
@@ -314,8 +323,11 @@ def adapt_plugin_allowlist_block(content: str) -> ContextItem | None:
     MCP/skills Human enabled for this agent this session (a tool-grant
     boundary, hence SYSTEM_INVARIANT rather than RUNTIME_STATE)."""
     return _adapt_single_block(
-        content, item_id="plugin_allowlist_block", source=SourceClass.SYSTEM_INVARIANT,
-        authority=AUTHORITY_TOP, provenance="plugin_discovery.py::build_plugin_allowlist_block",
+        content,
+        item_id="plugin_allowlist_block",
+        source=SourceClass.SYSTEM_INVARIANT,
+        authority=AUTHORITY_TOP,
+        provenance="plugin_discovery.py::build_plugin_allowlist_block",
     )
 
 
@@ -323,8 +335,11 @@ def adapt_capability_preamble(content: str) -> ContextItem | None:
     """`room/agent_capabilities.py::capability_preamble_block` — what tools/
     capabilities this agent has this round (another tool-grant boundary)."""
     return _adapt_single_block(
-        content, item_id="capability_preamble", source=SourceClass.SYSTEM_INVARIANT,
-        authority=AUTHORITY_TOP, provenance="room/agent_capabilities.py::capability_preamble_block",
+        content,
+        item_id="capability_preamble",
+        source=SourceClass.SYSTEM_INVARIANT,
+        authority=AUTHORITY_TOP,
+        provenance="room/agent_capabilities.py::capability_preamble_block",
     )
 
 
@@ -332,8 +347,11 @@ def adapt_thread_resume_block(content: str) -> ContextItem | None:
     """`agent/thread_resume.py::build_agent_thread_resume_block` — prior-
     session continuity context when this agent's thread was rebound."""
     return _adapt_single_block(
-        content, item_id="thread_resume_block", source=SourceClass.RUNTIME_STATE,
-        authority=AUTHORITY_MEDIUM_HIGH, provenance="agent/thread_resume.py::build_agent_thread_resume_block",
+        content,
+        item_id="thread_resume_block",
+        source=SourceClass.RUNTIME_STATE,
+        authority=AUTHORITY_MEDIUM_HIGH,
+        provenance="agent/thread_resume.py::build_agent_thread_resume_block",
     )
 
 
@@ -343,8 +361,11 @@ def adapt_session_skills_block(content: str) -> ContextItem | None:
     mission"), hence EPISODE rather than the longer-lived SEMANTIC_MEMORY
     playbook/wisdom-index sources."""
     return _adapt_single_block(
-        content, item_id="session_skills_block", source=SourceClass.EPISODE,
-        authority=AUTHORITY_MEDIUM, provenance="skill_drafts.py::build_session_skills_block",
+        content,
+        item_id="session_skills_block",
+        source=SourceClass.EPISODE,
+        authority=AUTHORITY_MEDIUM,
+        provenance="skill_drafts.py::build_session_skills_block",
     )
 
 
@@ -352,8 +373,11 @@ def adapt_dispatch_intent_block(content: str) -> ContextItem | None:
     """`room/dispatch_intents.py::build_dispatch_intent_block` — pending
     DELEGATE/DISPATCH intents targeting this agent or issued by the lead."""
     return _adapt_single_block(
-        content, item_id="dispatch_intent_block", source=SourceClass.RUNTIME_STATE,
-        authority=AUTHORITY_HIGH, provenance="room/dispatch_intents.py::build_dispatch_intent_block",
+        content,
+        item_id="dispatch_intent_block",
+        source=SourceClass.RUNTIME_STATE,
+        authority=AUTHORITY_HIGH,
+        provenance="room/dispatch_intents.py::build_dispatch_intent_block",
     )
 
 
@@ -363,8 +387,11 @@ def adapt_plan_open_block(content: str) -> ContextItem | None:
     (`adapt_approved_plan`): these are explicitly NOT-yet-resolved items,
     not the confirmed plan itself."""
     return _adapt_single_block(
-        content, item_id="plan_open_block", source=SourceClass.RUNTIME_STATE,
-        authority=AUTHORITY_HIGH, provenance="room/context/plan_excerpt.py::build_plan_open_block",
+        content,
+        item_id="plan_open_block",
+        source=SourceClass.RUNTIME_STATE,
+        authority=AUTHORITY_HIGH,
+        provenance="room/context/plan_excerpt.py::build_plan_open_block",
     )
 
 
@@ -372,8 +399,11 @@ def adapt_turn_state_block(content: str) -> ContextItem | None:
     """`room/turn_state.py::render_turn_state_block` — the structured
     turn-state blackboard (anchor, open issues, decisions, pending agents)."""
     return _adapt_single_block(
-        content, item_id="turn_state_block", source=SourceClass.RUNTIME_STATE,
-        authority=AUTHORITY_HIGH, provenance="room/turn_state.py::render_turn_state_block",
+        content,
+        item_id="turn_state_block",
+        source=SourceClass.RUNTIME_STATE,
+        authority=AUTHORITY_HIGH,
+        provenance="room/turn_state.py::render_turn_state_block",
     )
 
 
@@ -384,8 +414,11 @@ def adapt_turn_bridge_block(content: str) -> ContextItem | None:
     facts, hence AGENT_OPINION — the same taxonomy slot CX1 §3 flagged as
     having no confirmed producer; peer chat content is the closest fit."""
     return _adapt_single_block(
-        content, item_id="turn_bridge_block", source=SourceClass.AGENT_OPINION,
-        authority=AUTHORITY_MEDIUM, provenance="room/context/peer_digest.py::build_turn_bridge_block",
+        content,
+        item_id="turn_bridge_block",
+        source=SourceClass.AGENT_OPINION,
+        authority=AUTHORITY_MEDIUM,
+        provenance="room/context/peer_digest.py::build_turn_bridge_block",
     )
 
 
@@ -393,8 +426,11 @@ def adapt_peer_block(content: str) -> ContextItem | None:
     """`room/context/peer_digest.py::format_peer_block` — this turn's peer
     agent messages. See `adapt_turn_bridge_block` re: AGENT_OPINION mapping."""
     return _adapt_single_block(
-        content, item_id="peer_block", source=SourceClass.AGENT_OPINION,
-        authority=AUTHORITY_MEDIUM, provenance="room/context/peer_digest.py::format_peer_block",
+        content,
+        item_id="peer_block",
+        source=SourceClass.AGENT_OPINION,
+        authority=AUTHORITY_MEDIUM,
+        provenance="room/context/peer_digest.py::format_peer_block",
     )
 
 
@@ -403,8 +439,11 @@ def adapt_envelope_follow_up_block(content: str) -> ContextItem | None:
     follow-up instructions for this turn (a procedural rule, hence
     SYSTEM_INVARIANT rather than RUNTIME_STATE)."""
     return _adapt_single_block(
-        content, item_id="envelope_follow_up_block", source=SourceClass.SYSTEM_INVARIANT,
-        authority=AUTHORITY_TOP, provenance="reply_policy.py::envelope_follow_up_block",
+        content,
+        item_id="envelope_follow_up_block",
+        source=SourceClass.SYSTEM_INVARIANT,
+        authority=AUTHORITY_TOP,
+        provenance="reply_policy.py::envelope_follow_up_block",
     )
 
 
@@ -412,8 +451,11 @@ def adapt_agent_tool_rules_block(content: str) -> ContextItem | None:
     """`room/context/constraints.py::agent_tool_rules` — which tools this
     agent may use and under what rules this turn."""
     return _adapt_single_block(
-        content, item_id="agent_tool_rules_block", source=SourceClass.SYSTEM_INVARIANT,
-        authority=AUTHORITY_TOP, provenance="room/context/constraints.py::agent_tool_rules",
+        content,
+        item_id="agent_tool_rules_block",
+        source=SourceClass.SYSTEM_INVARIANT,
+        authority=AUTHORITY_TOP,
+        provenance="room/context/constraints.py::agent_tool_rules",
     )
 
 

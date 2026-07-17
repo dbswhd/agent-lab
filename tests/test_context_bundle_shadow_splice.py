@@ -56,13 +56,21 @@ def test_flag_on_produces_byte_identical_render_to_flag_off(monkeypatch) -> None
     not change a single character of what build_context_bundle returns."""
     run_meta_off: dict = {}
     bundle_off = build_context_bundle(
-        "topic", _messages(), "cursor", format_thread=_format_thread, run_meta=run_meta_off,
+        "topic",
+        _messages(),
+        "cursor",
+        format_thread=_format_thread,
+        run_meta=run_meta_off,
     )
 
     monkeypatch.setenv("AGENT_LAB_CONTEXT_RECIPE", "1")
     run_meta_on: dict = {}
     bundle_on = build_context_bundle(
-        "topic", _messages(), "cursor", format_thread=_format_thread, run_meta=run_meta_on,
+        "topic",
+        _messages(),
+        "cursor",
+        format_thread=_format_thread,
+        run_meta=run_meta_on,
     )
 
     assert bundle_on.render() == bundle_off.render()
@@ -74,18 +82,27 @@ def test_flag_on_produces_byte_identical_render_on_the_slim_path_too(monkeypatch
     BEFORE build_context_bundle's own tail ever runs -- this is the second,
     separately-spliced shadow call site, and needs the same byte-identical
     guarantee."""
+
     def _discuss_run_meta() -> dict:
         return {"mission_loop": {"enabled": True, "phase": "DISCUSS"}}
 
     run_meta_off = _discuss_run_meta()
     bundle_off = build_context_bundle(
-        "topic", _messages(), "cursor", format_thread=_format_thread, run_meta=run_meta_off,
+        "topic",
+        _messages(),
+        "cursor",
+        format_thread=_format_thread,
+        run_meta=run_meta_off,
     )
 
     monkeypatch.setenv("AGENT_LAB_CONTEXT_RECIPE", "1")
     run_meta_on = _discuss_run_meta()
     bundle_on = build_context_bundle(
-        "topic", _messages(), "cursor", format_thread=_format_thread, run_meta=run_meta_on,
+        "topic",
+        _messages(),
+        "cursor",
+        format_thread=_format_thread,
+        run_meta=run_meta_on,
     )
 
     assert bundle_on.render() == bundle_off.render()

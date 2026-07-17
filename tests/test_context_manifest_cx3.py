@@ -43,14 +43,24 @@ NEED = ContextNeed(
 def test_secret_labeled_item_is_redacted_in_the_manifest() -> None:
     items = (
         ContextItem(
-            "plan", SourceClass.APPROVED_PLAN, "ship it",
-            authority=100, relevance=100, estimated_tokens=4,
-            provenance="plan.md#rev3", security_label="project",
+            "plan",
+            SourceClass.APPROVED_PLAN,
+            "ship it",
+            authority=100,
+            relevance=100,
+            estimated_tokens=4,
+            provenance="plan.md#rev3",
+            security_label="project",
         ),
         ContextItem(
-            "api-key", SourceClass.EVIDENCE, "sk-live-abc123",
-            authority=50, relevance=50, estimated_tokens=4,
-            provenance="evidence.jsonl#7", security_label="secret",
+            "api-key",
+            SourceClass.EVIDENCE,
+            "sk-live-abc123",
+            authority=50,
+            relevance=50,
+            estimated_tokens=4,
+            provenance="evidence.jsonl#7",
+            security_label="secret",
         ),
     )
 
@@ -68,13 +78,23 @@ def test_secret_labeled_item_is_redacted_in_the_manifest() -> None:
 def test_no_raw_content_for_any_redacted_label_reaches_the_manifest(label: str) -> None:
     items = (
         ContextItem(
-            "plan", SourceClass.APPROVED_PLAN, "ship it",
-            authority=100, relevance=100, estimated_tokens=4, provenance="plan.md",
+            "plan",
+            SourceClass.APPROVED_PLAN,
+            "ship it",
+            authority=100,
+            relevance=100,
+            estimated_tokens=4,
+            provenance="plan.md",
         ),
         ContextItem(
-            "sensitive", SourceClass.EVIDENCE, "raw sensitive payload",
-            authority=50, relevance=50, estimated_tokens=4,
-            provenance="evidence.jsonl", security_label=label,
+            "sensitive",
+            SourceClass.EVIDENCE,
+            "raw sensitive payload",
+            authority=50,
+            relevance=50,
+            estimated_tokens=4,
+            provenance="evidence.jsonl",
+            security_label=label,
         ),
     )
 
@@ -89,13 +109,23 @@ def test_pii_passes_through_unredacted_pending_cx6_pseudonymization() -> None:
     PERSON_1/EMAIL_1-style tokens via a token registry), not CX3's."""
     items = (
         ContextItem(
-            "plan", SourceClass.APPROVED_PLAN, "ship it",
-            authority=100, relevance=100, estimated_tokens=4, provenance="plan.md",
+            "plan",
+            SourceClass.APPROVED_PLAN,
+            "ship it",
+            authority=100,
+            relevance=100,
+            estimated_tokens=4,
+            provenance="plan.md",
         ),
         ContextItem(
-            "contact", SourceClass.EVIDENCE, "jane@example.com",
-            authority=50, relevance=50, estimated_tokens=4,
-            provenance="evidence.jsonl", security_label="pii",
+            "contact",
+            SourceClass.EVIDENCE,
+            "jane@example.com",
+            authority=50,
+            relevance=50,
+            estimated_tokens=4,
+            provenance="evidence.jsonl",
+            security_label="pii",
         ),
     )
 
@@ -108,9 +138,14 @@ def test_pii_passes_through_unredacted_pending_cx6_pseudonymization() -> None:
 def test_public_and_project_labels_are_not_redacted() -> None:
     items = (
         ContextItem(
-            "plan", SourceClass.APPROVED_PLAN, "ship it",
-            authority=100, relevance=100, estimated_tokens=4,
-            provenance="plan.md", security_label="public",
+            "plan",
+            SourceClass.APPROVED_PLAN,
+            "ship it",
+            authority=100,
+            relevance=100,
+            estimated_tokens=4,
+            provenance="plan.md",
+            security_label="public",
         ),
     )
 
@@ -128,8 +163,13 @@ def test_missing_required_source_surfaces_as_an_error() -> None:
 def test_manifest_provenance_gaps_flags_items_with_no_provenance() -> None:
     items = (
         ContextItem(
-            "plan", SourceClass.APPROVED_PLAN, "ship it",
-            authority=100, relevance=100, estimated_tokens=4, provenance="",
+            "plan",
+            SourceClass.APPROVED_PLAN,
+            "ship it",
+            authority=100,
+            relevance=100,
+            estimated_tokens=4,
+            provenance="",
         ),
     )
 
@@ -141,8 +181,13 @@ def test_manifest_provenance_gaps_flags_items_with_no_provenance() -> None:
 def test_manifest_provenance_gaps_is_empty_when_every_item_has_provenance() -> None:
     items = (
         ContextItem(
-            "plan", SourceClass.APPROVED_PLAN, "ship it",
-            authority=100, relevance=100, estimated_tokens=4, provenance="plan.md#rev3",
+            "plan",
+            SourceClass.APPROVED_PLAN,
+            "ship it",
+            authority=100,
+            relevance=100,
+            estimated_tokens=4,
+            provenance="plan.md#rev3",
         ),
     )
 

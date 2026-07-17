@@ -208,14 +208,26 @@ def main() -> int:
     (args.artifact_dir / "soak-allowlist.txt").write_text(allowlist + "\n", encoding="utf-8")
     env = {**os.environ, "AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS": allowlist}
     verify = subprocess.run(
-        [sys.executable, str(ROOT / "scripts" / "mission_dual_write_verify.py"), "--sessions", str(args.sessions), "--cohort"],
+        [
+            sys.executable,
+            str(ROOT / "scripts" / "mission_dual_write_verify.py"),
+            "--sessions",
+            str(args.sessions),
+            "--cohort",
+        ],
         capture_output=True,
         text=True,
         check=False,
         env=env,
     )
     audit = subprocess.run(
-        [sys.executable, str(ROOT / "scripts" / "mission_dual_write_journal_audit.py"), "--sessions", str(args.sessions), "--cohort"],
+        [
+            sys.executable,
+            str(ROOT / "scripts" / "mission_dual_write_journal_audit.py"),
+            "--sessions",
+            str(args.sessions),
+            "--cohort",
+        ],
         capture_output=True,
         text=True,
         check=False,
@@ -265,7 +277,7 @@ def main() -> int:
     ]
     for i, row in enumerate(rows, 1):
         lines.append(
-            f"| {i} | `{row['session_id']}` | {row.get('mirrored')} | {row.get('approve_status')} | {row.get('at','')[:19]} |"
+            f"| {i} | `{row['session_id']}` | {row.get('mirrored')} | {row.get('approve_status')} | {row.get('at', '')[:19]} |"
         )
     lines.extend(
         [
@@ -280,7 +292,17 @@ def main() -> int:
         ]
     )
     (args.artifact_dir / "SOAK.md").write_text("\n".join(lines), encoding="utf-8")
-    print(json.dumps({"pass": report["pass"], "completed_turns": len(rows), "verify": report["verify"], "journal_audit": report["journal_audit"]}, indent=2))
+    print(
+        json.dumps(
+            {
+                "pass": report["pass"],
+                "completed_turns": len(rows),
+                "verify": report["verify"],
+                "journal_audit": report["journal_audit"],
+            },
+            indent=2,
+        )
+    )
     return 0 if report["pass"] else 1
 
 

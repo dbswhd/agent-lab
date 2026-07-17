@@ -71,16 +71,16 @@ dogfood 시나리오). 둘 다 mock-only, dogfood 무관.
 
 ### 지금 — 라이브 dogfood 트랙 (`scripts/dogfood_track.py`, `make dogfood-track` 재확인)
 
-2026-07-09 기준 1/6 닫힘:
+**2026-07-17 기준 3/6 닫힘** (`make dogfood-track` 재실행 결과; 아래 표는 이 스냅샷으로 갱신 — 문서가 낡으면 `make dogfood-track` 실측이 맞다):
 
 | 게이트 | 소스 ID | 상태 | 다음 |
 |--------|---------|------|------|
-| **P0-5** S1 lift + explore | WORKFLOW **P0-5** · NORTH-STAR **N1** | ✅ 닫힘 (live ledger `by_source.history.n=3`) | — |
-| **F7** repo_map/compaction ON/OFF | NORTH-STAR **F7** | 열림 — 시계 재시작(마감 2026-07-16) | 7일 사용 → `make f7-dogfood-report` → `make dogfood-track-f7-decision DECISION=ON\|OFF` |
+| **P0-5** S1 lift + explore | WORKFLOW **P0-5** · NORTH-STAR **N1** | ✅ 닫힘 (live ledger) | — |
+| **F7** repo_map/compaction ON/OFF | NORTH-STAR **F7** | 열림 — **7일 시계 마감(2026-07-16) 경과, 미결정.** `make f7-dogfood-report` 실측: `repo_map_coverage_70` FAIL(17.9%/70%), `budget_median_under_90` PASS. Human 결정 필요(재시작 vs OFF 확정) | `make f7-dogfood-report` 결과를 Human에게 제시 → `make dogfood-track-f7-decision DECISION=ON\|OFF` 또는 `make dogfood-track-f7-start`로 시계 재시작 |
 | **N4-D3** escalation_rate_by_level n≥10/level | NORTH-STAR **§1.4.1** | 열림 | supervisor dogfood로 L0~L3 전개 → `make feedback-report JSON=1` |
-| **CATALOG** dogfood-v1 suite coverage | — | 열림 | `make dogfood-suite-checklist` · live Room · `make dogfood-progress-record ID=… SESSION=…` |
+| **CATALOG** dogfood-v1 suite coverage | — | ✅ 닫힘 | — |
 | **HS-M5** addressable + Human harness_patch merge 1건 | — | 열림 | `python scripts/propose_harness.py --mode list` → propose → Inbox approve → `make dogfood-track-hs-m5-merge` |
-| **N1-30** dogfood-first 만료 검토 (history.n≥30) | — | 열림 (현재 3) | 계속 supervisor dogfood |
+| **N1-30** dogfood-first 만료 검토 (history.n≥30) | — | ✅ 닫힘 (live ledger `eligible=812`, `by_source.history.n=236`) | — |
 
 시작: `eval "$(make -s dogfood-track-env)" && make dev`(또는 `make api`) → 라이브 세션 진행 → 중간 gate는 `make dogfood-live-gates-watch SESSION_ID=<id>`(수집 아님, Question/MCP/execute 자동 처리). 세션 후 수집은 `feedback-report` / `dogfood-progress-record` / `dogfood-track` 별도 실행.
 

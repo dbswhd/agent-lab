@@ -207,7 +207,9 @@ def build_manifest_via_recipe(activity: ActivityKind, inputs: RecipeBundleInputs
         items.append(item)
     items.extend(adapt_clarify_facts(inputs.clarify_facts))
     items.extend(adapt_goal_ledger(inputs.goal_ledger))
-    if (item := adapt_mission_notepad(inputs.mission_notepad, session_id=inputs.mission_notepad_session_id)) is not None:
+    if (
+        item := adapt_mission_notepad(inputs.mission_notepad, session_id=inputs.mission_notepad_session_id)
+    ) is not None:
         items.append(item)
     if (item := adapt_repo_tree(inputs.repo_tree, commit_sha=inputs.repo_tree_commit_sha)) is not None:
         items.append(item)

@@ -1,9 +1,24 @@
 from __future__ import annotations
 
-from agent_lab.mission.activity import ActivityState, AwaitHuman, StartActivity, apply_activity_event, decide_activity, new_activity
+from agent_lab.mission.activity import (
+    ActivityState,
+    AwaitHuman,
+    StartActivity,
+    apply_activity_event,
+    decide_activity,
+    new_activity,
+)
 from agent_lab.mission.decision_queue import AnswerDecision, apply_decision_event, decide_decision, new_decision
 from agent_lab.mission.human_bridge import resolve_block, resume_activity
-from agent_lab.mission.kernel import ApprovePlan, BlockExecution, MissionState, OpenPlan, apply_event, decide, new_mission
+from agent_lab.mission.kernel import (
+    ApprovePlan,
+    BlockExecution,
+    MissionState,
+    OpenPlan,
+    apply_event,
+    decide,
+    new_mission,
+)
 
 
 def test_answered_decision_resumes_waiting_activity() -> None:

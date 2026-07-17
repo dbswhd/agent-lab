@@ -360,7 +360,9 @@ def test_merge_confirm_closes_orphan_gate_without_legacy_inbox(tmp_path: Path, m
     application = MissionApplication(folder, "ship")
     application.approve_plan()
     gate_id = "inbox-orphan-gate"
-    mirror_inbox_creation(folder, item_id=gate_id, kind="question", reason="mission circuit_breaker: structural_execution_failure")
+    mirror_inbox_creation(
+        folder, item_id=gate_id, kind="question", reason="mission circuit_breaker: structural_execution_failure"
+    )
     assert {g.gate_id for g in application.load().open_gates} == {gate_id}
 
     result = mirror_execution_transition(
@@ -594,7 +596,11 @@ def test_execution_write_authority_commit_approve(tmp_path: Path, monkeypatch) -
     monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
     monkeypatch.setenv("AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY", "1")
 
-    from agent_lab.mission.dual_write import commit_execution_transition, execution_write_authority_enabled, mirror_execution_transition
+    from agent_lab.mission.dual_write import (
+        commit_execution_transition,
+        execution_write_authority_enabled,
+        mirror_execution_transition,
+    )
 
     assert execution_write_authority_enabled(folder) is False
     MissionApplication(folder, "ship").approve_plan()

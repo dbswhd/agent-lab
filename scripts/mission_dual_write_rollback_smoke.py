@@ -30,7 +30,9 @@ def main() -> int:
 
     fresh = _init_session(args.sessions, args.fresh_session)
     set_plan_workflow_phase(fresh, "HUMAN_PENDING")
-    fresh_status, fresh_body = _http_json("POST", f"{base}/api/sessions/{args.fresh_session}/plan/approve", {"goal": "rollback"})
+    fresh_status, fresh_body = _http_json(
+        "POST", f"{base}/api/sessions/{args.fresh_session}/plan/approve", {"goal": "rollback"}
+    )
     journal = fresh / ".agent-lab" / "mission-events.jsonl"
 
     mirrored_status, mirrored_body = _http_json(

@@ -79,7 +79,9 @@ def run_live_routes(base_url: str, sessions_root: Path, session_ids: list[str]) 
             }
         )
     health_status, health = _http_json("GET", f"{base}/api/health/daemon")
-    pass_all = all(r["plan_approve_status"] == 200 and r["mirrored"] is True and r["read_model_migrated"] is True for r in rows)
+    pass_all = all(
+        r["plan_approve_status"] == 200 and r["mirrored"] is True and r["read_model_migrated"] is True for r in rows
+    )
     return {
         "kind": "live_route_cohort",
         "base_url": base,

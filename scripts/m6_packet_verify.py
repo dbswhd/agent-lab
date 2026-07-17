@@ -11,8 +11,16 @@ from pathlib import PurePosixPath
 
 ALLOWLIST_ARCHIVE_PATH = "code-config/docs/redesign-2026-07/m6-compatibility-consumer-allowlist-2026-07-14.json"
 PACKET_SIDECARS = (
-    "m6-final-retire.tar.gz", "archive.sha256", "archive-manifest.json", "deletion-manifest.json",
-    "decision.json", "coverage.json", "README.md", "baseline.txt", "sessions-journals-index.json", "packet-index.json",
+    "m6-final-retire.tar.gz",
+    "archive.sha256",
+    "archive-manifest.json",
+    "deletion-manifest.json",
+    "decision.json",
+    "coverage.json",
+    "README.md",
+    "baseline.txt",
+    "sessions-journals-index.json",
+    "packet-index.json",
 )
 
 
@@ -43,7 +51,11 @@ def validate_allowlist_payload(payload: object) -> None:
     if not isinstance(scope, dict) or not isinstance(entries, list) or not isinstance(references, list):
         raise RuntimeError("compatibility allowlist shape is invalid")
     target_files = scope.get("target_files")
-    if not isinstance(target_files, list) or not target_files or not all(isinstance(item, str) and item for item in target_files):
+    if (
+        not isinstance(target_files, list)
+        or not target_files
+        or not all(isinstance(item, str) and item for item in target_files)
+    ):
         raise RuntimeError("compatibility allowlist target_files are invalid")
     if len(set(target_files)) != len(target_files):
         raise RuntimeError("compatibility allowlist target_files contain duplicates")
@@ -136,7 +148,15 @@ def verify_packet(packet: Path, candidates: tuple[str, ...], protected: tuple[st
             stream = tar.extractfile(members[name])
             if stream is None or hashlib.sha256(stream.read()).hexdigest() != expected_hash:
                 raise RuntimeError(f"archive manifest hash mismatch: {name}")
-        sidecars = ("archive-manifest.json", "deletion-manifest.json", "decision.json", "coverage.json", "README.md", "baseline.txt", "sessions-journals-index.json")
+        sidecars = (
+            "archive-manifest.json",
+            "deletion-manifest.json",
+            "decision.json",
+            "coverage.json",
+            "README.md",
+            "baseline.txt",
+            "sessions-journals-index.json",
+        )
         for name in sidecars:
             stream = tar.extractfile(members[name])
             if stream is None or stream.read() != (packet / name).read_bytes():

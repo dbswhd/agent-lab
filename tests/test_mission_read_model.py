@@ -151,14 +151,20 @@ def test_read_model_paused_uses_canonical_mission_and_circuit_state() -> None:
 
     assert build_read_model(awaiting_human).mission_overview is not None
     assert build_read_model(awaiting_human).mission_overview.paused is True
-    assert build_read_model(
-        circuit_paused,
-        run={"mission_loop": {"circuit_breaker": True}},
-    ).mission_overview.paused is True
-    assert build_read_model(
-        terminal,
-        run={"mission_loop": {"circuit_breaker": True, "pause_reason": "late"}},
-    ).mission_overview.paused is False
+    assert (
+        build_read_model(
+            circuit_paused,
+            run={"mission_loop": {"circuit_breaker": True}},
+        ).mission_overview.paused
+        is True
+    )
+    assert (
+        build_read_model(
+            terminal,
+            run={"mission_loop": {"circuit_breaker": True, "pause_reason": "late"}},
+        ).mission_overview.paused
+        is False
+    )
 
 
 def test_read_model_join_includes_unrelated_inbox_rows() -> None:
@@ -263,11 +269,7 @@ def test_terminal_open_gate_is_visible_but_not_actionable() -> None:
     )
     model = build_read_model(
         mission,
-        run={
-            "human_inbox": [
-                {"id": "gate-terminal", "kind": "question", "status": "pending", "prompt": "Late?"}
-            ]
-        },
+        run={"human_inbox": [{"id": "gate-terminal", "kind": "question", "status": "pending", "prompt": "Late?"}]},
     )
 
     assert model.inbox_items[0]["prompt"] == "Late?"
@@ -314,11 +316,7 @@ def test_terminal_precedence_marks_missing_and_matched_gates_review_only() -> No
 
     model = build_read_model(
         mission,
-        run={
-            "human_inbox": [
-                {"id": "gate-present", "kind": "question", "status": "pending", "prompt": "Late?"}
-            ]
-        },
+        run={"human_inbox": [{"id": "gate-present", "kind": "question", "status": "pending", "prompt": "Late?"}]},
     )
 
     assert [item["mission_gate_status"] for item in model.inbox_items] == [

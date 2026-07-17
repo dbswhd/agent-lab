@@ -202,3 +202,32 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
             item.add_marker(pytest.mark.bridge)
         if item.get_closest_marker("quant"):
             item.add_marker(pytest.mark.integration)
+
+
+@pytest.fixture(autouse=True)
+def _isolate_inbox_policy_env() -> object:
+    """Clear inbox-MCP policy env vars at setup and restore after test.
+
+    ``app.server.bootstrap.bootstrap_environment`` is idempotent per-process and
+    loads the repo ``.env`` (which sets ``AGENT_LAB_EXECUTE_INBOX=0``) directly
+    into ``os.environ`` the first time any test triggers app startup (e.g. via
+    ``TestClient(app)``). That write bypasses ``monkeypatch``, so it persists for
+    the rest of the pytest process and flips unrelated inbox-MCP tests to the
+    disabled reading depending on run order (see the local workaround this
+    duplicates in tests/test_fast_inbox_skip.py).
+    """
+    keys = (
+        "AGENT_LAB_EXECUTE_INBOX",
+        "AGENT_LAB_PLAN_INBOX",
+        "AGENT_LAB_INBOX_POLICY_LANE",
+        "AGENT_LAB_INBOX_CALLER_AGENT",
+    )
+    saved = {k: os.environ.get(k) for k in keys}
+    for k in keys:
+        os.environ.pop(k, None)
+    yield
+    for k, v in saved.items():
+        if v is None:
+            os.environ.pop(k, None)
+        else:
+            os.environ[k] = v

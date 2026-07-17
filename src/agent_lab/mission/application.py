@@ -108,7 +108,9 @@ class MissionApplication:
             raise MissionApplicationError(f"inbox item is missing: {item_id}")
         prompt = str(item.get("prompt") or item.get("summary") or item.get("kind") or "Human decision")
         resolved_id = decision_id or item_id
-        decision = new_decision(resolved_id, mission_id or self.session_folder.name, prompt, str(item.get("kind") or "question"))
+        decision = new_decision(
+            resolved_id, mission_id or self.session_folder.name, prompt, str(item.get("kind") or "question")
+        )
         path = decision_journal_path(self.session_folder, resolved_id)
         return DecisionRepository(path, decision)
 

@@ -47,6 +47,7 @@ def test_mission_status_projection_repairs_stale_compatibility_row(
     folder = _session(tmp_path)
     application = MissionApplication(folder, "Ship")
     mission = application.approve_plan()
+
     def stale(run):
         run["mission_loop"]["phase"] = "DISCUSS"
         return run
@@ -79,6 +80,7 @@ def test_duplicate_mission_approval_repairs_rows_without_duplicate_mission_event
     run = read_run_meta(folder)
     run["mission_loop"]["phase"] = "DISCUSS"
     run["plan_workflow"]["phase"] = "HUMAN_PENDING"
+
     def stale(run):
         run["mission_loop"]["phase"] = "DISCUSS"
         run["plan_workflow"]["phase"] = "HUMAN_PENDING"

@@ -44,7 +44,14 @@ def test_extra_items_of_an_already_satisfied_required_source_are_excluded_not_fa
         token_budget=5,
     )
     items = tuple(
-        ContextItem(f"slice-{i}", SourceClass.REPO_CONTEXT, f"content-{i}", authority=100 - i, relevance=100 - i, estimated_tokens=3)
+        ContextItem(
+            f"slice-{i}",
+            SourceClass.REPO_CONTEXT,
+            f"content-{i}",
+            authority=100 - i,
+            relevance=100 - i,
+            estimated_tokens=3,
+        )
         for i in range(5)
     )
 
@@ -64,7 +71,16 @@ def test_required_source_with_no_eligible_candidate_at_all_still_raises() -> Non
         forbidden_sources=frozenset(),
         token_budget=1,
     )
-    items = (ContextItem("only-slice", SourceClass.REPO_CONTEXT, "way too much content here", authority=100, relevance=100, estimated_tokens=10),)
+    items = (
+        ContextItem(
+            "only-slice",
+            SourceClass.REPO_CONTEXT,
+            "way too much content here",
+            authority=100,
+            relevance=100,
+            estimated_tokens=10,
+        ),
+    )
 
     with pytest.raises(ContextSelectionError, match="required context exceeds token budget"):
         select_context(need, items)
@@ -83,12 +99,22 @@ def test_required_source_superseded_by_cross_source_conflict_does_not_false_posi
         token_budget=1_000,
     )
     repo_item = ContextItem(
-        "repo-guess", SourceClass.REPO_CONTEXT, "inferred from file",
-        authority=10, relevance=10, estimated_tokens=4, conflict_key="the-fact",
+        "repo-guess",
+        SourceClass.REPO_CONTEXT,
+        "inferred from file",
+        authority=10,
+        relevance=10,
+        estimated_tokens=4,
+        conflict_key="the-fact",
     )
     plan_item = ContextItem(
-        "plan-authoritative", SourceClass.APPROVED_PLAN, "the actual fact",
-        authority=100, relevance=100, estimated_tokens=4, conflict_key="the-fact",
+        "plan-authoritative",
+        SourceClass.APPROVED_PLAN,
+        "the actual fact",
+        authority=100,
+        relevance=100,
+        estimated_tokens=4,
+        conflict_key="the-fact",
     )
 
     manifest = select_context(need, (repo_item, plan_item))
@@ -110,13 +136,23 @@ def test_freshness_tie_break_is_ignored_across_different_sources() -> None:
         token_budget=1_000,
     )
     runtime_item = ContextItem(
-        "runtime-noisy-freshness", SourceClass.RUNTIME_STATE, "runtime guess",
-        authority=10, relevance=10, estimated_tokens=4, freshness="zzz-not-a-real-timestamp",
+        "runtime-noisy-freshness",
+        SourceClass.RUNTIME_STATE,
+        "runtime guess",
+        authority=10,
+        relevance=10,
+        estimated_tokens=4,
+        freshness="zzz-not-a-real-timestamp",
         conflict_key="the-fact",
     )
     evidence_item = ContextItem(
-        "evidence-authoritative", SourceClass.EVIDENCE, "actual evidence",
-        authority=100, relevance=100, estimated_tokens=4, freshness="2026-01-01T00:00:00Z",
+        "evidence-authoritative",
+        SourceClass.EVIDENCE,
+        "actual evidence",
+        authority=100,
+        relevance=100,
+        estimated_tokens=4,
+        freshness="2026-01-01T00:00:00Z",
         conflict_key="the-fact",
     )
 
@@ -143,12 +179,20 @@ def test_identical_content_from_different_sources_is_deduplicated() -> None:
     )
     plan = ContextItem("plan", SourceClass.APPROVED_PLAN, "ship it", authority=100, relevance=100, estimated_tokens=4)
     doc_copy = ContextItem(
-        "doc-copy", SourceClass.PROJECT_DOC, "the same snippet verbatim",
-        authority=50, relevance=50, estimated_tokens=4,
+        "doc-copy",
+        SourceClass.PROJECT_DOC,
+        "the same snippet verbatim",
+        authority=50,
+        relevance=50,
+        estimated_tokens=4,
     )
     repo_copy = ContextItem(
-        "repo-copy", SourceClass.REPO_CONTEXT, "the same snippet verbatim",
-        authority=50, relevance=50, estimated_tokens=4,
+        "repo-copy",
+        SourceClass.REPO_CONTEXT,
+        "the same snippet verbatim",
+        authority=50,
+        relevance=50,
+        estimated_tokens=4,
     )
 
     manifest = select_context(need, (plan, doc_copy, repo_copy))

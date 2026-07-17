@@ -22,11 +22,26 @@ SCENARIOS = (
 EXPECTED_EVENTS = {
     "plan_reject_revisit": ("PlanOpened", "PlanRejected"),
     "execute_success_merge_oracle_pass": (
-        "PlanOpened", "PlanApproved", "ExecutionStarted", "DiffReady", "DiffApproved", "MergeCommitted", "OraclePassed"
+        "PlanOpened",
+        "PlanApproved",
+        "ExecutionStarted",
+        "DiffReady",
+        "DiffApproved",
+        "MergeCommitted",
+        "OraclePassed",
     ),
     "oracle_fail_repair": (
-        "PlanOpened", "PlanApproved", "ExecutionStarted", "DiffReady", "DiffApproved", "MergeCommitted",
-        "RepairScheduled", "DiffReady", "DiffApproved", "MergeCommitted", "OraclePassed",
+        "PlanOpened",
+        "PlanApproved",
+        "ExecutionStarted",
+        "DiffReady",
+        "DiffApproved",
+        "MergeCommitted",
+        "RepairScheduled",
+        "DiffReady",
+        "DiffApproved",
+        "MergeCommitted",
+        "OraclePassed",
     ),
     "human_inbox_pause_resume": ("PlanOpened", "PlanApproved", "BlockOpened", "BlockResolved"),
     "daemon_crash_recovery": ("PlanOpened", "PlanApproved", "ExecutionStarted"),
@@ -73,7 +88,9 @@ def _legacy(folder: Path, operation: str, observation: str, **fields: Any) -> No
 
 def _mission(repo: Any, receipts: list[dict[str, Any]], session_id: str, operation: str, command: Any, key: str) -> Any:
     state = repo.dispatch(command, idempotency_key=key)
-    receipts.append({"session_id": session_id, "mission_id": session_id, "operation": operation, "idempotency_key": key})
+    receipts.append(
+        {"session_id": session_id, "mission_id": session_id, "operation": operation, "idempotency_key": key}
+    )
     return state
 
 
@@ -94,7 +111,13 @@ def _merge_side_effect(folder: Path, key: str) -> int:
 
 def _execute(folder: Path, goal: str, receipts: list[dict[str, Any]], *, repair: bool) -> tuple[int, str]:
     from agent_lab.mission.kernel import (
-        ApproveDiff, ApprovePlan, MarkDiffReady, OpenPlan, OracleVerdict, RecordMerge, RecordOracle,
+        ApproveDiff,
+        ApprovePlan,
+        MarkDiffReady,
+        OpenPlan,
+        OracleVerdict,
+        RecordMerge,
+        RecordOracle,
         StartExecution,
     )
     from agent_lab.mission.repository import MissionRepository
@@ -109,22 +132,53 @@ def _execute(folder: Path, goal: str, receipts: list[dict[str, Any]], *, repair:
         ("merge", RecordMerge(f"merge-{folder.name}-a")),
     )
     for operation, command in commands:
-        observation = "plan_approved" if operation == "approve" else "execution_merged" if operation == "merge" else "execution_step"
+        observation = (
+            "plan_approved"
+            if operation == "approve"
+            else "execution_merged"
+            if operation == "merge"
+            else "execution_step"
+        )
         _legacy(folder, operation, observation)
         _mission(repo, receipts, folder.name, operation, command, f"{folder.name}:{operation}:1")
     effect_count = _merge_side_effect(folder, f"merge-{folder.name}-a")
     if repair:
         _legacy(folder, "oracle-fail", "oracle_failed")
-        _mission(repo, receipts, folder.name, "oracle-fail", RecordOracle(OracleVerdict.FAIL, "controlled failure"), f"{folder.name}:oracle:1")
-        for operation, command in (("repair-diff", MarkDiffReady()), ("repair-approve", ApproveDiff()), ("repair-merge", RecordMerge(f"merge-{folder.name}-b"))):
+        _mission(
+            repo,
+            receipts,
+            folder.name,
+            "oracle-fail",
+            RecordOracle(OracleVerdict.FAIL, "controlled failure"),
+            f"{folder.name}:oracle:1",
+        )
+        for operation, command in (
+            ("repair-diff", MarkDiffReady()),
+            ("repair-approve", ApproveDiff()),
+            ("repair-merge", RecordMerge(f"merge-{folder.name}-b")),
+        ):
             _legacy(folder, operation, "execution_merged" if operation == "repair-merge" else "execution_step")
             _mission(repo, receipts, folder.name, operation, command, f"{folder.name}:{operation}:1")
         effect_count += _merge_side_effect(folder, f"merge-{folder.name}-b")
         _legacy(folder, "oracle-pass", "oracle_passed")
-        _mission(repo, receipts, folder.name, "oracle-pass", RecordOracle(OracleVerdict.PASS, "repair passed"), f"{folder.name}:oracle:2")
+        _mission(
+            repo,
+            receipts,
+            folder.name,
+            "oracle-pass",
+            RecordOracle(OracleVerdict.PASS, "repair passed"),
+            f"{folder.name}:oracle:2",
+        )
     else:
         _legacy(folder, "oracle-pass", "oracle_passed")
-        _mission(repo, receipts, folder.name, "oracle-pass", RecordOracle(OracleVerdict.PASS, "passed"), f"{folder.name}:oracle:1")
+        _mission(
+            repo,
+            receipts,
+            folder.name,
+            "oracle-pass",
+            RecordOracle(OracleVerdict.PASS, "passed"),
+            f"{folder.name}:oracle:1",
+        )
     return effect_count, "SUCCEEDED"
 
 
@@ -141,7 +195,14 @@ def _scenario(folder: Path, goal: str, scenario: str, receipts: list[dict[str, A
         _legacy(folder, "reject", "plan_rejected")
         reject_plan(folder, note="revise scope")
         MissionApplication(folder, goal).reject_plan("revise scope")
-        receipts.append({"session_id": folder.name, "mission_id": folder.name, "operation": "reject", "idempotency_key": f"{folder.name}:reject"})
+        receipts.append(
+            {
+                "session_id": folder.name,
+                "mission_id": folder.name,
+                "operation": "reject",
+                "idempotency_key": f"{folder.name}:reject",
+            }
+        )
         return 0, "DRAFTING"
     if scenario == "execute_success_merge_oracle_pass":
         return _execute(folder, goal, receipts, repair=False)
@@ -150,15 +211,33 @@ def _scenario(folder: Path, goal: str, scenario: str, receipts: list[dict[str, A
     repo = MissionRepository(folder / ".agent-lab" / "mission-events.jsonl", folder.name, goal)
     if scenario == "human_inbox_pause_resume":
         MissionApplication(folder, goal).approve_plan()
-        receipts.append({"session_id": folder.name, "mission_id": folder.name, "operation": "approve", "idempotency_key": f"{folder.name}:plan-approve"})
+        receipts.append(
+            {
+                "session_id": folder.name,
+                "mission_id": folder.name,
+                "operation": "approve",
+                "idempotency_key": f"{folder.name}:plan-approve",
+            }
+        )
         _legacy(folder, "pause", "mission_paused")
         _mission(repo, receipts, folder.name, "pause", BlockExecution("human decision"), f"{folder.name}:pause:1")
         item = create_inbox_item(folder, kind="question", source="dual-write", prompt="Resume execution?")
         MissionApplication(folder, goal).answer_inbox(item["id"], "resume")
-        receipts.append({"session_id": folder.name, "mission_id": folder.name, "operation": "resume", "idempotency_key": f"{folder.name}:resume:1"})
+        receipts.append(
+            {
+                "session_id": folder.name,
+                "mission_id": folder.name,
+                "operation": "resume",
+                "idempotency_key": f"{folder.name}:resume:1",
+            }
+        )
         _legacy(folder, "resume", "mission_resumed")
         return 0, "READY_TO_EXECUTE"
-    for operation, command in (("open", OpenPlan("dual-plan")), ("approve", ApprovePlan("dual-plan")), ("start", StartExecution())):
+    for operation, command in (
+        ("open", OpenPlan("dual-plan")),
+        ("approve", ApprovePlan("dual-plan")),
+        ("start", StartExecution()),
+    ):
         _legacy(folder, operation, "plan_approved" if operation == "approve" else "execution_step")
         _mission(repo, receipts, folder.name, operation, command, f"{folder.name}:{operation}:1")
     queue = ActivityQueue.for_session(folder)
@@ -218,27 +297,48 @@ def run_cohort(root: Path) -> dict[str, Any]:
         replayed = MissionRepository(folder / ".agent-lab" / "mission-events.jsonl", folder.name, goal).load()
         legacy = json.loads((folder / "run.json").read_text(encoding="utf-8"))
         observed = tuple(event.event_type for event in stored)
-        parity = observed == EXPECTED_EVENTS[scenario] and tuple(row["observation"] for row in legacy["dual_write_legacy"] if row["observation"] in LEGACY_OBSERVATIONS[scenario]) == LEGACY_OBSERVATIONS[scenario]
-        activity_ok = scenario != "daemon_crash_recovery" or any(item.state is QueueState.COMPLETED for item in ActivityQueue.for_session(folder).snapshot())
+        parity = (
+            observed == EXPECTED_EVENTS[scenario]
+            and tuple(
+                row["observation"]
+                for row in legacy["dual_write_legacy"]
+                if row["observation"] in LEGACY_OBSERVATIONS[scenario]
+            )
+            == LEGACY_OBSERVATIONS[scenario]
+        )
+        activity_ok = scenario != "daemon_crash_recovery" or any(
+            item.state is QueueState.COMPLETED for item in ActivityQueue.for_session(folder).snapshot()
+        )
         read_model = _read_model(root, folder.name)
-        rows.append({
-            "session_id": folder.name,
-            "mission_id": replayed.id,
-            "scenario": scenario,
-            "same_session_identity": replayed.id == folder.name and all(row["session_id"] == folder.name for row in receipts if row["session_id"] == folder.name),
-            "parity": parity and activity_ok,
-            "side_effect_count": effect_count,
-            "restart_replay": replayed.state.value == final_state,
-            "reconnect": read_model["migrated"] and read_model["event_cursor"] == len(stored),
-            "human_inbox_resume": scenario != "human_inbox_pause_resume" or replayed.state.value == "READY_TO_EXECUTE",
-            "event_types": observed,
-        })
+        rows.append(
+            {
+                "session_id": folder.name,
+                "mission_id": replayed.id,
+                "scenario": scenario,
+                "same_session_identity": replayed.id == folder.name
+                and all(row["session_id"] == folder.name for row in receipts if row["session_id"] == folder.name),
+                "parity": parity and activity_ok,
+                "side_effect_count": effect_count,
+                "restart_replay": replayed.state.value == final_state,
+                "reconnect": read_model["migrated"] and read_model["event_cursor"] == len(stored),
+                "human_inbox_resume": scenario != "human_inbox_pause_resume"
+                or replayed.state.value == "READY_TO_EXECUTE",
+                "event_types": observed,
+            }
+        )
     return {
         "session_count": len(rows),
         "scenario_counts": {scenario: sum(row["scenario"] == scenario for row in rows) for scenario in SCENARIOS},
         "parity_pass": all(row["parity"] for row in rows),
         "side_effect_single_execution": all(
-            row["side_effect_count"] == (2 if row["scenario"] == "oracle_fail_repair" else 1 if row["scenario"] == "execute_success_merge_oracle_pass" else 0)
+            row["side_effect_count"]
+            == (
+                2
+                if row["scenario"] == "oracle_fail_repair"
+                else 1
+                if row["scenario"] == "execute_success_merge_oracle_pass"
+                else 0
+            )
             for row in rows
         ),
         "restart_replay_pass": all(row["restart_replay"] for row in rows),
@@ -255,7 +355,20 @@ def main() -> int:
     args = parser.parse_args()
     report = run_cohort(args.sessions)
     print(json.dumps(report, ensure_ascii=False, indent=2))
-    return 0 if all(report[key] for key in ("parity_pass", "side_effect_single_execution", "restart_replay_pass", "reconnect_pass", "human_inbox_resume_pass")) else 1
+    return (
+        0
+        if all(
+            report[key]
+            for key in (
+                "parity_pass",
+                "side_effect_single_execution",
+                "restart_replay_pass",
+                "reconnect_pass",
+                "human_inbox_resume_pass",
+            )
+        )
+        else 1
+    )
 
 
 if __name__ == "__main__":

@@ -157,7 +157,9 @@ class ContextItem:
         # _redact_if_needed, defeating CX3's "manifest에 secret 원문이 없다"
         # guarantee without any error.
         if self.security_label not in SECURITY_LABELS:
-            raise ValueError(f"unknown security_label: {self.security_label!r} (expected one of {sorted(SECURITY_LABELS)})")
+            raise ValueError(
+                f"unknown security_label: {self.security_label!r} (expected one of {sorted(SECURITY_LABELS)})"
+            )
         if self.trusted is None:
             object.__setattr__(self, "trusted", self.source not in DEFAULT_UNTRUSTED_SOURCES)
 
@@ -376,6 +378,7 @@ def _resolve_conflicts(
 
     Returns (survivors, superseded[(loser_id, winner_id)], unresolved_groups).
     """
+
     # 2026-07-16 review #2 — content-dedup groups by (conflict_key, content),
     # not content alone. Two items that declare DIFFERENT explicit
     # conflict_keys are asserting "we are different facts" even if their text

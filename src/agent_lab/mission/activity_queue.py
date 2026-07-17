@@ -123,7 +123,9 @@ class ActivityQueue:
                 if existing.idempotency_key != activity.idempotency_key:
                     raise QueueConflictError(f"activity id reused: {activity.activity_id}")
                 return existing
-            duplicate = next((item for item in records.values() if item.idempotency_key == activity.idempotency_key), None)
+            duplicate = next(
+                (item for item in records.values() if item.idempotency_key == activity.idempotency_key), None
+            )
             if duplicate is not None:
                 return duplicate
             records[activity.activity_id] = activity
@@ -218,8 +220,10 @@ class ActivityQueue:
                     continue
                 decision = decide_recovery(activity.activity_id, activity.side_effect_state)
                 decisions.append(decision)
-                state = QueueState.NEEDS_RECONCILE if decision.action is RecoveryAction.RECONCILE else (
-                    QueueState.COMPLETED if decision.action is RecoveryAction.COMPLETE else QueueState.QUEUED
+                state = (
+                    QueueState.NEEDS_RECONCILE
+                    if decision.action is RecoveryAction.RECONCILE
+                    else (QueueState.COMPLETED if decision.action is RecoveryAction.COMPLETE else QueueState.QUEUED)
                 )
                 records[activity.activity_id] = QueuedActivity(
                     activity.activity_id,

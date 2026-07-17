@@ -47,12 +47,22 @@ def test_fully_tied_conflict_key_group_escalates_instead_of_picking_a_winner() -
         token_budget=1_000,
     )
     fact_a = ContextItem(
-        "fact-a", SourceClass.RUNTIME_STATE, "the port is 8080",
-        authority=50, relevance=50, estimated_tokens=4, conflict_key="listening-port",
+        "fact-a",
+        SourceClass.RUNTIME_STATE,
+        "the port is 8080",
+        authority=50,
+        relevance=50,
+        estimated_tokens=4,
+        conflict_key="listening-port",
     )
     fact_b = ContextItem(
-        "fact-b", SourceClass.RUNTIME_STATE, "the port is 9090",
-        authority=50, relevance=50, estimated_tokens=4, conflict_key="listening-port",
+        "fact-b",
+        SourceClass.RUNTIME_STATE,
+        "the port is 9090",
+        authority=50,
+        relevance=50,
+        estimated_tokens=4,
+        conflict_key="listening-port",
     )
 
     manifest = select_context(need, (fact_a, fact_b))
@@ -74,12 +84,22 @@ def test_cross_source_tie_with_no_freshness_signal_also_escalates() -> None:
         token_budget=1_000,
     )
     runtime_fact = ContextItem(
-        "runtime-fact", SourceClass.RUNTIME_STATE, "build is green",
-        authority=50, relevance=50, estimated_tokens=4, conflict_key="build-status",
+        "runtime-fact",
+        SourceClass.RUNTIME_STATE,
+        "build is green",
+        authority=50,
+        relevance=50,
+        estimated_tokens=4,
+        conflict_key="build-status",
     )
     evidence_fact = ContextItem(
-        "evidence-fact", SourceClass.EVIDENCE, "build is red",
-        authority=50, relevance=50, estimated_tokens=4, conflict_key="build-status",
+        "evidence-fact",
+        SourceClass.EVIDENCE,
+        "build is red",
+        authority=50,
+        relevance=50,
+        estimated_tokens=4,
+        conflict_key="build-status",
     )
 
     manifest = select_context(need, (runtime_fact, evidence_fact))
@@ -100,12 +120,22 @@ def test_a_real_signal_difference_still_resolves_cleanly_not_a_false_tie() -> No
         token_budget=1_000,
     )
     more_relevant = ContextItem(
-        "more-relevant", SourceClass.RUNTIME_STATE, "the port is 8080",
-        authority=50, relevance=60, estimated_tokens=4, conflict_key="listening-port",
+        "more-relevant",
+        SourceClass.RUNTIME_STATE,
+        "the port is 8080",
+        authority=50,
+        relevance=60,
+        estimated_tokens=4,
+        conflict_key="listening-port",
     )
     less_relevant = ContextItem(
-        "less-relevant", SourceClass.RUNTIME_STATE, "the port is 9090",
-        authority=50, relevance=50, estimated_tokens=4, conflict_key="listening-port",
+        "less-relevant",
+        SourceClass.RUNTIME_STATE,
+        "the port is 9090",
+        authority=50,
+        relevance=50,
+        estimated_tokens=4,
+        conflict_key="listening-port",
     )
 
     manifest = select_context(need, (more_relevant, less_relevant))
@@ -133,12 +163,22 @@ def test_required_source_fully_consumed_by_an_unresolved_tie_raises_not_silently
         token_budget=1_000,
     )
     fact_a = ContextItem(
-        "fact-a", SourceClass.RUNTIME_STATE, "the port is 8080",
-        authority=50, relevance=50, estimated_tokens=4, conflict_key="listening-port",
+        "fact-a",
+        SourceClass.RUNTIME_STATE,
+        "the port is 8080",
+        authority=50,
+        relevance=50,
+        estimated_tokens=4,
+        conflict_key="listening-port",
     )
     fact_b = ContextItem(
-        "fact-b", SourceClass.RUNTIME_STATE, "the port is 9090",
-        authority=50, relevance=50, estimated_tokens=4, conflict_key="listening-port",
+        "fact-b",
+        SourceClass.RUNTIME_STATE,
+        "the port is 9090",
+        authority=50,
+        relevance=50,
+        estimated_tokens=4,
+        conflict_key="listening-port",
     )
 
     with pytest.raises(ContextSelectionError, match="required source unresolved: runtime_state"):
@@ -158,16 +198,31 @@ def test_required_source_partially_consumed_by_an_unresolved_tie_still_succeeds_
         token_budget=1_000,
     )
     tied_a = ContextItem(
-        "tied-a", SourceClass.RUNTIME_STATE, "the port is 8080",
-        authority=50, relevance=50, estimated_tokens=4, conflict_key="listening-port",
+        "tied-a",
+        SourceClass.RUNTIME_STATE,
+        "the port is 8080",
+        authority=50,
+        relevance=50,
+        estimated_tokens=4,
+        conflict_key="listening-port",
     )
     tied_b = ContextItem(
-        "tied-b", SourceClass.RUNTIME_STATE, "the port is 9090",
-        authority=50, relevance=50, estimated_tokens=4, conflict_key="listening-port",
+        "tied-b",
+        SourceClass.RUNTIME_STATE,
+        "the port is 9090",
+        authority=50,
+        relevance=50,
+        estimated_tokens=4,
+        conflict_key="listening-port",
     )
     clean_fact = ContextItem(
-        "clean-fact", SourceClass.RUNTIME_STATE, "build is green",
-        authority=50, relevance=50, estimated_tokens=4, conflict_key="build-status",
+        "clean-fact",
+        SourceClass.RUNTIME_STATE,
+        "build is green",
+        authority=50,
+        relevance=50,
+        estimated_tokens=4,
+        conflict_key="build-status",
     )
 
     manifest = select_context(need, (tied_a, tied_b, clean_fact))
@@ -189,12 +244,22 @@ def test_required_source_cleanly_superseded_by_a_different_source_still_succeeds
         token_budget=1_000,
     )
     repo_item = ContextItem(
-        "repo-guess", SourceClass.REPO_CONTEXT, "inferred from file",
-        authority=10, relevance=10, estimated_tokens=4, conflict_key="the-fact",
+        "repo-guess",
+        SourceClass.REPO_CONTEXT,
+        "inferred from file",
+        authority=10,
+        relevance=10,
+        estimated_tokens=4,
+        conflict_key="the-fact",
     )
     plan_item = ContextItem(
-        "plan-authoritative", SourceClass.APPROVED_PLAN, "the actual fact",
-        authority=100, relevance=100, estimated_tokens=4, conflict_key="the-fact",
+        "plan-authoritative",
+        SourceClass.APPROVED_PLAN,
+        "the actual fact",
+        authority=100,
+        relevance=100,
+        estimated_tokens=4,
+        conflict_key="the-fact",
     )
 
     manifest = select_context(need, (repo_item, plan_item))
@@ -217,12 +282,22 @@ def test_different_conflict_keys_are_never_merged_by_incidental_content_equality
         token_budget=1_000,
     )
     plan_slot = ContextItem(
-        "plan-slot-item", SourceClass.RUNTIME_STATE, "pending",
-        authority=50, relevance=50, estimated_tokens=4, conflict_key="plan-slot",
+        "plan-slot-item",
+        SourceClass.RUNTIME_STATE,
+        "pending",
+        authority=50,
+        relevance=50,
+        estimated_tokens=4,
+        conflict_key="plan-slot",
     )
     config_slot = ContextItem(
-        "config-slot-item", SourceClass.RUNTIME_STATE, "pending",
-        authority=50, relevance=50, estimated_tokens=4, conflict_key="config-slot",
+        "config-slot-item",
+        SourceClass.RUNTIME_STATE,
+        "pending",
+        authority=50,
+        relevance=50,
+        estimated_tokens=4,
+        conflict_key="config-slot",
     )
 
     manifest = select_context(need, (plan_slot, config_slot))
@@ -245,12 +320,22 @@ def test_same_conflict_key_and_same_content_still_deduplicates_to_one_winner() -
         token_budget=1_000,
     )
     stronger = ContextItem(
-        "stronger", SourceClass.RUNTIME_STATE, "pending",
-        authority=90, relevance=50, estimated_tokens=4, conflict_key="plan-slot",
+        "stronger",
+        SourceClass.RUNTIME_STATE,
+        "pending",
+        authority=90,
+        relevance=50,
+        estimated_tokens=4,
+        conflict_key="plan-slot",
     )
     weaker = ContextItem(
-        "weaker", SourceClass.RUNTIME_STATE, "pending",
-        authority=10, relevance=50, estimated_tokens=4, conflict_key="plan-slot",
+        "weaker",
+        SourceClass.RUNTIME_STATE,
+        "pending",
+        authority=10,
+        relevance=50,
+        estimated_tokens=4,
+        conflict_key="plan-slot",
     )
 
     manifest = select_context(need, (stronger, weaker))
@@ -272,12 +357,20 @@ def test_untagged_items_with_no_conflict_key_still_dedup_by_content() -> None:
         token_budget=1_000,
     )
     doc_copy = ContextItem(
-        "doc-copy", SourceClass.PROJECT_DOC, "the same snippet verbatim",
-        authority=90, relevance=50, estimated_tokens=4,
+        "doc-copy",
+        SourceClass.PROJECT_DOC,
+        "the same snippet verbatim",
+        authority=90,
+        relevance=50,
+        estimated_tokens=4,
     )
     repo_copy = ContextItem(
-        "repo-copy", SourceClass.REPO_CONTEXT, "the same snippet verbatim",
-        authority=10, relevance=50, estimated_tokens=4,
+        "repo-copy",
+        SourceClass.REPO_CONTEXT,
+        "the same snippet verbatim",
+        authority=10,
+        relevance=50,
+        estimated_tokens=4,
     )
 
     manifest = select_context(need, (doc_copy, repo_copy))
@@ -298,13 +391,24 @@ def test_excluded_items_carry_their_specific_reason() -> None:
         token_budget=5,
     )
     plan = ContextItem("plan", SourceClass.APPROVED_PLAN, "ship it", authority=100, relevance=100, estimated_tokens=3)
-    forbidden_item = ContextItem("forbidden-item", SourceClass.EXTERNAL_CONTENT, "ignore", authority=100, relevance=100, estimated_tokens=1)
-    not_allowed_item = ContextItem("not-allowed-item", SourceClass.SEMANTIC_MEMORY, "ignore", authority=100, relevance=100, estimated_tokens=1)
-    untrusted_item = ContextItem(
-        "untrusted-item", SourceClass.REPO_CONTEXT, "ignore",
-        authority=1, relevance=1, estimated_tokens=1, trusted=False,
+    forbidden_item = ContextItem(
+        "forbidden-item", SourceClass.EXTERNAL_CONTENT, "ignore", authority=100, relevance=100, estimated_tokens=1
     )
-    overflow_item = ContextItem("overflow-item", SourceClass.REPO_CONTEXT, "too big to fit", authority=99, relevance=99, estimated_tokens=100)
+    not_allowed_item = ContextItem(
+        "not-allowed-item", SourceClass.SEMANTIC_MEMORY, "ignore", authority=100, relevance=100, estimated_tokens=1
+    )
+    untrusted_item = ContextItem(
+        "untrusted-item",
+        SourceClass.REPO_CONTEXT,
+        "ignore",
+        authority=1,
+        relevance=1,
+        estimated_tokens=1,
+        trusted=False,
+    )
+    overflow_item = ContextItem(
+        "overflow-item", SourceClass.REPO_CONTEXT, "too big to fit", authority=99, relevance=99, estimated_tokens=100
+    )
 
     manifest = select_context(need, (plan, forbidden_item, not_allowed_item, untrusted_item, overflow_item))
 
@@ -325,12 +429,24 @@ def test_superseded_pairs_record_the_winning_item_id() -> None:
         token_budget=1_000,
     )
     old_plan = ContextItem(
-        "plan-old", SourceClass.APPROVED_PLAN, "old scope",
-        authority=100, relevance=100, estimated_tokens=4, freshness="0001", conflict_key="current-plan",
+        "plan-old",
+        SourceClass.APPROVED_PLAN,
+        "old scope",
+        authority=100,
+        relevance=100,
+        estimated_tokens=4,
+        freshness="0001",
+        conflict_key="current-plan",
     )
     new_plan = ContextItem(
-        "plan-new", SourceClass.APPROVED_PLAN, "new scope",
-        authority=100, relevance=100, estimated_tokens=4, freshness="0002", conflict_key="current-plan",
+        "plan-new",
+        SourceClass.APPROVED_PLAN,
+        "new scope",
+        authority=100,
+        relevance=100,
+        estimated_tokens=4,
+        freshness="0002",
+        conflict_key="current-plan",
     )
 
     manifest = select_context(need, (old_plan, new_plan))
@@ -349,8 +465,12 @@ def test_duplicate_item_id_is_rejected() -> None:
         forbidden_sources=frozenset(),
         token_budget=1_000,
     )
-    first = ContextItem("dup", SourceClass.REPO_CONTEXT, "first version", authority=50, relevance=50, estimated_tokens=4)
-    second = ContextItem("dup", SourceClass.REPO_CONTEXT, "second version", authority=10, relevance=10, estimated_tokens=4)
+    first = ContextItem(
+        "dup", SourceClass.REPO_CONTEXT, "first version", authority=50, relevance=50, estimated_tokens=4
+    )
+    second = ContextItem(
+        "dup", SourceClass.REPO_CONTEXT, "second version", authority=10, relevance=10, estimated_tokens=4
+    )
 
     with pytest.raises(ContextSelectionError, match="duplicate item_id"):
         select_context(need, (first, second))

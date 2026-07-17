@@ -92,7 +92,14 @@ def test_adapt_approved_plan_returns_none_for_empty_plan() -> None:
 
 def test_adapt_artifacts_maps_to_evidence_source() -> None:
     rows = [
-        {"id": "art-1", "producer": "codex", "kind": "diff", "summary": "fixed the bug", "ts": "2026-07-16T00:00:00Z", "path": "artifacts/art-1.txt"},
+        {
+            "id": "art-1",
+            "producer": "codex",
+            "kind": "diff",
+            "summary": "fixed the bug",
+            "ts": "2026-07-16T00:00:00Z",
+            "path": "artifacts/art-1.txt",
+        },
         {"id": "art-2", "producer": "claude", "kind": "log", "summary": "", "ts": "2026-07-16T00:00:01Z"},
         {"id": "", "producer": "cursor", "kind": "table", "summary": "no id, dropped", "ts": "2026-07-16T00:00:02Z"},
     ]
@@ -140,11 +147,20 @@ def test_single_block_adapters_map_content_to_the_expected_source(adapter_fn, ex
 @pytest.mark.parametrize(
     "adapter_fn",
     [
-        adapt_team_task_block, adapt_objection_block, adapt_challenge_owner_block,
-        adapt_plugin_allowlist_block, adapt_capability_preamble, adapt_thread_resume_block,
-        adapt_session_skills_block, adapt_dispatch_intent_block, adapt_plan_open_block,
-        adapt_turn_state_block, adapt_turn_bridge_block, adapt_peer_block,
-        adapt_envelope_follow_up_block, adapt_agent_tool_rules_block,
+        adapt_team_task_block,
+        adapt_objection_block,
+        adapt_challenge_owner_block,
+        adapt_plugin_allowlist_block,
+        adapt_capability_preamble,
+        adapt_thread_resume_block,
+        adapt_session_skills_block,
+        adapt_dispatch_intent_block,
+        adapt_plan_open_block,
+        adapt_turn_state_block,
+        adapt_turn_bridge_block,
+        adapt_peer_block,
+        adapt_envelope_follow_up_block,
+        adapt_agent_tool_rules_block,
     ],
 )
 def test_single_block_adapters_return_none_for_empty_content(adapter_fn) -> None:
@@ -294,8 +310,13 @@ def test_adapt_wisdom_index_hits_uses_score_as_relevance() -> None:
 def test_adapt_playbook_bullets_maps_to_semantic_memory_with_freshness() -> None:
     bullets = [
         PlaybookBullet(
-            id="b1", description="always run tests first", pattern_id="p1",
-            evidence_count=3, status="active", harness_rev="rev1", updated_at="2026-07-10",
+            id="b1",
+            description="always run tests first",
+            pattern_id="p1",
+            evidence_count=3,
+            status="active",
+            harness_rev="rev1",
+            updated_at="2026-07-10",
         ),
     ]
     items = adapt_playbook_bullets(bullets)
@@ -351,7 +372,12 @@ def test_adapted_items_flow_through_select_context_end_to_end() -> None:
     """Integration check: adapter output is valid ContextItem input to the
     real selector, not just structurally similar."""
     plan_item = ContextItem(
-        "plan", SourceClass.APPROVED_PLAN, "ship it", authority=100, relevance=100, estimated_tokens=4,
+        "plan",
+        SourceClass.APPROVED_PLAN,
+        "ship it",
+        authority=100,
+        relevance=100,
+        estimated_tokens=4,
     )
     project_md_item = adapt_project_md("# Project\n\ncontext")
     facts_items = adapt_clarify_facts([{"id": "q1", "answer": "use React", "at": "2026-07-12"}])

@@ -539,10 +539,7 @@ test("migrated question preserves options and answer resumes the workflow", asyn
   await expect(inbox).toContainText("실행 중 어떤 범위로 진행할까요?");
   await expect(inbox.getByRole("radio")).toHaveCount(2);
   await page.screenshot({
-    path: resolve(
-      process.cwd(),
-      "../.omo/evidence/wave-b-m6-retire/task-5/read-model-question.png",
-    ),
+    path: resolve(process.cwd(), "test-results/read-model-question.png"),
   });
   await inbox.getByRole("radio", { name: "안전한 범위" }).click();
   await expect(

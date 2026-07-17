@@ -355,13 +355,8 @@ def run_cohort(sessions_root: Path) -> dict[str, Any]:
         "skipped_count": len(skipped_records),
         "failed_count": len(failed_records),
         "included_source_frequency": source_frequency,
-        "per_scenario_ratio": {
-            r["scenario"]: r["shadow"].get("recipe_to_legacy_token_ratio")
-            for r in ok_records
-        },
-        "failed_scenarios": [
-            {"scenario": r["scenario"], "error": r["shadow"].get("error")} for r in failed_records
-        ],
+        "per_scenario_ratio": {r["scenario"]: r["shadow"].get("recipe_to_legacy_token_ratio") for r in ok_records},
+        "failed_scenarios": [{"scenario": r["scenario"], "error": r["shadow"].get("error")} for r in failed_records],
         "not_covered": ["CLARIFY (no regression fixture reaches it)", "SCRIBE (no mission phase maps to it)"],
         "records": records,
     }

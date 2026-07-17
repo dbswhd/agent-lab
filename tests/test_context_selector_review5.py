@@ -59,16 +59,33 @@ def test_same_source_freshness_resolution_survives_a_cross_source_tie() -> None:
         token_budget=1_000,
     )
     fact_a = ContextItem(
-        "fact-a", SourceClass.RUNTIME_STATE, "port 8080, fresher",
-        authority=50, relevance=50, estimated_tokens=4, freshness="9", conflict_key="port",
+        "fact-a",
+        SourceClass.RUNTIME_STATE,
+        "port 8080, fresher",
+        authority=50,
+        relevance=50,
+        estimated_tokens=4,
+        freshness="9",
+        conflict_key="port",
     )
     fact_c = ContextItem(
-        "fact-c", SourceClass.RUNTIME_STATE, "port 9090, staler",
-        authority=50, relevance=50, estimated_tokens=4, freshness="1", conflict_key="port",
+        "fact-c",
+        SourceClass.RUNTIME_STATE,
+        "port 9090, staler",
+        authority=50,
+        relevance=50,
+        estimated_tokens=4,
+        freshness="1",
+        conflict_key="port",
     )
     fact_b = ContextItem(
-        "fact-b", SourceClass.EVIDENCE, "port unknown, different source",
-        authority=50, relevance=50, estimated_tokens=4, conflict_key="port",
+        "fact-b",
+        SourceClass.EVIDENCE,
+        "port unknown, different source",
+        authority=50,
+        relevance=50,
+        estimated_tokens=4,
+        conflict_key="port",
     )
 
     manifest = select_context(need, (fact_a, fact_c, fact_b))
@@ -91,20 +108,40 @@ def test_an_internally_ambiguous_source_strictly_dominated_by_tier_still_superse
         token_budget=1_000,
     )
     winner = ContextItem(
-        "winner", SourceClass.APPROVED_PLAN, "the actual plan",
-        authority=50, relevance=50, estimated_tokens=4, conflict_key="the-fact",
+        "winner",
+        SourceClass.APPROVED_PLAN,
+        "the actual plan",
+        authority=50,
+        relevance=50,
+        estimated_tokens=4,
+        conflict_key="the-fact",
     )
     tied_runtime_a = ContextItem(
-        "tied-runtime-a", SourceClass.RUNTIME_STATE, "guess 1",
-        authority=50, relevance=50, estimated_tokens=4, conflict_key="the-fact",
+        "tied-runtime-a",
+        SourceClass.RUNTIME_STATE,
+        "guess 1",
+        authority=50,
+        relevance=50,
+        estimated_tokens=4,
+        conflict_key="the-fact",
     )
     tied_runtime_b = ContextItem(
-        "tied-runtime-b", SourceClass.RUNTIME_STATE, "guess 2",
-        authority=50, relevance=50, estimated_tokens=4, conflict_key="the-fact",
+        "tied-runtime-b",
+        SourceClass.RUNTIME_STATE,
+        "guess 2",
+        authority=50,
+        relevance=50,
+        estimated_tokens=4,
+        conflict_key="the-fact",
     )
     lone_evidence = ContextItem(
-        "lone-evidence", SourceClass.EVIDENCE, "some evidence",
-        authority=50, relevance=50, estimated_tokens=4, conflict_key="the-fact",
+        "lone-evidence",
+        SourceClass.EVIDENCE,
+        "some evidence",
+        authority=50,
+        relevance=50,
+        estimated_tokens=4,
+        conflict_key="the-fact",
     )
 
     manifest = select_context(need, (winner, tied_runtime_a, tied_runtime_b, lone_evidence))
@@ -128,33 +165,78 @@ def test_every_input_item_id_lands_in_exactly_one_manifest_partition() -> None:
         token_budget=8,
     )
     plan = ContextItem("plan", SourceClass.APPROVED_PLAN, "ship it", authority=100, relevance=100, estimated_tokens=3)
-    forbidden_item = ContextItem("forbidden-item", SourceClass.EXTERNAL_CONTENT, "ignore", authority=100, relevance=100, estimated_tokens=1)
-    not_allowed_item = ContextItem("not-allowed-item", SourceClass.SEMANTIC_MEMORY, "ignore", authority=100, relevance=100, estimated_tokens=1)
-    untrusted_item = ContextItem(
-        "untrusted-item", SourceClass.RUNTIME_STATE, "ignore",
-        authority=1, relevance=1, estimated_tokens=1, trusted=False,
+    forbidden_item = ContextItem(
+        "forbidden-item", SourceClass.EXTERNAL_CONTENT, "ignore", authority=100, relevance=100, estimated_tokens=1
     )
-    overflow_item = ContextItem("overflow-item", SourceClass.RUNTIME_STATE, "too big for budget", authority=99, relevance=99, estimated_tokens=100)
+    not_allowed_item = ContextItem(
+        "not-allowed-item", SourceClass.SEMANTIC_MEMORY, "ignore", authority=100, relevance=100, estimated_tokens=1
+    )
+    untrusted_item = ContextItem(
+        "untrusted-item",
+        SourceClass.RUNTIME_STATE,
+        "ignore",
+        authority=1,
+        relevance=1,
+        estimated_tokens=1,
+        trusted=False,
+    )
+    overflow_item = ContextItem(
+        "overflow-item",
+        SourceClass.RUNTIME_STATE,
+        "too big for budget",
+        authority=99,
+        relevance=99,
+        estimated_tokens=100,
+    )
     superseded_loser = ContextItem(
-        "superseded-loser", SourceClass.RUNTIME_STATE, "stale fact",
-        authority=10, relevance=10, estimated_tokens=1, freshness="1", conflict_key="tied-fact-slot",
+        "superseded-loser",
+        SourceClass.RUNTIME_STATE,
+        "stale fact",
+        authority=10,
+        relevance=10,
+        estimated_tokens=1,
+        freshness="1",
+        conflict_key="tied-fact-slot",
     )
     superseded_winner = ContextItem(
-        "superseded-winner", SourceClass.RUNTIME_STATE, "fresh fact",
-        authority=10, relevance=10, estimated_tokens=1, freshness="9", conflict_key="tied-fact-slot",
+        "superseded-winner",
+        SourceClass.RUNTIME_STATE,
+        "fresh fact",
+        authority=10,
+        relevance=10,
+        estimated_tokens=1,
+        freshness="9",
+        conflict_key="tied-fact-slot",
     )
     tied_a = ContextItem(
-        "tied-a", SourceClass.EVIDENCE, "evidence x",
-        authority=5, relevance=5, estimated_tokens=1, conflict_key="ambiguous-slot",
+        "tied-a",
+        SourceClass.EVIDENCE,
+        "evidence x",
+        authority=5,
+        relevance=5,
+        estimated_tokens=1,
+        conflict_key="ambiguous-slot",
     )
     tied_b = ContextItem(
-        "tied-b", SourceClass.EVIDENCE, "evidence y",
-        authority=5, relevance=5, estimated_tokens=1, conflict_key="ambiguous-slot",
+        "tied-b",
+        SourceClass.EVIDENCE,
+        "evidence y",
+        authority=5,
+        relevance=5,
+        estimated_tokens=1,
+        conflict_key="ambiguous-slot",
     )
 
     items = (
-        plan, forbidden_item, not_allowed_item, untrusted_item, overflow_item,
-        superseded_loser, superseded_winner, tied_a, tied_b,
+        plan,
+        forbidden_item,
+        not_allowed_item,
+        untrusted_item,
+        overflow_item,
+        superseded_loser,
+        superseded_winner,
+        tied_a,
+        tied_b,
     )
     manifest = select_context(need, items)
 
@@ -189,8 +271,13 @@ def test_redacted_placeholder_uses_its_own_cheap_token_estimate_not_the_content_
         token_budget=1,
     )
     secret_item = ContextItem(
-        "secret-item", SourceClass.EVIDENCE, "sk-live-" + ("x" * 100),
-        authority=100, relevance=100, estimated_tokens=4, security_label="secret",
+        "secret-item",
+        SourceClass.EVIDENCE,
+        "sk-live-" + ("x" * 100),
+        authority=100,
+        relevance=100,
+        estimated_tokens=4,
+        security_label="secret",
     )
 
     manifest = select_context(need, (secret_item,))
@@ -212,8 +299,12 @@ def test_non_redacted_content_still_uses_the_length_floor() -> None:
         token_budget=1,
     )
     long_item = ContextItem(
-        "long-item", SourceClass.EVIDENCE, "x" * 100,
-        authority=100, relevance=100, estimated_tokens=1,
+        "long-item",
+        SourceClass.EVIDENCE,
+        "x" * 100,
+        authority=100,
+        relevance=100,
+        estimated_tokens=1,
     )
 
     with pytest.raises(ContextSelectionError, match="exceeds token budget"):

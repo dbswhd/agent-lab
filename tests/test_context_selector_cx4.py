@@ -53,14 +53,24 @@ def test_same_input_produces_the_same_manifest_every_time() -> None:
 def test_old_plan_revision_is_superseded_by_the_latest_approved_one() -> None:
     """09 doc §5 example: 'old plan vs approved latest plan: old plan 제외'."""
     old_plan = ContextItem(
-        "plan-rev2", SourceClass.APPROVED_PLAN, "old scope",
-        authority=100, relevance=100, estimated_tokens=4,
-        freshness="0002", conflict_key="current-plan",
+        "plan-rev2",
+        SourceClass.APPROVED_PLAN,
+        "old scope",
+        authority=100,
+        relevance=100,
+        estimated_tokens=4,
+        freshness="0002",
+        conflict_key="current-plan",
     )
     latest_plan = ContextItem(
-        "plan-rev3", SourceClass.APPROVED_PLAN, "new scope",
-        authority=100, relevance=100, estimated_tokens=4,
-        freshness="0003", conflict_key="current-plan",
+        "plan-rev3",
+        SourceClass.APPROVED_PLAN,
+        "new scope",
+        authority=100,
+        relevance=100,
+        estimated_tokens=4,
+        freshness="0003",
+        conflict_key="current-plan",
     )
 
     manifest = select_context(NEED, (old_plan, latest_plan))
@@ -73,14 +83,24 @@ def test_conflict_resolution_prefers_higher_priority_tier_over_lower() -> None:
     """§5 tier order: approved plan (tier 2) beats semantic memory (tier 5) for
     the same fact, regardless of which has higher authority/freshness."""
     stale_memory = ContextItem(
-        "memory-guess", SourceClass.SEMANTIC_MEMORY, "guessed scope",
-        authority=100, relevance=100, estimated_tokens=4,
-        freshness="9999", conflict_key="current-plan",
+        "memory-guess",
+        SourceClass.SEMANTIC_MEMORY,
+        "guessed scope",
+        authority=100,
+        relevance=100,
+        estimated_tokens=4,
+        freshness="9999",
+        conflict_key="current-plan",
     )
     approved_plan = ContextItem(
-        "plan-rev1", SourceClass.APPROVED_PLAN, "actual scope",
-        authority=10, relevance=10, estimated_tokens=4,
-        freshness="0001", conflict_key="current-plan",
+        "plan-rev1",
+        SourceClass.APPROVED_PLAN,
+        "actual scope",
+        authority=10,
+        relevance=10,
+        estimated_tokens=4,
+        freshness="0001",
+        conflict_key="current-plan",
     )
 
     manifest = select_context(NEED, (stale_memory, approved_plan))
@@ -103,17 +123,32 @@ def test_stale_repo_snippet_cannot_outrank_current_runtime_state_on_a_tie() -> N
         token_budget=1_000,
     )
     stale_repo = ContextItem(
-        "repo-old-sha", SourceClass.REPO_CONTEXT, "old file contents",
-        authority=100, relevance=100, estimated_tokens=4,
-        freshness="9999", conflict_key="current-file-state",
+        "repo-old-sha",
+        SourceClass.REPO_CONTEXT,
+        "old file contents",
+        authority=100,
+        relevance=100,
+        estimated_tokens=4,
+        freshness="9999",
+        conflict_key="current-file-state",
     )
     current_runtime = ContextItem(
-        "runtime-now", SourceClass.RUNTIME_STATE, "current file state",
-        authority=10, relevance=10, estimated_tokens=4,
-        freshness="0001", conflict_key="current-file-state",
+        "runtime-now",
+        SourceClass.RUNTIME_STATE,
+        "current file state",
+        authority=10,
+        relevance=10,
+        estimated_tokens=4,
+        freshness="0001",
+        conflict_key="current-file-state",
     )
     plan = ContextItem(
-        "plan", SourceClass.APPROVED_PLAN, "ship it", authority=100, relevance=100, estimated_tokens=4,
+        "plan",
+        SourceClass.APPROVED_PLAN,
+        "ship it",
+        authority=100,
+        relevance=100,
+        estimated_tokens=4,
     )
 
     manifest = select_context(need, (stale_repo, current_runtime, plan))

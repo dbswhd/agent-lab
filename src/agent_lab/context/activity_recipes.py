@@ -21,28 +21,34 @@ CLARIFY_RECIPE = ContextNeed(
     # 2026-07-16 review: SYSTEM_INVARIANT was missing — every activity operates
     # inside the same always-on Human gate/security/worktree boundaries, clarify
     # included, even though §6.1's prose doesn't call it out explicitly.
-    required_sources=frozenset({
-        SourceClass.SYSTEM_INVARIANT,
-        SourceClass.HUMAN_INTENT,
-        SourceClass.PROJECT_DOC,
-        SourceClass.RUNTIME_STATE,
-    }),
+    required_sources=frozenset(
+        {
+            SourceClass.SYSTEM_INVARIANT,
+            SourceClass.HUMAN_INTENT,
+            SourceClass.PROJECT_DOC,
+            SourceClass.RUNTIME_STATE,
+        }
+    ),
     optional_sources=frozenset(),
     # §6.1 제외: 전체 repo dump, execute trace, 장기 wisdom 대부분.
-    forbidden_sources=frozenset({SourceClass.REPO_CONTEXT, SourceClass.EVIDENCE, SourceClass.SEMANTIC_MEMORY, SourceClass.EPISODE}),
+    forbidden_sources=frozenset(
+        {SourceClass.REPO_CONTEXT, SourceClass.EVIDENCE, SourceClass.SEMANTIC_MEMORY, SourceClass.EPISODE}
+    ),
     token_budget=4_000,
 )
 
 PLAN_RECIPE = ContextNeed(
     activity=ActivityKind.PLAN,
     # §6.2 필수: goal, constraints, repo map, 관련 파일/API, shipped traceability, prior decisions.
-    required_sources=frozenset({
-        SourceClass.HUMAN_INTENT,
-        SourceClass.SYSTEM_INVARIANT,
-        SourceClass.REPO_CONTEXT,
-        SourceClass.PROJECT_DOC,
-        SourceClass.RUNTIME_STATE,
-    }),
+    required_sources=frozenset(
+        {
+            SourceClass.HUMAN_INTENT,
+            SourceClass.SYSTEM_INVARIANT,
+            SourceClass.REPO_CONTEXT,
+            SourceClass.PROJECT_DOC,
+            SourceClass.RUNTIME_STATE,
+        }
+    ),
     # §6.2 선택: 유사 episode, 외부 docs, 다른 agent 제안/분석 — Room이 멀티에이전트라
     # plan specialist가 동료 제안을 참고할 수 있어야 함(2026-07-16 §6.2 프로즈에 반영,
     # AGENT_OPINION을 코드에만 넣고 문서를 안 고쳐서 생긴 drift를 닫음).
@@ -71,12 +77,14 @@ EXECUTE_RECIPE = ContextNeed(
     activity=ActivityKind.EXECUTE,
     # §6.4 필수: 승인된 plan revision/hash, 해당 action, workspace/worktree, must-not,
     # verification, relevant code slice, tool grants.
-    required_sources=frozenset({
-        SourceClass.APPROVED_PLAN,
-        SourceClass.SYSTEM_INVARIANT,
-        SourceClass.RUNTIME_STATE,
-        SourceClass.REPO_CONTEXT,
-    }),
+    required_sources=frozenset(
+        {
+            SourceClass.APPROVED_PLAN,
+            SourceClass.SYSTEM_INVARIANT,
+            SourceClass.RUNTIME_STATE,
+            SourceClass.REPO_CONTEXT,
+        }
+    ),
     optional_sources=frozenset(),
     # §6.4 제외: 승인 전 draft, 무관한 transcript, 다른 action의 전체 context.
     forbidden_sources=frozenset({SourceClass.EPISODE, SourceClass.EXTERNAL_CONTENT}),
@@ -89,12 +97,14 @@ REPAIR_RECIPE = ContextNeed(
     # 2026-07-16 review: SYSTEM_INVARIANT was missing — repair re-enters the same
     # tool-grant/must-not boundaries EXECUTE_RECIPE requires; it's a retry of
     # execute, not a lighter-weight activity.
-    required_sources=frozenset({
-        SourceClass.SYSTEM_INVARIANT,
-        SourceClass.APPROVED_PLAN,
-        SourceClass.EVIDENCE,
-        SourceClass.RUNTIME_STATE,
-    }),
+    required_sources=frozenset(
+        {
+            SourceClass.SYSTEM_INVARIANT,
+            SourceClass.APPROVED_PLAN,
+            SourceClass.EVIDENCE,
+            SourceClass.RUNTIME_STATE,
+        }
+    ),
     # §6.5 전략 후보 — 승인된 패턴이 있다면.
     optional_sources=frozenset({SourceClass.SEMANTIC_MEMORY, SourceClass.HUMAN_INTENT}),
     # §6.5 제외: 실패한 동일 prompt의 무가공 반복 — source class로 강제할 수 없는 절차적

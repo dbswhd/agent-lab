@@ -458,9 +458,9 @@ def _scenario_crash_recovery(sessions_root: Path, name: str) -> dict[str, Any]:
         "session_id": name,
         "route": "(no HTTP route — scheduler daemon in-process recovery)",
         "recovery_action": decisions[0].action.value if decisions else None,
-        "recovered_and_completed": bool(decisions) and decisions[0].action is RecoveryAction.COMPLETE and any(
-            item.state is QueueState.COMPLETED for item in completed
-        ),
+        "recovered_and_completed": bool(decisions)
+        and decisions[0].action is RecoveryAction.COMPLETE
+        and any(item.state is QueueState.COMPLETED for item in completed),
     }
 
 
@@ -577,8 +577,15 @@ def run_cohort(sessions_root: Path, repos_root: Path, *, prefix: str = "dualwrit
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--sessions", type=Path, required=True, help="target sessions directory (may be the real operational one)")
-    parser.add_argument("--repos", type=Path, required=True, help="scratch directory for the git repos used by execute scenarios (kept outside --sessions)")
+    parser.add_argument(
+        "--sessions", type=Path, required=True, help="target sessions directory (may be the real operational one)"
+    )
+    parser.add_argument(
+        "--repos",
+        type=Path,
+        required=True,
+        help="scratch directory for the git repos used by execute scenarios (kept outside --sessions)",
+    )
     args = parser.parse_args()
     report = run_cohort(args.sessions, args.repos)
     print(json.dumps(report, ensure_ascii=False, indent=2))

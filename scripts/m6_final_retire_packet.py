@@ -21,24 +21,39 @@ PACKET_NAME: Final = "m6-final-retire-2026-07-14"
 ALLOWLIST_RELATIVE: Final = "docs/redesign-2026-07/m6-compatibility-consumer-allowlist-2026-07-14.json"
 REQUIRED_EVIDENCE: Final = tuple([f"task-{number}.json" for number in range(1, 11)] + ["live-clean-restart.json"])
 CODE_CONFIG_PATHS: Final = (
-    "src/agent_lab/mission/tick.py", "src/agent_lab/mission/advance.py",
-    "src/agent_lab/runtime/transitions.py", "src/agent_lab/runtime/orchestration.py",
-    "src/agent_lab/clarity.py", "app/server/routers/room.py",
-    "src/agent_lab/mission/dual_write.py", "src/agent_lab/run/profile.py",
-    "src/agent_lab/runtime_flags.py", "src/agent_lab/plan/workflow_approval.py",
-    "web/src/components/ComposerEventStack.tsx", "web/src/components/WorkToolPanel.tsx",
-    "web/src/components/HumanInboxPanel.tsx", "web/src/hooks/useRoomSseHandler.ts",
-    "web/src/hooks/useRoomChatInteractions.ts", "web/src/utils/workStatusPhase.ts",
-    "web/src/utils/missionReadModel.ts", "docs/redesign-2026-07/m6-compatibility-consumer-allowlist-2026-07-14.json",
+    "src/agent_lab/mission/tick.py",
+    "src/agent_lab/mission/advance.py",
+    "src/agent_lab/runtime/transitions.py",
+    "src/agent_lab/runtime/orchestration.py",
+    "src/agent_lab/clarity.py",
+    "app/server/routers/room.py",
+    "src/agent_lab/mission/dual_write.py",
+    "src/agent_lab/run/profile.py",
+    "src/agent_lab/runtime_flags.py",
+    "src/agent_lab/plan/workflow_approval.py",
+    "web/src/components/ComposerEventStack.tsx",
+    "web/src/components/WorkToolPanel.tsx",
+    "web/src/components/HumanInboxPanel.tsx",
+    "web/src/hooks/useRoomSseHandler.ts",
+    "web/src/hooks/useRoomChatInteractions.ts",
+    "web/src/utils/workStatusPhase.ts",
+    "web/src/utils/missionReadModel.ts",
+    "docs/redesign-2026-07/m6-compatibility-consumer-allowlist-2026-07-14.json",
 )
 DELETE_CANDIDATES: Final = tuple(CODE_CONFIG_PATHS[:6])
 PROTECTED_PATHS: Final = (
-    "src/agent_lab/human_inbox.py", "app/server/routers/human_inbox.py",
-    "app/server/routers/plan_execute.py", "src/agent_lab/merge_gate.py",
-    "src/agent_lab/oracle_core.py", "src/agent_lab/plan/execute_merge.py",
-    "src/agent_lab/plan/execute_verify.py", "src/agent_lab/mission/dual_write.py",
-    "src/agent_lab/run/profile.py", "src/agent_lab/runtime_flags.py",
-    "src/agent_lab/plan/workflow_approval.py", "src/agent_lab/mission/read_model.py",
+    "src/agent_lab/human_inbox.py",
+    "app/server/routers/human_inbox.py",
+    "app/server/routers/plan_execute.py",
+    "src/agent_lab/merge_gate.py",
+    "src/agent_lab/oracle_core.py",
+    "src/agent_lab/plan/execute_merge.py",
+    "src/agent_lab/plan/execute_verify.py",
+    "src/agent_lab/mission/dual_write.py",
+    "src/agent_lab/run/profile.py",
+    "src/agent_lab/runtime_flags.py",
+    "src/agent_lab/plan/workflow_approval.py",
+    "src/agent_lab/mission/read_model.py",
 )
 REDACTIONS: Final = (
     (re.compile(r"/Users/[^\s\"']+"), "<REDACTED_PATH>"),
@@ -84,9 +99,16 @@ def _load_allowlist(path: Path) -> bytes:
 
 def _validate_coverage(coverage: dict[str, object], staging: Path) -> None:
     required = {
-        "wave_a_projection", "wave_b_parity", "bounded_ui_soak", "rollback_recovery",
-        "m6_8_duplicate_patch_stop", "m6_9_bridge_flag_retire", "consumer_scan",
-        "consumer_inventory", "final_verification", "redaction",
+        "wave_a_projection",
+        "wave_b_parity",
+        "bounded_ui_soak",
+        "rollback_recovery",
+        "m6_8_duplicate_patch_stop",
+        "m6_9_bridge_flag_retire",
+        "consumer_scan",
+        "consumer_inventory",
+        "final_verification",
+        "redaction",
     }
     if set(coverage) != required:
         raise RuntimeError("coverage entries are incomplete")
@@ -95,7 +117,9 @@ def _validate_coverage(coverage: dict[str, object], staging: Path) -> None:
         if isinstance(value, list):
             for item in value:
                 walk(item)
-        elif isinstance(value, str) and (value.startswith("evidence/") or value.startswith("reports/") or value.startswith("code-config/")):
+        elif isinstance(value, str) and (
+            value.startswith("evidence/") or value.startswith("reports/") or value.startswith("code-config/")
+        ):
             if not (staging / value).is_file():
                 raise RuntimeError(f"coverage references missing evidence: {value}")
 
@@ -109,12 +133,14 @@ def _session_index(root: Path) -> list[dict[str, object]]:
     rows: list[dict[str, object]] = []
     for source in sorted(path for path in sessions.rglob("*") if path.is_file()):
         relative = source.relative_to(sessions).as_posix()
-        rows.append({
-            "path_token": hashlib.sha256(relative.encode()).hexdigest(),
-            "kind": "journal" if source.suffix == ".jsonl" else "session_metadata",
-            "size": source.stat().st_size,
-            "sha256": _sha256(source),
-        })
+        rows.append(
+            {
+                "path_token": hashlib.sha256(relative.encode()).hexdigest(),
+                "kind": "journal" if source.suffix == ".jsonl" else "session_metadata",
+                "size": source.stat().st_size,
+                "sha256": _sha256(source),
+            }
+        )
     return rows
 
 
@@ -171,7 +197,9 @@ def build_packet(root: Path, output: Path) -> Path:
                     raise RuntimeError(f"required evidence must be a JSON object: {filename}")
                 _copy_redacted(root, source.relative_to(root).as_posix(), evidence / source.name)
             _copy_redacted(
-                root, "docs/redesign-2026-07/evidence/m6-precheck-retire-scope-2026-07-14.md", staging / "reports/m6-precheck.md"
+                root,
+                "docs/redesign-2026-07/evidence/m6-precheck-retire-scope-2026-07-14.md",
+                staging / "reports/m6-precheck.md",
             )
             _copy_redacted(
                 root,
@@ -180,39 +208,64 @@ def build_packet(root: Path, output: Path) -> Path:
             )
             baseline = Path("/tmp/m6-baseline.txt")
             (staging / "baseline.txt").write_text(
-                _redact(baseline.read_text(encoding="utf-8")) if baseline.is_file() else "baseline capture unavailable\n",
+                _redact(baseline.read_text(encoding="utf-8"))
+                if baseline.is_file()
+                else "baseline capture unavailable\n",
                 encoding="utf-8",
             )
-            _write_json(staging / "sessions-journals-index.json", {
-                "policy": "checksum-only; raw session/journal content is not copied to avoid secrets or PII",
-                "entries": _session_index(root),
-            })
-            _write_json(staging / "deletion-manifest.json", {
-                "schema_version": 1,
-                "decision": "NO-GO",
-                "approval_required": {"separate_human": True, "two_person_confirmation": True},
-                "candidates": list(DELETE_CANDIDATES),
-                "protected_never_delete_in_m6": list(PROTECTED_PATHS),
-            })
-            _write_json(staging / "decision.json", {
-                "status": "NO-GO",
-                "reason": "separate Human approval for irreversible deletion is absent",
-                "manifest_scope_note": "Deletion manifest retains 6 candidates and 12 protected paths; the authoritative compatibility inventory is 18 scoped files and 275 references, superseding the pre-Todo-5 12-file/251-reference baseline.",
-                "owner": None, "approver_one": None, "approver_two": None,
-                "approved_at": None, "approval_artifact": None,
-            })
-            _write_json(staging / "coverage.json", {
-                "wave_a_projection": [f"evidence/task-{number}.json" for number in range(1, 5)],
-                "wave_b_parity": ["evidence/task-5.json", "evidence/task-6.json"],
-                "bounded_ui_soak": ["evidence/task-7.json", "reports/ui-soak.md"],
-                "rollback_recovery": ["evidence/task-7.json", "evidence/task-8.json", "evidence/task-9.json"],
-                "m6_8_duplicate_patch_stop": "evidence/task-8.json",
-                "m6_9_bridge_flag_retire": "evidence/task-9.json",
-                "consumer_scan": ["evidence/task-4.json", "code-config/docs/redesign-2026-07/m6-compatibility-consumer-allowlist-2026-07-14.json"],
-                "consumer_inventory": {"target_files": 18, "references": 275, "baseline_target_files": 12, "baseline_references": 251},
-                "final_verification": ["evidence/task-10.json", "evidence/live-clean-restart.json"],
-                "redaction": "evidence and reports redact user/temp paths and email-like values; session/journal content is checksum-only",
-            })
+            _write_json(
+                staging / "sessions-journals-index.json",
+                {
+                    "policy": "checksum-only; raw session/journal content is not copied to avoid secrets or PII",
+                    "entries": _session_index(root),
+                },
+            )
+            _write_json(
+                staging / "deletion-manifest.json",
+                {
+                    "schema_version": 1,
+                    "decision": "NO-GO",
+                    "approval_required": {"separate_human": True, "two_person_confirmation": True},
+                    "candidates": list(DELETE_CANDIDATES),
+                    "protected_never_delete_in_m6": list(PROTECTED_PATHS),
+                },
+            )
+            _write_json(
+                staging / "decision.json",
+                {
+                    "status": "NO-GO",
+                    "reason": "separate Human approval for irreversible deletion is absent",
+                    "manifest_scope_note": "Deletion manifest retains 6 candidates and 12 protected paths; the authoritative compatibility inventory is 18 scoped files and 275 references, superseding the pre-Todo-5 12-file/251-reference baseline.",
+                    "owner": None,
+                    "approver_one": None,
+                    "approver_two": None,
+                    "approved_at": None,
+                    "approval_artifact": None,
+                },
+            )
+            _write_json(
+                staging / "coverage.json",
+                {
+                    "wave_a_projection": [f"evidence/task-{number}.json" for number in range(1, 5)],
+                    "wave_b_parity": ["evidence/task-5.json", "evidence/task-6.json"],
+                    "bounded_ui_soak": ["evidence/task-7.json", "reports/ui-soak.md"],
+                    "rollback_recovery": ["evidence/task-7.json", "evidence/task-8.json", "evidence/task-9.json"],
+                    "m6_8_duplicate_patch_stop": "evidence/task-8.json",
+                    "m6_9_bridge_flag_retire": "evidence/task-9.json",
+                    "consumer_scan": [
+                        "evidence/task-4.json",
+                        "code-config/docs/redesign-2026-07/m6-compatibility-consumer-allowlist-2026-07-14.json",
+                    ],
+                    "consumer_inventory": {
+                        "target_files": 18,
+                        "references": 275,
+                        "baseline_target_files": 12,
+                        "baseline_references": 251,
+                    },
+                    "final_verification": ["evidence/task-10.json", "evidence/live-clean-restart.json"],
+                    "redaction": "evidence and reports redact user/temp paths and email-like values; session/journal content is checksum-only",
+                },
+            )
             _validate_coverage(json.loads((staging / "coverage.json").read_text(encoding="utf-8")), staging)
             (staging / "README.md").write_text(
                 "# M6 final retire packet\n\nStatus: **NO-GO**. This packet archives redacted evidence and checksums only. "
@@ -238,18 +291,37 @@ def build_packet(root: Path, output: Path) -> Path:
             archive.chmod(stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
             (partial / "archive.sha256").write_text(f"{_sha256(archive)}  {archive.name}\n", encoding="utf-8")
             (partial / "archive.sha256").chmod(stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
-            for name in ("README.md", "archive-manifest.json", "baseline.txt", "coverage.json", "deletion-manifest.json", "decision.json", "sessions-journals-index.json"):
+            for name in (
+                "README.md",
+                "archive-manifest.json",
+                "baseline.txt",
+                "coverage.json",
+                "deletion-manifest.json",
+                "decision.json",
+                "sessions-journals-index.json",
+            ):
                 (partial / name).write_bytes((staging / name).read_bytes())
-            _write_json(partial / "packet-index.json", {
-                "packet": PACKET_NAME, "status": "NO-GO", "archive": archive.name,
-                "archive_sha256": _sha256(archive), "archive_mode": "0444",
-                "manifest_scope": {"candidates": 6, "protected": 12, "source": "current consumer scan"},
-                "consumer_inventory": {"target_files": 18, "references": 275, "baseline_target_files": 12, "baseline_references": 251},
-                "consumer_allowlist_sha256": _sha256(staging / "code-config" / ALLOWLIST_RELATIVE),
-                "approval": {"owner": None, "approver_one": None, "approver_two": None, "approved_at": None},
-                "deletion_manifest_sha256": _sha256(partial / "deletion-manifest.json"),
-                "redaction": "paths, temporary paths, and email-like values redacted; sessions/journals checksum-only",
-            })
+            _write_json(
+                partial / "packet-index.json",
+                {
+                    "packet": PACKET_NAME,
+                    "status": "NO-GO",
+                    "archive": archive.name,
+                    "archive_sha256": _sha256(archive),
+                    "archive_mode": "0444",
+                    "manifest_scope": {"candidates": 6, "protected": 12, "source": "current consumer scan"},
+                    "consumer_inventory": {
+                        "target_files": 18,
+                        "references": 275,
+                        "baseline_target_files": 12,
+                        "baseline_references": 251,
+                    },
+                    "consumer_allowlist_sha256": _sha256(staging / "code-config" / ALLOWLIST_RELATIVE),
+                    "approval": {"owner": None, "approver_one": None, "approver_two": None, "approved_at": None},
+                    "deletion_manifest_sha256": _sha256(partial / "deletion-manifest.json"),
+                    "redaction": "paths, temporary paths, and email-like values redacted; sessions/journals checksum-only",
+                },
+            )
             for sidecar in partial.iterdir():
                 if sidecar.is_file():
                     sidecar.chmod(stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)

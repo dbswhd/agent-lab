@@ -60,7 +60,9 @@ def _base_kwargs(**overrides):
 
 
 def test_shadow_compare_bundle_returns_skip_for_unmapped_phase() -> None:
-    result = shadow_compare_bundle(**_base_kwargs(run_meta={"mission_loop": {"enabled": True, "phase": "MISSION_DONE"}}))
+    result = shadow_compare_bundle(
+        **_base_kwargs(run_meta={"mission_loop": {"enabled": True, "phase": "MISSION_DONE"}})
+    )
     assert result is not None
     assert result["ok"] is False
     assert result.get("skipped") is True
@@ -124,8 +126,12 @@ def test_shadow_compare_bundle_normalizes_legacy_chars_to_the_same_token_unit(
 def test_shadow_compare_bundle_includes_recent_messages_and_dispatch_content(monkeypatch: pytest.MonkeyPatch) -> None:
     _patch_reinvoked_producers(monkeypatch)
     recent = [
-        SimpleNamespace(role="user", agent=None, content="please fix it", ts="2026-07-16T00:00:00Z", parallel_round=None),
-        SimpleNamespace(role="agent", agent="claude", content="working on it", ts="2026-07-16T00:00:01Z", parallel_round=1),
+        SimpleNamespace(
+            role="user", agent=None, content="please fix it", ts="2026-07-16T00:00:00Z", parallel_round=None
+        ),
+        SimpleNamespace(
+            role="agent", agent="claude", content="working on it", ts="2026-07-16T00:00:01Z", parallel_round=1
+        ),
     ]
     result = shadow_compare_bundle(**_base_kwargs(recent_msgs=recent))
     assert result["ok"] is True
@@ -155,16 +161,23 @@ def test_shadow_compare_bundle_includes_wisdom_and_playbook_on_r1(monkeypatch: p
     import agent_lab.wisdom.playbook as wisdom_playbook
 
     monkeypatch.setattr(
-        wisdom_index, "search_wisdom_index",
+        wisdom_index,
+        "search_wisdom_index",
         lambda folder, topic, **kw: [{"id": "doc-1", "snippet": "similar past fix", "score": 2.0}],
     )
     monkeypatch.setattr(wisdom_index, "wisdom_index_enabled", lambda run=None: True)
     monkeypatch.setattr(
-        wisdom_playbook, "playbook_bullets_for_topic",
+        wisdom_playbook,
+        "playbook_bullets_for_topic",
         lambda topic, k=3, **kw: [
             SimpleNamespace(
-                id="b1", description="check for off-by-one first", pattern_id="p1",
-                evidence_count=2, status="active", harness_rev="rev1", updated_at="2026-07-15",
+                id="b1",
+                description="check for off-by-one first",
+                pattern_id="p1",
+                evidence_count=2,
+                status="active",
+                harness_rev="rev1",
+                updated_at="2026-07-15",
             )
         ],
     )

@@ -25,8 +25,7 @@ def test_allowlist_names_each_scoped_consumer() -> None:
     paths = {entry["path"] for entry in entries if isinstance(entry, dict)}
     assert paths == set(TARGET_FILES)
     assert all(
-        isinstance(entry, dict) and entry.get("owner") and entry.get("retirement_checkpoint")
-        for entry in entries
+        isinstance(entry, dict) and entry.get("owner") and entry.get("retirement_checkpoint") for entry in entries
     )
 
 

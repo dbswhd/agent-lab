@@ -123,7 +123,9 @@ def test_journal_audit_reports_missing_session_without_silent_success(tmp_path: 
 
 
 @pytest.mark.parametrize("allowlist", [None, ""])
-def test_journal_audit_cohort_empty_allowlist_fails_closed_with_explicit_error(tmp_path: Path, allowlist: str | None) -> None:
+def test_journal_audit_cohort_empty_allowlist_fails_closed_with_explicit_error(
+    tmp_path: Path, allowlist: str | None
+) -> None:
     sessions_root = tmp_path / "sessions"
     sessions_root.mkdir()
 

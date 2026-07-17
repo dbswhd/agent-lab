@@ -39,9 +39,19 @@ JOURNEY_FIXTURES = {
         "adversarial_gate_lgtm",
     ),
     "diff": ("merge_conflict", "ui_pending_diff"),
-    "verify": ("execute_verify_loop", "evidence_gates_merged_ok", "evidence_ledger_stream", "mission_loop_verify_repair"),
+    "verify": (
+        "execute_verify_loop",
+        "evidence_gates_merged_ok",
+        "evidence_ledger_stream",
+        "mission_loop_verify_repair",
+    ),
     "repair": ("execute_verify_loop", "mission_loop_verify_repair"),
-    "resume": ("durable_completed_steps", "mission_loop_paused", "mission_loop_circuit_breaker", "mission_loop_discuss_recovery"),
+    "resume": (
+        "durable_completed_steps",
+        "mission_loop_paused",
+        "mission_loop_circuit_breaker",
+        "mission_loop_discuss_recovery",
+    ),
     # cancel: intentionally empty — see §3 of the matrix doc, R2's first slice.
 }
 

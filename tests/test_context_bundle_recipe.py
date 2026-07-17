@@ -57,7 +57,12 @@ def _full_inputs() -> RecipeBundleInputs:
         agents_md_hierarchy="repo-specific AGENTS.md guidance",
         reply_policy_guidance_parts=["respond concisely", "cite sources"],
         artifacts=[
-            {"id": "art-1", "summary": "ran the test suite, all green", "ts": "2026-07-16T00:00:02Z", "path": "artifacts/art-1.txt"},
+            {
+                "id": "art-1",
+                "summary": "ran the test suite, all green",
+                "ts": "2026-07-16T00:00:02Z",
+                "path": "artifacts/art-1.txt",
+            },
         ],
     )
 
@@ -132,8 +137,13 @@ def test_build_manifest_via_recipe_excludes_semantic_memory_items_for_plan_as_no
         wisdom_index_hits=[{"id": "doc-1", "snippet": "relevant note", "score": 2.0}],
         playbook_bullets=[
             PlaybookBullet(
-                id="b1", description="always verify first", pattern_id="p1",
-                evidence_count=2, status="active", harness_rev="rev1", updated_at="2026-07-15",
+                id="b1",
+                description="always verify first",
+                pattern_id="p1",
+                evidence_count=2,
+                status="active",
+                harness_rev="rev1",
+                updated_at="2026-07-15",
             ),
         ],
     )
@@ -156,8 +166,13 @@ def test_build_manifest_via_recipe_includes_semantic_memory_items_for_repair() -
         wisdom_index_hits=[{"id": "doc-1", "snippet": "similar past fix", "score": 2.0}],
         playbook_bullets=[
             PlaybookBullet(
-                id="b1", description="check for off-by-one first", pattern_id="p1",
-                evidence_count=2, status="active", harness_rev="rev1", updated_at="2026-07-15",
+                id="b1",
+                description="check for off-by-one first",
+                pattern_id="p1",
+                evidence_count=2,
+                status="active",
+                harness_rev="rev1",
+                updated_at="2026-07-15",
             ),
         ],
     )

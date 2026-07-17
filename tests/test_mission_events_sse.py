@@ -88,9 +88,7 @@ async def _never_disconnected() -> bool:
     return False
 
 
-def test_mission_events_returns_empty_for_legacy_session(
-    tmp_path: Path, monkeypatch, client: TestClient
-) -> None:
+def test_mission_events_returns_empty_for_legacy_session(tmp_path: Path, monkeypatch, client: TestClient) -> None:
     monkeypatch.setattr(session_paths, "SESSIONS_DIR", tmp_path)
     folder = tmp_path / "legacy-session"
     folder.mkdir()
@@ -150,9 +148,7 @@ def test_mission_events_stream_replays_backlog_then_disconnects(tmp_path: Path) 
     folder = _seed_session(tmp_path, "mission-session")
     MissionApplication(folder, "test topic").approve_plan()
 
-    events = _drain(
-        mission_events_stream(folder, after_cursor=0, is_disconnected=_disconnect_after(1), poll_sec=0.01)
-    )
+    events = _drain(mission_events_stream(folder, after_cursor=0, is_disconnected=_disconnect_after(1), poll_sec=0.01))
 
     cursors = [event["event_cursor"] for event in events if event is not None]
     assert cursors == [1, 2]
@@ -164,9 +160,7 @@ def test_mission_events_stream_respects_after_cursor(tmp_path: Path) -> None:
     folder = _seed_session(tmp_path, "mission-session")
     MissionApplication(folder, "test topic").approve_plan()
 
-    events = _drain(
-        mission_events_stream(folder, after_cursor=1, is_disconnected=_disconnect_after(1), poll_sec=0.01)
-    )
+    events = _drain(mission_events_stream(folder, after_cursor=1, is_disconnected=_disconnect_after(1), poll_sec=0.01))
 
     assert len(events) == 1
     assert events[0]["event_cursor"] == 2
@@ -180,9 +174,7 @@ def test_mission_events_stream_returns_immediately_when_client_already_gone(tmp_
     async def already_disconnected() -> bool:
         return True
 
-    events = _drain(
-        mission_events_stream(folder, after_cursor=0, is_disconnected=already_disconnected, poll_sec=0.01)
-    )
+    events = _drain(mission_events_stream(folder, after_cursor=0, is_disconnected=already_disconnected, poll_sec=0.01))
     assert events == []
 
 
@@ -210,9 +202,7 @@ def test_mission_events_stream_closes_when_mission_reaches_terminal_state(tmp_pa
     mission = repo.dispatch(RecordOracle(OracleVerdict.PASS, "looks good"))
     assert mission.state.value == "SUCCEEDED"
 
-    events = _drain(
-        mission_events_stream(folder, after_cursor=0, is_disconnected=_never_disconnected, poll_sec=0.01)
-    )
+    events = _drain(mission_events_stream(folder, after_cursor=0, is_disconnected=_never_disconnected, poll_sec=0.01))
     # Replays the full backlog, then closes on its own (no disconnect faked)
     # because the mission is terminal — never enters the poll-forever branch.
     assert [event["event_cursor"] for event in events if event is not None] == [1, 2, 3, 4, 5, 6, 7]
@@ -234,9 +224,7 @@ def test_mission_events_stream_tails_new_events_while_open(tmp_path: Path) -> No
         return calls["n"] > 3
 
     events = _drain(
-        mission_events_stream(
-            folder, after_cursor=0, is_disconnected=disconnect_after_new_event_seen, poll_sec=0.01
-        )
+        mission_events_stream(folder, after_cursor=0, is_disconnected=disconnect_after_new_event_seen, poll_sec=0.01)
     )
     cursors = [event["event_cursor"] for event in events if event is not None]
     # Initial backlog (1, 2) plus the event appended mid-poll (3).

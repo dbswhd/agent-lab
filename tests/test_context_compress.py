@@ -46,7 +46,12 @@ def test_structured_summary_render_empty_when_no_fields_set() -> None:
 
 def test_compress_tool_output_to_artifact_ref_truncates_and_keeps_ref() -> None:
     item = ContextItem(
-        "tool-1", SourceClass.EVIDENCE, "x" * 1000, authority=50, relevance=50, estimated_tokens=250,
+        "tool-1",
+        SourceClass.EVIDENCE,
+        "x" * 1000,
+        authority=50,
+        relevance=50,
+        estimated_tokens=250,
         provenance="tool call #1",
     )
     compressed = compress_tool_output_to_artifact_ref(item, artifact_ref="artifacts/tool-1.txt", excerpt_chars=100)
@@ -65,7 +70,12 @@ def test_compress_tool_output_to_artifact_ref_is_a_noop_when_already_small() -> 
 
 def test_compress_to_structured_summary_replaces_content_and_notes_provenance() -> None:
     item = ContextItem(
-        "transcript-1", SourceClass.EPISODE, "a" * 500, authority=40, relevance=40, estimated_tokens=125,
+        "transcript-1",
+        SourceClass.EPISODE,
+        "a" * 500,
+        authority=40,
+        relevance=40,
+        estimated_tokens=125,
         provenance="notepad.md",
     )
     summary = StructuredSummary(decisions=("use React",), source_refs=("notepad.md#L10",))
@@ -78,12 +88,21 @@ def test_compress_to_structured_summary_replaces_content_and_notes_provenance() 
 
 def test_compress_repo_tree_to_symbol_snippets_produces_one_item_per_snippet() -> None:
     item = ContextItem(
-        "repo_tree", SourceClass.REPO_CONTEXT, "[Repo tree]\n- src/\n- tests/",
-        authority=60, relevance=60, estimated_tokens=20, conflict_key="repo-slot",
+        "repo_tree",
+        SourceClass.REPO_CONTEXT,
+        "[Repo tree]\n- src/\n- tests/",
+        authority=60,
+        relevance=60,
+        estimated_tokens=20,
+        conflict_key="repo-slot",
     )
     snippets = [
-        SymbolSnippet(symbol="select_context", file_path="src/agent_lab/context/recipe.py", snippet="def select_context(...): ..."),
-        SymbolSnippet(symbol="ContextItem", file_path="src/agent_lab/context/recipe.py", snippet="class ContextItem: ..."),
+        SymbolSnippet(
+            symbol="select_context", file_path="src/agent_lab/context/recipe.py", snippet="def select_context(...): ..."
+        ),
+        SymbolSnippet(
+            symbol="ContextItem", file_path="src/agent_lab/context/recipe.py", snippet="class ContextItem: ..."
+        ),
     ]
     items = compress_repo_tree_to_symbol_snippets(item, snippets)
     assert len(items) == 2
@@ -119,7 +138,12 @@ def test_trim_to_budget_compresses_budget_overflow_items_at_step_3_and_retries()
         token_budget=50,
     )
     big_tool_output = ContextItem(
-        "tool-output", SourceClass.EVIDENCE, "y" * 800, authority=50, relevance=50, estimated_tokens=200,
+        "tool-output",
+        SourceClass.EVIDENCE,
+        "y" * 800,
+        authority=50,
+        relevance=50,
+        estimated_tokens=200,
     )
 
     def compressor(item: ContextItem) -> ContextItem:
@@ -130,7 +154,9 @@ def test_trim_to_budget_compresses_budget_overflow_items_at_step_3_and_retries()
     assert ("tool-output", "budget_overflow") in without_compression.excluded
 
     with_compression = trim_to_budget(
-        need, (big_tool_output,), compressions={"tool-output": (3, compressor)},
+        need,
+        (big_tool_output,),
+        compressions={"tool-output": (3, compressor)},
     )
     assert [item.item_id for item in with_compression.included] == ["tool-output"]
 
@@ -148,7 +174,12 @@ def test_trim_to_budget_applies_step_6_unconditionally_for_a_required_item() -> 
         token_budget=20,
     )
     oversized_required = ContextItem(
-        "big-evidence", SourceClass.EVIDENCE, "z" * 400, authority=100, relevance=100, estimated_tokens=100,
+        "big-evidence",
+        SourceClass.EVIDENCE,
+        "z" * 400,
+        authority=100,
+        relevance=100,
+        estimated_tokens=100,
         provenance="evidence.jsonl",
     )
     summary = StructuredSummary(must_not=("do not skip verification",), source_refs=("evidence.jsonl#12",))
@@ -157,7 +188,9 @@ def test_trim_to_budget_applies_step_6_unconditionally_for_a_required_item() -> 
         return compress_to_structured_summary(item, summary)
 
     manifest = trim_to_budget(
-        need, (oversized_required,), compressions={"big-evidence": (6, compressor)},
+        need,
+        (oversized_required,),
+        compressions={"big-evidence": (6, compressor)},
     )
     assert [item.item_id for item in manifest.included] == ["big-evidence"]
     assert "do not skip verification" in manifest.included[0].content
@@ -175,7 +208,12 @@ def test_trim_to_budget_still_raises_when_compression_is_not_enough() -> None:
         token_budget=1,
     )
     oversized_required = ContextItem(
-        "big-evidence", SourceClass.EVIDENCE, "z" * 400, authority=100, relevance=100, estimated_tokens=100,
+        "big-evidence",
+        SourceClass.EVIDENCE,
+        "z" * 400,
+        authority=100,
+        relevance=100,
+        estimated_tokens=100,
     )
     summary = StructuredSummary(must_not=("still too big to fit in budget=1",))
 
@@ -198,7 +236,12 @@ def test_trim_to_budget_leaves_non_budget_exclusions_uncompressed() -> None:
         token_budget=1_000,
     )
     forbidden_item = ContextItem(
-        "forbidden", SourceClass.EXTERNAL_CONTENT, "y" * 800, authority=50, relevance=50, estimated_tokens=200,
+        "forbidden",
+        SourceClass.EXTERNAL_CONTENT,
+        "y" * 800,
+        authority=50,
+        relevance=50,
+        estimated_tokens=200,
     )
     calls = {"count": 0}
 

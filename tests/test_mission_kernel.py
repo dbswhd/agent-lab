@@ -57,7 +57,14 @@ def test_block_rejects_execution_until_resolved() -> None:
 
 def test_oracle_failure_enters_repair_and_pass_completes() -> None:
     mission = new_mission("m-1", "refactor auth")
-    for command in (OpenPlan("hash-1"), ApprovePlan("hash-1"), StartExecution(), MarkDiffReady(), ApproveDiff(), RecordMerge("sha-1")):
+    for command in (
+        OpenPlan("hash-1"),
+        ApprovePlan("hash-1"),
+        StartExecution(),
+        MarkDiffReady(),
+        ApproveDiff(),
+        RecordMerge("sha-1"),
+    ):
         mission = apply_event(mission, decide(mission, command)[0])
     for event in decide(mission, RecordOracle(OracleVerdict.FAIL, "tests red")):
         mission = apply_event(mission, event)
@@ -85,7 +92,14 @@ def test_stale_expected_version_is_rejected() -> None:
 
 def test_repair_cap_emits_terminal_oracle_failure() -> None:
     mission = new_mission("m-1", "refactor auth")
-    for command in (OpenPlan("hash-1"), ApprovePlan("hash-1"), StartExecution(), MarkDiffReady(), ApproveDiff(), RecordMerge("sha-1")):
+    for command in (
+        OpenPlan("hash-1"),
+        ApprovePlan("hash-1"),
+        StartExecution(),
+        MarkDiffReady(),
+        ApproveDiff(),
+        RecordMerge("sha-1"),
+    ):
         mission = apply_event(mission, decide(mission, command)[0])
     for _ in range(3):
         for event in decide(mission, RecordOracle(OracleVerdict.FAIL, "tests red")):

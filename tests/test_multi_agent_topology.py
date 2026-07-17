@@ -37,7 +37,9 @@ def test_clear_evaluation_prefers_actor_critic() -> None:
 
 
 def test_hierarchy_requires_measured_manager_bottleneck() -> None:
-    decision = choose_topology(CoordinationNeed(8, 5, True, RiskLevel.MEDIUM, False, 300, 20.0, 6, manager_bottleneck=True))
+    decision = choose_topology(
+        CoordinationNeed(8, 5, True, RiskLevel.MEDIUM, False, 300, 20.0, 6, manager_bottleneck=True)
+    )
     assert decision.kind is TopologyKind.HIERARCHY
 
 

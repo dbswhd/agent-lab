@@ -80,9 +80,7 @@ def test_build_per_dir_agents_block_from_plan(tmp_path: Path) -> None:
     assert "JWT" in block
 
 
-def test_context_bundle_includes_repo_tree_when_enabled(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_context_bundle_includes_repo_tree_when_enabled(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     # A sibling test's AGENT_LAB_REPO_MAP=1 (e.g. test_context_bundle.py /
     # test_repo_map.py) would otherwise swap this block for repo_map's, which
     # doesn't emit the literal "[Repo tree]" header this test asserts on.

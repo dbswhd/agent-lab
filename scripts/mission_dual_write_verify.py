@@ -76,7 +76,9 @@ def _legacy_commit_sha(execution: dict[str, Any] | None) -> str | None:
         if not isinstance(repair, dict):
             continue
         repair_merge = repair.get("merge")
-        repair_sha = (repair_merge or {}).get("commit_sha") if isinstance(repair_merge, dict) else repair.get("exec_commit_sha")
+        repair_sha = (
+            (repair_merge or {}).get("commit_sha") if isinstance(repair_merge, dict) else repair.get("exec_commit_sha")
+        )
         if repair_sha:
             return str(repair_sha)
     return None
@@ -223,7 +225,9 @@ def _check_session(folder: Path) -> dict[str, Any]:
         if _normalized_inbox_row(legacy_row)[1:] != _normalized_inbox_row(mission_row)[1:]:
             findings.append(
                 {
-                    "dimension": "human_inbox_options" if _normalized_options(legacy_row) != _normalized_options(mission_row) else "human_inbox_row",
+                    "dimension": "human_inbox_options"
+                    if _normalized_options(legacy_row) != _normalized_options(mission_row)
+                    else "human_inbox_row",
                     "severity": "hard_mismatch",
                     "detail": f"item {item_id} normalized legacy/Mission row differs",
                 }
@@ -283,7 +287,15 @@ def _check_session(folder: Path) -> dict[str, Any]:
         )
 
     severities = {f["severity"] for f in findings}
-    overall = "hard_mismatch" if "hard_mismatch" in severities else ("review_needed" if "review_needed" in severities else ("mission_behind" if "mission_behind" in severities else "ok"))
+    overall = (
+        "hard_mismatch"
+        if "hard_mismatch" in severities
+        else (
+            "review_needed"
+            if "review_needed" in severities
+            else ("mission_behind" if "mission_behind" in severities else "ok")
+        )
+    )
     expected_boundary_count = sum(
         1
         for finding in findings

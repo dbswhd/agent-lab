@@ -38,12 +38,16 @@ def test_unknown_security_label_is_rejected_at_construction(label: str) -> None:
     """#1 — fail closed: a typo'd or non-standard label must not silently
     bypass redaction by falling outside REDACTED_SECURITY_LABELS."""
     with pytest.raises(ValueError, match="unknown security_label"):
-        ContextItem("x", SourceClass.EVIDENCE, "sensitive", authority=50, relevance=50, estimated_tokens=1, security_label=label)
+        ContextItem(
+            "x", SourceClass.EVIDENCE, "sensitive", authority=50, relevance=50, estimated_tokens=1, security_label=label
+        )
 
 
 @pytest.mark.parametrize("label", ["public", "project", "secret", "credential", "pii"])
 def test_every_declared_security_label_is_accepted(label: str) -> None:
-    item = ContextItem("x", SourceClass.EVIDENCE, "content", authority=50, relevance=50, estimated_tokens=1, security_label=label)
+    item = ContextItem(
+        "x", SourceClass.EVIDENCE, "content", authority=50, relevance=50, estimated_tokens=1, security_label=label
+    )
     assert item.security_label == label
 
 
@@ -58,8 +62,12 @@ def test_empty_conflict_key_does_not_group_unrelated_items() -> None:
         token_budget=1_000,
     )
     plan = ContextItem("plan", SourceClass.APPROVED_PLAN, "ship it", authority=100, relevance=100, estimated_tokens=4)
-    repo_a = ContextItem("repo-a", SourceClass.REPO_CONTEXT, "file a", authority=50, relevance=50, estimated_tokens=4, conflict_key="")
-    repo_b = ContextItem("repo-b", SourceClass.REPO_CONTEXT, "file b", authority=50, relevance=50, estimated_tokens=4, conflict_key="")
+    repo_a = ContextItem(
+        "repo-a", SourceClass.REPO_CONTEXT, "file a", authority=50, relevance=50, estimated_tokens=4, conflict_key=""
+    )
+    repo_b = ContextItem(
+        "repo-b", SourceClass.REPO_CONTEXT, "file b", authority=50, relevance=50, estimated_tokens=4, conflict_key=""
+    )
 
     manifest = select_context(need, (plan, repo_a, repo_b))
 
@@ -130,21 +138,35 @@ def test_required_and_optional_overlap_is_still_allowed() -> None:
 def test_external_content_defaults_to_untrusted() -> None:
     """#5 — 09 doc §8's untrusted-content boundary, applied without every
     producer having to remember to pass trusted=False."""
-    item = ContextItem("web-1", SourceClass.EXTERNAL_CONTENT, "fetched html", authority=50, relevance=50, estimated_tokens=4)
+    item = ContextItem(
+        "web-1", SourceClass.EXTERNAL_CONTENT, "fetched html", authority=50, relevance=50, estimated_tokens=4
+    )
     assert item.trusted is False
 
 
 def test_agent_opinion_defaults_to_trusted() -> None:
     """#5 — deliberately NOT defaulted untrusted: a peer agent's proposal is a
     weighting concern (tier 6, low authority), not an injection-safety one."""
-    item = ContextItem("peer-proposal", SourceClass.AGENT_OPINION, "I think we should...", authority=20, relevance=50, estimated_tokens=4)
+    item = ContextItem(
+        "peer-proposal",
+        SourceClass.AGENT_OPINION,
+        "I think we should...",
+        authority=20,
+        relevance=50,
+        estimated_tokens=4,
+    )
     assert item.trusted is True
 
 
 def test_explicit_trusted_true_overrides_the_external_content_default() -> None:
     item = ContextItem(
-        "vetted-web", SourceClass.EXTERNAL_CONTENT, "reviewed and approved excerpt",
-        authority=50, relevance=50, estimated_tokens=4, trusted=True,
+        "vetted-web",
+        SourceClass.EXTERNAL_CONTENT,
+        "reviewed and approved excerpt",
+        authority=50,
+        relevance=50,
+        estimated_tokens=4,
+        trusted=True,
     )
     assert item.trusted is True
 
@@ -159,7 +181,9 @@ def test_untrusted_external_content_is_excluded_from_the_manifest_by_default() -
         token_budget=1_000,
     )
     plan = ContextItem("plan", SourceClass.APPROVED_PLAN, "ship it", authority=100, relevance=100, estimated_tokens=4)
-    web = ContextItem("web-1", SourceClass.EXTERNAL_CONTENT, "fetched html", authority=100, relevance=100, estimated_tokens=4)
+    web = ContextItem(
+        "web-1", SourceClass.EXTERNAL_CONTENT, "fetched html", authority=100, relevance=100, estimated_tokens=4
+    )
 
     manifest = select_context(need, (plan, web))
 

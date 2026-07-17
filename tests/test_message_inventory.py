@@ -18,7 +18,9 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from message_inventory_scan import scan_callback_event_types  # noqa: E402
 
 DOC_PATH = ROOT / "docs/redesign-2026-07/evidence/cm1-message-inventory-2026-07-16.md"
-_DOC_ROW = re.compile(r"^\| `([a-zA-Z0-9_.]+)` \| `[^|]+` \| (command|event|work_request|progress|human_decision|artifact_ref) \|")
+_DOC_ROW = re.compile(
+    r"^\| `([a-zA-Z0-9_.]+)` \| `[^|]+` \| (command|event|work_request|progress|human_decision|artifact_ref) \|"
+)
 
 
 def _doc_rows() -> dict[str, str]:

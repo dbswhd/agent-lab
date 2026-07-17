@@ -191,7 +191,7 @@ def trim_to_budget(
         _step, compress_fn = active[item_id]
         result = compress_fn(current[item_id])
         del current[item_id]
-        for new_item in (result if isinstance(result, list) else [result]):
+        for new_item in result if isinstance(result, list) else [result]:
             current[new_item.item_id] = new_item
 
     for item_id, (step, _fn) in list(active.items()):
@@ -201,11 +201,7 @@ def trim_to_budget(
     manifest = select_context(need, tuple(current.values()))
     for step in (3, 4, 5):
         budget_excluded_ids = {item_id for item_id, reason in manifest.excluded if reason == "budget_overflow"}
-        step_ids = [
-            item_id
-            for item_id in budget_excluded_ids
-            if item_id in active and active[item_id][0] == step
-        ]
+        step_ids = [item_id for item_id in budget_excluded_ids if item_id in active and active[item_id][0] == step]
         if not step_ids:
             continue
         for item_id in step_ids:

@@ -215,7 +215,12 @@ def test_fast_bucket_collection_budget():
     # own modules, not un-adaptable bundle.py internals as first assumed.
     # adapt_mailbox_messages/adapt_turn_bridge_block/adapt_peer_block also
     # close CX1 §3's agent_opinion producer gap.
-    assert count <= 3497, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-16: raised 3497 -> 3504 for adapt_recent_messages, closing the
+    # last remaining taxonomy gap (the recent Human+agent conversation
+    # transcript) by decomposing per-message by role: user->HUMAN_INTENT,
+    # own agent reply->EPISODE, peer agent reply->AGENT_OPINION,
+    # system->RUNTIME_STATE.
+    assert count <= 3504, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

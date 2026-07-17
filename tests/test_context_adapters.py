@@ -32,6 +32,7 @@ from agent_lab.context.adapters import (
     adapt_playbook_bullets,
     adapt_plugin_allowlist_block,
     adapt_project_md,
+    adapt_recent_messages,
     adapt_reply_policy_guidance,
     adapt_repo_tree,
     adapt_session_guidance,
@@ -169,6 +170,57 @@ def test_adapt_mailbox_messages_falls_back_to_bare_body_without_sender() -> None
     rows = [{"id": "mail-3", "body": "anonymous note"}]
     items = adapt_mailbox_messages(rows)
     assert items[0].content == "anonymous note"
+
+
+def test_adapt_recent_messages_maps_user_role_to_human_intent() -> None:
+    rows = [{"role": "user", "content": "please fix the bug", "ts": "2026-07-16T00:00:00Z"}]
+    items = adapt_recent_messages(rows)
+    assert len(items) == 1
+    assert items[0].item_id == "recent:0"
+    assert items[0].source == SourceClass.HUMAN_INTENT
+    assert items[0].freshness == "2026-07-16T00:00:00Z"
+
+
+def test_adapt_recent_messages_maps_own_agent_reply_to_episode() -> None:
+    rows = [{"role": "agent", "agent": "claude", "content": "I fixed it", "ts": "2026-07-16"}]
+    items = adapt_recent_messages(rows, self_agent="claude")
+    assert items[0].source == SourceClass.EPISODE
+
+
+def test_adapt_recent_messages_maps_peer_agent_reply_to_agent_opinion() -> None:
+    """A peer's reply that wasn't filtered out before reaching this adapter
+    (self_agent="claude", but this row is from "codex") must not be
+    mistagged as this agent's own EPISODE history."""
+    rows = [{"role": "agent", "agent": "codex", "content": "I think we should refactor", "ts": "2026-07-16"}]
+    items = adapt_recent_messages(rows, self_agent="claude")
+    assert items[0].source == SourceClass.AGENT_OPINION
+
+
+def test_adapt_recent_messages_without_self_agent_treats_all_agent_rows_as_opinion() -> None:
+    """No self_agent supplied -- can't distinguish "own" from "peer", so every
+    agent-role row falls to the more conservative AGENT_OPINION mapping
+    rather than guessing it's EPISODE."""
+    rows = [{"role": "agent", "agent": "claude", "content": "a reply", "ts": "2026-07-16"}]
+    items = adapt_recent_messages(rows)
+    assert items[0].source == SourceClass.AGENT_OPINION
+
+
+def test_adapt_recent_messages_maps_system_role_to_runtime_state() -> None:
+    rows = [{"role": "system", "content": "steer note injected", "ts": "2026-07-16"}]
+    items = adapt_recent_messages(rows)
+    assert items[0].source == SourceClass.RUNTIME_STATE
+
+
+def test_adapt_recent_messages_skips_empty_content_and_unknown_roles() -> None:
+    rows = [
+        {"role": "user", "content": "  "},
+        {"role": "bogus-role", "content": "should be skipped"},
+        {"role": "user", "content": "kept"},
+    ]
+    items = adapt_recent_messages(rows)
+    assert len(items) == 1
+    assert items[0].content == "kept"
+    assert items[0].item_id == "recent:2"  # index preserved from the original row list
 
 
 def test_adapt_shared_context_md_maps_to_project_doc() -> None:

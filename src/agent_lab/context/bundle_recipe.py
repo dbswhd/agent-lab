@@ -43,15 +43,24 @@ mailbox message or in-turn chat is that peer's own communication, not a
 system-produced fact — the CX1 registry flagged `SourceClass.AGENT_OPINION`
 as having no confirmed producer; these three do.
 
+**2026-07-16 — `recent` transcript gap closed.** The earlier assumption
+that no `SourceClass` fits "the ongoing conversation" was wrong for the same
+reason the other 14 were: `build_recent_turns_block`'s input is not one
+opaque blob, it's a structured list of messages (`ChatMessage.to_dict()`'s
+shape: `{role, agent, content, ts, parallel_round?}`). Decomposed PER
+MESSAGE by `role` (`context/adapters.py::adapt_recent_messages`): `role ==
+"user"` -> HUMAN_INTENT (09-context-engineering.md §12's "현재 Human intent",
+literally the Human's own recent turns); `role == "agent"` and `agent ==
+self_agent` -> EPISODE (this agent's own session-scoped history, distinct
+from a peer's opinion); `role == "agent"` and `agent != self_agent` ->
+AGENT_OPINION (same slot as mailbox/peer/bridge, for a caller that doesn't
+pre-dedupe peer lines out of `messages`); `role == "system"` ->
+RUNTIME_STATE.
+
 **Still genuinely out of scope:** `_format_grounding_block` (not an
-independent producer — see `context/adapters.py`'s module docstring),
-`agent_opinion` from anywhere OTHER than mailbox/peer/bridge, and
-`build_recent_turns_block`/`_build_human_only_recent_block` (the full
-conversation transcript) — no `SourceClass` cleanly captures "the ongoing
-Human+agent conversation," which is a genuine taxonomy gap, not something
-this module should paper over with a bad mapping. `bundle.py` itself
-remains completely untouched by any of this (verify with `git diff --
-src/agent_lab/context/bundle.py`).
+independent producer — see `context/adapters.py`'s module docstring).
+`bundle.py` itself remains completely untouched by any of this (verify with
+`git diff -- src/agent_lab/context/bundle.py`).
 """
 
 from __future__ import annotations
@@ -78,6 +87,7 @@ from agent_lab.context.adapters import (
     adapt_plan_open_block,
     adapt_playbook_bullets,
     adapt_plugin_allowlist_block,
+    adapt_recent_messages,
     adapt_repo_tree,
     adapt_reply_policy_guidance,
     adapt_session_guidance,
@@ -169,6 +179,8 @@ class RecipeBundleInputs:
     envelope_follow_up_block: str = ""
     agent_tool_rules_block: str = ""
     mailbox_messages: list[dict[str, Any]] = field(default_factory=list)
+    recent_messages: list[dict[str, Any]] = field(default_factory=list)
+    self_agent: str = ""
 
 
 def build_manifest_via_recipe(activity: ActivityKind, inputs: RecipeBundleInputs) -> ContextManifest:
@@ -226,6 +238,7 @@ def build_manifest_via_recipe(activity: ActivityKind, inputs: RecipeBundleInputs
     if (item := adapt_agent_tool_rules_block(inputs.agent_tool_rules_block)) is not None:
         items.append(item)
     items.extend(adapt_mailbox_messages(inputs.mailbox_messages))
+    items.extend(adapt_recent_messages(inputs.recent_messages, self_agent=inputs.self_agent))
 
     need = recipe_for(activity)
     return select_context(need, tuple(items))

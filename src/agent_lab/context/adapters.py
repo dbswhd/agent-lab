@@ -453,6 +453,78 @@ def adapt_mailbox_messages(rows: list[dict[str, Any]]) -> list[ContextItem]:
     return items
 
 
+def adapt_recent_messages(rows: list[dict[str, Any]], *, self_agent: str = "") -> list[ContextItem]:
+    """`room/context/message_trim.py::build_recent_turns_block`/
+    `prepare_recent_messages` — the recent Human+agent conversation turns
+    (`ChatMessage.to_dict()`'s shape: `{role: "user"|"agent"|"system",
+    agent, content, ts, parallel_round?}`), previously left unadapted (see
+    `context/bundle_recipe.py`'s module docstring) as a genuine taxonomy
+    gap: no single `SourceClass` cleanly captures "the ongoing conversation."
+
+    2026-07-16 — resolved by decomposing PER MESSAGE, keyed on `role` (and
+    `agent` for role="agent"), rather than treating the transcript as one
+    opaque blob — the same "structured list, not a rendered string" pattern
+    `adapt_clarify_facts`/`adapt_goal_ledger`/`adapt_artifacts` already use:
+
+    - `role == "user"` (what the Human said) -> HUMAN_INTENT. This is
+      exactly what 09-context-engineering.md §12's "현재 Human intent"
+      refers to — the Human's own recent turns are its primary vehicle.
+    - `role == "agent"` and `agent == self_agent` (this agent's own prior
+      replies this session) -> EPISODE. Distinct from a PEER's opinion —
+      this is the agent's own session-scoped history, not another agent's
+      analysis.
+    - `role == "agent"` and `agent != self_agent` (a peer message that
+      wasn't filtered out of `messages` before reaching this adapter) ->
+      AGENT_OPINION, same slot as `adapt_mailbox_messages`/`adapt_peer_
+      block`. Callers that already dedupe peer lines into a separate
+      `peer_msgs` list (as `dedupe_peer_from_recent` does today) won't hit
+      this branch at all; it exists so a caller that DOESN'T dedupe first
+      still gets a defensible mapping instead of silently mis-tagging peer
+      content as this agent's own EPISODE.
+    - `role == "system"` (ephemeral system-injected notices) -> RUNTIME_STATE,
+      the same generic "current turn/session state" bucket the other
+      recently-added adapters use.
+
+    item_id is index-based (`f"recent:{index}"`) like `adapt_goal_ledger` —
+    chat.jsonl rows carry a `ts` but no stable per-message id, and two
+    messages can share a `ts` (near-simultaneous parallel replies), so an
+    index is the only thing guaranteed unique here; it is NOT stable across
+    edits to the message list, same caveat as goal_ledger."""
+    items: list[ContextItem] = []
+    self_agent_l = self_agent.strip().lower()
+    for index, row in enumerate(rows):
+        content = str(row.get("content") or "").strip()
+        role = str(row.get("role") or "").strip()
+        if not content or role not in ("user", "agent", "system"):
+            continue
+        agent = str(row.get("agent") or "").strip().lower()
+        if role == "user":
+            source = SourceClass.HUMAN_INTENT
+            authority = AUTHORITY_HIGH
+        elif role == "agent" and agent == self_agent_l and self_agent_l:
+            source = SourceClass.EPISODE
+            authority = AUTHORITY_MEDIUM
+        elif role == "agent":
+            source = SourceClass.AGENT_OPINION
+            authority = AUTHORITY_MEDIUM
+        else:
+            source = SourceClass.RUNTIME_STATE
+            authority = AUTHORITY_MEDIUM
+        items.append(
+            ContextItem(
+                item_id=f"recent:{index}",
+                source=source,
+                content=content,
+                authority=authority,
+                relevance=authority,
+                estimated_tokens=estimate_tokens(content),
+                provenance="room/context/message_trim.py",
+                freshness=str(row.get("ts")) if row.get("ts") else None,
+            )
+        )
+    return items
+
+
 def adapt_steer_queue(entries: list[dict[str, Any]]) -> list[ContextItem]:
     """`steer.py::list_steer_queue` (the already-drained/queued entries, NOT
     `drain_steer_follow_up` — that call is side-effecting/consuming, so this

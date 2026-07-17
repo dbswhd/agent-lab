@@ -431,7 +431,17 @@ SourceClass 매핑: team_task/objection/challenge_owner/thread_resume/dispatch_i
 
 `RecipeBundleInputs`에 14개 필드 추가, `build_manifest_via_recipe`가 전부 어댑팅해서 넘기도록 배선. PLAN_RECIPE의 optional_sources가 `{EPISODE, EXTERNAL_CONTENT, AGENT_OPINION}`이라 mailbox/turn_bridge/peer가 실제로 included되는 걸 PLAN activity로 시연(전에는 AGENT_OPINION을 optional로 허용하는 activity가 하나도 시연 대상이 아니었다). EXECUTE_RECIPE가 EPISODE를 forbidden하므로 session_skills_block이 EXECUTE에서 실제로 배제되는 것도 확인.
 
-여전히 out of scope: `_format_grounding_block`(독립 producer 아님, 여전히 어댑팅 안 함), `build_recent_turns_block`/`_build_human_only_recent_block`(전체 대화 transcript — 어떤 SourceClass도 "지금 진행 중인 Human+agent 대화"를 깔끔하게 담지 못한다, 진짜 taxonomy 공백이라 억지로 매핑하지 않음). `bundle.py` 자체는 이번에도 전혀 안 건드림(`git diff` 확인). `tests/test_context_adapters.py`에 30개, `tests/test_context_bundle_recipe.py`에 2개 신규 테스트.
+`bundle.py` 자체는 이번에도 전혀 안 건드림(`git diff` 확인). `tests/test_context_adapters.py`에 30개, `tests/test_context_bundle_recipe.py`에 2개 신규 테스트.
+
+**2026-07-16 — `recent` transcript gap도 닫힘.** 직전 절에서 "진짜 taxonomy 공백"이라고 남겨뒀던 `build_recent_turns_block`/`_build_human_only_recent_block`(전체 대화 transcript)도, 앞의 14개와 같은 이유로 다시 봤다 — 이것도 하나의 뭉친 문자열이 아니라 `ChatMessage.to_dict()` 모양(`{role, agent, content, ts, parallel_round?}`)의 구조화된 리스트다. 메시지 하나하나를 **`role`별로 분해**하면(`context/adapters.py::adapt_recent_messages`, `tests/test_context_adapters.py`에 6개 신규 테스트):
+- `role == "user"`(Human 발화) → **HUMAN_INTENT** — §12 "현재 Human intent"의 1차 소스와 정확히 일치.
+- `role == "agent"` & `agent == self_agent`(이 agent가 이 세션에서 이미 한 답변) → **EPISODE** — peer의 의견과 구분되는 자기 세션 이력.
+- `role == "agent"` & `agent != self_agent`(recent에 peer 발화가 안 걸러지고 섞여 들어온 경우) → **AGENT_OPINION** — mailbox/peer_block/turn_bridge와 동일 슬롯.
+- `role == "system"`(ephemeral 시스템 알림) → **RUNTIME_STATE**.
+
+item_id는 `goal_ledger`와 같은 index 기반(`f"recent:{index}"`) — chat.jsonl row엔 `ts`는 있지만 안정적인 id가 없고, 동시 응답 시 `ts`가 겹칠 수 있어서 index만이 유일성을 보장한다(리스트 편집에는 불안정, 같은 caveat). `RecipeBundleInputs`에 `recent_messages`/`self_agent` 필드 추가, PLAN activity로 Human/자기 자신/peer 셋 다 실제 included되는 걸 시연(`tests/test_context_bundle_recipe.py` 1개 신규).
+
+이걸로 CX1 §3가 열어뒀던 taxonomy 질문(agent_opinion 소스 유무)과 09 문서가 반복해서 "매핑 불가"로 남겨뒀던 recent transcript 둘 다 닫혔다 — bundle.py의 실제 producer 25개 전부에 대해 이제 어댑터가 있다(단 `_format_grounding_block`은 여전히 독립 producer가 아니라서 어댑팅 대상 자체가 아님, clarify_facts+goal_ledger로 구성).
 
 ## 12. 완료 정의
 

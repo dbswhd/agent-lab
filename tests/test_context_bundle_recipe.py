@@ -235,3 +235,33 @@ def test_build_manifest_via_recipe_session_skills_block_is_forbidden_for_execute
     manifest = build_manifest_via_recipe(ActivityKind.EXECUTE, inputs)
     excluded = dict(manifest.excluded)
     assert excluded.get("session_skills_block") == "forbidden"
+
+
+def test_build_manifest_via_recipe_wires_recent_messages_by_role() -> None:
+    """2026-07-16 -- the recent conversation transcript, previously left
+    as a genuine taxonomy gap, is now decomposed per-message by role. PLAN
+    is used since its optional_sources includes AGENT_OPINION (the peer
+    reply's mapping)."""
+    inputs = RecipeBundleInputs(
+        plan_md="# Plan\n\nship it",
+        session_guidance="guidance text",
+        clarify_facts=[{"id": "q1", "answer": "fact", "at": "2026-07-16"}],
+        repo_tree="[Repo tree]\n- src/",
+        agents_md_hierarchy="repo-specific AGENTS.md guidance",
+        reply_policy_guidance_parts=["be concise"],
+        self_agent="claude",
+        recent_messages=[
+            {"role": "user", "content": "please add tests", "ts": "2026-07-16T00:00:00Z"},
+            {"role": "agent", "agent": "claude", "content": "adding tests now", "ts": "2026-07-16T00:00:01Z"},
+            {"role": "agent", "agent": "codex", "content": "I already started on this", "ts": "2026-07-16T00:00:02Z"},
+        ],
+    )
+    manifest = build_manifest_via_recipe(ActivityKind.PLAN, inputs)
+    by_id = {item.item_id: item for item in manifest.included}
+    # recent:0 (Human) is HUMAN_INTENT, a PLAN_RECIPE required source.
+    assert by_id["recent:0"].source == SourceClass.HUMAN_INTENT
+    # recent:1 (claude's own reply) is EPISODE, recent:2 (codex's reply) is
+    # AGENT_OPINION -- both are in PLAN_RECIPE's optional_sources, so both
+    # survive selection rather than one being silently excluded.
+    assert by_id["recent:1"].source == SourceClass.EPISODE
+    assert by_id["recent:2"].source == SourceClass.AGENT_OPINION

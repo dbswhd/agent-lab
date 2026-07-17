@@ -241,3 +241,60 @@ test_flag_on_captures_real_mailbox_rows_before_build_mailbox_block_mutates_them`
 **이건 실제 방향성 있는 신호다** — CLARIFY/PLAN은 recipe가 legacy보다 더 많은 컨텍스트를 포함하는 경향(§7.1이 PLAN에 40% "relevant repo/docs" 배분을 주는 것과 방향은 일치), EXECUTE/CRITIC은 recipe가 훨씬 적게 고르는 경향(legacy가 이 두 activity에서 실제로 필요한 것보다 과하게 담고 있었을 가능성, 또는 recipe가 §6.4/§6.3의 "무관한 전체 context 제외" 원칙을 실제로 지키고 있다는 신호일 수도 있음 — 이번 데이터만으론 어느 쪽인지 구분 안 됨). REPAIR는 거의 동등.
 
 **cutover 판정을 내리기엔 여전히 이르다** — 36개 synthetic 시나리오뿐이고, 이 비율이 "recipe가 더 낫다"는 뜻인지 "recipe가 아직 못 담는 producer가 있어서 작게 나온다"는 뜻인지(예: EXECUTE/CRITIC엔 mailbox/wisdom_index/playbook 트래픽이 원래 적을 수도 있음) 이 실행만으론 분간 안 된다. 실제(또는 더 다양한) 세션 코호트로 표본을 늘리고, 이 비율이 activity별로 안정적인지 확인한 뒤에 판단할 문제다.
+
+---
+
+## 2026-07-16 6차 — 실제 세션 코호트로 표본 확대
+
+지금까지 5차례 전부 하나의 synthetic run_meta를 손으로 만들어 variant를 돌린 것이었다. 이번엔 `scripts/context_recipe_shadow_real_session_cohort.py`(신규, `make context-recipe-shadow-real-cohort`)로 **실제 세션 데이터**를 기반으로 8개 시나리오를 추가로 돌렸다:
+
+### 소스 1 — 저장소에 이미 있는 real regression fixture 7개
+
+`sessions/_regression/`(README.md가 관리하는 golden baseline, structural smoke-test용)의 실제 `run.json` 7개를 그대로 로드했다:
+
+| fixture | 실제 phase | 매핑 activity |
+| --- | --- | --- |
+| `mission_loop_discuss_recovery` | DISCUSS | plan |
+| `wisdom_index_built` | DISCUSS | plan |
+| `mission_loop_plan_reject` | PLAN_REJECT | plan |
+| `mission_loop_execute_queue` | EXECUTE_QUEUE | execute |
+| `plan_workflow_pw5_latency` | EXECUTE_QUEUE | execute |
+| `evidence_gates_merged_ok` | VERIFY | critic |
+| `evidence_ledger_stream` | VERIFY | critic |
+
+**정직하게 밝히는 한계**: 이 fixture들은 `run.json`만 있고 `chat.jsonl`/`plan.md`/`workspace_binding`이 없다(구조적 smoke-test 베이스라인이라 그럼). `mission_loop`/`topic`/`executions` 상태는 진짜지만, `plan_md`/`messages`/`workspace_binding`/artifact 1건은 스크립트가 보충했다 — 보충한 부분과 진짜 부분을 스크립트 자체 docstring/코드 주석에 명시했다.
+
+### 소스 2 — 새로 구동한 실제 mock mission 1건 (REPAIR)
+
+기존 regression fixture 중 `run.json`이 REPAIR phase로 끝나는 게 하나도 없어서, `scripts/mission_dogfood_run.py`가 쓰는 것과 **동일한 실제** `mission/loop.py`/`mission/advance.py`/`verified_loop.py` 함수를 그대로 호출해서 세션 하나를 처음부터 끝까지 실제로 구동했다 — 단 Oracle verdict를 `pass` 대신 `fail`로 줘서 `MISSION_DONE` 대신 `REPAIR`에 도달하게 했다. 이 세션은 `run.json`/`chat.jsonl`/`plan.md` **전부 진짜**(디스크에 실제로 써짐, `read_plan_gate`/`patch_run_meta`/`on_verify_result` 등 실제 함수가 만든 결과) — `artifacts`(Room의 별도 producer라 mission_loop 경로가 안 채움) 1건만 보충. 스크래치 디렉터리(`tempfile.mkdtemp()`)에 만들고 `sessions/`(git 커밋 금지 경로)엔 안 건드림.
+
+### 결과
+
+```
+scenario_count: 8
+ok_count: 8
+skipped_count: 0
+failed_count: 0
+```
+
+| scenario | recipe/legacy 비율 |
+| --- | --- |
+| fixture:mission_loop_discuss_recovery | 1.187 |
+| fixture:wisdom_index_built | 1.194 |
+| fixture:mission_loop_plan_reject | 1.190 |
+| fixture:mission_loop_execute_queue | 0.469 |
+| fixture:plan_workflow_pw5_latency | 0.374 |
+| fixture:evidence_gates_merged_ok | 0.432 |
+| fixture:evidence_ledger_stream | 0.433 |
+| real_repair_session | 0.825 |
+
+**5차의 synthetic 결과와 방향이 정확히 일치한다** — PLAN 계열(discuss_recovery/wisdom_index_built/plan_reject) 전부 ~1.19(legacy보다 크게), EXECUTE 계열 전부 ~0.37~0.47(legacy보다 훨씬 작게), CRITIC 계열(VERIFY fixture) 전부 ~0.43(작게), REPAIR는 ~0.83(거의 동등, synthetic의 ~0.90과 비슷한 범위). **서로 다른 두 표본(순수 synthetic vs 실제 세션 상태 기반)이 같은 activity별 패턴을 보인다는 건, 이 비율 차이가 우연이나 내 synthetic 데이터의 특이성이 아니라 recipe pipeline의 실제(재현 가능한) 특성이라는 근거가 하나 늘었다는 뜻이다.**
+
+### 여전히 커버 안 된 것
+
+- **CLARIFY** — 이 phase로 끝나는 real regression fixture가 하나도 없다. 실제 clarifier interview 흐름을 구동하는 건 이번 범위 밖으로 남겨뒀다.
+- **SCRIBE** — 애초에 매핑되는 mission phase가 없다(`bundle_recipe.py` 자체 문서화, scribe context는 `core/limits.py::ScribeContextLimits`라는 별개 미수렴 경로).
+
+### 그래도 cutover 판정은 아직
+
+두 개의 독립적인 표본(synthetic 5차, 실제 세션 6차)이 같은 방향을 가리키는 건 고무적이지만, 표본 수 자체는 여전히 적고(6차는 8개, 5차는 36개 — 전부 합쳐도 소규모), CLARIFY/SCRIBE는 아예 실제 데이터가 없다. "recipe가 EXECUTE/CRITIC에서 legacy보다 훨씬 작게 고르는 게 좋은 신호(무관한 것 제외)인지 나쁜 신호(아직 못 담는 producer가 있어서)인지"도 여전히 미결이다.

@@ -117,6 +117,9 @@ mission-dogfood-weekly:
 context-recipe-shadow-dogfood:
 	AGENT_LAB_MOCK_AGENTS=1 .venv/bin/python scripts/context_recipe_shadow_dogfood.py
 
+context-recipe-shadow-real-cohort:
+	AGENT_LAB_MOCK_AGENTS=1 .venv/bin/python scripts/context_recipe_shadow_real_session_cohort.py
+
 test-live:
 	@test "$$AGENT_LAB_RUN_LIVE" = "1" || (echo "Set AGENT_LAB_RUN_LIVE=1 for live Cursor spike tests" && exit 1)
 	.venv/bin/python scripts/run_verification_lane.py --lane live --marker-expression "live" -- .venv/bin/pytest tests/ -q -m live

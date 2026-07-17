@@ -235,7 +235,13 @@ def test_fast_bucket_collection_budget():
     # agents_md_hierarchy (which only resolves with plan_md file-path
     # hints); a workspace with real PROJECT.md/AGENTS.md/SHARED_CONTEXT.md
     # but a hint-free plan_md previously got zero PROJECT_DOC coverage.
-    assert count <= 3519, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-16: raised 3519 -> 3521 for closing the mailbox gap in the CX8
+    # shadow pass -- context/bundle.py now captures unread_for_agent()'s
+    # result immediately before each build_mailbox_block call (which has a
+    # mark_delivered side effect), passing it through to
+    # shadow_compare_bundle as mailbox_rows so AGENT_OPINION coverage no
+    # longer silently excludes mailbox content.
+    assert count <= 3521, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

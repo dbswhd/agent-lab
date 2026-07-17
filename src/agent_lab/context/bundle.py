@@ -37,7 +37,7 @@ from agent_lab.room.agent_capabilities import (
 from agent_lab.room.objections import build_challenge_owner_block, build_objection_block
 from agent_lab.room.turn_state import render_turn_state_block
 from agent_lab.room.artifacts import build_artifacts_block
-from agent_lab.room.mailbox import build_mailbox_block
+from agent_lab.room.mailbox import build_mailbox_block, unread_for_agent
 from agent_lab.room.tasks import build_team_task_block
 from agent_lab.session.guidance import (
     build_session_guidance_block,
@@ -224,6 +224,11 @@ def build_slim_consensus_bundle(
     team_block = build_team_task_block(run_meta, agent)
     if team_block.strip():
         constraints = f"{constraints}\n\n{team_block.strip()}"
+    # CX8 shadow pass — captured BEFORE build_mailbox_block runs, since that
+    # call has a side effect (mark_delivered) that marks these same rows
+    # read; reading them again after would just return []. Read-only, so
+    # this doesn't change build_mailbox_block's own behavior at all.
+    mailbox_rows_before_delivery = unread_for_agent(run_meta, agent)
     mailbox_block = build_mailbox_block(run_meta, agent)
     if mailbox_block.strip():
         constraints = f"{constraints}\n\n{mailbox_block.strip()}"
@@ -349,6 +354,7 @@ def build_slim_consensus_bundle(
                 envelope_block=follow_up,
                 tool_rules=tool_rules,
                 recent_msgs=messages,
+                mailbox_rows=mailbox_rows_before_delivery,
                 legacy_bundle=bundle,
             )
             if run_meta is not None and shadow_result is not None:
@@ -628,6 +634,11 @@ def build_context_bundle(
     team_block = build_team_task_block(run_meta, agent)
     if team_block.strip():
         constraints = f"{constraints}\n\n{team_block.strip()}"
+    # CX8 shadow pass — captured BEFORE build_mailbox_block runs, since that
+    # call has a side effect (mark_delivered) that marks these same rows
+    # read; reading them again after would just return []. Read-only, so
+    # this doesn't change build_mailbox_block's own behavior at all.
+    mailbox_rows_before_delivery = unread_for_agent(run_meta, agent)
     mailbox_block = build_mailbox_block(run_meta, agent)
     if mailbox_block.strip():
         constraints = f"{constraints}\n\n{mailbox_block.strip()}"
@@ -830,6 +841,7 @@ def build_context_bundle(
                 envelope_block=envelope_block,
                 tool_rules=tool_rules,
                 recent_msgs=recent_msgs,
+                mailbox_rows=mailbox_rows_before_delivery,
                 legacy_bundle=bundle,
             )
             if run_meta is not None and shadow_result is not None:

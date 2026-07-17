@@ -52,6 +52,7 @@ def _base_kwargs(**overrides):
         envelope_block="",
         tool_rules="",
         recent_msgs=[],
+        mailbox_rows=[],
         legacy_bundle=_legacy_bundle(),
     )
     kwargs.update(overrides)
@@ -108,6 +109,18 @@ def test_shadow_compare_bundle_includes_recent_messages_and_dispatch_content(mon
     result = shadow_compare_bundle(**_base_kwargs(recent_msgs=recent))
     assert result["ok"] is True
     assert "human_intent" in result["included_sources"]
+
+
+def test_shadow_compare_bundle_includes_mailbox_rows_as_agent_opinion(monkeypatch: pytest.MonkeyPatch) -> None:
+    """2026-07-16 -- mailbox_rows is the caller-captured unread_for_agent()
+    result (read BEFORE build_mailbox_block's mark_delivered side effect),
+    not something this function derives itself. adapt_mailbox_messages maps
+    it to AGENT_OPINION, the same slot mailbox/peer/turn_bridge share."""
+    _patch_reinvoked_producers(monkeypatch)
+    rows = [{"id": "mail-1", "from": "codex", "body": "left a review comment", "ts": "2026-07-16T00:00:00Z"}]
+    result = shadow_compare_bundle(**_base_kwargs(mailbox_rows=rows))
+    assert result["ok"] is True
+    assert "agent_opinion" in result["included_sources"]
 
 
 def test_shadow_compare_bundle_never_raises_on_producer_failure() -> None:

@@ -13,14 +13,22 @@ site (`build_context_bundle`) additionally gates the whole thing behind
 `AGENT_LAB_CONTEXT_RECIPE` (default off) BEFORE even importing this module,
 so the "off" cost is a single env-var check.
 
-**Reuses ~14 already-computed locals instead of re-invoking their
+**Reuses ~15 already-computed locals instead of re-invoking their
 producers**: `session_guidance`, `session_skills`, thread-resume,
 plugin-allowlist, capability-preamble, team-task, objection,
 challenge-owner, plan-open, turn-state, turn-bridge, peer,
-envelope-follow-up, agent-tool-rules, and the recent message list —
-`build_context_bundle` already built these exact strings/lists before this
-module ever runs; passing them through is both cheaper and more accurate
-than calling the underlying functions a second time.
+envelope-follow-up, agent-tool-rules, the recent message list, and
+`mailbox_rows` — `build_context_bundle` already built these exact strings/
+lists before this module ever runs; passing them through is both cheaper
+and more accurate than calling the underlying functions a second time.
+`mailbox_rows` is special among these: it's NOT `build_mailbox_block`'s
+own output (a rendered string), it's `room/mailbox.py::unread_for_agent`'s
+result captured by the CALLER immediately before invoking
+`build_mailbox_block` — that call has a side effect (`mark_delivered`) that
+marks those same rows read, so calling `unread_for_agent` again from
+inside this module (after `build_mailbox_block` already ran) would just
+return `[]`. See `context/bundle.py`'s two call sites for exactly where
+that capture happens.
 
 **Eight producers ARE re-invoked**, because `build_context_bundle` never
 exposes them as separate locals — they're merged into `constraints` by
@@ -37,23 +45,19 @@ but a hint-free plan_md previously got zero PROJECT_DOC representation.
 See `docs/redesign-2026-07/evidence/cx8-context-recipe-shadow-dogfood-
 2026-07-16.md`.)
 
-**Two producers are deliberately NOT included in this pass**:
-- `mailbox_messages` — `adapt_mailbox_messages` needs the UNREAD rows
-  (`room/mailbox.py::unread_for_agent`), but by the time this module runs,
-  `build_context_bundle` has already called `build_mailbox_block`, which
-  has a side effect (`mark_delivered`) that marks those same messages read.
-  Calling `unread_for_agent` again here would just return an empty list.
-  Capturing mailbox rows correctly would require reading BEFORE
-  `build_mailbox_block` runs — a real limitation of splicing only at the
-  tail of the function, not something this module papers over.
-- `wisdom_index_hits`/`playbook_bullets` — optional-only, R1-and-topic-gated
-  producers; omitted for this first parity pass to keep the re-invoked set
-  small. A future pass can add them once the R1/topic gating is worth
-  replicating here too.
+**One producer is still deliberately NOT included in this pass**:
+`wisdom_index_hits`/`playbook_bullets` — optional-only, R1-and-topic-gated
+producers; omitted for this first parity pass to keep the re-invoked set
+small. A future pass can add them once the R1/topic gating is worth
+replicating here too. (2026-07-16 — mailbox used to be excluded for the
+same reason described above; fixed by having the caller capture
+`unread_for_agent`'s result before the mutating call, per the user's
+request to close this gap.)
 
-Both omissions mean this shadow manifest UNDER-represents what the full
-recipe pipeline could include — a known, documented gap in this pass, not a
-silent inaccuracy. `reply_policy_guidance_parts` also has one harmless
+This remaining omission means this shadow manifest can still UNDER-
+represent what the full recipe pipeline could include — a known,
+documented gap in this pass, not a silent inaccuracy.
+`reply_policy_guidance_parts` also has one harmless
 imprecision: `guidance_parts` (as `build_context_bundle` computes it) may
 already have `dispatch_block`'s text appended as its last element (bundle.py
 line ~657) before this module receives it, while `dispatch_intent_block`
@@ -113,6 +117,7 @@ def shadow_compare_bundle(
     envelope_block: str,
     tool_rules: str,
     recent_msgs: list[Any],
+    mailbox_rows: list[dict[str, Any]],
     legacy_bundle: ContextBundle,
 ) -> dict[str, Any] | None:
     """Returns a comparison dict — `{"ok": True, ...}` on success,
@@ -182,6 +187,7 @@ def shadow_compare_bundle(
             envelope_follow_up_block=envelope_block,
             agent_tool_rules_block=tool_rules,
             recent_messages=_recent_message_dicts(recent_msgs),
+            mailbox_messages=mailbox_rows,
             self_agent=agent,
         )
         manifest = build_manifest_via_recipe(activity, inputs)

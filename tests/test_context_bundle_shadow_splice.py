@@ -11,6 +11,7 @@ that), toggling the flag via monkeypatch.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 from agent_lab.context.bundle import build_context_bundle
 
@@ -137,3 +138,34 @@ def test_flag_on_shadow_failure_never_propagates(monkeypatch) -> None:
     assert bundle.render()
     # the try/except swallows the failure before stamping ever happens
     assert "context_recipe_shadow" not in run_meta
+
+
+def test_flag_on_captures_real_mailbox_rows_before_build_mailbox_block_mutates_them(monkeypatch) -> None:
+    """2026-07-16 -- end-to-end check that the capture-before-mutation trick
+    actually works against the REAL build_mailbox_block (not a stub): an
+    unread mailbox row for this agent should flow through to
+    context_recipe_shadow's included_sources as agent_opinion, and
+    build_mailbox_block's own mark_delivered side effect must still fire
+    exactly as before (the legacy bundle's constraints still shows the
+    mailbox block -- capturing the rows for the shadow pass must not
+    consume or alter them for the real path)."""
+    monkeypatch.setenv("AGENT_LAB_CONTEXT_RECIPE", "1")
+    repo_root = Path(__file__).resolve().parents[1]
+    run_meta: dict = {
+        "mission_loop": {"enabled": True, "phase": "DISCUSS"},
+        "workspace_binding": {"path": str(repo_root)},
+        "mailbox": [
+            {"id": "mail-1", "from": "codex", "to": "cursor", "body": "left a review comment", "read": False},
+        ],
+    }
+    bundle = build_context_bundle("topic", _messages(), "cursor", format_thread=_format_thread, run_meta=run_meta)
+
+    # the legacy render still shows the mailbox block -- capturing rows for
+    # the shadow pass didn't suppress build_mailbox_block's own output.
+    assert "받은함" in bundle.render()
+    # and mark_delivered still actually ran (the real side effect, unchanged).
+    assert run_meta["mailbox"][0]["read"] is True
+
+    shadow = run_meta.get("context_recipe_shadow")
+    assert shadow is not None and shadow["ok"] is True
+    assert "agent_opinion" in shadow["included_sources"]

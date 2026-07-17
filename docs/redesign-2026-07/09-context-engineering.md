@@ -469,6 +469,14 @@ item_id는 `goal_ledger`와 같은 index 기반(`f"recent:{index}"`) — chat.js
 
 **결과가 5차의 synthetic 결과와 방향이 정확히 일치한다** — PLAN 계열 ~1.19배(legacy보다 크게), EXECUTE 계열 ~0.37~0.47배(훨씬 작게), CRITIC 계열 ~0.43배(작게), REPAIR ~0.83배(거의 동등). 서로 독립적인 두 표본(순수 synthetic, 실제 세션 상태 기반)이 같은 activity별 패턴을 보인다는 게, 이 비율 차이가 recipe pipeline의 재현 가능한 실제 특성이라는 근거를 하나 더한다. CLARIFY(REPAIR phase로 끝나는 real fixture가 없는 것처럼 CLARIFY로 끝나는 것도 없음)와 SCRIBE(애초에 매핑되는 phase가 없음)는 여전히 실제 데이터 없음. 상세는 evidence 문서 "6차" 절 참고 — **cutover 판정은 여전히 안 내림**, 두 표본이 일치한다고 표본 수 자체가 늘어난 건 아니다.
 
+**2026-07-17 — cutover 준비도 평가, 기록하고 멈춤.** 6차례 dogfood(36 synthetic 시나리오 + real fixture 7개·real 구동 세션 1개 기반 8개 시나리오)로 모은 근거를 종합한 결과:
+- **핵심 블로커**: `ContextManifest`에는 `.render()`가 없다. manifest를 실제 prompt 문자열로 변환하는 코드 경로가 오늘 시점에 전혀 존재하지 않는다 — 즉 "cutover"는 flag 하나를 뒤집는 일이 아니라, 아직 설계조차 안 된 manifest→prompt 렌더러를 새로 만드는 일이다.
+- **일관된 activity별 크기 패턴**(synthetic과 real 세션 두 독립 표본에서 재현): PLAN/CLARIFY 계열은 legacy 대비 ~1.2~1.4배 크게, EXECUTE/CRITIC 계열은 ~0.3~0.5배로 작게, REPAIR는 ~0.8~0.9배로 거의 동등하게 고른다.
+- **남은 미지수**: CLARIFY는 real 세션 데이터가 전무하다(REPAIR로 끝나는 fixture만 있고 CLARIFY로 끝나는 fixture가 없음). SCRIBE는 애초에 매핑되는 mission phase가 없어 synthetic·real 어느 쪽도 데이터가 없다. 지금까지의 모든 비교는 크기·구성 비교일 뿐, 실제 agent 응답 품질을 recipe 경로와 legacy 경로 사이에서 비교한 적은 한 번도 없다. mailbox/wisdom_index/playbook의 shadow 포함은 단위 테스트(stub 기반)로만 확인했고, 실제 dogfood 실행에서 관측된 적은 없다.
+- **결론**: 이번 pass에서 cutover는 하지 않는다. 사용자가 "이 평가를 문서에 기록하고 멈추기"를 명시적으로 선택했다 — 렌더러 설계, CLARIFY 데이터 보강 등 후속 작업은 이번 pass의 범위 밖이며 착수하지 않았다.
+
+## 12. 완료 정의
+
 - 모든 agent activity가 목적에 맞는 versioned Context Recipe를 사용한다.
 - 포함 정보의 source·freshness·authority·선택 이유를 설명할 수 있다.
 - 오래된 plan과 검증되지 않은 memory가 현재 Human intent를 덮어쓰지 않는다.

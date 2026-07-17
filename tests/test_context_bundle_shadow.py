@@ -123,6 +123,69 @@ def test_shadow_compare_bundle_includes_mailbox_rows_as_agent_opinion(monkeypatc
     assert "agent_opinion" in result["included_sources"]
 
 
+def test_shadow_compare_bundle_includes_wisdom_and_playbook_on_r1(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    """2026-07-16 -- wisdom_index_hits/playbook_bullets are R1-only, gated
+    the same way context/bundle.py's own _append_wisdom_search_block/
+    _append_playbook_block gate them. REPAIR_RECIPE's optional_sources
+    includes SEMANTIC_MEMORY (unlike PLAN_RECIPE, used elsewhere in this
+    file), so it's the activity that can demonstrate inclusion."""
+    _patch_reinvoked_producers(monkeypatch)
+    import agent_lab.wisdom.index as wisdom_index
+    import agent_lab.wisdom.playbook as wisdom_playbook
+
+    monkeypatch.setattr(
+        wisdom_index, "search_wisdom_index",
+        lambda folder, topic, **kw: [{"id": "doc-1", "snippet": "similar past fix", "score": 2.0}],
+    )
+    monkeypatch.setattr(wisdom_index, "wisdom_index_enabled", lambda run=None: True)
+    monkeypatch.setattr(
+        wisdom_playbook, "playbook_bullets_for_topic",
+        lambda topic, k=3, **kw: [
+            SimpleNamespace(
+                id="b1", description="check for off-by-one first", pattern_id="p1",
+                evidence_count=2, status="active", harness_rev="rev1", updated_at="2026-07-15",
+            )
+        ],
+    )
+    run_meta = {
+        "mission_loop": {"enabled": True, "phase": "REPAIR"},
+        "_session_folder": str(tmp_path),
+        "artifacts": [{"id": "art-1", "summary": "failing test output", "ts": "2026-07-16"}],
+    }
+    kwargs = _base_kwargs(run_meta=run_meta, plan_md="# Plan\n\nfix the regression")
+    result = shadow_compare_bundle(**kwargs)
+    assert result["ok"] is True
+    assert result["activity"] == "repair"
+    assert "semantic_memory" in result["included_sources"]
+
+
+def test_shadow_compare_bundle_skips_wisdom_and_playbook_when_not_r1(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    """Regression guard -- parallel_round != 1 must never call either
+    producer at all (matching the real assembler's R1-only gate)."""
+    _patch_reinvoked_producers(monkeypatch)
+    import agent_lab.wisdom.index as wisdom_index
+    import agent_lab.wisdom.playbook as wisdom_playbook
+
+    calls = {"count": 0}
+
+    def _boom(*args, **kwargs):
+        calls["count"] += 1
+        raise AssertionError("should not be called when parallel_round != 1")
+
+    monkeypatch.setattr(wisdom_index, "search_wisdom_index", _boom)
+    monkeypatch.setattr(wisdom_playbook, "playbook_bullets_for_topic", _boom)
+    run_meta = {
+        "mission_loop": {"enabled": True, "phase": "REPAIR"},
+        "_session_folder": str(tmp_path),
+        "artifacts": [{"id": "art-1", "summary": "failing test output", "ts": "2026-07-16"}],
+    }
+    kwargs = _base_kwargs(run_meta=run_meta, plan_md="# Plan\n\nfix the regression", parallel_round=2)
+    result = shadow_compare_bundle(**kwargs)
+    assert result["ok"] is True
+    assert calls["count"] == 0
+    assert "semantic_memory" not in result["included_sources"]
+
+
 def test_shadow_compare_bundle_never_raises_on_producer_failure() -> None:
     """A malformed run_meta (mission_loop isn't a dict) must not propagate
     as an exception -- the live turn must be unaffected regardless of what

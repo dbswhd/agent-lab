@@ -208,3 +208,16 @@ shadow 쪽으로만 흘려보낸다.
 test_flag_on_captures_real_mailbox_rows_before_build_mailbox_block_mutates_them`)로 고정했다.
 
 남은 한계는 wisdom_index/playbook 미포함과 char/token 단위 불일치 둘뿐이다.
+
+---
+
+## 2026-07-16 4차 — wisdom_index/playbook을 shadow pass에 포함
+
+`bundle_shadow.py`에 `search_wisdom_index`/`playbook_bullets_for_topic`을 실제 `build_context_bundle`이 쓰는 것과 동일한 R1 게이트(`parallel_round==1`, wisdom은 추가로 `_wisdom_route_allows`+실제 `_session_folder`+`wisdom_index_enabled`)로 재호출하도록 추가했다. `context/bundle.py`는 이번엔 전혀 안 건드렸다 — slim path의 shadow 호출부가 원래 `parallel_round=2`를 넘기고 있어서 R1 게이트가 자동으로 걸러준다(실제로 slim path는 이 두 producer를 절대 안 부른다는 것과 정확히 일치).
+
+**재실행 결과: 이번 dogfood 스크립트에선 `semantic_memory`가 여전히 안 나타났다.** 버그가 아니라 이 스크립트의 synthetic run_meta가 `_session_folder`를 안 채우고(wisdom_index는 실제 세션 폴더의 인덱스 파일이 필요) `AGENT_LAB_WISDOM_IN_CONTEXT`/`AGENT_LAB_PLAYBOOK` 플래그도 기본값(off/auto)이라서다 — 게이트가 의도대로 정확히 막고 있다는 뜻이다. 전용 단위 테스트(`tests/test_context_bundle_shadow.py::test_shadow_compare_bundle_includes_wisdom_and_playbook_on_r1`)에서 이 두 producer를 stub해서 REPAIR activity가 `semantic_memory`를 실제로 포함하는 것과, `parallel_round != 1`이면 두 producer가 호출조차 안 되는 것(`test_shadow_compare_bundle_skips_wisdom_and_playbook_when_not_r1`) 둘 다 확인했다.
+
+**이제 shadow pass에서 의도적으로 제외된 producer가 하나도 없다.** 남은 항목은 딱 하나:
+1. `legacy_total_chars`/`recipe_total_tokens` 단위 정규화 — 여전히 미착수.
+
+다음에 이 dogfood 스크립트를 실행할 여지가 있다면, `_session_folder`에 실제 wisdom 인덱스가 있는 세션(또는 `AGENT_LAB_WISDOM_IN_CONTEXT=1`/`AGENT_LAB_PLAYBOOK=1` 강제)을 하나 추가해서 wisdom_index/playbook이 실제로 included되는 걸 dogfood 표본에서도 시연하는 게 좋겠다.

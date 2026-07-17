@@ -241,7 +241,15 @@ def test_fast_bucket_collection_budget():
     # mark_delivered side effect), passing it through to
     # shadow_compare_bundle as mailbox_rows so AGENT_OPINION coverage no
     # longer silently excludes mailbox content.
-    assert count <= 3521, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-16: raised 3521 -> 3523 for wiring wisdom_index_hits/
+    # playbook_bullets into bundle_shadow.py, re-invoking search_wisdom_
+    # index/playbook_bullets_for_topic under the same R1-only gate the real
+    # assembler uses (context/bundle.py itself needed no changes -- both
+    # producers are only ever called with parallel_round==1 in the full
+    # path, never in the slim path, and the shadow call sites already
+    # passed the correct parallel_round through). No producer is now
+    # deliberately excluded from the shadow pass.
+    assert count <= 3523, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

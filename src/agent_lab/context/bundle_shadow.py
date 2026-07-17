@@ -45,20 +45,24 @@ but a hint-free plan_md previously got zero PROJECT_DOC representation.
 See `docs/redesign-2026-07/evidence/cx8-context-recipe-shadow-dogfood-
 2026-07-16.md`.)
 
-**One producer is still deliberately NOT included in this pass**:
-`wisdom_index_hits`/`playbook_bullets` — optional-only, R1-and-topic-gated
-producers; omitted for this first parity pass to keep the re-invoked set
-small. A future pass can add them once the R1/topic gating is worth
-replicating here too. (2026-07-16 — mailbox used to be excluded for the
-same reason described above; fixed by having the caller capture
-`unread_for_agent`'s result before the mutating call, per the user's
-request to close this gap.)
+**Ten producers re-invoked, as of 2026-07-16** — `wisdom_index_hits`/
+`playbook_bullets` joined the eight above. Both are R1-only in the real
+`build_context_bundle` (`_append_wisdom_search_block`/`_append_playbook_
+block`, both gated on `parallel_round == 1`; wisdom search additionally
+needs `_wisdom_route_allows` — `AGENT_LAB_WISDOM_IN_CONTEXT` env or a deep/
+critical `_turn_category` — a real `_session_folder` directory, and
+`wisdom_index_enabled`; playbook only needs a non-empty `topic`). This
+module replicates the same gates (`_wisdom_route_allows`'s logic duplicated
+locally rather than importing bundle.py's private helper, to keep this
+module's coupling to bundle.py's internals at zero) before calling
+`search_wisdom_index`/`playbook_bullets_for_topic` directly. Neither is ever
+called from `build_slim_consensus_bundle` in the real assembler, which is
+naturally respected here too since that call site always passes
+`parallel_round=2` — the same real business rule (R1-only), not a
+coincidence being relied on.
 
-This remaining omission means this shadow manifest can still UNDER-
-represent what the full recipe pipeline could include — a known,
-documented gap in this pass, not a silent inaccuracy.
-`reply_policy_guidance_parts` also has one harmless
-imprecision: `guidance_parts` (as `build_context_bundle` computes it) may
+**No producer is deliberately excluded from this pass anymore.** One
+harmless imprecision remains: `guidance_parts` (as `build_context_bundle` computes it) may
 already have `dispatch_block`'s text appended as its last element (bundle.py
 line ~657) before this module receives it, while `dispatch_intent_block`
 ALSO receives that same `dispatch_block` text directly — `select_context()`'s
@@ -79,6 +83,67 @@ from agent_lab.context.bundle_recipe import (
 )
 from agent_lab.core.context_bundle import ContextBundle
 from agent_lab.run.state import RunStateLike
+
+
+def _wisdom_route_allows(run_meta: RunStateLike | None) -> bool:
+    """Mirrors `context/bundle.py::_wisdom_route_allows` (private there) —
+    duplicated rather than imported to keep this module's coupling to
+    bundle.py's internals at zero. `AGENT_LAB_WISDOM_IN_CONTEXT` env:
+    auto(default, follows turn category)/0/1."""
+    import os
+
+    mode = (os.getenv("AGENT_LAB_WISDOM_IN_CONTEXT") or "auto").strip().lower()
+    if mode not in ("auto", "0", "1"):
+        mode = "auto"
+    if mode == "0":
+        return False
+    if mode == "1":
+        return True
+    category = (run_meta or {}).get("_turn_category") or {} if isinstance(run_meta, dict) else {}
+    if not isinstance(category, dict):
+        return False
+    return str(category.get("value") or "") in ("deep", "critical")
+
+
+def _wisdom_and_playbook_for_shadow(
+    run_meta: RunStateLike | None,
+    topic: str,
+    parallel_round: int,
+) -> tuple[list[dict[str, Any]], list[Any]]:
+    """Re-invokes `wisdom/index.py::search_wisdom_index`/`wisdom/playbook.py::
+    playbook_bullets_for_topic` directly, replicating the same R1-only gates
+    `context/bundle.py::_append_wisdom_search_block`/`_append_playbook_block`
+    apply — both producers are optional-only and never called at all outside
+    round 1 in the real assembler, so gating this re-invocation the same way
+    keeps the shadow pass from inventing content a real turn would never
+    see. Never raises: both list this module's blanket `except Exception`
+    in `shadow_compare_bundle` would otherwise have to special-case, so each
+    sub-call is defensive on its own."""
+    wisdom_index_hits: list[dict[str, Any]] = []
+    playbook_bullets: list[Any] = []
+    if parallel_round != 1:
+        return wisdom_index_hits, playbook_bullets
+
+    if topic.strip():
+        try:
+            from agent_lab.wisdom.playbook import playbook_bullets_for_topic
+
+            playbook_bullets = list(playbook_bullets_for_topic(topic, k=3))
+        except Exception:
+            playbook_bullets = []
+
+    folder_raw = (run_meta or {}).get("_session_folder") if isinstance(run_meta, dict) else None
+    if folder_raw and _wisdom_route_allows(run_meta):
+        try:
+            from agent_lab.wisdom.index import search_wisdom_index, wisdom_index_enabled
+
+            folder = Path(str(folder_raw))
+            if folder.is_dir() and wisdom_index_enabled(run_meta):
+                wisdom_index_hits = list(search_wisdom_index(folder, topic, limit=3))
+        except Exception:
+            wisdom_index_hits = []
+
+    return wisdom_index_hits, playbook_bullets
 
 
 def _recent_message_dicts(recent_msgs: list[Any]) -> list[dict[str, Any]]:
@@ -159,6 +224,8 @@ def shadow_compare_bundle(
                 project_md_content = candidate.read_text(encoding="utf-8")
                 project_md_mtime = candidate.stat().st_mtime
 
+        wisdom_index_hits, playbook_bullets = _wisdom_and_playbook_for_shadow(run_meta, topic, parallel_round)
+
         inputs = RecipeBundleInputs(
             plan_md=plan_md,
             session_guidance=session_guidance,
@@ -171,6 +238,8 @@ def shadow_compare_bundle(
             project_md_mtime=project_md_mtime,
             agents_md_flat=read_agents_md_for_injection(run_meta or {}),
             shared_context_md=read_shared_context_for_injection(run_meta or {}),
+            wisdom_index_hits=wisdom_index_hits,
+            playbook_bullets=playbook_bullets,
             reply_policy_guidance_parts=guidance_parts,
             artifacts=recent_artifacts_for_agent(run_meta, agent, parallel_round=parallel_round),
             team_task_block=team_block,

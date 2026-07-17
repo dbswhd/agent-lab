@@ -228,7 +228,14 @@ def test_fast_bucket_collection_budget():
     # mapping at all). Flag defaults off; when off the added code is a
     # single env_bool check, verified byte-identical bundle.render() output
     # on both paths whether the flag is off or on.
-    assert count <= 3517, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-16: raised 3517 -> 3519 for wiring project_md/agents_md_flat/
+    # shared_context_md into bundle_recipe.py's RecipeBundleInputs -- an
+    # expanded dogfood run (scripts/context_recipe_shadow_dogfood.py)
+    # surfaced that PROJECT_DOC coverage silently depended entirely on
+    # agents_md_hierarchy (which only resolves with plan_md file-path
+    # hints); a workspace with real PROJECT.md/AGENTS.md/SHARED_CONTEXT.md
+    # but a hint-free plan_md previously got zero PROJECT_DOC coverage.
+    assert count <= 3519, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

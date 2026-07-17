@@ -89,10 +89,102 @@ evidence: 3            (CRITIC/REPAIR가 artifact를 요구하는 만큼만)
 
 ## 다음 단계 (승인 대상, 여기서 결정하지 않음)
 
-1. 더 다양한 synthetic/실제 세션으로 반복 실행해 `context_recipe_shadow` 표본을 늘린다.
+1. 더 다양한 synthetic/실제 세션으로 반복 실행해 `context_recipe_shadow` 표본을 늘린다. →
+   **2026-07-16 2차 실행에서 진행함, 아래 참고.**
 2. `legacy_total_chars`/`recipe_total_tokens`를 같은 단위로 정규화해서 "recipe가 실제로 더
    타이트하게 고르는가"를 판단한다.
 3. mailbox/wisdom_index/playbook을 포함하도록 splice 시점을 재검토한다(mailbox는 특히
    `build_mailbox_block` 호출 **이전** 시점에 별도로 shadow 자료를 뽑아야 한다).
 4. 위 데이터가 충분히 쌓이면 실제 cutover(레거시 문자열 대신 recipe manifest 사용) 여부를
    결정한다 — 이 문서는 그 결정을 내리지 않는다.
+
+---
+
+## 2026-07-16 2차 실행 — 표본 확대 (36 시나리오, 5개 variant × 5개 activity + equivalence/무매핑 체크)
+
+1차 실행은 activity당 synthetic 세트 1개뿐이었다. `scripts/context_recipe_shadow_dogfood.py`를
+확장해 activity-대표 phase(CLARIFY/DISCUSS/EXECUTE_QUEUE/MERGE_REVIEW/REPAIR) 각각에 5개
+variant를 돌리고, 나머지 동치 phase(PLAN_GATE/PLAN_REJECT/DRY_RUN/VERIFY)는 baseline
+variant로만 재확인했다:
+
+- **baseline** — 1차 실행과 동일한 3-메시지 대화, artifact 1개.
+- **long_conversation** — round 1(3턴) + round 2(4턴), turn_bridge(R1 요약)·peer_block(라운드
+  2 발화) 실제 관측 목적.
+- **minimal** — plan_md="", 메시지 1개, artifact 0개. required source 누락 시 fail-closed가
+  실제로 작동하는지 확인하는 의도된 negative case.
+- **many_artifacts** — artifact 5개.
+- **different_agent** — self_agent를 codex로 바꿔 EPISODE(자기 발화)/AGENT_OPINION(동료 발화)
+  매핑이 실제로 뒤집히는지 확인.
+- **room_state_populated** — `run_meta["tasks"]`/`["objections"]`/`["mailbox"]`를 채워서
+  team_task/objection/challenge_owner/(mailbox는 여전히 구조상 미포함) producer가 실제
+  내용을 낼 때도 관측.
+
+### 실행 결과
+
+```
+scenario_count: 36
+ok_count: 31 (1차 발견 이후 수정 반영, 아래 참고)
+skipped_count: 2
+failed_count: 3 (전부 의도된 negative case)
+```
+
+실패한 3건 전부 `*:minimal` variant다 — `plan_md=""`라 `approved_plan`이 없고(execute/critic/
+repair 전부 요구), critic/repair는 추가로 `evidence`도 없다(이 variant는 artifact_count=0으로
+의도적으로 설정). **의도된 fail-closed 확인이지 버그가 아니다.**
+
+### 진짜 발견 — PROJECT_DOC 커버리지 구멍 (수정 완료)
+
+`clarify:minimal`/`plan:minimal`가 처음엔 `"missing required sources: project_doc"`로
+실패했다. 원인 추적: `bundle_recipe.py::RecipeBundleInputs`는 CX8 첫 슬라이스 때부터
+**`agents_md_hierarchy` 하나만** PROJECT_DOC 소스로 연결돼 있었고, `project_md`/
+`agents_md_flat`/`shared_context_md`(전부 `context/adapters.py`에 이미 존재하는 어댑터)는
+단 한 번도 `RecipeBundleInputs`에 배선된 적이 없었다. `agents_md_hierarchy`는 plan_md 안의
+파일 경로 힌트가 있어야 뭔가를 반환하는데(`read_agents_md_hierarchy_for_injection`), `minimal`
+variant는 plan_md가 비어 있어 힌트가 없다 — 그래서 실제 workspace(repo root, 진짜
+AGENTS.md/SHARED_CONTEXT.md가 있는)를 쓰는데도 PROJECT_DOC이 통째로 안 잡혔다.
+
+**이건 CLARIFY/PLAN recipe가 항상 PROJECT_DOC을 요구하는데, "plan.md에 파일 힌트가 없으면
+PROJECT_DOC이 전혀 안 채워질 수 있다"는 뜻이라 표본을 안 늘렸으면 못 봤을 실제 버그였다.**
+수정: `bundle_recipe.py`에 `project_md`/`project_md_mtime`/`agents_md_flat`/
+`agents_md_flat_mtime`/`shared_context_md` 필드 추가 + 3개 어댑터 배선, `bundle_shadow.py`가
+`read_agents_md_for_injection`/`read_shared_context_for_injection`(둘 다 이미 public,
+workspace_binding만 있으면 호출 가능)과 PROJECT.md 파일 직접 읽기(`project_memory.py::
+project_md_path`)로 재호출하도록 확장(재호출 producer 5개 → 8개). 재실행 후
+`clarify:minimal`/`plan:minimal` 둘 다 성공 — `failed_count`가 5→3으로 줄었다(남은 3개는
+전부 의도된 negative case).
+
+### Included source 빈도 (31개 성공 사례 합산, 36 시나리오 기준)
+
+```
+system_invariant: 31   (전 activity가 요구)
+runtime_state: 25
+approved_plan: 17
+human_intent: 19
+repo_context: 14
+project_doc: 14         (1차 4 → 2차 14 — PROJECT_DOC 수정 반영)
+evidence: 11
+agent_opinion: 7
+episode: 7
+```
+
+### Activity별 recipe_total_tokens (여러 variant 통계)
+
+| activity | min | max | avg |
+| --- | --- | --- | --- |
+| clarify | 2600 | 2989 | 2825.7 |
+| plan | 2821 | 3233 | 3083.1 |
+| execute | 764 | 980 | 858.7 |
+| critic | 647 | 775 | 727.0 |
+| repair | 1935 | 2151 | 2040.8 |
+
+variant 간 편차(예: clarify 2600~2989)가 activity 간 편차보다 훨씬 작다 — 지금 recipe들의
+budget이 입력 크기 변화(대화 길이, artifact 개수)에 크게 흔들리지 않는다는 뜻이지만, 표본이
+여전히 6개뿐이라 강한 결론은 아니다.
+
+### 갱신된 알려진 한계
+
+- mailbox 미포함은 여전히 유효(§ 위 1차 실행 절 참고) — `room_state_populated` variant로
+  mailbox 데이터를 넣어봤지만 예상대로 shadow manifest엔 안 잡혔다(구조적 한계, 버그 아님).
+- wisdom_index/playbook 미포함도 여전히 유효.
+- char-vs-token 단위 불일치도 여전히 유효 — 이번 실행에서도 정규화 안 함.
+- **PROJECT_DOC 구멍은 이번 실행으로 닫혔다** — 위 "진짜 발견" 절 참고.

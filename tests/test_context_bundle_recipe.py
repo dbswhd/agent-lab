@@ -265,3 +265,38 @@ def test_build_manifest_via_recipe_wires_recent_messages_by_role() -> None:
     # survive selection rather than one being silently excluded.
     assert by_id["recent:1"].source == SourceClass.EPISODE
     assert by_id["recent:2"].source == SourceClass.AGENT_OPINION
+
+
+def test_build_manifest_via_recipe_satisfies_project_doc_via_project_md_alone() -> None:
+    """2026-07-16 -- PROJECT.md/AGENTS.md-flat/SHARED_CONTEXT.md were never
+    wired into RecipeBundleInputs at all (only agents_md_hierarchy was),
+    which meant PROJECT_DOC coverage silently depended on plan_md
+    containing file-path hints for the hierarchy chain to resolve anything.
+    A caller with an empty/hint-free plan_md but real PROJECT.md content
+    should still satisfy PROJECT_DOC-requiring recipes (CLARIFY/PLAN)."""
+    inputs = RecipeBundleInputs(
+        plan_md="",
+        session_guidance="guidance text",
+        clarify_facts=[{"id": "q1", "answer": "fact", "at": "2026-07-16"}],
+        reply_policy_guidance_parts=["be concise"],
+        project_md="# Project\n\nthis is the project",
+    )
+    manifest = build_manifest_via_recipe(ActivityKind.CLARIFY, inputs)
+    included_ids = {item.item_id for item in manifest.included}
+    assert "project_md" in included_ids
+
+
+def test_build_manifest_via_recipe_wires_agents_md_flat_and_shared_context_md() -> None:
+    inputs = RecipeBundleInputs(
+        plan_md="# Plan\n\nship it",
+        session_guidance="guidance text",
+        clarify_facts=[{"id": "q1", "answer": "fact", "at": "2026-07-16"}],
+        repo_tree="[Repo tree]\n- src/",
+        reply_policy_guidance_parts=["be concise"],
+        agents_md_flat="flat AGENTS.md guidance",
+        shared_context_md="shared context body",
+    )
+    manifest = build_manifest_via_recipe(ActivityKind.PLAN, inputs)
+    included_ids = {item.item_id for item in manifest.included}
+    assert "agents_md_flat" in included_ids
+    assert "shared_context_md" in included_ids

@@ -22,13 +22,20 @@ envelope-follow-up, agent-tool-rules, and the recent message list —
 module ever runs; passing them through is both cheaper and more accurate
 than calling the underlying functions a second time.
 
-**Five producers ARE re-invoked**, because `build_context_bundle` never
+**Eight producers ARE re-invoked**, because `build_context_bundle` never
 exposes them as separate locals — they're merged into `constraints` by
 private helpers (`_append_mission_track_c_blocks`, `_format_clarity_facts`,
 `_format_decision_ledger`) before this module runs: repo tree, mission
-notepad, AGENTS.md hierarchy, clarify facts, goal ledger. All five are
-read-only, side-effect-free calls — consistent with `bundle_recipe.py`'s
-own "caller invokes the real producer directly" design.
+notepad, AGENTS.md hierarchy, clarify facts, goal ledger, PROJECT.md,
+AGENTS.md (flat), SHARED_CONTEXT.md. All eight are read-only, side-effect-
+free calls — consistent with `bundle_recipe.py`'s own "caller invokes the
+real producer directly" design. (2026-07-16 — the last three were added
+after an expanded dogfood run surfaced that PROJECT_DOC coverage silently
+depended entirely on `agents_md_hierarchy`, which itself only resolves
+content when `plan_md` has file-path hints; a caller with a real workspace
+but a hint-free plan_md previously got zero PROJECT_DOC representation.
+See `docs/redesign-2026-07/evidence/cx8-context-recipe-shadow-dogfood-
+2026-07-16.md`.)
 
 **Two producers are deliberately NOT included in this pass**:
 - `mailbox_messages` — `adapt_mailbox_messages` needs the UNREAD rows
@@ -58,6 +65,7 @@ worth knowing this module doesn't bother splitting the two apart itself.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from agent_lab.context.bundle_recipe import (
@@ -121,9 +129,30 @@ def shadow_compare_bundle(
 
         from agent_lab.clarity import established_facts
         from agent_lab.mission.notepad import build_mission_wisdom_block
+        from agent_lab.project_memory import project_md_path
         from agent_lab.repo_tree_context import build_repo_tree_block
         from agent_lab.room.artifacts import recent_artifacts_for_agent
-        from agent_lab.workspace.md import read_agents_md_hierarchy_for_injection
+        from agent_lab.workspace.md import (
+            read_agents_md_for_injection,
+            read_agents_md_hierarchy_for_injection,
+            read_shared_context_for_injection,
+        )
+
+        # PROJECT.md's actual read path (session/guidance.py::_read_project_md)
+        # is private, invoked only inside build_session_guidance_block -- no
+        # standalone producer exists to call independently (the same reason
+        # adapt_project_md takes already-read content, agnostic to how it was
+        # read). Read the file directly here, mirroring bootstrap_project_md/
+        # _read_project_md's own path convention.
+        project_md_content = ""
+        project_md_mtime: float | None = None
+        workspace_binding = (run_meta or {}).get("workspace_binding") if isinstance(run_meta, dict) else None
+        workspace_path = workspace_binding.get("path") if isinstance(workspace_binding, dict) else None
+        if workspace_path:
+            candidate = project_md_path(Path(str(workspace_path)).expanduser())
+            if candidate.is_file():
+                project_md_content = candidate.read_text(encoding="utf-8")
+                project_md_mtime = candidate.stat().st_mtime
 
         inputs = RecipeBundleInputs(
             plan_md=plan_md,
@@ -133,6 +162,10 @@ def shadow_compare_bundle(
             mission_notepad=build_mission_wisdom_block(run_meta),
             repo_tree=build_repo_tree_block(run_meta),
             agents_md_hierarchy=read_agents_md_hierarchy_for_injection(run_meta or {}, plan_md),
+            project_md=project_md_content,
+            project_md_mtime=project_md_mtime,
+            agents_md_flat=read_agents_md_for_injection(run_meta or {}),
+            shared_context_md=read_shared_context_for_injection(run_meta or {}),
             reply_policy_guidance_parts=guidance_parts,
             artifacts=recent_artifacts_for_agent(run_meta, agent, parallel_round=parallel_round),
             team_task_block=team_block,

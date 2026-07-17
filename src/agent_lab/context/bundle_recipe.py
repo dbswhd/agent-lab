@@ -71,6 +71,7 @@ from typing import Any
 from agent_lab.context.activity_recipes import recipe_for
 from agent_lab.context.adapters import (
     adapt_agent_tool_rules_block,
+    adapt_agents_md_flat,
     adapt_agents_md_hierarchy,
     adapt_approved_plan,
     adapt_artifacts,
@@ -87,11 +88,13 @@ from agent_lab.context.adapters import (
     adapt_plan_open_block,
     adapt_playbook_bullets,
     adapt_plugin_allowlist_block,
+    adapt_project_md,
     adapt_recent_messages,
     adapt_repo_tree,
     adapt_reply_policy_guidance,
     adapt_session_guidance,
     adapt_session_skills_block,
+    adapt_shared_context_md,
     adapt_team_task_block,
     adapt_thread_resume_block,
     adapt_turn_bridge_block,
@@ -162,6 +165,11 @@ class RecipeBundleInputs:
     wisdom_index_hits: list[dict[str, Any]] = field(default_factory=list)
     playbook_bullets: list[PlaybookBullet] = field(default_factory=list)
     agents_md_hierarchy: str = ""
+    project_md: str = ""
+    project_md_mtime: float | None = None
+    agents_md_flat: str = ""
+    agents_md_flat_mtime: float | None = None
+    shared_context_md: str = ""
     reply_policy_guidance_parts: list[str] = field(default_factory=list)
     artifacts: list[dict[str, Any]] = field(default_factory=list)
     team_task_block: str = ""
@@ -206,6 +214,12 @@ def build_manifest_via_recipe(activity: ActivityKind, inputs: RecipeBundleInputs
     items.extend(adapt_wisdom_index_hits(inputs.wisdom_index_hits))
     items.extend(adapt_playbook_bullets(inputs.playbook_bullets))
     if (item := adapt_agents_md_hierarchy(inputs.agents_md_hierarchy)) is not None:
+        items.append(item)
+    if (item := adapt_project_md(inputs.project_md, mtime=inputs.project_md_mtime)) is not None:
+        items.append(item)
+    if (item := adapt_agents_md_flat(inputs.agents_md_flat, mtime=inputs.agents_md_flat_mtime)) is not None:
+        items.append(item)
+    if (item := adapt_shared_context_md(inputs.shared_context_md)) is not None:
         items.append(item)
     items.extend(adapt_reply_policy_guidance(inputs.reply_policy_guidance_parts))
     items.extend(adapt_artifacts(inputs.artifacts))

@@ -114,6 +114,9 @@ pipeline-dogfood-run:
 mission-dogfood-weekly:
 	AGENT_LAB_MOCK_AGENTS=1 AGENT_LAB_MISSION_LOOP=1 .venv/bin/python scripts/mission_dogfood_weekly.py --days $${DAYS:-7} $(if $(SKIP_MOCK),--skip-mock,) $(if $(INCLUDE_FIXTURES),--include-fixtures,)
 
+context-recipe-shadow-dogfood:
+	AGENT_LAB_MOCK_AGENTS=1 .venv/bin/python scripts/context_recipe_shadow_dogfood.py
+
 test-live:
 	@test "$$AGENT_LAB_RUN_LIVE" = "1" || (echo "Set AGENT_LAB_RUN_LIVE=1 for live Cursor spike tests" && exit 1)
 	.venv/bin/python scripts/run_verification_lane.py --lane live --marker-expression "live" -- .venv/bin/pytest tests/ -q -m live

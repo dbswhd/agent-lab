@@ -455,6 +455,8 @@ item_id는 `goal_ledger`와 같은 index 기반(`f"recent:{index}"`) — chat.js
 
 **아직 안 한 것 — 진짜 cutover.** 이 pass는 병행 계산 + 기록만 한다. 레거시 문자열 대신 recipe manifest를 실제로 사용하도록 바꾸는 건 여기서 안 했다 — dogfood/eval harness가 `context_recipe_shadow` 기록을 충분히 모아서 파악한 뒤, 별도 승인을 거쳐야 할 다음 단계.
 
+**2026-07-16 — dogfood 스크립트로 실제 기록 수거(`scripts/context_recipe_shadow_dogfood.py`, `make context-recipe-shadow-dogfood`).** Room/mock-agent 루프 없이 `build_context_bundle`/`build_slim_consensus_bundle`을 직접 호출 — 둘 다 `messages`+`run_meta`만 있으면 되고 실제 모델 호출이 필요 없어서 mission phase 11개(6개 activity 매핑 + 2개 문서화된 무매핑 + PLAN/EXECUTE/CRITIC의 중복 phase) 전부를 빠르게 순회할 수 있다. 결과: **6개 activity 매핑 전부 성공**(처음엔 CRITIC/REPAIR가 EVIDENCE 누락으로 실패했는데, recipe 버그가 아니라 synthetic run_meta에 artifact가 없었던 fixture 문제였다 — `run_meta["artifacts"]`에 1개 넣으니 즉시 해결), 2개 무매핑 phase는 설계대로 깨끗하게 skip. DISCUSS/PLAN_GATE/PLAN_REJECT 셋 다 실제로 slim path(두 번째 splice 지점)를 탔음을 `slim_context: true`로 확인. 상세 결과와 알려진 한계(mailbox 미포함, 단위 다른 char/token 비교 등)는 [evidence/cx8-context-recipe-shadow-dogfood-2026-07-16.md](./evidence/cx8-context-recipe-shadow-dogfood-2026-07-16.md) 참고. 이 실행도 cutover 판정을 내리지 않는다 — synthetic run_meta 1세트뿐이라 표본을 늘리는 게 다음 단계.
+
 - 모든 agent activity가 목적에 맞는 versioned Context Recipe를 사용한다.
 - 포함 정보의 source·freshness·authority·선택 이유를 설명할 수 있다.
 - 오래된 plan과 검증되지 않은 memory가 현재 Human intent를 덮어쓰지 않는다.

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import threading
+from contextvars import ContextVar
 from pathlib import Path
 from typing import Any, Callable
 from weakref import WeakValueDictionary
@@ -14,6 +15,8 @@ from agent_lab.run.state import RunState, RunStateLike, RuntimeValidationError, 
 
 _LOCK_GUARD = threading.Lock()
 _FOLDER_LOCKS: WeakValueDictionary[str, threading.Lock] = WeakValueDictionary()
+_PATCH_ACTIVE: ContextVar[bool] = ContextVar("agent_lab_run_meta_patch_active", default=False)
+_AUTHORITY_INBOX_QUEUE = "_mission_authority_inbox_queue"
 
 
 def _folder_lock(folder: Path) -> threading.Lock:
@@ -36,6 +39,18 @@ def stamp_run_meta(run_meta: RunStateLike, **fields: Any) -> RunStateLike:
     if fields:
         run_meta.update(fields)
     return run_meta
+
+
+def run_meta_patch_active() -> bool:
+    return _PATCH_ACTIVE.get()
+
+
+def queue_authority_inbox_item(run_meta: RunStateLike, item: dict[str, Any]) -> None:
+    queue = run_meta.get(_AUTHORITY_INBOX_QUEUE)
+    if not isinstance(queue, list):
+        queue = []
+        run_meta[_AUTHORITY_INBOX_QUEUE] = queue
+    queue.append(item)
 
 
 def read_run_meta(folder: Path) -> RunState:
@@ -73,6 +88,7 @@ _EPHEMERAL_RUN_KEYS = frozenset(
         "_turn_category",
         "_turn_roles",
         "_escalation_harvest_keys",
+        "_mission_authority_inbox_queue",
     }
 )
 
@@ -103,6 +119,7 @@ def patch_run_meta(
     folder: Path,
     updater: Callable[[RunState], dict[str, Any] | RunState],
 ) -> RunState:
+    queued_inbox_items: list[dict[str, Any]] = []
     with _folder_lock(folder):
         run = read_run_meta(folder)
         capture_checkpoint = False
@@ -112,7 +129,16 @@ def patch_run_meta(
 
             capture_checkpoint = True
             prior_signature = checkpoint_store._phase_signature(run)
-        updated = updater(run)
+        token = _PATCH_ACTIVE.set(True)
+        try:
+            updated = updater(run)
+        finally:
+            _PATCH_ACTIVE.reset(token)
+        raw_queue = updated.get(_AUTHORITY_INBOX_QUEUE)
+        if isinstance(raw_queue, list):
+            queued_inbox_items = [item for item in raw_queue if isinstance(item, dict)]
+            updated = dict(updated)
+            updated.pop(_AUTHORITY_INBOX_QUEUE, None)
         state = _coerce_run_state(updated)
         payload = json.dumps(persist_run_meta(state), indent=2, ensure_ascii=False) + "\n"
         path = folder / "run.json"
@@ -123,6 +149,13 @@ def patch_run_meta(
             from agent_lab import checkpoint_store
 
             checkpoint_store.append_checkpoint(folder, prior_signature=prior_signature, updated_run=state)
+    if queued_inbox_items:
+        from agent_lab.mission.application import MissionApplication
+
+        goal = str(state.get("goal") or state.get("topic") or folder.name)
+        application = MissionApplication(folder, goal)
+        for item in queued_inbox_items:
+            application.open_inbox_item(item)
     return state
 
 

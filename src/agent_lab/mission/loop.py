@@ -244,6 +244,8 @@ def trigger_circuit_breaker(
     prompt = inbox_prompt or (f"Mission loop circuit breaker: {reason}. Resolve to resume (DISCUSS or EXECUTE_QUEUE).")
 
     def _trip(run: dict[str, Any]) -> dict[str, Any]:
+        run["_session_folder"] = str(folder.resolve())
+        run["_session_id"] = folder.name
         ml = get_mission_loop(run)
         ml["circuit_breaker"] = True
         ml["circuit_breaker_reason"] = reason

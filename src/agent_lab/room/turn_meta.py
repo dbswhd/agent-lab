@@ -205,6 +205,8 @@ def _post_plan_scribe_inbox_harvest(
     human_turn = _human_turn_count(messages)
 
     def _patch(run_meta: RunStateLike) -> dict[str, Any]:
+        run_meta["_session_folder"] = str(folder.resolve())
+        run_meta["_session_id"] = folder.name
         if trigger == "verified_loop_done":
             _supersede_legacy_verified_build_items(run_meta)
         harvest_post_plan_inbox(

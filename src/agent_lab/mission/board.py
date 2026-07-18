@@ -324,6 +324,8 @@ def record_agent_call(
     path = folder
 
     def _record(run: dict[str, Any]) -> dict[str, Any]:
+        run["_session_folder"] = str(path.resolve())
+        run["_session_id"] = path.name
         tb = get_turn_budget(run)
         counters = dict(tb["counters"])
         if int(counters.get("human_turn") or 0) != human_turn:
@@ -357,6 +359,8 @@ def record_autorun_tick(folder: Path) -> dict[str, Any]:
     bucket = _hour_bucket()
 
     def _tick(run: dict[str, Any]) -> dict[str, Any]:
+        run["_session_folder"] = str(path.resolve())
+        run["_session_id"] = path.name
         tb = get_turn_budget(run)
         counters = dict(tb["counters"])
         if counters.get("autorun_tick_hour") != bucket:

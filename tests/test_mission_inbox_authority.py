@@ -8,12 +8,15 @@ from fastapi.testclient import TestClient
 
 from agent_lab.human_inbox import (
     compute_inbox_pending,
+    append_inbox_item,
     create_inbox_item,
     inbox_items_for_folder,
+    new_inbox_item,
     supersede_pending_inbox,
 )
 from agent_lab.mission.application import MissionApplication, MissionApplicationError
 from agent_lab.mission.journal import MissionJournal
+from agent_lab.mission.loop import trigger_circuit_breaker
 from agent_lab.plan.workflow_clarify import build_clarify_context_block
 from agent_lab.run.meta import read_run_meta
 from app.server.main import create_app
@@ -110,6 +113,28 @@ def test_authority_supersede_closes_journal_gate_without_run_writer(tmp_path: Pa
     assert mission.open_gates == ()
     assert "human_inbox" not in read_run_meta(folder)
     assert item["id"] == mission.inbox_items[0]["id"]
+
+
+def test_authority_direct_append_writer_routes_to_journal(tmp_path: Path) -> None:
+    folder = _session(tmp_path)
+    run: dict[str, object] = {"topic": "ship", "_session_folder": str(folder)}
+    item = new_inbox_item(kind="question", source="harvest", prompt="Which scope?")
+
+    append_inbox_item(run, item)
+
+    assert "human_inbox" not in run
+    assert MissionApplication(folder, "ship").load().inbox_items == (item,)
+
+
+def test_authority_circuit_breaker_writer_routes_to_journal(tmp_path: Path) -> None:
+    folder = _session(tmp_path)
+
+    trigger_circuit_breaker(folder, reason="test")
+
+    assert "human_inbox" not in read_run_meta(folder)
+    mission = MissionApplication(folder, "ship").load()
+    assert mission.inbox_items[0]["source"] == "mission_circuit_break"
+    assert mission.open_gates[0].gate_id == mission.inbox_items[0]["id"]
 
 
 def test_authority_http_resolve_uses_journal_without_legacy_payload(

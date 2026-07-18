@@ -209,6 +209,8 @@ def _escalate_persistent_drift(
     )
 
     def _append(run_in: dict[str, Any]) -> dict[str, Any]:
+        run_in["_session_folder"] = str(folder.resolve())
+        run_in["_session_id"] = folder.name
         item = new_inbox_item(
             kind="question",
             source="orchestration_drift",

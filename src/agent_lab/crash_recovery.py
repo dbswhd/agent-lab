@@ -134,6 +134,8 @@ def _apply_decision(
     ts = _now()
 
     def _patch(run: dict[str, Any]) -> dict[str, Any]:
+        run["_session_folder"] = str(folder.resolve())
+        run["_session_id"] = folder.name
         for row in run.get("executions") or []:
             if not isinstance(row, dict) or row.get("id") != exec_id:
                 continue

@@ -257,7 +257,7 @@ def test_fast_bucket_collection_budget():
     # four CX8 dogfood-evidence runs.
     # 2026-07-18: raised 3524 -> 3526 for core/quant verification-lane
     # separation contracts (Makefile + GitHub Actions marker parity).
-    assert count <= 3532, f"test-fast bucket grew to {count}; mark slow modules integration"
+    assert count <= 3534, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

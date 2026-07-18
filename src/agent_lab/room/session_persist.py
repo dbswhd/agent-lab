@@ -404,6 +404,8 @@ def _write_session_files(
         "executions": list(prev_run.get("executions") or []),
         "consensus_agreements": agreements,
     }
+    run_meta["_session_folder"] = str(folder.resolve())
+    run_meta["_session_id"] = folder.name
     preserve_session_meta_from_prev(run_meta, prev_run)
     if prev_run.get("active_plan_relpath"):
         run_meta["active_plan_relpath"] = prev_run["active_plan_relpath"]

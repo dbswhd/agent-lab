@@ -9,7 +9,7 @@ import uuid
 from pathlib import Path
 from typing import Any, Literal
 
-from agent_lab.run.meta import patch_run_meta, read_run_meta
+from agent_lab.run.meta import patch_run_meta, queue_authority_inbox_item, read_run_meta, run_meta_patch_active
 from agent_lab.run.state import RunStateLike
 from agent_lab.time_utils import utc_now_iso as _now_iso
 
@@ -39,9 +39,16 @@ def inbox_items(run: RunStateLike) -> list[dict[str, Any]]:
     if not isinstance(raw, list):
         folder_raw = run.get("_session_folder")
         if folder_raw:
-            return inbox_items_for_folder(Path(str(folder_raw)))
-        return []
-    return [item for item in raw if isinstance(item, dict)]
+            items = inbox_items_for_folder(Path(str(folder_raw)))
+        else:
+            items = []
+    else:
+        items = [item for item in raw if isinstance(item, dict)]
+    queued = run.get("_mission_authority_inbox_queue")
+    if isinstance(queued, list):
+        known_ids = {item.get("id") for item in items}
+        items.extend(item for item in queued if isinstance(item, dict) and item.get("id") not in known_ids)
+    return items
 
 
 def inbox_items_for_folder(folder: Path) -> list[dict[str, Any]]:
@@ -326,6 +333,27 @@ def new_inbox_item(
 
 def append_inbox_item(run: dict[str, Any], item: dict[str, Any]) -> dict[str, Any]:
     """Append a built item to an in-memory run dict (caller persists)."""
+    folder_raw = run.get("_session_folder")
+    if folder_raw:
+        folder = Path(str(folder_raw))
+        from agent_lab.mission.dual_write import mission_authority_enabled
+
+        if mission_authority_enabled(folder):
+            from agent_lab.mission.application import MissionApplication, MissionApplicationError
+
+            if run_meta_patch_active():
+                queue_authority_inbox_item(run, item)
+                run.pop("human_inbox", None)
+                run["inbox_pending"] = True
+                return run
+            goal = str(run.get("goal") or run.get("topic") or folder.name)
+            try:
+                MissionApplication(folder, goal).open_inbox_item(item)
+            except (MissionApplicationError, OSError, ValueError) as exc:
+                raise ValueError(f"mission inbox open failed: {exc}") from exc
+            run.pop("human_inbox", None)
+            run["inbox_pending"] = True
+            return run
     items = inbox_items(run)
     items.append(item)
     run["human_inbox"] = items

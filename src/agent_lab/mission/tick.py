@@ -157,6 +157,9 @@ def run_scheduled_mission_tick(
 
     def _tick(run_meta: RunStateLike) -> dict[str, Any]:
         nonlocal created
+        from agent_lab.run.meta import stamp_run_meta
+
+        stamp_run_meta(run_meta, _session_folder=str(folder.resolve()), _session_id=folder.name)
         created = _harvest_plan_questions(folder, run_meta, plan_md=plan_md)
         return _stamp_schedule_meta(run_meta, schedule_id)
 

@@ -13,6 +13,7 @@ Rules:
 - Do NOT impersonate other agents.
 - Do NOT claim you ran tools or read files unless you actually did in this turn.
 - Settle options peers can resolve among yourselves (propose, amend, ENDORSE); take GO gates, blockers, and genuine forks to the Human.
+- Do NOT create new files under repo-root `artifacts/plans/` on your own initiative — that path is for Human-sanctioned durable mission plans, not per-turn scratch. The session plan (plan.md) is written by the Scribe automatically; for a simple/scoped task, just edit the target file directly.
 """
 
 # --- BLOCK: cursor ---

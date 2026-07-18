@@ -177,6 +177,23 @@ def plan_workflow_wants_inbox_mcp(run: RunStateLike | None) -> bool:
     return plan_workflow_phase(run) in PLAN_CLARIFY_PHASES
 
 
+def plan_workflow_wants_human_pending_inbox_mcp(run: RunStateLike | None) -> bool:
+    """HUMAN_PENDING GO-approval ask_human — independent of CLARIFY (`AGENT_LAB_PLAN_INBOX`).
+
+    CLARIFY and HUMAN_PENDING both need ask_human, but they are different asks (clarifying
+    questions vs. execute GO approval) and must not share `plan_workflow_wants_inbox_mcp`'s
+    CLARIFY-only gate — that gate also drives clarifier-interview machinery
+    (``workflow_clarify.py``) that must not fire during HUMAN_PENDING.
+    """
+    from agent_lab.room.preset import is_fast_room_session
+
+    if is_fast_room_session(run):
+        return False
+    if not is_plan_workflow_active(run):
+        return False
+    return plan_workflow_phase(run) == "HUMAN_PENDING"
+
+
 def plan_workflow_allows_scribe(
     run: RunStateLike | None,
     *,

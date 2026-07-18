@@ -39,9 +39,16 @@ def discuss_inbox_mcp_lane_enabled(run_meta: RunStateLike | None) -> bool:
 
     Orchestrator harvest stays off on Fast; peer ``ask_human`` / ``propose_build`` MCP is allowed.
     """
-    from agent_lab.plan.workflow import plan_workflow_wants_inbox_mcp
+    from agent_lab.plan.workflow import (
+        plan_workflow_wants_human_pending_inbox_mcp,
+        plan_workflow_wants_inbox_mcp,
+    )
 
     if run_meta and plan_workflow_wants_inbox_mcp(run_meta):
+        from agent_lab.cursor.inbox_mcp import plan_inbox_mcp_enabled
+
+        return plan_inbox_mcp_enabled()
+    if run_meta and plan_workflow_wants_human_pending_inbox_mcp(run_meta):
         from agent_lab.cursor.inbox_mcp import plan_inbox_mcp_enabled
 
         return plan_inbox_mcp_enabled()

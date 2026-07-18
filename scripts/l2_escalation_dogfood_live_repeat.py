@@ -14,8 +14,18 @@ Room composition is NOT pinned here — it inherits x2_lift_dogfood_live_repeat'
 AGENTS (empty by default), so the server falls back to the operator's own
 configured default composition.
 
+The X2-lift fixture requires ``AGENT_LAB_EXECUTE_INBOX=0`` (nested-Cursor
+propose_build), which also gates the discuss-lane ``ask_human`` MCP for most
+plan-workflow phases (see inbox.mcp_policy.discuss_inbox_mcp_lane_enabled).
+HUMAN_PENDING — the phase where an L2-promoted peer asks Human for GO
+approval — is independently controllable via ``AGENT_LAB_PLAN_INBOX=1``
+(plan_workflow_wants_human_pending_inbox_mcp); set it alongside EXECUTE_INBOX=0
+or the room falls back to prose-only Human requests the API can't consume,
+and repeated plan-retries will drift into peers self-applying the fixture fix.
+
 Usage:
   eval "$(make -s dogfood-track-env)"
+  export AGENT_LAB_PLAN_INBOX=1   # HUMAN_PENDING ask_human despite EXECUTE_INBOX=0
   make api   # restart API after changing env
   .venv/bin/python scripts/l2_escalation_dogfood_live_repeat.py --count 10
 """

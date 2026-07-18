@@ -56,6 +56,49 @@ def test_discuss_mcp_disabled_when_legacy_harvest_on(monkeypatch: pytest.MonkeyP
     assert discuss_inbox_mcp_enabled(run, agent_id="claude") is False
 
 
+def _human_pending_run(*, lead: str = "cursor") -> dict:
+    return {
+        **_supervisor_run(lead=lead),
+        "plan_workflow": {"enabled": True, "phase": "HUMAN_PENDING"},
+    }
+
+
+def test_human_pending_ask_human_independent_of_execute_inbox(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """N4-D3 L2 dogfood gap: HUMAN_PENDING GO-approval must not require
+    AGENT_LAB_EXECUTE_INBOX=1 — X2-lift's fixture forces EXECUTE_INBOX=0, and
+    without this independent AGENT_LAB_PLAN_INBOX path, L2-promoted peers fall
+    back to prose-only Human requests the dogfood harness can't consume."""
+    monkeypatch.setenv("AGENT_LAB_EXECUTE_INBOX", "0")
+    monkeypatch.delenv("AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST", raising=False)
+    run = _human_pending_run(lead="codex")
+
+    # Without the PLAN_INBOX opt-in, HUMAN_PENDING stays gated by EXECUTE_INBOX=0.
+    monkeypatch.delenv("AGENT_LAB_PLAN_INBOX", raising=False)
+    assert discuss_inbox_mcp_enabled(run, agent_id="codex") is False
+
+    # AGENT_LAB_PLAN_INBOX=1 unlocks it independent of EXECUTE_INBOX.
+    monkeypatch.setenv("AGENT_LAB_PLAN_INBOX", "1")
+    assert discuss_inbox_mcp_enabled(run, agent_id="codex") is True
+    assert discuss_inbox_mcp_enabled(run, agent_id="claude") is False
+
+
+def test_human_pending_does_not_leak_into_clarify_only_gate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """plan_workflow_wants_inbox_mcp (CLARIFY-only clarifier machinery) must
+    stay False during HUMAN_PENDING — only the new sibling gate opens."""
+    from agent_lab.plan.workflow import (
+        plan_workflow_wants_human_pending_inbox_mcp,
+        plan_workflow_wants_inbox_mcp,
+    )
+
+    run = _human_pending_run()
+    assert plan_workflow_wants_inbox_mcp(run) is False
+    assert plan_workflow_wants_human_pending_inbox_mcp(run) is True
+
+
 def test_single_flight_rejects_second_ask_human(tmp_path: Path) -> None:
     folder = tmp_path / "sess-mcp"
     folder.mkdir()

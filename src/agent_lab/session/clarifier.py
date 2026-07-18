@@ -399,7 +399,7 @@ def sync_clarifier_answers_from_inbox(folder: Path) -> dict[str, Any] | None:
     """Harvest resolved clarifier inbox items into interview answers."""
     from pathlib import Path
 
-    from agent_lab.human_inbox import inbox_items
+    from agent_lab.human_inbox import inbox_items_for_folder
     from agent_lab.inbox.harvest import clarifier_harvest_key
 
     path = Path(folder)
@@ -415,7 +415,7 @@ def sync_clarifier_answers_from_inbox(folder: Path) -> dict[str, Any] | None:
         prompt = str(q.get("prompt") or "")
         qid = str(q.get("id") or "")
         key = clarifier_harvest_key(prompt)
-        for item in inbox_items(run):
+        for item in inbox_items_for_folder(path):
             if item.get("status") != "resolved":
                 continue
             item_prompt = str(item.get("prompt") or "").strip()

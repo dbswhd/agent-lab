@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 from enum import StrEnum
-from typing import NewType, assert_never
+from typing import Mapping, NewType, assert_never
 
 from agent_lab.mission.errors import MissionTransitionError
+from agent_lab.mission.messages import JsonValue
 
 MissionId = NewType("MissionId", str)
 
@@ -60,6 +61,7 @@ class Mission:
     last_oracle_detail: str | None = None
     merged_commit_sha: str | None = None
     open_gates: tuple[GateRecord, ...] = ()
+    inbox_items: tuple[Mapping[str, JsonValue], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -125,6 +127,17 @@ class CloseExecutionGate:
     gate_id: str
 
 
+@dataclass(frozen=True, slots=True)
+class OpenInboxItem:
+    item: Mapping[str, JsonValue]
+
+
+@dataclass(frozen=True, slots=True)
+class ResolveInboxItem:
+    item_id: str
+    item: Mapping[str, JsonValue]
+
+
 MissionCommand = (
     OpenPlan
     | RejectPlan
@@ -138,6 +151,8 @@ MissionCommand = (
     | ResolveBlock
     | OpenExecutionGate
     | CloseExecutionGate
+    | OpenInboxItem
+    | ResolveInboxItem
 )
 
 
@@ -217,6 +232,17 @@ class ExecutionGateClosed:
     gate_id: str
 
 
+@dataclass(frozen=True, slots=True)
+class InboxItemOpened:
+    item: Mapping[str, JsonValue]
+
+
+@dataclass(frozen=True, slots=True)
+class InboxItemResolved:
+    item_id: str
+    item: Mapping[str, JsonValue]
+
+
 MissionEvent = (
     PlanOpened
     | PlanRejected
@@ -232,6 +258,8 @@ MissionEvent = (
     | BlockResolved
     | ExecutionGateOpened
     | ExecutionGateClosed
+    | InboxItemOpened
+    | InboxItemResolved
 )
 
 
@@ -318,6 +346,35 @@ def decide(
             if not any(g.gate_id == gate_id for g in mission.open_gates):
                 return ()  # idempotent no-op: already closed / never opened
             return (ExecutionGateClosed(gate_id),)
+        case OpenInboxItem(item=item):
+            item_id = item.get("id")
+            if not isinstance(item_id, str) or not item_id:
+                raise _reject(mission, command, "inbox item id is required")
+            if any(existing.get("id") == item_id for existing in mission.inbox_items):
+                return ()
+            kind_value = item.get("kind")
+            kind = kind_value if isinstance(kind_value, str) and kind_value else "question"
+            reason_value = item.get("summary") or item.get("prompt") or kind
+            reason = reason_value if isinstance(reason_value, str) else "Human decision"
+            return (
+                InboxItemOpened(item),
+                ExecutionGateOpened(item_id, kind, reason, mission.state),
+            )
+        case ResolveInboxItem(item_id=item_id, item=item):
+            if not item_id:
+                raise _reject(mission, command, "inbox item id is required")
+            current = next((row for row in mission.inbox_items if row.get("id") == item_id), None)
+            if current is None:
+                raise _reject(mission, command, "inbox item is missing")
+            if current.get("status") != "pending":
+                raise _reject(mission, command, "inbox item is not pending")
+            events: list[MissionEvent] = []
+            if mission.state is MissionState.AWAITING_HUMAN and mission.blocked:
+                events.append(BlockResolved())
+            events.append(InboxItemResolved(item_id, item))
+            if any(gate.gate_id == item_id for gate in mission.open_gates):
+                events.append(ExecutionGateClosed(item_id))
+            return tuple(events)
         case _ as unreachable:
             assert_never(unreachable)
 
@@ -391,6 +448,14 @@ def apply_event(mission: Mission, event: MissionEvent) -> Mission:
                 mission,
                 version=next_version,
                 open_gates=tuple(g for g in mission.open_gates if g.gate_id != gate_id),
+            )
+        case InboxItemOpened(item=item):
+            return replace(mission, version=next_version, inbox_items=(*mission.inbox_items, item))
+        case InboxItemResolved(item_id=item_id, item=item):
+            return replace(
+                mission,
+                version=next_version,
+                inbox_items=tuple(item if row.get("id") == item_id else row for row in mission.inbox_items),
             )
         case _ as unreachable:
             assert_never(unreachable)

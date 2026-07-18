@@ -55,6 +55,14 @@ def dual_write_enabled(folder: Path | None = None) -> bool:
     return bool(cohort) and folder is not None and folder.name in cohort
 
 
+def mission_authority_enabled(folder: Path | None = None) -> bool:
+    if folder is None:
+        return False
+    from agent_lab.mission.inbox_application import mission_authority_enabled as _enabled
+
+    return _enabled(folder)
+
+
 def plan_write_authority_enabled(folder: Path | None = None) -> bool:
     return False
 

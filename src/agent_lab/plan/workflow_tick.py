@@ -264,7 +264,7 @@ def tick_plan_workflow_after_inbox_resolve(folder: Path) -> dict[str, Any]:
     phase = plan_workflow_phase(run).upper()
     if phase not in PLAN_CLARIFY_PHASES:
         return {"handled": False, "phase": phase}
-    from agent_lab.human_inbox import has_pending_question
+    from agent_lab.human_inbox import inbox_items_for_folder
 
     run = read_run_meta(folder)
     plan_path = folder / "plan.md"
@@ -275,7 +275,10 @@ def tick_plan_workflow_after_inbox_resolve(folder: Path) -> dict[str, Any]:
         cancelled=False,
         plan_md=plan_md,
         plan_before=plan_md,
-        has_pending_inbox_question=has_pending_question(run),
+        has_pending_inbox_question=any(
+            item.get("status") == "pending" and item.get("kind") == "question"
+            for item in inbox_items_for_folder(folder)
+        ),
     )
 
 
@@ -301,7 +304,7 @@ def orchestrate_plan_workflow_pipeline(
     on_event: Any | None = None,
 ) -> tuple[str, list[Any], dict[str, Any]]:
     """Run post-scribe plan pipeline: peer review, refine scribe, human pending."""
-    from agent_lab.human_inbox import has_pending_question
+    from agent_lab.human_inbox import inbox_items_for_folder
     from agent_lab.room.turn_policy import turn_policy_enabled
 
     if cancelled or not is_plan_workflow_active(run_meta):
@@ -316,7 +319,10 @@ def orchestrate_plan_workflow_pipeline(
         cancelled=cancelled,
         plan_md=plan_md_current,
         plan_before=plan_before,
-        has_pending_inbox_question=has_pending_question(read_run_meta(folder)),
+        has_pending_inbox_question=any(
+            item.get("status") == "pending" and item.get("kind") == "question"
+            for item in inbox_items_for_folder(folder)
+        ),
         turn_policy_advance=turn_policy_advance,
     )
 

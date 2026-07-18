@@ -244,10 +244,13 @@ def _joined_inbox_items(mission: Mission, run: RunStateLike) -> tuple[dict[str, 
     - Gate rows missing from inbox become placeholder items.
     - Inbox rows not matching any gate are included as ``unrelated``.
     """
+    rows_by_id: dict[str, dict[str, Any]] = {}
     from agent_lab.human_inbox import inbox_items
 
-    rows_by_id: dict[str, dict[str, Any]] = {}
-    for row in inbox_items(run):
+    source_rows = [dict(row) for row in mission.inbox_items]
+    mission_item_ids = {item.get("id") for item in source_rows}
+    source_rows.extend(row for row in inbox_items(run) if row.get("id") not in mission_item_ids)
+    for row in source_rows:
         item_id = row.get("id")
         if not isinstance(item_id, str) or not item_id or item_id in rows_by_id:
             continue

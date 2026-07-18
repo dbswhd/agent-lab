@@ -8,7 +8,7 @@ from agent_lab.human_inbox import (
     build_inbox_summary,
     create_inbox_item,
     ensure_inbox_item_actionable,
-    public_inbox_payload,
+    public_inbox_payload_for_folder,
     resolve_inbox_item,
     supersede_pending_inbox,
 )
@@ -48,7 +48,7 @@ def get_session_inbox(session_id: str) -> dict[str, Any]:
         "ok": True,
         "session_id": session_id,
         "inbox_mode": inbox_mode_for_run(run),
-        **public_inbox_payload(run),
+        **public_inbox_payload_for_folder(folder),
     }
 
 
@@ -107,13 +107,12 @@ def create_session_inbox_item(
         )
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
-    run = read_run_meta(folder)
     from agent_lab.mission.dual_write import inbox_write_authority_enabled
 
     payload = {
         "ok": True,
         "item": item,
-        **public_inbox_payload(run),
+        **public_inbox_payload_for_folder(folder),
     }
     if inbox_write_authority_enabled(folder):
         # Gate was committed inside create_inbox_item; surface a stable bridge shape.
@@ -136,10 +135,42 @@ def resolve_session_inbox_item(
     from agent_lab.mission.dual_write import (
         commit_inbox_resolution,
         inbox_write_authority_enabled,
+        mission_authority_enabled,
         mirror_inbox_resolution,
     )
 
     try:
+        if mission_authority_enabled(folder):
+            from agent_lab.mission.application import MissionApplication, MissionApplicationError
+
+            run = read_run_meta(folder)
+            goal = str(run.get("goal") or run.get("topic") or folder.name)
+            mission = MissionApplication(folder, goal).resolve_inbox_item(
+                item_id,
+                status=status,
+                selected=body.selected,
+                decision=body.decision,
+                note=body.note,
+                expected_version=body.expected_version,
+            )
+            item = next((row for row in mission.inbox_items if row.get("id") == item_id), None)
+            if item is None:
+                raise MissionApplicationError(f"inbox item is missing: {item_id}")
+            from agent_lab.human_inbox import format_human_decision
+
+            return {
+                "ok": True,
+                "item": dict(item),
+                "human_decision": format_human_decision(dict(item)),
+                "mission_dual_write": {
+                    "enabled": True,
+                    "operation": "inbox_resolve_commit",
+                    "mirrored": True,
+                    "authority": "mission_journal",
+                },
+                "source": "mission_journal",
+                "event_cursor": mission.version,
+            }
         ensure_inbox_item_actionable(folder, item_id)
         if body.expected_version is not None:
             from agent_lab.mission.application import MissionApplication, MissionApplicationError
@@ -188,7 +219,6 @@ def resolve_session_inbox_item(
             bridge = mirror_inbox_resolution(folder, item_id=item_id, answer=body.decision or "")
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
-    run = read_run_meta(folder)
     from agent_lab.human_inbox import format_human_decision
 
     return {
@@ -196,7 +226,7 @@ def resolve_session_inbox_item(
         "item": item,
         "human_decision": format_human_decision(item),
         "mission_dual_write": bridge,
-        **public_inbox_payload(run),
+        **public_inbox_payload_for_folder(folder),
     }
 
 
@@ -207,9 +237,8 @@ def supersede_session_inbox(
 ) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
     count = supersede_pending_inbox(folder, human_turn_id=human_turn_id)
-    run = read_run_meta(folder)
     return {
         "ok": True,
         "superseded_count": count,
-        **public_inbox_payload(run),
+        **public_inbox_payload_for_folder(folder),
     }

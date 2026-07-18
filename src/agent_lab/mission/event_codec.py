@@ -12,6 +12,8 @@ from agent_lab.mission.kernel import (
     ExecutionGateClosed,
     ExecutionGateOpened,
     ExecutionStarted,
+    InboxItemOpened,
+    InboxItemResolved,
     MergeCommitted,
     MissionEvent,
     MissionState,
@@ -44,6 +46,8 @@ class EventType(StrEnum):
     BLOCK_RESOLVED = "BlockResolved"
     EXECUTION_GATE_OPENED = "ExecutionGateOpened"
     EXECUTION_GATE_CLOSED = "ExecutionGateClosed"
+    INBOX_ITEM_OPENED = "InboxItemOpened"
+    INBOX_ITEM_RESOLVED = "InboxItemResolved"
 
 
 def _text(payload: Mapping[str, JsonValue], key: str) -> str:
@@ -108,6 +112,10 @@ def encode_event(event: MissionEvent) -> PendingEvent:
             )
         case ExecutionGateClosed(gate_id=gate_id):
             return PendingEvent("ExecutionGateClosed", {"gate_id": gate_id})
+        case InboxItemOpened(item=item):
+            return PendingEvent("InboxItemOpened", {"item": dict(item)})
+        case InboxItemResolved(item_id=item_id, item=item):
+            return PendingEvent("InboxItemResolved", {"item_id": item_id, "item": dict(item)})
         case _ as unreachable:
             assert_never(unreachable)
 
@@ -152,5 +160,15 @@ def decode_event(event: StoredEvent) -> MissionEvent:
             )
         case EventType.EXECUTION_GATE_CLOSED:
             return ExecutionGateClosed(_text(payload, "gate_id"))
+        case EventType.INBOX_ITEM_OPENED:
+            item = payload.get("item")
+            if not isinstance(item, dict):
+                raise EventCodecError("item must be an object")
+            return InboxItemOpened(item)
+        case EventType.INBOX_ITEM_RESOLVED:
+            item = payload.get("item")
+            if not isinstance(item, dict):
+                raise EventCodecError("item must be an object")
+            return InboxItemResolved(_text(payload, "item_id"), item)
         case _ as unreachable:
             assert_never(unreachable)

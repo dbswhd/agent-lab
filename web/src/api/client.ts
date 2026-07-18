@@ -2718,7 +2718,6 @@ export async function fetchInboxSummary(includeArchived = false) {
   return json<InboxSummaryPayload>(`/api/inbox/summary${query}`);
 }
 
-/** Wave A journal-first read-model (see docs/redesign-2026-07/journal-first-read-projection-design-2026-07-14.md). */
 export type MissionReadModelPayload = {
   session_id: string;
   migrated: boolean;
@@ -2759,10 +2758,6 @@ export type MissionReadModelPayload = {
   inbox_items?: HumanInboxItem[];
 };
 
-/**
- * Read-only Mission composites. Prefer only when AGENT_LAB_MISSION_UI_READ_MODEL=1;
- * do not replace Composer / HumanInboxPanel until Wave B.
- */
 export async function fetchMissionReadModel(sessionId: string) {
   return json<MissionReadModelPayload>(
     `/api/sessions/${encodeURIComponent(sessionId)}/mission/read-model`,

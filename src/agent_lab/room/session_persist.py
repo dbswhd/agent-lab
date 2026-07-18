@@ -252,9 +252,9 @@ def _resolve_discuss_objections_from_consensus(
 
 
 def _sse_inbox_pending(folder: Path) -> bool:
-    from agent_lab.human_inbox import compute_inbox_pending
+    from agent_lab.human_inbox import inbox_items_for_folder
 
-    return compute_inbox_pending(_read_run_meta(folder))
+    return any(item.get("status") == "pending" for item in inbox_items_for_folder(folder))
 
 
 def session_context(folder: Path | None) -> tuple[str, RunState]:

@@ -50,10 +50,20 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         "Comma-separated session IDs allowed to use the dual-write bridge when enabled (empty disables the bridge)",
     ),
     FlagDef(
+        "AGENT_LAB_MISSION_AUTHORITY",
+        "feature",
+        "Journal-owned Mission Inbox authority for the selected bounded cohort (default off)",
+    ),
+    FlagDef(
+        "AGENT_LAB_MISSION_AUTHORITY_SESSIONS",
+        "feature",
+        "Comma-separated session IDs allowed to use journal-owned Mission Inbox authority (empty disables it)",
+    ),
+    FlagDef(
         "AGENT_LAB_MISSION_UI_READ_MODEL",
         "feature",
-        "Wave A stub: web may fetch GET /mission/read-model (default off; do not replace Inbox/Composer until Wave B)",
-        default="0",
+        "Journal-first read-model for migrated sessions; legacy sessions remain server-side fallback",
+        default="1",
     ),
     FlagDef(
         "AGENT_LAB_CONTEXT_RECIPE",

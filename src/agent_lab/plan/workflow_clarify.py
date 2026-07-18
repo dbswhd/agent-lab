@@ -15,11 +15,10 @@ from agent_lab.run.state import RunStateLike
 
 
 def build_clarify_context_block(folder: Path) -> str:
-    from agent_lab.human_inbox import inbox_items
+    from agent_lab.human_inbox import inbox_items_for_folder
 
-    run = read_run_meta(folder)
     rows: list[str] = []
-    for item in inbox_items(run):
+    for item in inbox_items_for_folder(folder):
         if item.get("kind") != "question":
             continue
         if item.get("status") not in {"resolved", "deferred"}:
@@ -104,7 +103,7 @@ def ensure_plan_clarify_inbox_question(folder: Path) -> dict[str, Any] | None:
     run = read_run_meta(folder)
     if not plan_workflow_wants_inbox_mcp(run):
         return None
-    from agent_lab.human_inbox import create_inbox_item, has_pending_question, inbox_items
+    from agent_lab.human_inbox import create_inbox_item, inbox_items_for_folder
     from agent_lab.inbox.harvest import clarifier_harvest_key
     from agent_lab.plan.clarify_options import options_for_clarifier_question
     from agent_lab.session.clarifier import get_clarifier_interview
@@ -114,14 +113,20 @@ def ensure_plan_clarify_inbox_question(folder: Path) -> dict[str, Any] | None:
     if not pending:
         return None
     prompt = str(pending[0].get("prompt") or "").strip()
-    if has_pending_question(run):
-        for item in inbox_items(run):
+    items = inbox_items_for_folder(folder)
+    if any(item.get("status") == "pending" and item.get("kind") == "question" for item in items):
+        for item in items:
             if item.get("kind") == "question" and item.get("status") == "pending":
                 if str(item.get("prompt") or "").strip() == prompt:
                     return item
         return None
-    if inbox_question_surfaces_prompt(run, prompt):
-        for item in inbox_items(run):
+    if any(
+        item.get("kind") == "question"
+        and item.get("status") in {"pending", "resolved"}
+        and str(item.get("prompt") or "").strip() == prompt
+        for item in items
+    ):
+        for item in items:
             if item.get("kind") == "question" and str(item.get("prompt") or "").strip() == prompt:
                 return item
         return None
@@ -143,7 +148,7 @@ def build_plan_clarify_agent_block(folder: Path, *, agent_id: str, run_meta: Run
     """Gate-owner instructions: ask_human with options, or wait on existing Inbox row."""
     if not run_meta or not plan_workflow_wants_inbox_mcp(run_meta):
         return ""
-    from agent_lab.human_inbox import has_pending_question, inbox_items
+    from agent_lab.human_inbox import inbox_items_for_folder
     from agent_lab.inbox.mcp_policy import inbox_gate_owner
     from agent_lab.plan.clarify_options import options_for_clarifier_question
     from agent_lab.session.clarifier import get_clarifier_interview
@@ -154,9 +159,14 @@ def build_plan_clarify_agent_block(folder: Path, *, agent_id: str, run_meta: Run
             "Plan CLARIFY: only the inbox gate owner posts `ask_human`. Continue peer analysis; do not call ask_human."
         )
     run = read_run_meta(folder)
-    if has_pending_question(run):
+    pending_items = [
+        item
+        for item in inbox_items_for_folder(folder)
+        if item.get("kind") == "question" and item.get("status") == "pending"
+    ]
+    if pending_items:
         pending = next(
-            (i for i in inbox_items(run) if i.get("kind") == "question" and i.get("status") == "pending"),
+            (i for i in pending_items if i.get("kind") == "question" and i.get("status") == "pending"),
             None,
         )
         if pending:
@@ -262,9 +272,9 @@ def clarity_gate_questions(folder: Path, run: RunStateLike) -> dict[str, Any] | 
 
     patch_run_meta(folder, _harvest)
 
-    from agent_lab.human_inbox import has_pending_question
+    from agent_lab.human_inbox import inbox_items_for_folder
 
-    if not has_pending_question(read_run_meta(folder)):
+    if not any(item.get("status") == "pending" for item in inbox_items_for_folder(folder)):
         from agent_lab.inbox.harvest import orchestrator_inbox_harvest_enabled
 
         if orchestrator_inbox_harvest_enabled():

@@ -3,10 +3,18 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Mapping
 
 from agent_lab.mission.decision_queue import AnswerDecision, DecisionTransitionError, new_decision
 from agent_lab.mission.decision_repository import DecisionRepository, decision_journal_path
-from agent_lab.mission.kernel import ApprovePlan, Mission, MissionState, OpenPlan, RejectPlan
+from agent_lab.mission.kernel import (
+    ApprovePlan,
+    Mission,
+    MissionState,
+    OpenPlan,
+    RejectPlan,
+)
+from agent_lab.mission.messages import JsonValue
 from agent_lab.mission.projection import (
     MissionLoopStatusProjection,
     apply_mission_loop_status_projection,
@@ -54,6 +62,41 @@ class MissionApplication:
 
     def load(self) -> Mission:
         return self.repository.load()
+
+    def _mission_authority_enabled(self) -> bool:
+        from agent_lab.mission.inbox_application import mission_authority_enabled
+
+        return mission_authority_enabled(self.session_folder)
+
+    def open_inbox_item(self, item: Mapping[str, JsonValue]) -> Mission:
+        from agent_lab.mission.inbox_application import open_inbox_item
+
+        return open_inbox_item(self, item)
+
+    def resolve_inbox_item(
+        self,
+        item_id: str,
+        *,
+        status: str = "resolved",
+        selected: list[str] | None = None,
+        decision: str | None = None,
+        note: str | None = None,
+        expected_version: int | None = None,
+    ) -> Mission:
+        from agent_lab.mission.inbox_application import resolve_inbox_item
+
+        try:
+            return resolve_inbox_item(
+                self,
+                item_id,
+                status=status,
+                selected=selected,
+                decision=decision,
+                note=note,
+                expected_version=expected_version,
+            )
+        except ValueError as exc:
+            raise MissionApplicationError(str(exc)) from exc
 
     def approve_plan(self) -> Mission:
         plan = self._read_plan()
@@ -115,6 +158,8 @@ class MissionApplication:
         return DecisionRepository(path, decision)
 
     def answer_inbox(self, item_id: str, answer: str, *, note: str | None = None) -> Mission:
+        if self._mission_authority_enabled():
+            return self.resolve_inbox_item(item_id, decision=answer, note=note, expected_version=0)
         from agent_lab.human_inbox import resolve_inbox_item
 
         repo = self._inbox_decision_repository(item_id)
@@ -145,6 +190,16 @@ class MissionApplication:
         ``resolve_inbox_item`` write path runs. Does not touch ``run.json``;
         callers still own the actual resolve.
         """
+        if self._mission_authority_enabled():
+            current = self.load()
+            item = next((row for row in current.inbox_items if row.get("id") == item_id), None)
+            if item is None or item.get("status") != "pending":
+                raise MissionApplicationError(f"inbox item is not pending: {item_id}")
+            item_version = item.get("decision_version", 0)
+            if item_version != expected_version:
+                raise MissionApplicationError(f"expected item version {expected_version}, got {item_version}")
+            return
+
         repo = self._inbox_decision_repository(item_id, decision_id=decision_id, mission_id=mission_id)
         try:
             repo.answer(AnswerDecision(answer), expected_version=expected_version)

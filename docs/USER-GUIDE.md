@@ -1191,6 +1191,9 @@ Path-like values are home-masked in API/CLI output. Undocumented `AGENT_LAB_*` v
 | `AGENT_LAB_CRASH_RECOVERY` | boot-time reconcile of crashed in-flight merges, G3 (default on) |
 | `AGENT_LAB_MISSION_DUAL_WRITE` | opt-in legacy-route to Mission journal bridge; legacy writer remains first |
 | `AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS` | comma-separated session allowlist for controlled dual-write cohort; empty disables the bridge |
+| `AGENT_LAB_MISSION_AUTHORITY` | journal-owned Inbox authority for the selected bounded cohort; default off |
+| `AGENT_LAB_MISSION_AUTHORITY_SESSIONS` | comma-separated session allowlist for journal-owned Inbox authority; empty disables it |
+| `AGENT_LAB_MISSION_UI_READ_MODEL` | journal-first UI for migrated sessions; legacy sessions fallback server-side; default on |
 | `AGENT_LAB_ACTIVITY_QUEUE_RECOVERY` | eager startup + throttled periodic Mission ActivityQueue recovery (default on; opt out with `=0`) |
 | `AGENT_LAB_ACTIVITY_RECOVERY_INTERVAL_S` | periodic ActivityQueue recovery interval in seconds (default `300`, clamped `30..3600`) |
 | `AGENT_LAB_JUDGE_LIVE` | live LLM-as-judge quality eval in `score_session` (default off) |

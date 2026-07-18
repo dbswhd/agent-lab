@@ -590,9 +590,8 @@
     "web/src/hooks/useRoomSseHandler.ts:837:human_inbox",
     "web/src/utils/missionOverviewView.ts:61:mission_loop",
     "web/src/utils/missionOverviewView.ts:7:mission_ui_read_model",
-    "web/src/utils/missionReadModel.ts:139:run.json",
-    "web/src/utils/missionReadModel.ts:141:mission_ui_read_model",
-    "web/src/utils/missionReadModel.ts:182:mission_ui_read_model",
+    "web/src/utils/missionReadModel.ts:136:mission_ui_read_model",
+    "web/src/utils/missionReadModel.ts:177:mission_ui_read_model",
     "web/src/utils/workStatusPhase.ts:10:mission_loop",
     "web/src/utils/workStatusPhase.ts:10:web_mission_loop",
     "web/src/utils/workStatusPhase.ts:49:web_merge_oracle"

@@ -60,12 +60,15 @@ def _with_decision_versions(items: list[dict[str, Any]], folder: Path) -> list[d
     for item in items:
         row = dict(item)
         item_id = row.get("id")
-        version = 0
+        version = row.get("decision_version", 0)
+        if not isinstance(version, int) or isinstance(version, bool) or version < 0:
+            version = 0
         if isinstance(item_id, str) and item_id:
-            try:
-                version = load_decision_version(folder, item_id, mission_id=folder.name)
-            except Exception:
-                version = 0
+            if version == 0:
+                try:
+                    version = load_decision_version(folder, item_id, mission_id=folder.name)
+                except Exception:
+                    version = 0
         row["decision_version"] = version
         enriched.append(row)
     return enriched

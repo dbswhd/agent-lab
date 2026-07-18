@@ -124,7 +124,6 @@ export function isUsableMissionReadModel(
   return payload?.migrated === true && payload.source === "mission_journal";
 }
 
-/** True when server exposes AGENT_LAB_MISSION_UI_READ_MODEL as enabled (default off). */
 export async function missionUiReadModelEnabled(): Promise<boolean> {
   return fetchHealthFlags("feature")
     .then((payload) => {
@@ -134,10 +133,6 @@ export async function missionUiReadModelEnabled(): Promise<boolean> {
     .catch(() => false);
 }
 
-/**
- * Fetch journal-first read-model only when the UI flag is on; otherwise null.
- * Callers must keep using run.json Inbox/overview until Wave B.
- */
 export async function fetchMissionReadModelIfEnabled(
   sessionId: string,
 ): Promise<MissionReadModelPayload | null> {

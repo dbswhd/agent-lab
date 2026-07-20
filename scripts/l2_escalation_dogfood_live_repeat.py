@@ -95,6 +95,23 @@ def _wait_approved_grace(session_id: str, *, timeout: float = 30.0) -> str:
     return phase
 
 
+def _retry_topic(retry_num: int) -> str:
+    """Continuation message for a not-yet-structured plan.md.
+
+    Resubmitting x2.TOPIC verbatim gives the room no signal that this is a
+    retry — by round 2-3 kimi_work reads it as "already handled" and reverts
+    the typo directly in the discuss turn instead of producing plan.md, which
+    is exactly the failure this fixture is trying to sample (N4-D3 L2 gate).
+    Naming the retry and the missing structure explicitly keeps the ask
+    distinct from the original turn."""
+    return (
+        f"[재시도 {retry_num}/{MAX_PLAN_RETRIES}] 이전 라운드에서 plan.md가 아직 "
+        "`## Must` / `## Parallel waves` 구조로 작성되지 않았습니다. docs/_dogfood/x2-lift.md "
+        "오타를 discuss 턴에서 직접 되돌리지 말고, propose_build로 구조화된 plan을 다시 제출해 "
+        "승인 단계까지 진행해 주세요."
+    )
+
+
 def _ensure_structured_plan(session_id: str, *, room_timeout: float) -> dict:
     """Poll for HUMAN_PENDING; if plan.md isn't structured yet, resubmit a
     continuation turn on the same session (instead of blind-approving a
@@ -108,7 +125,11 @@ def _ensure_structured_plan(session_id: str, *, room_timeout: float) -> dict:
             f"    plan.md not structured yet (retry {info['retries']}/{MAX_PLAN_RETRIES}) — continuing session",
             flush=True,
         )
-        x2._room_run(session_id=session_id, timeout=room_timeout)
+        x2._room_run(
+            session_id=session_id,
+            timeout=room_timeout,
+            topic_override=_retry_topic(info["retries"]),
+        )
         phase = x2._wait_human_pending(session_id, timeout=x2.DEFAULT_PLAN_WAIT_TIMEOUT)
     if phase == "HUMAN_PENDING" and not _plan_structured(session_id):
         phase = _wait_approved_grace(session_id)

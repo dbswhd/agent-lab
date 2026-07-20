@@ -267,10 +267,11 @@ def _room_run(
     *,
     session_id: str | None = None,
     timeout: float = DEFAULT_ROOM_TIMEOUT,
+    topic_override: str | None = None,
 ) -> tuple[str | None, list[dict[str, Any]], float, str | None]:
     boundary = "----AgentLabX2Live"
     fields = [
-        ("topic", TOPIC),
+        ("topic", topic_override or TOPIC),
         ("mode", "discuss"),
         ("synthesize", "false"),
         ("synthesize_only", "false"),

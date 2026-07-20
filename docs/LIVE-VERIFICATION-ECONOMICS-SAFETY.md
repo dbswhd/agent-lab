@@ -249,7 +249,7 @@ curl -s localhost:8765/api/sessions/$SID | jq '.observability | {trace_span_coun
 > 단위 테스트(`tests/test_quality_judge.py`)가 parse(견고성)·disabled no-LLM·주입 fake-live·cost 결합·
 > score_session 합류를 보장한다. 아래는 **실제 judge LLM**이 세션을 rubric으로 채점하는지 확인한다.
 
-## D1. 실제 judge가 세션 품질을 채점 + usd/point  ⬜
+## D1. 실제 judge가 세션 품질을 채점 + usd/point  ✅ (2026-07-20)
 
 ```bash
 SID=sessions/<완료된 세션>
@@ -265,11 +265,11 @@ AGENT_LAB_JUDGE_LIVE=1 .venv/bin/python scripts/score_session.py --json $SID | j
   "overall": 4.0, "verdict": "pass", "rationale": "...",
   "cost": {"usd": 0.31, "usd_per_point": 0.0775} }
 ```
-- [ ] `enabled:true`, `source:"live"`, rubric 5차원 점수(1~5)
-- [ ] `overall`·`verdict` 채워짐, `rationale` 비어있지 않음
-- [ ] cost_ledger가 있으면 `cost.usd_per_point` 산출(품질당 비용)
-- [ ] `AGENT_LAB_JUDGE_LIVE` 미설정 시 `judge.enabled == false` (LLM 미호출, 기존 KPI 그대로)
-- [ ] summary 출력에 `judge (live): overall N/5 · pass · $X/pt` 라인
+- [x] `enabled:true`, `source:"live"`, rubric 5차원 점수(1~5)
+- [x] `overall`·`verdict` 채워짐, `rationale` 비어있지 않음
+- [x] cost_ledger가 있으면 `cost.usd_per_point` 산출(품질당 비용) — 이 세션은 `cost_ledger` 자체가 비어 있어 `usd:0.0`으로 반환됨(코드 정상, 세션 쪽 데이터 공백)
+- [x] `AGENT_LAB_JUDGE_LIVE` 미설정 시 `judge.enabled == false` (LLM 미호출, 기존 KPI 그대로)
+- [x] summary 출력에 `judge (live): overall N/5 · pass · $X/pt` 라인
 
 ---
 
@@ -287,7 +287,7 @@ AGENT_LAB_JUDGE_LIVE=1 .venv/bin/python scripts/score_session.py --json $SID | j
 | B4 allowlist/다운그레이드 | ⬜ | | |
 | B5 플래그 off | ⬜ | | |
 | C1 trace span latency/토큰 | ⬜ | | |
-| D1 judge rubric + usd/point | ⬜ | | |
+| D1 judge rubric + usd/point | ✅ pass | 2026-07-20 | `sessions/2026-07-10-agent-lab-inbox-timeout-sec60-설정-critical-토픽에서-에`, overall 3.4/5, `usd:0.0`(원 세션 cost_ledger 공백이라 usd_per_point는 0 — judge 경로 자체는 정상 확인) |
 
 ---
 

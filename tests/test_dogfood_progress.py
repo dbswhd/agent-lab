@@ -57,6 +57,45 @@ def test_append_suite_log_roundtrip(tmp_path: Path) -> None:
     assert loaded[0]["session"] == "sessions/demo"
 
 
+def test_append_suite_log_judge_defaults_to_none(tmp_path: Path) -> None:
+    prog = _load_progress()
+    log_path = tmp_path / "suite-log.json"
+    row = prog.append_suite_log(
+        log_path,
+        topic_id="S3",
+        session="sessions/demo",
+        passed=True,
+    )
+    assert row["judge"] is None
+
+
+def test_append_suite_log_carries_judge_summary(tmp_path: Path) -> None:
+    prog = _load_progress()
+    log_path = tmp_path / "suite-log.json"
+    judge = {"enabled": True, "source": "live", "overall": 4.0, "verdict": "pass", "usd_per_point": 0.05}
+    row = prog.append_suite_log(
+        log_path,
+        topic_id="S4",
+        session="sessions/demo",
+        passed=True,
+        judge=judge,
+    )
+    assert row["judge"] == judge
+
+
+def test_judge_summary_disabled_without_judge_live(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """--judge-live without AGENT_LAB_JUDGE_LIVE=1 must not crash — judge_session()
+    itself gates the live call, so this only ever reduces its output."""
+    monkeypatch.delenv("AGENT_LAB_JUDGE_LIVE", raising=False)
+    prog = _load_progress()
+    folder = tmp_path / "sess-demo"
+    folder.mkdir()
+    (folder / "run.json").write_text("{}", encoding="utf-8")
+    (folder / "chat.jsonl").write_text("", encoding="utf-8")
+    summary = prog._judge_summary(str(folder))
+    assert summary.get("enabled") is not True
+
+
 def test_x1_x2_catalog_are_scenario_automatable() -> None:
     prog = _load_progress()
     suite = prog._load_suite()

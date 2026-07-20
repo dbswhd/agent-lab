@@ -393,7 +393,8 @@ dogfood-progress-record:
 	@test -n "$(ID)" || (echo "Usage: make dogfood-progress-record ID=S1 SESSION=sessions/<id>" && exit 1)
 	@test -n "$(SESSION)" || (echo "Usage: make dogfood-progress-record ID=S1 SESSION=sessions/<id>" && exit 1)
 	.venv/bin/python scripts/dogfood_progress.py --mode record --id "$(ID)" --session "$(SESSION)" \
-	  $(if $(NOTES),--notes "$(NOTES)",) $(if $(MINUTES),--minutes $(MINUTES),)
+	  $(if $(NOTES),--notes "$(NOTES)",) $(if $(MINUTES),--minutes $(MINUTES),) \
+	  $(if $(JUDGE_LIVE),--judge-live,)
 
 # Unified dogfood track — LIVE-first (P0-5 · F7 · N4 · CATALOG · HS-M5 · N1-30)
 dogfood-track:

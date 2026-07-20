@@ -154,6 +154,7 @@ def append_suite_log(
     tags: list[str] | None = None,
     notes: str = "",
     repeat: int = 1,
+    judge: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     rows = _load_json_list(log_path)
     row = {
@@ -165,10 +166,38 @@ def append_suite_log(
         "tags": tags or ["auto"],
         "notes": notes,
         "recorded_at": datetime.now(timezone.utc).isoformat(),
+        # G8 live judge coverage (docs/LIVE-VERIFICATION-ECONOMICS-SAFETY.md Part D)
+        # was never visible in this log before — every prior row predates this key,
+        # so its absence there means "not tracked", not "not judged". None here means
+        # --judge-live wasn't passed at record time, same as those historical rows.
+        "judge": judge,
     }
     rows.append(row)
     _write_json_list(log_path, rows)
     return row
+
+
+def _judge_summary(session: str) -> dict[str, Any] | None:
+    """Run G8 live judge against ``session`` and reduce to a suite-log-sized summary.
+
+    Only called when ``--judge-live`` is passed at record time; the caller is
+    responsible for AGENT_LAB_JUDGE_LIVE being set (judge_session() no-ops
+    otherwise, so a missing env var here shows up as ``enabled: False``, not
+    a crash).
+    """
+    from agent_lab.session.score import score_session
+
+    result = score_session(Path(session))
+    judge = result.get("judge") or {}
+    if not judge.get("enabled"):
+        return judge
+    return {
+        "enabled": True,
+        "source": judge.get("source"),
+        "overall": judge.get("overall"),
+        "verdict": judge.get("verdict"),
+        "usd_per_point": (judge.get("cost") or {}).get("usd_per_point"),
+    }
 
 
 def _run_x1_mission(sessions_base: Path) -> dict[str, Any]:
@@ -358,6 +387,12 @@ def main() -> int:
     parser.add_argument("--minutes", type=float, default=0.0)
     parser.add_argument("--notes", default="")
     parser.add_argument("--tags", default="manual", help="comma tags for record")
+    parser.add_argument(
+        "--judge-live",
+        action="store_true",
+        help="record: run G8 live judge against --session and attach the result "
+        "(needs AGENT_LAB_JUDGE_LIVE=1 in this process's env)",
+    )
     args = parser.parse_args()
 
     suite = _load_suite()
@@ -378,6 +413,9 @@ def main() -> int:
         if not args.id or not args.session:
             print("--mode record requires --id and --session", file=sys.stderr)
             return 2
+        judge = _judge_summary(args.session) if args.judge_live else None
+        if args.judge_live and not judge.get("enabled"):
+            print(f"--judge-live requested but judge did not run: {judge}", file=sys.stderr)
         row = append_suite_log(
             args.log,
             topic_id=args.id.upper(),
@@ -386,6 +424,7 @@ def main() -> int:
             human_minutes=args.minutes,
             tags=[t.strip() for t in args.tags.split(",") if t.strip()],
             notes=args.notes,
+            judge=judge,
         )
         print(json.dumps(row, indent=2, ensure_ascii=False))
         return cmd_status(suite.load_topics(args.topics), args.log, as_json=False)

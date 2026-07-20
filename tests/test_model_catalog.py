@@ -57,7 +57,8 @@ def test_cursor_catalog_curates_main_provider_families() -> None:
 def test_cursor_families_expose_their_own_effort_tiers() -> None:
     # Cursor folds the tier into the model id itself, so — unlike Codex/Claude
     # — every selectable family carries its own "efforts" list; families
-    # differ in which tiers Cursor actually offers (Grok has no low/max).
+    # differ in which tiers Cursor actually offers (Grok has no xhigh/max —
+    # verified live via Cursor.models.list(), see provider.py history).
     assert mc.effort_levels("cursor", "claude-opus-4-8") == [
         "low",
         "medium",
@@ -65,7 +66,7 @@ def test_cursor_families_expose_their_own_effort_tiers() -> None:
         "xhigh",
         "max",
     ]
-    assert mc.effort_levels("cursor", "grok-4.5") == ["medium", "high", "xhigh"]
+    assert mc.effort_levels("cursor", "grok-4.5") == ["low", "medium", "high"]
     assert mc.effort_levels("cursor", "composer-2.5") == []
     assert mc.effort_levels("cursor", "default") == []
 
@@ -155,13 +156,13 @@ def test_cursor_switching_family_falls_back_when_tier_unsupported(
 ) -> None:
     from agent_lab.agent import model_prefs as mp
 
-    # Opus supports "low"; Grok doesn't — switching families must land on
+    # Opus supports "xhigh"; Grok doesn't — switching families must land on
     # Grok's own default tier rather than composing an invalid id.
-    monkeypatch.setenv("CURSOR_MODEL", "claude-opus-4-8-low")
+    monkeypatch.setenv("CURSOR_MODEL", "claude-opus-4-8-xhigh")
     monkeypatch.setattr(mp, "_write_env", lambda k, v: monkeypatch.setenv(k, v))
     label = mp.apply_model_only("cursor", "grok-4.5")
-    assert label == "Grok 4.5 · xhigh"
-    assert os.environ["CURSOR_MODEL"] == "grok-4.5-xhigh"
+    assert label == "Grok 4.5 · high"
+    assert os.environ["CURSOR_MODEL"] == "grok-4.5-high"
 
 
 def test_cursor_switching_to_no_effort_model_drops_suffix(
@@ -182,7 +183,7 @@ def test_cursor_apply_effort_rejects_unsupported_tier(
 ) -> None:
     from agent_lab.agent import model_prefs as mp
 
-    monkeypatch.setenv("CURSOR_MODEL", "grok-4.5-xhigh")
+    monkeypatch.setenv("CURSOR_MODEL", "grok-4.5-high")
     monkeypatch.setattr(mp, "_write_env", lambda k, v: monkeypatch.setenv(k, v))
     with pytest.raises(ValueError):
-        mp.apply_effort_only("cursor", "low")
+        mp.apply_effort_only("cursor", "xhigh")

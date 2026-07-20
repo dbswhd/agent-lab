@@ -307,8 +307,8 @@
             5,
             0
           ],
-          "efforts": ["medium", "high", "xhigh"],
-          "default_effort": "xhigh"
+          "efforts": ["low", "medium", "high"],
+          "default_effort": "high"
         }
       ],
       "efforts": []

@@ -194,6 +194,25 @@ def _run_cursor_session(
     raise RuntimeError(format_cursor_connect_error(last_err or RuntimeError("Cursor bridge failed")))
 
 
+def _cursor_model_selection(raw: str, *, selection_cls: Any, param_cls: Any) -> Any:
+    """Resolve ``CURSOR_MODEL`` (e.g. ``grok-4.5-high``) into what the Cursor SDK
+    actually accepts for ``AgentOptions.model``.
+
+    Cursor folds the reasoning-effort tier into the *stored* model id
+    (``model_prefs._cursor_compose``, matching how the picker UI round-trips
+    it), but the live API rejects that composite string outright — effort has
+    to travel as a separate ``ModelSelection`` param, not baked into the id.
+    Reuses ``model_prefs._cursor_split`` so the split logic (which needs the
+    live model catalog to know each model's valid efforts) isn't duplicated.
+    """
+    from agent_lab.agent.model_prefs import _cursor_split
+
+    base, effort = _cursor_split(raw)
+    if not effort or selection_cls is None or param_cls is None:
+        return base
+    return selection_cls(id=base, params=[param_cls(id="effort", value=effort)])
+
+
 def _build_agent_options(
     *,
     permissions: dict[str, Any] | None,
@@ -203,7 +222,7 @@ def _build_agent_options(
     api_key: str | None = None,
 ) -> tuple[str, Any]:
     try:
-        from cursor_sdk import AgentOptions, LocalAgentOptions
+        from cursor_sdk import AgentOptions, LocalAgentOptions, ModelParameterValue, ModelSelection
     except ImportError:
         from types import SimpleNamespace as _NS
 
@@ -212,6 +231,9 @@ def _build_agent_options(
 
         def LocalAgentOptions(**kwargs: Any) -> Any:  # type: ignore[no-redef,misc]
             return _NS(**kwargs)
+
+        ModelSelection = None  # type: ignore[assignment]
+        ModelParameterValue = None  # type: ignore[assignment]
 
     key = str(api_key or os.getenv("CURSOR_API_KEY") or "").strip()
     if not key and not _cursor_oauth_available():
@@ -250,7 +272,11 @@ def _build_agent_options(
     agent_opts = AgentOptions(
         # None lets the SDK fall back to the cursor-agent OAuth session.
         api_key=key or None,
-        model=os.getenv("CURSOR_MODEL", DEFAULT_CURSOR_MODEL),
+        model=_cursor_model_selection(
+            os.getenv("CURSOR_MODEL", DEFAULT_CURSOR_MODEL),
+            selection_cls=ModelSelection,
+            param_cls=ModelParameterValue,
+        ),
         local=LocalAgentOptions(cwd=cwd_str),
         mcp_servers=mcp_servers,
     )

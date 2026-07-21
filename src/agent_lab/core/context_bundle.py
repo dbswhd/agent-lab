@@ -46,6 +46,7 @@ class ContextBundleMeta:
     repo_layer: str | None = None
     repo_map_enabled: bool | None = None
     compact_tool_output: bool | None = None
+    tool_output_chars_truncated: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         row = {
@@ -86,6 +87,8 @@ class ContextBundleMeta:
         row["repo_layer"] = self.repo_layer or ("repo_map" if repo_map_enabled else "repo_tree")
         row["repo_map_enabled"] = repo_map_enabled
         row["compact_tool_output"] = compact_tool_output
+        if self.tool_output_chars_truncated:
+            row["tool_output_chars_truncated"] = self.tool_output_chars_truncated
         return row
 
 

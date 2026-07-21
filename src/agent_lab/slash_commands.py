@@ -32,9 +32,10 @@ SLASH_COMMANDS: tuple[str, ...] = (
     "pipeline",
     "clarify",
     "plan",
+    "execute",
 )
 # Handlers that need the session folder (mutate/read run.json).
-_SESSION_HANDLERS: frozenset[str] = frozenset({"model", "pipeline", "clarify", "plan"})
+_SESSION_HANDLERS: frozenset[str] = frozenset({"model", "pipeline", "clarify", "plan", "execute"})
 
 
 def parse_command(text: str) -> tuple[str, list[str]] | None:
@@ -609,8 +610,16 @@ def _clarify(args: list[str], *, session_folder: Path | None = None) -> dict[str
     return result
 
 
+_EXECUTE_INTENT_ARGS: frozenset[str] = frozenset({"execute", "--execute"})
+
+
 def _plan(args: list[str], *, session_folder: Path | None = None) -> dict[str, Any]:
-    """/plan — manually enter the consensus/plan stage (ralplan analog)."""
+    """/plan — manually enter the consensus/plan stage (ralplan analog).
+
+    ``/plan execute`` additionally enables mission_loop right away, capturing
+    the human's execute intent at plan-entry time (P1-2) instead of leaving
+    them to separately discover ``/execute`` once discuss has converged.
+    """
     if session_folder is None:
         return _err("plan", "no active session")
     result = _set_mission_phase(session_folder, "plan", "DISCUSS")
@@ -622,11 +631,56 @@ def _plan(args: list[str], *, session_folder: Path | None = None) -> dict[str, A
         init_plan_workflow_on_plan_send(session_folder)
         result["plan_workflow_initialized"] = True
 
+    if any(a.strip().lower() in _EXECUTE_INTENT_ARGS for a in args):
+        from agent_lab.mission.loop import enable_mission_loop, get_mission_loop
+
+        if not get_mission_loop(run).get("enabled"):
+            enable_mission_loop(session_folder)
+        result["execute_intent"] = True
+
     from agent_lab.room.turn_policy import stamp_pending_skill_intent
 
     stamp_pending_skill_intent(session_folder, "plan")
     result["skill_intent"] = "plan"
     return result
+
+
+def _execute(args: list[str], *, session_folder: Path | None = None) -> dict[str, Any]:
+    """/execute — enqueue the session plan for worktree dry-run + Oracle verify.
+
+    Room discuss/plan rounds converge in chat but have no chat-native path to
+    the execute gate (``mission_loop.run_plan_gate``) — reaching it previously
+    required knowing about the ``/mission-loop/*`` REST API and the Autonomy
+    dial. This command is the explicit human action L0 "Manual" already
+    requires for the execute/diff half (plan/NORTH-STAR.md ``L0``); it enables
+    mission_loop for this session on first use and immediately runs the gate
+    against the session's current plan.md.
+    """
+    if session_folder is None:
+        return _err("execute", "no active session")
+
+    from agent_lab.mission.loop import enable_mission_loop, get_mission_loop, run_plan_gate
+    from agent_lab.plan.paths import read_session_plan_md
+    from agent_lab.run.meta import read_run_meta
+
+    run = read_run_meta(session_folder)
+    plan_md = read_session_plan_md(session_folder, run)
+    if not (plan_md or "").strip():
+        return _err("execute", "no plan.md content yet — run /plan and let the room converge first")
+
+    if not get_mission_loop(run).get("enabled"):
+        enable_mission_loop(session_folder)
+
+    result = run_plan_gate(session_folder, plan_md)
+    if result.get("skipped"):
+        return {"ok": False, "command": "execute", "skipped": True, "reason": result.get("reason")}
+    return {
+        "ok": True,
+        "command": "execute",
+        "phase": str(result.get("phase") or ""),
+        "status": result.get("status"),
+        "gate_result": result,
+    }
 
 
 _HANDLERS: dict[str, Callable[..., dict[str, Any]]] = {
@@ -639,6 +693,7 @@ _HANDLERS: dict[str, Callable[..., dict[str, Any]]] = {
     "pipeline": _pipeline,
     "clarify": _clarify,
     "plan": _plan,
+    "execute": _execute,
 }
 
 

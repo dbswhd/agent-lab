@@ -238,6 +238,52 @@ def _harness_reproducibility_stats(root: Path | None) -> dict[str, Any] | None:
     }
 
 
+def _stuck_discuss_sessions(root: Path | None, *, top_n: int = 10) -> list[dict[str, Any]]:
+    """P2-2 — sessions parked in mission_loop DISCUSS/PLAN_GATE with
+    mission_loop.enabled still False, ranked by agent-parallel rounds burned.
+
+    Quantifies "converged in chat but never executed" (see the chat-Room
+    execute-gate reachability investigation, 2026-07-21/22): a long tail here
+    means the P0/P1 discoverability fixes (/execute, /plan execute, the
+    round-1 consensus retry) aren't reaching real sessions yet. Reads
+    ``sessions/*/run.json`` directly — this is per-session FSM state, not an
+    outcome-ledger signal, so it can't be derived from ``outcomes.jsonl`` rows.
+    """
+    from agent_lab.outcome_harvester import agent_lab_project_root
+
+    sessions_dir = agent_lab_project_root(root) / "sessions"
+    if not sessions_dir.is_dir():
+        return []
+    rows: list[dict[str, Any]] = []
+    for folder in sorted(sessions_dir.iterdir()):
+        if not folder.is_dir() or folder.name.startswith("_"):
+            continue
+        run_path = folder / "run.json"
+        if not run_path.is_file():
+            continue
+        try:
+            run = json.loads(run_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if not isinstance(run, dict):
+            continue
+        ml = run.get("mission_loop")
+        if not isinstance(ml, dict):
+            continue
+        if ml.get("enabled") or str(ml.get("phase") or "") not in {"DISCUSS", "PLAN_GATE", "PLAN_REJECT"}:
+            continue
+        rows.append(
+            {
+                "session_id": folder.name,
+                "topic": str(run.get("topic") or "")[:80],
+                "rounds": int(run.get("agent_parallel_rounds") or 0),
+                "phase": str(ml.get("phase") or ""),
+            }
+        )
+    rows.sort(key=lambda r: (-r["rounds"], r["session_id"]))
+    return rows[:top_n]
+
+
 def build_feedback_report(root: Path | None = None) -> dict[str, Any]:
     """Bucket the outcome ledger by advisor_source and compute quality deltas.
 
@@ -298,6 +344,7 @@ def build_feedback_report(root: Path | None = None) -> dict[str, Any]:
         "harness_attribution": _harness_attribution_stats(verdict_rows),
         "harness_patch": _harness_patch_kpi(root),
         "harness_reproducibility": _harness_reproducibility_stats(root),
+        "stuck_discuss_sessions": _stuck_discuss_sessions(root),
     }
 
 
@@ -388,4 +435,10 @@ def render_feedback_report(report: dict[str, Any]) -> str:
             f"pp_deviation={reproducibility['harness_reproducibility_pp']} "
             f"pass_rate_by_preset={reproducibility['pass_rate_by_preset']}"
         )
+    stuck = report.get("stuck_discuss_sessions") or []
+    if stuck:
+        lines.append("")
+        lines.append(f"stuck_discuss_sessions (P2-2) — top {len(stuck)} by rounds burned, never executed:")
+        for row in stuck:
+            lines.append(f"  {row['rounds']:>3} rounds  [{row['phase']}]  {row['session_id']}  — {row['topic']}")
     return "\n".join(lines)

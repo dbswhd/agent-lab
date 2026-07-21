@@ -560,9 +560,9 @@ def build_context_bundle(
 
     eff = efficiency_limits() if efficiency_mode else None
     pin_before = len(pinned_current_turn_messages(messages))
-    trimmed, turns_omitted, chars_omitted, pinned_count = prepare_recent_messages(
-        messages, efficiency_mode=efficiency_mode, compact=compact
-    )
+    prepared = prepare_recent_messages(messages, efficiency_mode=efficiency_mode, compact=compact)
+    trimmed, turns_omitted, chars_omitted, pinned_count = prepared
+    tool_output_chars_truncated = prepared.tool_output_chars_truncated
     pin_capped = efficiency_mode and pinned_count < pin_before
     compact_dropped = (not efficiency_mode) and pinned_count < pin_before
 
@@ -771,6 +771,7 @@ def build_context_bundle(
         context_mode="artifact_only" if artifact_only else "full",
         recent_max_chars=(ARTIFACT_ONLY_RECENT_MAX_CHARS if artifact_only else None),
         peer_suppressed=artifact_only,
+        tool_output_chars_truncated=tool_output_chars_truncated,
     )
     bundle = ContextBundle(
         constraints=constraints,
@@ -892,6 +893,7 @@ def _record_context_bundle_metrics(
             "trim_level": row.get("trim_level"),
             "chars_omitted": row.get("chars_omitted"),
             "compact_tool_output": compact_on,
+            "tool_output_chars_truncated": row.get("tool_output_chars_truncated", 0),
         }
     )
     stamp_run_meta(run_meta, context_quality_log=log[-20:])

@@ -257,7 +257,23 @@ def test_fast_bucket_collection_budget():
     # four CX8 dogfood-evidence runs.
     # 2026-07-18: raised 3524 -> 3526 for core/quant verification-lane
     # separation contracts (Makefile + GitHub Actions marker parity).
-    assert count <= 3534, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-21: raised 3534 -> 3546 for F7 REPO_MAP/COMPACT_TOOL_OUTPUT
+    # dogfood-readiness tests -- test_repo_map_core.py locks down 3 known
+    # ranking heuristic limits (name-collision scoring, nested-def flattening,
+    # seed-empty frequency fallback) and test_tool_output_compaction.py adds
+    # coverage for the new tool_output_chars_truncated quality metric.
+    # 2026-07-22: raised 3546 -> 3556 for the chat-Room execute-gate reachability
+    # fixes -- /execute + /plan execute slash commands (test_pipeline_handles.py)
+    # and the consensus_rounds.py round-1 transient-agent-error retry
+    # (test_consensus_retry.py, new file) that stops a single API hiccup from
+    # permanently voiding an otherwise-converged consensus.
+    # 2026-07-22: raised 3556 -> 3557 for the P2-1 investigation regression
+    # test documenting that the same "agent_error" consensus status also
+    # silently skips plan.md auto-sync (test_consensus_retry.py).
+    # 2026-07-22: raised 3557 -> 3561 for P2-2's stuck_discuss_sessions
+    # feedback-report sub-report (test_feedback_report.py) -- quantifies
+    # sessions parked in DISCUSS/PLAN_GATE with mission_loop never enabled.
+    assert count <= 3561, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

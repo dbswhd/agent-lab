@@ -186,11 +186,22 @@ _PIPELINE_COMMANDS: list[dict[str, Any]] = [
         "id": "plan",
         "slash": "/plan",
         "label": "합의/플랜 진입",
-        "description": "/plan — 합의(consensus) 단계로 진입 (ralplan 대응)",
+        "description": "/plan [execute] — 합의(consensus) 단계로 진입 (ralplan 대응). "
+        "'execute' 인자를 주면 실행 의향을 바로 확정합니다",
         "scope": "session",
         "kind": "server",
         "agent": None,
         "handler": "pipeline:plan",
+    },
+    {
+        "id": "execute",
+        "slash": "/execute",
+        "label": "실행 게이트 진입",
+        "description": "/execute — 현재 plan.md를 worktree dry-run + Oracle 검증 큐로 enqueue",
+        "scope": "session",
+        "kind": "server",
+        "agent": None,
+        "handler": "pipeline:execute",
     },
 ]
 ACCOUNT_COMMAND_IDS = frozenset({"login", "logout", "accounts", "model"})
@@ -380,6 +391,20 @@ def _format_pipeline(name: str, res: dict[str, Any]) -> str:
     """Compact human-readable summary of a pipeline slash result."""
     if name == "pipeline":
         return f"/pipeline {res.get('pipeline', '?')} · phase={res.get('phase')} · mode={res.get('mode')}"
+    if name == "plan" and res.get("execute_intent"):
+        return f"/plan → phase={res.get('phase')} · 실행 의향 확정(mission_loop enabled)"
+    if name == "execute":
+        status = res.get("status")
+        gate_result = res.get("gate_result") or {}
+        if status == "ok":
+            n = len(gate_result.get("pending_action_indices") or [])
+            return f"/execute → phase={res.get('phase')} · {n}개 액션 enqueue (worktree dry-run 대기)"
+        if status == "reject":
+            reason = (gate_result.get("plan_gate") or {}).get("last_reject_reason")
+            return f"/execute → REJECT · {reason}"
+        if status == "blocked":
+            return f"/execute → BLOCKED · {gate_result.get('reason')}"
+        return f"/execute → phase={res.get('phase')}"
     return f"/{name} → phase={res.get('phase')}"
 
 

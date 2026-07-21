@@ -300,8 +300,46 @@ export function ComposerEventStack({
     ],
   );
 
+  // Room discuss/plan rounds converge in chat with no chat-native nudge toward
+  // the execute gate — mission_loop.enabled stays false and nothing else in
+  // this stack ever blocks, so the composer silently renders nothing. Point
+  // at /execute explicitly rather than leave the human to discover
+  // mission-loop's REST API or the header Autonomy dial on their own.
+  // Covers both: activeLane is null (nothing else pending — the common case,
+  // since plan_workflow separately gates "work" behind its own APPROVED
+  // phase) and activeLane === "work" (plan_workflow already APPROVED).
+  const missionLoop = session?.run?.mission_loop as
+    | { enabled?: boolean; phase?: string }
+    | undefined;
+  const showExecuteHint =
+    (!activeLane || activeLane === "work") &&
+    hasPlan &&
+    missionLoop?.phase === "DISCUSS" &&
+    missionLoop?.enabled !== true;
+
   if (!activeLane) {
-    return null;
+    if (!showExecuteHint) return null;
+    return (
+      <div className="composer-stack-scroll" ref={rootRef}>
+        <div className="composer-event-stack" data-composer-lane="execute_hint">
+          <div className="composer-event-stack__section workspace-event-strip">
+            <ComposerStrip
+              tone="accent"
+              role="status"
+              ariaLabel={ko ? "실행 안내" : "Execute hint"}
+              badge="Execute"
+              title={ko ? "합의가 끝났나요?" : "Converged?"}
+              description={
+                ko
+                  ? "`/execute`를 입력하면 현재 plan.md를 worktree dry-run + Oracle 검증으로 보냅니다."
+                  : "Type `/execute` to send the current plan.md to worktree dry-run + Oracle verify."
+              }
+              compact
+            />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const planFileLabel =
@@ -319,6 +357,23 @@ export function ComposerEventStack({
             pendingCount={pendingDecisionCount}
             locale={locale}
           />
+        ) : null}
+        {showExecuteHint ? (
+          <div className="composer-event-stack__section workspace-event-strip">
+            <ComposerStrip
+              tone="accent"
+              role="status"
+              ariaLabel={ko ? "실행 안내" : "Execute hint"}
+              badge="Execute"
+              title={ko ? "합의가 끝났나요?" : "Converged?"}
+              description={
+                ko
+                  ? "`/execute`를 입력하면 현재 plan.md를 worktree dry-run + Oracle 검증으로 보냅니다."
+                  : "Type `/execute` to send the current plan.md to worktree dry-run + Oracle verify."
+              }
+              compact
+            />
+          </div>
         ) : null}
         {activeLane === "inbox" ? (
           <div className="composer-event-stack__section composer-question-surface">

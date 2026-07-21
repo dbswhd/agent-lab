@@ -23,6 +23,7 @@ from agent_lab.room.messages import (
     MAX_AGENTS_PER_ROUND,
     OnAgentEvent,
     _agent_turn_failed,
+    _agent_turn_summary,
     _current_turn_messages,
     _distinct_substantive_proposers,
     _human_turn_number,
@@ -35,6 +36,62 @@ from agent_lab.room.agent_invoke import (
 )
 from agent_lab.room.parallel_rounds import run_parallel_round
 from agent_lab.consensus_policy import ConsensusPolicy, default_consensus_policy
+
+
+def _retry_once_after_transient_failure(
+    topic: str,
+    messages: list[ChatMessage],
+    batch: list[ChatMessage],
+    *,
+    parallel_round: int,
+    on_event: OnAgentEvent | None,
+    permissions: dict | None,
+    human_turn_index: int,
+    plan_md: str,
+    run_meta: RunStateLike | None,
+    context_log: list[dict[str, Any]] | None,
+    efficiency_mode: bool,
+    task_type: str | None = None,
+) -> list[ChatMessage]:
+    """One same-round retry for agents whose call technically errored (API
+    error/timeout/reconnect) — not a semantic BLOCK or disagreement. Without
+    this, a single transient hiccup (e.g. an OAuth token expiry mid-round)
+    voids the ENTIRE consensus computation even when every other agent cleanly
+    ENDORSEd, permanently blocking ``record_consensus_agreement`` (which only
+    fires on ``status == "reached"``) and the chat-native execute-hint that
+    depends on it. Retries ONLY the failed agent(s); if they fail again the
+    caller's existing ``agent_error`` handling still applies unchanged."""
+    failed_ids = _agent_turn_summary(batch)["failed_agents"]
+    if not failed_ids:
+        return batch
+    if on_event:
+        on_event(
+            "consensus_retry",
+            {
+                "round": parallel_round,
+                "agents": failed_ids,
+                "message": f"{', '.join(failed_ids)} 호출 실패 — 해당 에이전트만 1회 재시도합니다.",
+            },
+        )
+    retry_batch = run_parallel_round(
+        topic,
+        messages,
+        agents=[as_agent_id(a) for a in failed_ids],
+        parallel_round=parallel_round,
+        on_event=on_event,
+        permissions=permissions,
+        review_mode=False,
+        human_turn_index=human_turn_index,
+        plan_md=plan_md,
+        run_meta=run_meta,
+        context_log=context_log,
+        efficiency_mode=efficiency_mode,
+        task_type=task_type,
+    )
+    retried_ids = set(failed_ids)
+    for m in retry_batch:
+        m.retry_of_turn = human_turn_index
+    return [m for m in batch if not (m.role == "system" and m.agent in retried_ids)] + retry_batch
 
 
 def run_consensus_agent_rounds(
@@ -234,6 +291,21 @@ def run_consensus_agent_rounds(
             efficiency_mode=efficiency_mode,
             task_type="consensus",
         )
+        if _agent_turn_failed(batch):
+            batch = _retry_once_after_transient_failure(
+                topic,
+                messages,
+                batch,
+                parallel_round=1,
+                on_event=on_event,
+                permissions=permissions,
+                human_turn_index=human_turn_index,
+                plan_md=plan_md,
+                run_meta=run_meta,
+                context_log=context_log,
+                efficiency_mode=efficiency_mode,
+                task_type="consensus",
+            )
         all_replies.extend(batch)
         calls += len(batch)
 
@@ -243,7 +315,7 @@ def run_consensus_agent_rounds(
                     "consensus_incomplete",
                     {
                         "reason": "agent_error",
-                        "message": "에이전트 호출 실패 — 합의를 기록하지 않습니다.",
+                        "message": "에이전트 호출 실패(재시도 후에도) — 합의를 기록하지 않습니다.",
                     },
                 )
             return all_replies, {

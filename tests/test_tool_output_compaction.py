@@ -210,6 +210,16 @@ def test_ac1_ac4_on_reduces_old_tool_output(monkeypatch):
     joined = "".join(m.content for m in on[0])
     # at least one old tool block was truncated
     assert "[...truncated " in joined
+    # F7 dogfood signal: quality metric reports how much was actually saved
+    assert on.tool_output_chars_truncated > 0
+
+
+def test_tool_output_chars_truncated_zero_when_flag_off(monkeypatch):
+    monkeypatch.delenv("AGENT_LAB_COMPACT_TOOL_OUTPUT", raising=False)
+    monkeypatch.delenv("AGENT_LAB_COMMS_COMPACT", raising=False)
+    thread = _make_thread()
+    off = rc.prepare_recent_messages(thread, max_chars=5000, compact=False)
+    assert off.tool_output_chars_truncated == 0
 
 
 def test_ac4_turn_count_preserved(monkeypatch):

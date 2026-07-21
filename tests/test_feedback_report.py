@@ -328,3 +328,78 @@ def test_harness_reproducibility_none_when_reports_dir_missing(tmp_path: Path, m
     monkeypatch.setattr("agent_lab.outcome_harvester.outcomes_path", lambda root=None: tmp_path / "missing.jsonl")
     rep = build_feedback_report(tmp_path)
     assert rep["harness_reproducibility"] is None
+
+
+# --- P2-2: stuck_discuss_sessions (converged-in-chat-but-never-executed) -------
+
+
+def _write_session_run(
+    sessions_dir: Path,
+    name: str,
+    *,
+    enabled: bool,
+    phase: str,
+    rounds: int = 0,
+    topic: str = "topic",
+) -> None:
+    folder = sessions_dir / name
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / "run.json").write_text(
+        json.dumps(
+            {
+                "topic": topic,
+                "agent_parallel_rounds": rounds,
+                "mission_loop": {"enabled": enabled, "phase": phase},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
+def test_stuck_discuss_sessions_empty_when_no_sessions_dir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("agent_lab.outcome_harvester.outcomes_path", lambda root=None: tmp_path / "missing.jsonl")
+    rep = build_feedback_report(tmp_path)
+    assert rep["stuck_discuss_sessions"] == []
+
+
+def test_stuck_discuss_sessions_excludes_enabled_and_executed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("agent_lab.outcome_harvester.outcomes_path", lambda root=None: tmp_path / "missing.jsonl")
+    sessions_dir = tmp_path / "sessions"
+    _write_session_run(sessions_dir, "enabled-session", enabled=True, phase="DISCUSS", rounds=9)
+    _write_session_run(sessions_dir, "executed-session", enabled=False, phase="EXECUTE_QUEUE", rounds=9)
+    _write_session_run(sessions_dir, "_reports", enabled=False, phase="DISCUSS", rounds=9)
+
+    rep = build_feedback_report(tmp_path)
+    assert rep["stuck_discuss_sessions"] == []
+
+
+def test_stuck_discuss_sessions_ranked_by_rounds_descending(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("agent_lab.outcome_harvester.outcomes_path", lambda root=None: tmp_path / "missing.jsonl")
+    sessions_dir = tmp_path / "sessions"
+    _write_session_run(sessions_dir, "low-rounds", enabled=False, phase="DISCUSS", rounds=2, topic="a")
+    _write_session_run(sessions_dir, "high-rounds", enabled=False, phase="PLAN_GATE", rounds=8, topic="b")
+
+    rep = build_feedback_report(tmp_path)
+    stuck = rep["stuck_discuss_sessions"]
+    assert [row["session_id"] for row in stuck] == ["high-rounds", "low-rounds"]
+    assert stuck[0]["rounds"] == 8
+    assert stuck[0]["phase"] == "PLAN_GATE"
+    assert stuck[0]["topic"] == "b"
+
+
+def test_stuck_discuss_sessions_respects_top_n(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from agent_lab.feedback_report import _stuck_discuss_sessions
+
+    monkeypatch.setattr("agent_lab.outcome_harvester.outcomes_path", lambda root=None: tmp_path / "missing.jsonl")
+    sessions_dir = tmp_path / "sessions"
+    for i in range(15):
+        _write_session_run(sessions_dir, f"sess-{i:02d}", enabled=False, phase="DISCUSS", rounds=i)
+
+    assert len(_stuck_discuss_sessions(tmp_path)) == 10
+    assert len(_stuck_discuss_sessions(tmp_path, top_n=3)) == 3

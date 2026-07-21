@@ -34,6 +34,7 @@ chat, live log, SSE가 같은 사실을 다르게 표현"과 동일 문제). 아
 | `hook_event` | `room/dispatch.py` | event | at_least_once | dispatch hook 실행 결과 |
 | `consensus_reached` | `room/consensus_rounds.py` | event | at_least_once | consensus FSM terminal fact |
 | `consensus_incomplete` | `room/consensus_rounds.py` | event | at_least_once | consensus round 미완료(terminal for that round) |
+| `consensus_retry` | `room/consensus_rounds.py` | progress | best_effort | round 1 에이전트 호출 실패 → 해당 에이전트만 1회 재시도 |
 | `consensus_dry_run_proposal` | `room/turn_meta.py` | human_decision | at_least_once | Human 승인 대상 제안 |
 | `consensus_plan_sync_start` | `room/turn_meta.py` | progress | best_effort | plan sync 시작 |
 | `consensus_plan_sync_failed` | `room/turn_meta.py` | event | at_least_once | plan sync 실패(terminal) |

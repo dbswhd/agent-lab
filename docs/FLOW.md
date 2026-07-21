@@ -296,7 +296,7 @@ sessions/<session-id>/
 | 플래그 | 기본 | 기능 |
 |--------|------|------|
 | `AGENT_LAB_CHECKPOINT` | **ON** | FSM 상태 스냅샷/재개 |
-| `AGENT_LAB_REPO_MAP` | **ON** | 심볼 그래프 repo-map |
+| `AGENT_LAB_REPO_MAP` | off | 심볼 그래프 repo-map |
 | `AGENT_LAB_COMPACT_TOOL_OUTPUT` | off | 도구 출력 압축 |
 | `AGENT_LAB_SYNTAX_GATE` | **ON** | 편집 시 syntax 검사 |
 | `AGENT_LAB_SANDBOX_POLICY` | off | 실행 sandbox (Docker) |

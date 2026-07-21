@@ -65,6 +65,100 @@ def test_plan_handle_sets_phase(tmp_path: Path) -> None:
     assert read_run_meta(tmp_path)["mission_loop"]["phase"] == "DISCUSS"
 
 
+def test_plan_handle_without_execute_arg_leaves_mission_loop_disabled(tmp_path: Path) -> None:
+    from agent_lab.run.meta import read_run_meta
+    from agent_lab.slash_commands import dispatch
+
+    _write_run(tmp_path, {"enabled": False, "phase": "CLARIFY"})
+    res = dispatch("/plan", session_folder=tmp_path)
+    assert res["ok"] and "execute_intent" not in res
+    assert read_run_meta(tmp_path)["mission_loop"]["enabled"] is False
+
+
+def test_plan_execute_handle_enables_mission_loop_immediately(tmp_path: Path) -> None:
+    """P1-2: '/plan execute' captures the human's execute intent at plan-entry
+    time instead of requiring a separate later /execute discovery step."""
+    from agent_lab.run.meta import read_run_meta
+    from agent_lab.slash_commands import dispatch
+
+    _write_run(tmp_path, {"enabled": False, "phase": "CLARIFY"})
+    res = dispatch("/plan execute", session_folder=tmp_path)
+    assert res["ok"] and res["phase"] == "DISCUSS"
+    assert res["execute_intent"] is True
+    assert read_run_meta(tmp_path)["mission_loop"]["enabled"] is True
+
+
+_GOOD_PLAN = """# Plan
+
+## 지금 실행
+
+1. Fix auth module
+   - 무엇을: JWT validation in `src/auth.py`
+   - 어디서: `src/auth.py`
+   - 검증: `make test tests/test_auth.py`
+"""
+
+_BAD_PLAN = """# Plan
+
+## 지금 실행
+
+1. Fix something
+   - 무엇을: fix
+   - 어디서: somewhere
+   - 검증: ok
+"""
+
+
+def test_execute_handle_requires_session() -> None:
+    from agent_lab.slash_commands import dispatch
+
+    res = dispatch("/execute", session_folder=None)
+    assert res["ok"] is False
+    assert "no active session" in res["error"]
+
+
+def test_execute_handle_requires_plan_md(tmp_path: Path) -> None:
+    from agent_lab.slash_commands import dispatch
+
+    _write_run(tmp_path, {"enabled": False, "phase": "DISCUSS"})
+    res = dispatch("/execute", session_folder=tmp_path)
+    assert res["ok"] is False
+    assert "plan.md" in res["error"]
+
+
+def test_execute_handle_auto_enables_mission_loop_and_enqueues(tmp_path: Path) -> None:
+    """/execute is the explicit human action for the L0 'diff' half — it must
+    not require the human to already know about mission_loop.enabled or the
+    Autonomy dial (docs/NORTH-STAR.md L0/L1 ladder)."""
+    from agent_lab.run.meta import read_run_meta
+    from agent_lab.slash_commands import dispatch
+
+    _write_run(tmp_path, {"enabled": False, "phase": "DISCUSS"})
+    (tmp_path / "plan.md").write_text(_GOOD_PLAN, encoding="utf-8")
+
+    res = dispatch("/execute", session_folder=tmp_path)
+    assert res["ok"] is True
+    assert res["status"] == "ok"
+    assert res["phase"] == "EXECUTE_QUEUE"
+
+    ml = read_run_meta(tmp_path)["mission_loop"]
+    assert ml["enabled"] is True
+    assert ml["phase"] == "EXECUTE_QUEUE"
+    assert ml["pending_action_indices"] == [1]
+
+
+def test_execute_handle_reports_reject_without_crashing(tmp_path: Path) -> None:
+    from agent_lab.slash_commands import dispatch
+
+    _write_run(tmp_path, {"enabled": False, "phase": "DISCUSS"})
+    (tmp_path / "plan.md").write_text(_BAD_PLAN, encoding="utf-8")
+
+    res = dispatch("/execute", session_folder=tmp_path)
+    assert res["ok"] is True
+    assert res["status"] == "reject"
+    assert res["phase"] == "DISCUSS"
+
+
 # --- catalog registration ------------------------------------------------------
 
 
@@ -73,7 +167,7 @@ def test_catalog_lists_pipeline_handles(tmp_path: Path) -> None:
 
     catalog = list_commands(session_folder=tmp_path, workspace=tmp_path)
     by_id = {c["id"]: c for c in catalog["commands"]}
-    for cid in ("pipeline", "clarify", "plan"):
+    for cid in ("pipeline", "clarify", "plan", "execute"):
         assert cid in by_id, cid
         assert by_id[cid]["enabled"] is True
 
@@ -84,7 +178,7 @@ def test_catalog_pipeline_commands_always_enabled(tmp_path: Path, monkeypatch: p
 
     catalog = list_commands(session_folder=tmp_path, workspace=tmp_path)
     by_id = {c["id"]: c for c in catalog["commands"]}
-    for cid in ("pipeline", "clarify", "plan"):
+    for cid in ("pipeline", "clarify", "plan", "execute"):
         assert by_id[cid]["enabled"] is True
 
 

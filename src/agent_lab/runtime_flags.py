@@ -112,7 +112,7 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
     FlagDef(
         "AGENT_LAB_COMPACT_TOOL_OUTPUT",
         "feature",
-        "Deterministically truncate over-length code-fence tool/shell output in pre-current-turn agent messages before char-trim (default on)",
+        "Deterministically truncate over-length code-fence tool/shell output in pre-current-turn agent messages before char-trim (default off)",
     ),
     FlagDef(
         "AGENT_LAB_COMPACT_TOOL_CHARS",

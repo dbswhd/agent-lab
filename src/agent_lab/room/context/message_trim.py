@@ -283,6 +283,26 @@ def cap_ephemeral_system_messages(
     return [m for i, m in enumerate(messages) if i not in drop]
 
 
+@dataclasses.dataclass(frozen=True)
+class PreparedMessages:
+    """Result of :func:`prepare_recent_messages` — supports both positional
+    unpacking (``trimmed, turns_omitted, chars_omitted, pinned_count = ...``)
+    and named access, so new fields can be added without breaking existing
+    call sites that only unpack a prefix."""
+
+    messages: list[MessageLike]
+    turns_omitted: int
+    chars_omitted: int
+    pinned_count: int
+    tool_output_chars_truncated: int = 0
+
+    def __iter__(self) -> Any:
+        return iter((self.messages, self.turns_omitted, self.chars_omitted, self.pinned_count))
+
+    def __getitem__(self, index: Any) -> Any:
+        return (self.messages, self.turns_omitted, self.chars_omitted, self.pinned_count)[index]
+
+
 def prepare_recent_messages(
     messages: list[MessageLike],
     *,
@@ -290,7 +310,7 @@ def prepare_recent_messages(
     max_chars: int | None = None,
     efficiency_mode: bool = False,
     compact: bool | None = None,
-) -> tuple[list[MessageLike], int, int, int]:
+) -> PreparedMessages:
     """Turn cap → ephemeral system cap → char trim with current Human turn pinned."""
     from agent_lab.core.limits import efficiency_limits
 
@@ -319,10 +339,13 @@ def prepare_recent_messages(
             max_messages=eff.max_pin_messages,
             max_chars=pin_budget,
         )
+    tool_output_chars_truncated = 0
     if _compact_tool_output_enabled():
+        before_chars = message_chars(recent)
         recent = _truncate_old_tool_outputs(recent, pinned, cap=_tool_output_char_cap())
+        tool_output_chars_truncated = before_chars - message_chars(recent)
     trimmed, chars_omitted = trim_messages_by_chars_pinned(recent, max_chars=max_chars, pinned=pinned)
-    return trimmed, turns_omitted, chars_omitted, len(pinned)
+    return PreparedMessages(trimmed, turns_omitted, chars_omitted, len(pinned), tool_output_chars_truncated)
 
 
 def format_thread_numbered_slice(

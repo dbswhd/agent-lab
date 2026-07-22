@@ -119,6 +119,52 @@ def test_round1_transient_error_does_not_void_whole_turn(monkeypatch: pytest.Mon
     assert ("consensus_retry", {"round": 1, "agents": ["codex"], "message": "codex 호출 실패 — 해당 에이전트만 1회 재시도합니다."}) in events
 
 
+def test_debate_loop_round_transient_error_does_not_void_whole_turn(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Same fix, second call site: a transient failure in the debate loop
+    (round >= 2, not round 1) must also retry-then-continue instead of
+    permanently failing the whole consensus computation."""
+    from agent_lab.room.consensus_rounds import run_consensus_agent_rounds
+
+    call_log: list[tuple[list[str], int | None]] = []
+
+    def _fake_round(topic: str, messages: Any, agents: Any = None, **kwargs: Any) -> list[ChatMessage]:
+        ids = [str(a) for a in (agents or [])]
+        pr = kwargs.get("parallel_round")
+        call_log.append((ids, pr))
+        if pr == 2 and ids == ["codex", "claude"]:
+            return [_err("codex"), _reply("claude")]
+        if pr == 2 and ids == ["codex"]:
+            return [_reply("codex", "이의 없습니다 (retry)")]
+        return [_reply(a) for a in ids]
+
+    monkeypatch.setattr("agent_lab.room.consensus_rounds.run_parallel_round", _fake_round)
+
+    events: list[tuple[str, dict]] = []
+    # A long, discursive topic routes to a "standard"/"deep" category with
+    # cap_rounds >= 2, so the debate loop (round 2+) actually runs — a short
+    # topic routes "quick" and the loop never fires.
+    _replies, result = run_consensus_agent_rounds(
+        topic=(
+            "이 계획을 자세히 토론하고 검증해서 합의해줘 매우 길고 복잡한 논쟁적인 "
+            "주제입니다 반드시 여러 라운드 토론이 필요합니다"
+        ),
+        messages=[],
+        agents=["codex", "claude"],
+        on_event=lambda name, payload: events.append((name, payload)),
+        run_meta={},
+    )
+
+    assert (["codex", "claude"], 2) in call_log
+    assert (["codex"], 2) in call_log  # retry happened for round 2, not just round 1
+    assert not (
+        isinstance(result, dict) and result.get("status") == "failed" and result.get("rounds") == 2
+    )
+    assert (
+        "consensus_retry",
+        {"round": 2, "agents": ["codex"], "message": "codex 호출 실패 — 해당 에이전트만 1회 재시도합니다."},
+    ) in events
+
+
 # --- P2-1 investigation: same "agent_error" status also silently starved plan.md ---
 #
 # ``maybe_auto_scribe_after_consensus`` (room/turn_meta.py) only auto-writes
@@ -132,10 +178,11 @@ def test_round1_transient_error_does_not_void_whole_turn(monkeypatch: pytest.Mon
 # ``consensus: {"status": "failed", "reason": "agent_error"}`` and no plan.md
 # was ever written for that topic.
 #
-# Round 1's transient case is now covered by the retry above. The other 4
-# "agent_error" call sites in consensus_rounds.py (debate/recombination/anchor
-# rounds) are NOT yet patched and can still reproduce this exact starvation —
-# tracked as follow-up, not fixed here.
+# All 5 "agent_error" call sites in consensus_rounds.py (round 1, debate loop,
+# recombination round, quality-gate review, anchor/endorse loop) now retry a
+# transient failure once before giving up — this test documents the causal
+# link to plan.md starvation itself, which stays correct behavior for a
+# *genuine* (non-transient, post-retry) agent_error.
 def test_agent_error_status_also_skips_plan_md_sync() -> None:
     from agent_lab.room.turn_meta import consensus_reached, maybe_auto_scribe_after_consensus
 

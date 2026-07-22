@@ -273,7 +273,11 @@ def test_fast_bucket_collection_budget():
     # 2026-07-22: raised 3557 -> 3561 for P2-2's stuck_discuss_sessions
     # feedback-report sub-report (test_feedback_report.py) -- quantifies
     # sessions parked in DISCUSS/PLAN_GATE with mission_loop never enabled.
-    assert count <= 3561, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-22: raised 3561 -> 3562 for the debate-loop (round >= 2) variant
+    # of the round-1 transient-agent-error retry regression test
+    # (test_consensus_retry.py) -- the same fix now covers all 5 agent_error
+    # call sites in consensus_rounds.py, not just round 1.
+    assert count <= 3562, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

@@ -116,7 +116,7 @@ def test_invalidate_claude_auth_cache_clears_status(monkeypatch, tmp_path) -> No
 
     now = time.time()
     claude_cli._AUTH_STATUS_CACHE = (now, True, None)
-    claude_cli._AUTH_PROBE_CACHE = (now, True, None)
+    claude_cli._AUTH_PROBE_CACHE = (now, True, None, claude_cli._AUTH_PROBE_TTL_SEC)
 
     claude_cli.invalidate_claude_auth_cache()
 
@@ -139,7 +139,7 @@ def test_invoke_invalidates_auth_cache_on_401(monkeypatch, tmp_path) -> None:
 
     now = time.time()
     claude_cli._AUTH_STATUS_CACHE = (now, True, None)
-    claude_cli._AUTH_PROBE_CACHE = (now, True, None)
+    claude_cli._AUTH_PROBE_CACHE = (now, True, None, claude_cli._AUTH_PROBE_TTL_SEC)
 
     def fake_popen(*_args, **_kwargs):
         return _FakeProc(1, "", "ERROR: 401 Invalid authentication credentials")

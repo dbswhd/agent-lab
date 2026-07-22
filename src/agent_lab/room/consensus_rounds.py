@@ -371,6 +371,20 @@ def run_consensus_agent_rounds(
                 context_log=context_log,
                 efficiency_mode=efficiency_mode,
             )
+            if _agent_turn_failed(batch):
+                batch = _retry_once_after_transient_failure(
+                    topic,
+                    working,
+                    batch,
+                    parallel_round=r,
+                    on_event=on_event,
+                    permissions=permissions,
+                    human_turn_index=human_turn_index,
+                    plan_md=plan_md,
+                    run_meta=run_meta,
+                    context_log=context_log,
+                    efficiency_mode=efficiency_mode,
+                )
             all_replies.extend(batch)
             calls += len(batch)
             working = messages + all_replies
@@ -430,7 +444,7 @@ def run_consensus_agent_rounds(
                         "consensus_incomplete",
                         {
                             "reason": "agent_error",
-                            "message": "토론 루프 중 에이전트 실패 — 합의를 기록하지 않습니다.",
+                            "message": "토론 루프 중 에이전트 실패(재시도 후에도) — 합의를 기록하지 않습니다.",
                         },
                     )
                 return all_replies, {
@@ -533,6 +547,20 @@ def run_consensus_agent_rounds(
                     efficiency_mode=efficiency_mode,
                     extra_follow_up=recombination_follow_up(),
                 )
+                if _agent_turn_failed(batch):
+                    batch = _retry_once_after_transient_failure(
+                        topic,
+                        working,
+                        batch,
+                        parallel_round=recomb_round_no,
+                        on_event=on_event,
+                        permissions=permissions,
+                        human_turn_index=human_turn_index,
+                        plan_md=plan_md,
+                        run_meta=run_meta,
+                        context_log=context_log,
+                        efficiency_mode=efficiency_mode,
+                    )
                 all_replies.extend(batch)
                 calls += len(batch)
                 working = messages + all_replies
@@ -542,7 +570,7 @@ def run_consensus_agent_rounds(
                             "consensus_incomplete",
                             {
                                 "reason": "agent_error",
-                                "message": "재조합 라운드 실패 — 합의를 기록하지 않습니다.",
+                                "message": "재조합 라운드 실패(재시도 후에도) — 합의를 기록하지 않습니다.",
                             },
                         )
                     return all_replies, {
@@ -637,6 +665,39 @@ def run_consensus_agent_rounds(
                 slim_context=efficiency_mode,
                 human_turn_index=human_turn_index,
             )
+            if _is_agent_error_message(review_msg):
+                if on_event:
+                    on_event(
+                        "consensus_retry",
+                        {
+                            "round": last_debate + 1 + recomb_rounds,
+                            "agents": [str(advocate_id)],
+                            "message": f"{agent_label(advocate_id)} 호출 실패 — 1회 재시도합니다.",
+                        },
+                    )
+                review_msg = _invoke_agent_for_round(
+                    advocate_id,
+                    topic=topic,
+                    thread=working,
+                    parallel_round=last_debate + 1 + recomb_rounds,
+                    permissions=permissions,
+                    review_mode=True,
+                    review_advocate=advocate_id,
+                    plan_md=plan_md,
+                    run_meta=run_meta,
+                    on_event=on_event,
+                    context_log=context_log,
+                    extra_follow_up=(
+                        "[품질 게이트 — 강제 반론] 이번 토론은 이견 없이 수렴했습니다. "
+                        "합의 확정 전 점검으로, 지금까지의 제안에서 가장 약한 가정이나 "
+                        "누락된 리스크 1건을 골라 CHALLENGE 또는 AMEND envelope로 "
+                        "실질적 반론·대안을 제시하세요. 형식적 반론은 금지 — 정말 "
+                        "반론이 없으면 그 근거를 한 줄로 밝히고 ENDORSE 하세요."
+                    ),
+                    efficiency_mode=efficiency_mode,
+                    slim_context=efficiency_mode,
+                    human_turn_index=human_turn_index,
+                )
             all_replies.append(review_msg)
             calls += 1
             working = messages + all_replies
@@ -647,7 +708,7 @@ def run_consensus_agent_rounds(
                         {
                             "reason": "agent_error",
                             "agent": advocate,
-                            "message": "품질 게이트 라운드 실패 — 합의를 기록하지 않습니다.",
+                            "message": "품질 게이트 라운드 실패(재시도 후에도) — 합의를 기록하지 않습니다.",
                         },
                     )
                 return all_replies, {
@@ -761,6 +822,33 @@ def run_consensus_agent_rounds(
                     slim_context=efficiency_mode,
                     human_turn_index=human_turn_index,
                 )
+                if _is_agent_error_message(msg):
+                    if on_event:
+                        on_event(
+                            "consensus_retry",
+                            {
+                                "round": parallel_round,
+                                "agents": [str(aid)],
+                                "message": f"{agent_label(aid)} 호출 실패 — 1회 재시도합니다.",
+                            },
+                        )
+                    msg = _invoke_agent_for_round(
+                        aid,
+                        topic=topic,
+                        thread=thread,
+                        parallel_round=parallel_round,
+                        permissions=permissions,
+                        review_mode=False,
+                        review_advocate=None,
+                        plan_md=plan_md,
+                        run_meta=run_meta,
+                        on_event=on_event,
+                        context_log=context_log,
+                        extra_follow_up=follow,
+                        efficiency_mode=efficiency_mode,
+                        slim_context=efficiency_mode,
+                        human_turn_index=human_turn_index,
+                    )
                 all_replies.append(msg)
                 thread.append(msg)
                 calls += 1
@@ -771,7 +859,7 @@ def run_consensus_agent_rounds(
                             {
                                 "reason": "agent_error",
                                 "agent": aid,
-                                "message": "에이전트 호출 실패 — ENDORSE 합의를 중단합니다.",
+                                "message": "에이전트 호출 실패(재시도 후에도) — ENDORSE 합의를 중단합니다.",
                             },
                         )
                     meta = {

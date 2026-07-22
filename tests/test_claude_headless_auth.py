@@ -65,6 +65,105 @@ def test_agent_preflight_claude_headless_probe_failure(monkeypatch) -> None:
     assert row.get("remediation")
 
 
+def _reset_probe_state(monkeypatch: pytest.MonkeyPatch) -> None:
+    """probe_auth short-circuits under AGENT_LAB_MOCK_AGENTS and reads
+    module-level cache globals — both need resetting to exercise the real
+    subprocess-facing body in isolation."""
+    import agent_lab.claude.cli as claude_cli
+
+    monkeypatch.delenv("AGENT_LAB_MOCK_AGENTS", raising=False)
+    monkeypatch.delenv("AGENT_LAB_CLAUDE_SKIP_HEADLESS_PROBE", raising=False)
+    monkeypatch.delenv("CLAUDE_SKIP_AUTH_PROBE", raising=False)
+    monkeypatch.setattr(claude_cli, "_AUTH_PROBE_CACHE", None)
+    monkeypatch.setattr(claude_cli, "_AUTH_STATUS_CACHE", None)
+    monkeypatch.setattr(claude_cli, "resolve_claude_bin", lambda: "/tmp/claude")
+    monkeypatch.setattr(claude_cli, "claude_auth_logged_in", lambda **kw: (True, None))
+    monkeypatch.setattr(claude_cli, "retry_base_delay_sec", lambda: 0.0)  # no real sleep in tests
+
+
+def test_probe_auth_retries_transient_timeout_then_succeeds(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A single subprocess timeout must not fail the probe outright — the
+    retry (mirroring the real invoke path's retry_call/is_retryable policy)
+    should recover on the second attempt."""
+    import subprocess
+
+    import agent_lab.claude.cli as claude_cli
+
+    _reset_probe_state(monkeypatch)
+    calls = {"n": 0}
+
+    def _fake_run(cmd, **kwargs):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise subprocess.TimeoutExpired(cmd, kwargs.get("timeout") or 1)
+        return subprocess.CompletedProcess(cmd, 0, stdout="AUTH_OK", stderr="")
+
+    monkeypatch.setattr(subprocess, "run", _fake_run)
+
+    ok, detail = claude_cli.probe_auth(use_cache=False)
+
+    assert ok is True
+    assert detail is None
+    assert calls["n"] == 2  # first attempt timed out, retry succeeded
+    assert claude_cli._AUTH_PROBE_CACHE is not None
+    assert claude_cli._AUTH_PROBE_CACHE[1] is True
+
+
+def test_probe_auth_caches_genuine_auth_failure_with_long_ttl(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A real 401 is not retryable (is_retryable excludes auth text) and must
+    keep the full 5-minute negative-cache TTL — retrying a revoked token
+    can't help, and this TTL also throttles how often the probe re-hits the
+    Anthropic API for a condition only the user (re-login) can fix."""
+    import subprocess
+
+    import agent_lab.claude.cli as claude_cli
+
+    _reset_probe_state(monkeypatch)
+    calls = {"n": 0}
+
+    def _fake_run(cmd, **kwargs):
+        calls["n"] += 1
+        return subprocess.CompletedProcess(
+            cmd, 1, stdout="", stderr="ERROR: 401 Invalid authentication credentials"
+        )
+
+    monkeypatch.setattr(subprocess, "run", _fake_run)
+
+    ok, detail = claude_cli.probe_auth(use_cache=False)
+
+    assert ok is False
+    assert "401" in (detail or "")
+    assert calls["n"] == 1  # non-retryable — no second attempt burned on a dead token
+    assert claude_cli._AUTH_PROBE_CACHE is not None
+    assert claude_cli._AUTH_PROBE_CACHE[3] == claude_cli._AUTH_PROBE_TTL_SEC
+
+
+def test_probe_auth_caches_persistent_transient_failure_with_short_ttl(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A failure that still doesn't look auth-related even after the retry
+    (e.g. a network blip that outlasted both attempts) must NOT be pinned for
+    the full 5 minutes — a short TTL lets the room re-check soon instead of
+    reporting Claude unready long after the blip has passed."""
+    import subprocess
+
+    import agent_lab.claude.cli as claude_cli
+
+    _reset_probe_state(monkeypatch)
+
+    def _fake_run(cmd, **kwargs):
+        raise subprocess.TimeoutExpired(cmd, kwargs.get("timeout") or 1)
+
+    monkeypatch.setattr(subprocess, "run", _fake_run)
+
+    ok, detail = claude_cli.probe_auth(use_cache=False)
+
+    assert ok is False
+    assert "timed out" in (detail or "")
+    assert claude_cli._AUTH_PROBE_CACHE is not None
+    assert claude_cli._AUTH_PROBE_CACHE[3] == claude_cli._AUTH_PROBE_TRANSIENT_TTL_SEC
+
+
 def test_ensure_claude_headless_ready_raises_on_probe_failure(monkeypatch) -> None:
     from agent_lab.claude.cli import ensure_claude_headless_ready
 

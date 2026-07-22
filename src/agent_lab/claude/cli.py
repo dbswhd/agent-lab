@@ -142,8 +142,14 @@ def _format_exec_error(stderr: str, stdout: str) -> str:
     return detail
 
 
-_AUTH_PROBE_CACHE: tuple[float, bool, str | None] | None = None
+_AUTH_PROBE_CACHE: tuple[float, bool, str | None, float] | None = None
 _AUTH_PROBE_TTL_SEC = 300.0
+# A probe failure that doesn't positively look like a genuine auth failure
+# (timeout, momentary network blip, transient 5xx/429 that survived the retry
+# below) gets a much shorter negative-cache TTL, so the room doesn't stay
+# "Claude not ready" for the full 5 minutes over what was likely a blip.
+_AUTH_PROBE_TRANSIENT_TTL_SEC = 20.0
+_AUTH_PROBE_RETRY_ATTEMPTS = 2
 _AUTH_STATUS_CACHE: tuple[float, bool, str | None] | None = None
 _AUTH_STATUS_TTL_SEC = 60.0
 _DEFAULT_PROBE_TIMEOUT_SEC = 25.0
@@ -287,7 +293,18 @@ def ensure_claude_headless_ready(*, use_cache: bool = True) -> None:
 
 
 def probe_auth(*, timeout_sec: float | None = None, use_cache: bool = True) -> tuple[bool, str | None]:
-    """Headless auth ping using the same stripped env as Room invoke."""
+    """Headless auth ping using the same stripped env as Room invoke.
+
+    A single subprocess hiccup (timeout, momentary network blip, transient
+    Anthropic 5xx/429) is not the same as a genuinely expired/revoked OAuth
+    token — but previously both were cached identically as "claude not ready"
+    for the full 5-minute TTL with no retry, even though the real invoke path
+    (``invoke()`` below) already retries transient failures via
+    ``retry_call``/``is_retryable``. This pre-flight probe now retries once
+    the same way, and only holds the long TTL for failures that positively
+    look like a genuine auth problem (``_is_auth_failure``) — anything else
+    gets a short TTL so the room re-checks soon instead of staying blocked.
+    """
     if _skip_headless_probe():
         return True, None
     if os.getenv("AGENT_LAB_MOCK_AGENTS", "").strip().lower() in {
@@ -301,19 +318,19 @@ def probe_auth(*, timeout_sec: float | None = None, use_cache: bool = True) -> t
     global _AUTH_PROBE_CACHE
     now = time.time()
     if use_cache and _AUTH_PROBE_CACHE is not None:
-        cached_at, ok, detail = _AUTH_PROBE_CACHE
-        if now - cached_at < _AUTH_PROBE_TTL_SEC:
+        cached_at, ok, detail, ttl = _AUTH_PROBE_CACHE
+        if now - cached_at < ttl:
             return ok, detail
 
     logged_in, login_detail = claude_auth_logged_in(use_cache=use_cache)
     if not logged_in:
-        _AUTH_PROBE_CACHE = (now, False, login_detail)
+        _AUTH_PROBE_CACHE = (now, False, login_detail, _AUTH_PROBE_TTL_SEC)
         return False, login_detail
 
     claude = resolve_claude_bin()
     if not claude:
         detail = "claude CLI not found"
-        _AUTH_PROBE_CACHE = (now, False, detail)
+        _AUTH_PROBE_CACHE = (now, False, detail, _AUTH_PROBE_TTL_SEC)
         return False, detail
 
     cmd = [
@@ -330,37 +347,47 @@ def probe_auth(*, timeout_sec: float | None = None, use_cache: bool = True) -> t
         "",
     ]
     deadline = probe_timeout_sec() if timeout_sec is None else timeout_sec
+
+    def _run_probe_once() -> str:
+        try:
+            result = subprocess.run(
+                cmd,
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                text=True,
+                timeout=deadline,
+                env=_claude_env(),
+                cwd=str(Path.home()),
+            )
+        except subprocess.TimeoutExpired:
+            # Deliberately avoid the word "auth" here: cli_retry.is_retryable's
+            # non-retryable patterns match "auth(entication)?" as a bare
+            # substring, so a message like "claude auth probe timed out"
+            # would false-positive as a genuine auth failure and skip the
+            # retry entirely despite "timed out" being a retryable signal.
+            raise RuntimeError(f"claude headless probe timed out ({int(deadline)}s)") from None
+        except OSError as exc:
+            raise RuntimeError(str(exc)[:200]) from exc
+        if result.returncode != 0:
+            raise RuntimeError(_format_exec_error(result.stderr or "", result.stdout or ""))
+        text = (result.stdout or "").strip()
+        if not text:
+            raise RuntimeError("claude auth probe returned empty output")
+        return text
+
     try:
-        result = subprocess.run(
-            cmd,
-            stdin=subprocess.DEVNULL,
-            capture_output=True,
-            text=True,
-            timeout=deadline,
-            env=_claude_env(),
-            cwd=str(Path.home()),
+        retry_call(
+            _run_probe_once,
+            max_attempts=_AUTH_PROBE_RETRY_ATTEMPTS,
+            base_delay_sec=retry_base_delay_sec(),
         )
-    except subprocess.TimeoutExpired:
-        detail = f"claude auth probe timed out ({int(deadline)}s)"
-        _AUTH_PROBE_CACHE = (now, False, detail)
-        return False, detail
-    except OSError as exc:
-        detail = str(exc)[:200]
-        _AUTH_PROBE_CACHE = (now, False, detail)
+    except Exception as exc:
+        detail = str(exc)[:800]
+        ttl = _AUTH_PROBE_TTL_SEC if _is_auth_failure(detail) else _AUTH_PROBE_TRANSIENT_TTL_SEC
+        _AUTH_PROBE_CACHE = (now, False, detail, ttl)
         return False, detail
 
-    if result.returncode != 0:
-        detail = _format_exec_error(result.stderr or "", result.stdout or "")
-        _AUTH_PROBE_CACHE = (now, False, detail)
-        return False, detail
-
-    text = (result.stdout or "").strip()
-    if not text:
-        detail = "claude auth probe returned empty output"
-        _AUTH_PROBE_CACHE = (now, False, detail)
-        return False, detail
-
-    _AUTH_PROBE_CACHE = (now, True, None)
+    _AUTH_PROBE_CACHE = (now, True, None, _AUTH_PROBE_TTL_SEC)
     return True, None
 
 

@@ -317,22 +317,88 @@ export function ComposerEventStack({
     missionLoop?.phase === "DISCUSS" &&
     missionLoop?.enabled !== true;
 
+  // Consensus vs analyze-only is invisible from the transcript — both look like
+  // "a round ran," but only one flows into record_consensus_agreement / plan.md
+  // auto-sync. Surface the just-completed turn's actual path so the human isn't
+  // left guessing why plan.md didn't update after what looked like a normal round.
+  const lastTurn = useMemo(() => {
+    const turns = session?.run?.turns as
+      | Array<{ consensus_mode?: boolean; consensus?: unknown }>
+      | undefined;
+    return turns && turns.length > 0 ? turns[turns.length - 1] : null;
+  }, [session?.run?.turns]);
+  const lastTurnReachedConsensus =
+    lastTurn != null &&
+    typeof lastTurn.consensus === "object" &&
+    lastTurn.consensus !== null;
+  const showTurnModeBadge =
+    !activeLane && !running && !showExecuteHint && lastTurn != null;
+
   if (!activeLane) {
-    if (!showExecuteHint) return null;
+    if (showExecuteHint) {
+      return (
+        <div className="composer-stack-scroll" ref={rootRef}>
+          <div
+            className="composer-event-stack"
+            data-composer-lane="execute_hint"
+          >
+            <div className="composer-event-stack__section workspace-event-strip">
+              <ComposerStrip
+                tone="accent"
+                role="status"
+                ariaLabel={ko ? "실행 안내" : "Execute hint"}
+                badge="Execute"
+                title={ko ? "합의가 끝났나요?" : "Converged?"}
+                description={
+                  ko
+                    ? "`/execute`를 입력하면 현재 plan.md를 worktree dry-run + Oracle 검증으로 보냅니다."
+                    : "Type `/execute` to send the current plan.md to worktree dry-run + Oracle verify."
+                }
+                compact
+              />
+            </div>
+          </div>
+        </div>
+      );
+    }
+    if (!showTurnModeBadge) return null;
     return (
       <div className="composer-stack-scroll" ref={rootRef}>
-        <div className="composer-event-stack" data-composer-lane="execute_hint">
+        <div
+          className="composer-event-stack"
+          data-composer-lane="turn_mode_hint"
+        >
           <div className="composer-event-stack__section workspace-event-strip">
             <ComposerStrip
-              tone="accent"
+              tone="neutral"
               role="status"
-              ariaLabel={ko ? "실행 안내" : "Execute hint"}
-              badge="Execute"
-              title={ko ? "합의가 끝났나요?" : "Converged?"}
+              ariaLabel={ko ? "턴 유형" : "Turn type"}
+              badge={
+                lastTurnReachedConsensus
+                  ? ko
+                    ? "합의"
+                    : "Consensus"
+                  : ko
+                    ? "분석 전용"
+                    : "Analyze-only"
+              }
+              title={
+                lastTurnReachedConsensus
+                  ? ko
+                    ? "합의 라운드가 기록됐습니다"
+                    : "Consensus round recorded"
+                  : ko
+                    ? "이번 턴은 분석 전용입니다"
+                    : "This turn was analyze-only"
+              }
               description={
-                ko
-                  ? "`/execute`를 입력하면 현재 plan.md를 worktree dry-run + Oracle 검증으로 보냅니다."
-                  : "Type `/execute` to send the current plan.md to worktree dry-run + Oracle verify."
+                lastTurnReachedConsensus
+                  ? ko
+                    ? "plan.md 자동 동기화 대상입니다."
+                    : "Eligible for plan.md auto-sync."
+                  : ko
+                    ? "합의 기록 없음 — plan.md가 자동으로 갱신되지 않습니다."
+                    : "No consensus recorded — plan.md will not auto-sync."
               }
               compact
             />

@@ -51,8 +51,6 @@ export function useWorkspaceTabs({
   const [workspaceTabPinned, setWorkspaceTabPinned] = useState(false);
   const workspacePinnedRef = useRef(false);
   const inspectorPinnedRef = useRef(false);
-  const prevRunningRef = useRef(false);
-  const prevPendingRef = useRef(false);
   const prevBlockerRef = useRef(false);
   const prevSessionKeyRef = useRef(sessionKey);
 
@@ -129,8 +127,6 @@ export function useWorkspaceTabs({
     workspacePinnedRef.current = false;
     inspectorPinnedRef.current = false;
     setWorkspaceTabPinned(false);
-    prevRunningRef.current = false;
-    prevPendingRef.current = false;
     prevBlockerRef.current = false;
     if (isNew) {
       setWorkspaceTabState("transcript");
@@ -154,21 +150,18 @@ export function useWorkspaceTabs({
   useEffect(() => {
     if (isNew) return;
 
-    const runStarted = autoContext.running && !prevRunningRef.current;
-    const runEnded = !autoContext.running && prevRunningRef.current;
+    // Only a genuinely new blocker re-opens the (unpinned) inspector panel —
+    // every ordinary round start/end used to do this too (resolveDefaultInspectorTab
+    // ignores its context and always returns "overview"), which meant the
+    // Overview panel silently popped open on every single turn for any
+    // session where the user hadn't yet clicked a tab themselves.
     const blockerAppeared = autoContext.hasBlocker && !prevBlockerRef.current;
-
-    prevRunningRef.current = autoContext.running;
-    prevPendingRef.current =
-      autoContext.hasPendingExecution || autoContext.hasDryRunDiff;
     prevBlockerRef.current = autoContext.hasBlocker;
 
-    if (!inspectorPinnedRef.current) {
-      if (runStarted || runEnded || blockerAppeared) {
-        const next = resolveDefaultInspectorTab(autoContext);
-        setInspectorTabState(next);
-        setRightPanelModeState(rightPanelModeFromInspectorTab(next));
-      }
+    if (!inspectorPinnedRef.current && blockerAppeared) {
+      const next = resolveDefaultInspectorTab(autoContext);
+      setInspectorTabState(next);
+      setRightPanelModeState(rightPanelModeFromInspectorTab(next));
     }
   }, [autoContext, isNew]);
 

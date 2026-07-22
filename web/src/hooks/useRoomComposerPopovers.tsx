@@ -163,7 +163,12 @@ export function useRoomComposerPopovers(
             });
             return;
           }
-          void executeSlashCommand(cmd, `compose ${selected}`.trim());
+          // Default to session scope for the picker's quick-toggle flow —
+          // asking "session vs default?" on every mid-conversation roster
+          // tweak (e.g. dropping an agent whose auth just expired) turned a
+          // 2-click change into 4. Power users who want to persist the
+          // default can still type `/model compose <ids> default` directly.
+          void executeSlashCommand(cmd, `compose ${selected} session`.trim());
         }}
         onCancel={() => setModelPopover(null)}
       />

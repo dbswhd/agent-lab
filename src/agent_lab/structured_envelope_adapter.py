@@ -26,7 +26,10 @@ def structured_envelope_system_addon(*, compact: bool = False) -> str:
         return (
             "[Structured envelope]\n"
             'Line 1: JSON object {"act":"ENDORSE","refs":[],"confidence":0.9}\n'
-            "Line 2+: human-readable body (markdown OK). Fence optional."
+            "Line 2+: human-readable body (markdown OK). Fence optional.\n"
+            "Acts: PROPOSE | AMEND | ENDORSE | NOTE | CHALLENGE | PASS | BLOCK | MESSAGE — "
+            "NOTE = agree + non-blocking observation (does not reopen the round; "
+            "don't write \"NOTE\" as prose under ENDORSE, use act:NOTE)."
         )
     return (
         "[Structured envelope — machine layer first]\n"

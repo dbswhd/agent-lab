@@ -286,7 +286,11 @@ def test_fast_bucket_collection_budget():
     # 2026-07-23: raised 3568 -> 3573 for the S1 D1 challenge_precision
     # instrumentation suite (test_turn_metrics.py) — per-agent CHALLENGE
     # adoption + NOTE tally, record-only (docs/S1-CHALLENGE-PRECISION.md).
-    assert count <= 3573, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-23: raised 3573 -> 3574 for the compact structured-envelope
+    # system-addon regression (test_hook_communicate_remaining.py) — real
+    # dogfood run showed Claude never learned NOTE existed because every
+    # production call site requests compact=True, which didn't enumerate acts.
+    assert count <= 3574, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

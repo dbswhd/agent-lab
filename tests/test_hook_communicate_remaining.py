@@ -18,6 +18,7 @@ from agent_lab.agents.registry import call_agent_reply
 from agent_lab.structured_envelope_adapter import (
     parse_claude_json_stdout,
     should_request_structured_envelope,
+    structured_envelope_system_addon,
 )
 from agent_lab.reply_policy import resolve_reply_policy
 from agent_lab.run.observability import observability_snapshot
@@ -33,6 +34,21 @@ def test_split_structured_envelope_prefix():
     parsed = parse_agent_response_v2(body, structured=structured)
     assert parsed.envelope is not None
     assert parsed.envelope.act == "ENDORSE"
+
+
+def test_compact_system_addon_lists_note_act():
+    """Dogfood regression: every real provider call site (claude/cli.py,
+    codex/cli.py, cursor/provider.py, kimi/work_provider.py) requests
+    compact=True — the non-compact variant's act enumeration was
+    unreachable in production, so an agent (observed: Claude) never
+    learned NOTE exists and fell back to writing "NOTE" as prose under
+    act:ENDORSE + [PROPOSED:], which classify_consensus_reply treats as
+    substantive (reopens the anchor round) — exactly what NOTE exists to
+    avoid. The compact addon must enumerate acts too."""
+    addon = structured_envelope_system_addon(compact=True)
+    assert "NOTE" in addon
+    assert "PROPOSE" in addon and "CHALLENGE" in addon
+    assert "prose" in addon.lower() or "act:note" in addon.lower()
 
 
 def test_call_agent_reply_mock_structured(monkeypatch: pytest.MonkeyPatch):

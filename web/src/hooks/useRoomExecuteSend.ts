@@ -376,6 +376,7 @@ export function useRoomExecuteSend(options: RoomExecuteSendOptions): {
             source: classified.source,
             kind: classified.kind,
             message: detail,
+            affectedAgentIds: classified.affectedAgentIds,
           });
           if (classified.kind === "run_lock") {
             setRunLockStuck(true);

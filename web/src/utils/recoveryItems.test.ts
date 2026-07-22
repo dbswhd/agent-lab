@@ -74,6 +74,50 @@ describe("buildRecoveryItems", () => {
     expect(items[0]?.title).toBe("요청 형식이 서버에서 거부되었습니다.");
   });
 
+  it("classifies a single unready non-auth agent with a targeted reconnect action", () => {
+    const message = "cursor: bridge probe timed out after 5s";
+    const classified = classifySendFailure(message);
+    expect(classified.kind).toBe("agents_not_ready");
+    expect(classified.affectedAgentIds).toEqual(["cursor"]);
+
+    const items = buildRecoveryItems(
+      input({
+        failure: {
+          source: "run",
+          kind: "agents_not_ready",
+          message,
+          affectedAgentIds: ["cursor"],
+        },
+      }),
+    );
+    expect(items[0]?.title).toContain("cursor");
+    expect(items[0]?.primaryAction.id).toBe("reconnect_cursor");
+  });
+
+  it("classifies multiple unready agents without a single targeted action", () => {
+    const message = "codex: rate limited; cursor: bridge probe timed out";
+    const classified = classifySendFailure(message);
+    expect(classified.kind).toBe("agents_not_ready");
+    expect(classified.affectedAgentIds).toEqual(["codex", "cursor"]);
+
+    const items = buildRecoveryItems(
+      input({
+        failure: {
+          source: "run",
+          kind: "agents_not_ready",
+          message,
+          affectedAgentIds: ["codex", "cursor"],
+        },
+      }),
+    );
+    expect(items[0]?.primaryAction.id).toBe("refresh_health");
+  });
+
+  it("does not misclassify an unrelated colon-bearing message as agents_not_ready", () => {
+    const classified = classifySendFailure("error: something went wrong");
+    expect(classified.kind).not.toBe("agents_not_ready");
+  });
+
   it("classifies run lock separately", () => {
     const items = buildRecoveryItems(
       input({

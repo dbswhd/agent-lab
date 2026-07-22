@@ -33,7 +33,8 @@ export type RecoveryFailureKind =
   | "run_lock"
   | "api_validation"
   | "loop_readiness"
-  | "api_offline";
+  | "api_offline"
+  | "agents_not_ready";
 
 export type RecoveryFailure = {
   readonly source: RecoveryFailureSource;
@@ -42,10 +43,46 @@ export type RecoveryFailure = {
   readonly affectedAgentIds?: readonly string[];
 };
 
+const KNOWN_AGENT_IDS = [
+  "cursor",
+  "codex",
+  "claude",
+  "kimi_work",
+  "kimi",
+  "local",
+] as const;
+
+/** `parseRoomRunHttpError` (client.ts) joins a room-run 400's per-agent
+ * readiness failures as `"<id>: <reason>"` segments (one per unready agent),
+ * discarding the wrapping `{"message":"agents not ready",...}` label in the
+ * process. Detect that shape here instead of relying on the (now-absent)
+ * literal phrase, so the recovery UI can name which specific agent(s) are
+ * unready and offer the same one-click reconnect used elsewhere — rather
+ * than the generic "요청 형식이 거부되었습니다" message the every-agent-ready
+ * request-level gate (``_agents_not_ready``, app/server/routers/room.py)
+ * would otherwise fall into. */
+function extractUnreadyAgentIds(message: string): string[] | null {
+  const segments = message
+    .split(";")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (segments.length === 0) return null;
+  const ids: string[] = [];
+  for (const seg of segments) {
+    const m = /^([a-z_]+):\s/.exec(seg);
+    if (!m || !(KNOWN_AGENT_IDS as readonly string[]).includes(m[1])) {
+      return null;
+    }
+    ids.push(m[1]);
+  }
+  return ids;
+}
+
 /** Classify send failures — 422 validation vs run lock vs offline vs generic run. */
 export function classifySendFailure(message: string): {
   source: RecoveryFailureSource;
   kind?: RecoveryFailureKind;
+  affectedAgentIds?: readonly string[];
 } {
   const detail = message.trim();
   const lower = detail.toLowerCase();
@@ -55,6 +92,10 @@ export function classifySendFailure(message: string): {
     lower.includes("run_lock")
   ) {
     return { source: "run", kind: "run_lock" };
+  }
+  const unreadyAgentIds = extractUnreadyAgentIds(detail);
+  if (unreadyAgentIds) {
+    return { source: "run", kind: "agents_not_ready", affectedAgentIds: unreadyAgentIds };
   }
   if (
     lower.includes("loop requires plan") ||
@@ -267,6 +308,34 @@ function buildFailureItem(
       details: trimmed,
       source: "run",
       primaryAction: { id: "release_lock", label: "실행 잠금 해제" },
+      secondaryAction: { id: "refresh_health", label: "상태 재확인" },
+    };
+  }
+  if (failure.kind === "agents_not_ready") {
+    const ids = failure.affectedAgentIds ?? [];
+    const single = ids.length === 1 ? ids[0] : null;
+    const primaryAction: RecoveryAction =
+      single === "claude"
+        ? { id: "reconnect_claude", label: "Claude 재연결" }
+        : single === "codex"
+          ? { id: "reconnect_codex", label: "Codex 재연결" }
+          : single === "cursor"
+            ? { id: "reconnect_cursor", label: "Cursor 재연결" }
+            : single === "kimi_work"
+              ? { id: "reconnect_kimi_work", label: "Kimi Work 재연결" }
+              : { id: "refresh_health", label: "상태 재확인" };
+    return {
+      kind: "run_failed",
+      severity: "blocking_send",
+      title: ids.length
+        ? `${ids.join(", ")} 준비되지 않아 전송이 막혔습니다.`
+        : "일부 에이전트가 준비되지 않았습니다.",
+      reason:
+        "로스터에 포함된 에이전트 중 하나가 응답할 수 없는 상태라 전체 메시지가 전송되지 않았습니다. 재연결하거나, 모델 선택에서 이 에이전트를 잠시 제외하고 다시 보내세요.",
+      details: trimmed,
+      source: "run",
+      affectedAgentIds: ids,
+      primaryAction,
       secondaryAction: { id: "refresh_health", label: "상태 재확인" },
     };
   }

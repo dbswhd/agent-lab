@@ -53,6 +53,49 @@ def test_endorse_envelope_with_proposed_body_is_substantive():
     assert not is_endorse_reply(parsed.body, env)
 
 
+def test_note_envelope_is_consent_even_with_proposed_body():
+    """NOTE = consent + non-blocking observation. Unlike ENDORSE (where a
+    [PROPOSED:] body forces substantive → anchor reset → extra rounds), a NOTE
+    with [PROPOSED:] stays consent — the marker is harvested as a follow-up
+    task instead of re-opening consensus. Dogfood regression: a critic's
+    valid-but-non-blocking .gitignore observation stretched a one-line task
+    to 5 rounds / 12 calls because no consent+observation act existed."""
+    raw = (
+        "```agent-envelope\n"
+        '{"act":"NOTE","refs":["L9"],"confidence":0.9}\n'
+        "```\n"
+        "완료 동의. 부가 관찰: scratch/가 .gitignore에 없음.\n"
+        "[PROPOSED: .gitignore에 scratch/ 항목 추가]"
+    )
+    parsed = parse_agent_response(raw)
+    assert parsed.envelope is not None
+    assert parsed.envelope.act == "NOTE"
+    env = parsed.envelope.to_dict()
+    assert classify_consensus_reply(parsed.body, env) == "endorse"
+    assert is_endorse_reply(parsed.body, env)
+
+
+def test_note_is_not_substantive_for_anchor_reset():
+    from agent_lab.room.consensus import is_substantive_reply
+
+    body = "동의. 관찰 1건: pyproject에 pandas 미선언.\n[PROPOSED: 의존성 선언 검토]"
+    assert is_substantive_reply(body, {"act": "NOTE", "refs": []}) is False
+    # CHALLENGE keeps its blocking semantics untouched.
+    assert is_substantive_reply(body, {"act": "CHALLENGE", "refs": []}) is True
+
+
+def test_note_counts_as_debate_support_act():
+    from agent_lab.debate_convergence import _SUPPORT_ACTS
+
+    assert "NOTE" in _SUPPORT_ACTS
+
+
+def test_note_never_escalates_topology():
+    from agent_lab.topic_router import ESCALATION_ACTS
+
+    assert "NOTE" not in ESCALATION_ACTS
+
+
 def test_no_fence_returns_full_body():
     parsed = parse_agent_response("plain reply")
     assert parsed.envelope is None

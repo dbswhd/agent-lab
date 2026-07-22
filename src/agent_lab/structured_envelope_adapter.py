@@ -33,7 +33,7 @@ def structured_envelope_system_addon(*, compact: bool = False) -> str:
         'Output line 1 as a single JSON object with required field "act":\n'
         '{"act":"ENDORSE","refs":[],"confidence":0.9}\n'
         "Then a blank line, then your normal readable reply for the Human.\n"
-        "Valid acts: PROPOSE | AMEND | ENDORSE | CHALLENGE | PASS | BLOCK | MESSAGE\n"
+        "Valid acts: PROPOSE | AMEND | ENDORSE | NOTE | CHALLENGE | PASS | BLOCK | MESSAGE\n"
         "Alternatively you may use ```agent-envelope fenced JSON (legacy)."
     )
 

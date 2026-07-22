@@ -122,6 +122,15 @@ def detect_plan_execute_intent(text: str) -> bool:
     return is_execute_lane_topic(text)
 
 
+def detect_build_confirmation_intent(text: str) -> bool:
+    """Topic explicitly confirms 'implement/build this now' — broader than
+    detect_plan_execute_intent's narrow execute-lane vocabulary, used only to
+    escalate loop-mode discuss_only out of light discuss (turn_modes.py)."""
+    from agent_lab.room.turn_intent import is_build_confirmation_topic
+
+    return is_build_confirmation_topic(text)
+
+
 def resolve_discuss_light(
     *,
     mode: str,

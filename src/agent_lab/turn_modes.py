@@ -256,9 +256,12 @@ def resolve_mode_contract(
             # keeps full loop consensus behavior.
             discuss_only = (mode or "discuss").strip().lower() == "discuss" and not synthesize
             if discuss_only:
-                from agent_lab.room.turn_policy import detect_plan_execute_intent
+                from agent_lab.room.turn_policy import (
+                    detect_build_confirmation_intent,
+                    detect_plan_execute_intent,
+                )
 
-                if detect_plan_execute_intent(topic):
+                if detect_plan_execute_intent(topic) or detect_build_confirmation_intent(topic):
                     discuss_only = False
             if discuss_only:
                 return ModeContract(

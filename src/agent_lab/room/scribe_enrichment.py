@@ -12,7 +12,7 @@ from agent_lab.room.objections import list_objections, open_objections
 
 _PROPOSED_RE = re.compile(r"\[PROPOSED:\s*([^\]]+)\]", re.I)
 _REF_LINE_RE = re.compile(r"chat\.jsonl#L(\d+)", re.I)
-_SUMMARY_ACTS = frozenset({"BLOCK", "CHALLENGE", "ENDORSE", "PASS", "AMEND", "PROPOSE"})
+_SUMMARY_ACTS = frozenset({"BLOCK", "CHALLENGE", "ENDORSE", "PASS", "AMEND", "PROPOSE", "NOTE"})
 _MAX_AGENT_SUMMARY_CHARS = 400
 
 

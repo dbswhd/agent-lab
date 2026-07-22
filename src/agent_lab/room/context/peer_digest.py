@@ -67,7 +67,7 @@ def _format_peer_digest(m: MessageLike) -> str:
     act = str(envelope.get("act") or "").upper()
     if not act:
         first = body.splitlines()[0].upper() if body else ""
-        for candidate in ("ENDORSE", "AMEND", "CHALLENGE", "PROPOSE", "BLOCK", "PASS", "MESSAGE"):
+        for candidate in ("ENDORSE", "AMEND", "CHALLENGE", "PROPOSE", "BLOCK", "PASS", "MESSAGE", "NOTE"):
             if candidate in first:
                 act = candidate
                 break

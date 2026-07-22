@@ -113,6 +113,39 @@ def load_outcome_rows(root: Path | None = None) -> list[dict[str, Any]]:
     return rows
 
 
+def challenge_precision_enabled() -> bool:
+    """S1 D1 (default off) — docs/S1-CHALLENGE-PRECISION.md. Record-only: never
+    consumed by feedback_advisor yet, independent of the TURN_METRICS/
+    OUTCOME_LEDGER supervisor-implicit trio (s1_flags._SUPERVISOR_S1_FLAGS)."""
+    return env_bool("AGENT_LAB_CHALLENGE_PRECISION")
+
+
+def _turn_acts_for_human_turn(folder: Path) -> list[dict[str, str]]:
+    """Flat {"agent","act"} list for the just-completed human turn (S1 D1).
+
+    Acts beyond CHALLENGE/BLOCK (e.g. NOTE, ENDORSE) never land in
+    ``objections`` (core.objections.HARVEST_ACTS is BLOCK/CHALLENGE only), so
+    challenge_precision reads chat.jsonl directly for the full act tally.
+    """
+    from agent_lab.agent.envelope import envelope_act
+    from agent_lab.room.session_persist import load_session_messages
+    from agent_lab.room.turn_state import current_turn_slice
+
+    messages = load_session_messages(folder)
+    if not messages:
+        return []
+    turn_msgs, _ = current_turn_slice(messages)
+    acts: list[dict[str, str]] = []
+    for m in turn_msgs:
+        if m.role != "agent" or not m.agent:
+            continue
+        act = envelope_act(m.envelope)
+        if not act:
+            continue
+        acts.append({"agent": str(m.agent), "act": str(act)})
+    return acts
+
+
 def _topic_text(folder: Path, run: RunStateLike) -> str:
     topic = str(run.get("topic") or "").strip()
     if topic:
@@ -190,6 +223,8 @@ def build_outcome_record(
         # HS1-1 — failure taxonomy tags (see turn_metrics._derive_failure_tags)
         "failure_tags": list(metrics.get("failure_tags") or []),
         "primary_tag": metrics.get("primary_tag"),
+        # S1 D1 — record-only, not yet consumed (docs/S1-CHALLENGE-PRECISION.md)
+        "challenge_precision": metrics.get("challenge_precision") or {},
         "contract_id": contract_id,
         "contract_source": str(contract.get("source") or ""),
         "safety_floor": str(contract.get("safety_floor") or ""),
@@ -228,11 +263,13 @@ def record_turn_outcome(folder: Path | None, human_turn: int) -> None:
         turns = run.get("turns") or []
         if not turns:
             return
+        turn_acts = _turn_acts_for_human_turn(folder) if challenge_precision_enabled() else []
         metrics = build_turn_metrics(
             turns[-1],
             objections=run.get("objections") or [],
             executions=run.get("executions") or [],
             human_turn=human_turn,
+            turn_acts=turn_acts,
         )
         if want_metrics:
 

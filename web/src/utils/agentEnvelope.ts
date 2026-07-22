@@ -4,6 +4,7 @@ export type EnvelopeAct =
   | "PROPOSE"
   | "AMEND"
   | "ENDORSE"
+  | "NOTE"
   | "CHALLENGE"
   | "PASS"
   | "BLOCK";
@@ -12,6 +13,7 @@ export const ACT_LABELS: Record<EnvelopeAct, string> = {
   PROPOSE: "제안",
   AMEND: "수정",
   ENDORSE: "동의",
+  NOTE: "동의+메모",
   CHALLENGE: "이의",
   PASS: "PASS",
   BLOCK: "BLOCK",

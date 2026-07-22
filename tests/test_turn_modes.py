@@ -117,6 +117,49 @@ def test_loop_discuss_execute_intent_keeps_loop_profile(monkeypatch: pytest.Monk
     assert contract.plan_intent == "loop"
 
 
+def test_loop_discuss_build_confirmation_keeps_loop_profile(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A plain 'implement/build this now' confirmation (no execute-lane vocabulary
+    like dry-run/merge/worktree) must still escalate out of light discuss —
+    dogfood gap: real file writes shouldn't happen without the consensus gate."""
+    monkeypatch.setenv("AGENT_LAB_TURN_POLICY", "1")
+    topic = (
+        "제안한 기본값 그대로 진행해줘 — 거래일 기준 N일, 매월 마지막 거래일 리밸런싱. "
+        "바로 구현 + pytest까지 진행해줘."
+    )
+    contract = resolve_mode_contract(
+        mode="discuss",
+        synthesize=False,
+        turn_profile="loop",
+        agents=["cursor", "codex", "claude"],
+        agent_rounds=3,
+        review_mode=True,
+        consensus_mode=True,
+        topic=topic,
+    )
+    assert contract.consensus_mode is True
+    assert contract.runtime_turn_profile == "free"
+    assert contract.runtime_turn_profile != "analyze"
+
+
+def test_loop_discuss_pure_question_stays_light(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A purely explanatory question about implementation must not escalate —
+    only an explicit go-ahead confirmation should."""
+    monkeypatch.setenv("AGENT_LAB_TURN_POLICY", "1")
+    topic = "이 함수를 어떻게 구현하면 좋을지 설명해줘. 아직 코드는 건드리지 마."
+    contract = resolve_mode_contract(
+        mode="discuss",
+        synthesize=False,
+        turn_profile="loop",
+        agents=["cursor", "codex"],
+        agent_rounds=3,
+        review_mode=True,
+        consensus_mode=True,
+        topic=topic,
+    )
+    assert contract.consensus_mode is False
+    assert contract.runtime_turn_profile == "analyze"
+
+
 def test_loop_plan_keeps_consensus(monkeypatch: pytest.MonkeyPatch) -> None:
     contract = resolve_mode_contract(
         mode="plan",

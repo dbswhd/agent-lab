@@ -277,7 +277,16 @@ def test_fast_bucket_collection_budget():
     # of the round-1 transient-agent-error retry regression test
     # (test_consensus_retry.py) -- the same fix now covers all 5 agent_error
     # call sites in consensus_rounds.py, not just round 1.
-    assert count <= 3562, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-23: raised 3562 -> 3564 for the build-confirmation consensus
+    # escalation regression (test_turn_modes.py) and the Cursor cumulative-
+    # stream repeated-tail-block dedup regression (test_room_sse_stream.py).
+    # 2026-07-23: raised 3564 -> 3568 for the NOTE act (consent + non-blocking
+    # observation) suite (test_agent_envelope.py) — critics park side-issues
+    # without re-opening the anchor round.
+    # 2026-07-23: raised 3568 -> 3573 for the S1 D1 challenge_precision
+    # instrumentation suite (test_turn_metrics.py) — per-agent CHALLENGE
+    # adoption + NOTE tally, record-only (docs/S1-CHALLENGE-PRECISION.md).
+    assert count <= 3573, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

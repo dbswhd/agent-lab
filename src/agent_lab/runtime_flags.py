@@ -615,6 +615,13 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         "Dogfood suite: record mock execute-phase outcome rows without live Oracle (default off)",
     ),
     FlagDef(
+        "AGENT_LAB_CHALLENGE_PRECISION",
+        "feature",
+        "S1 D1: per-agent CHALLENGE/NOTE tally + adoption rate (challenger-authored-anchor) "
+        "in turn_metrics/outcome ledger — record only, not yet consumed by feedback_advisor "
+        "(docs/S1-CHALLENGE-PRECISION.md, default off)",
+    ),
+    FlagDef(
         "AGENT_LAB_WEAKNESS_MINER",
         "feature",
         "HSIL HS1 MINE: per-turn traces (.agent-lab/traces/) + failure_tags memory_store preservation "

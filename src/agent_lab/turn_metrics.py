@@ -118,6 +118,62 @@ def _objection_resolution_summary(objections: list[dict[str, Any]], *, human_tur
     return summary
 
 
+def _challenge_precision_summary(
+    objections: list[dict[str, Any]],
+    turn_acts: list[dict[str, str]],
+    *,
+    human_turn: int,
+) -> dict[str, dict[str, int]]:
+    """Per-agent CHALLENGE/NOTE tally + adoption count for this human turn (S1 D1).
+
+    See docs/S1-CHALLENGE-PRECISION.md. "Adopted" = the agent's own CHALLENGE
+    was resolved via ``resolve_objections_on_endorse(resolution=
+    "challenger_authored_anchor")`` — their amendment became the anchor
+    everyone endorsed (``room/consensus_rounds.py``). Only CHALLENGE is
+    counted toward precision (not AMEND/PROPOSE — see design doc open
+    question #3); NOTE is tallied separately as a non-blocking-observation
+    volume signal, not scored. Deferred: ``[PROPOSED:]`` → task
+    claimed/done adoption is cross-turn and not yet wired (design doc §3
+    open question #1) — record-only for now.
+    """
+    summary: dict[str, dict[str, int]] = {}
+
+    def _row(agent: str) -> dict[str, int]:
+        return summary.setdefault(
+            agent, {"challenge_total": 0, "challenge_adopted": 0, "note_total": 0}
+        )
+
+    for obj in objections:
+        if not isinstance(obj, dict):
+            continue
+        if str(obj.get("act") or "").strip().upper() != "CHALLENGE":
+            continue
+        try:
+            if int(obj.get("turn") or 0) != human_turn:
+                continue
+        except (TypeError, ValueError):
+            continue
+        agent = str(obj.get("from") or "").strip().lower()
+        if not agent:
+            continue
+        row = _row(agent)
+        row["challenge_total"] += 1
+        if str(obj.get("resolution") or "") == "challenger_authored_anchor":
+            row["challenge_adopted"] += 1
+
+    for entry in turn_acts:
+        if not isinstance(entry, dict):
+            continue
+        if str(entry.get("act") or "").strip().upper() != "NOTE":
+            continue
+        agent = str(entry.get("agent") or "").strip().lower()
+        if not agent:
+            continue
+        _row(agent)["note_total"] += 1
+
+    return summary
+
+
 def _oracle_rollup(executions: list[dict[str, Any]]) -> dict[str, Any]:
     """Snapshot of the session's verification state at turn end.
 
@@ -157,11 +213,17 @@ def build_turn_metrics(
     objections: list[dict[str, Any]],
     executions: list[dict[str, Any]],
     human_turn: int,
+    turn_acts: list[dict[str, str]] | None = None,
 ) -> dict[str, Any]:
     """Roll a persisted turn snapshot + run-level signals into turn_metrics.
 
     Inputs are all already-persisted values (no agent calls). ``turn`` is the
     snapshot produced by ``_turn_snapshot`` (typically ``run["turns"][-1]``).
+    ``turn_acts`` (optional, S1 D1): flat ``{"agent": ..., "act": ...}`` list
+    for every agent envelope act issued this human turn — the caller reads
+    this from chat.jsonl since acts beyond CHALLENGE/BLOCK aren't persisted
+    into ``objections``. Omitted/empty when the caller doesn't have it
+    (backward compatible; challenge_precision.note_total is then always 0).
     """
     category = turn.get("category") if isinstance(turn.get("category"), dict) else {}
     roles = turn.get("roles") if isinstance(turn.get("roles"), dict) else {}
@@ -173,6 +235,9 @@ def build_turn_metrics(
         objection_summary=objection_summary,
         objection_resolution=objection_resolution,
         executions=executions,
+    )
+    challenge_precision = _challenge_precision_summary(
+        objections, turn_acts or [], human_turn=human_turn
     )
 
     metrics: dict[str, Any] = {
@@ -195,5 +260,6 @@ def build_turn_metrics(
         "tool_card_suggestions": category.get("tool_card_suggestions") or [],  # S3a-0
         "failure_tags": failure_tags,  # HS1-1
         "primary_tag": primary_tag,  # HS1-1
+        "challenge_precision": challenge_precision,  # S1 D1 (docs/S1-CHALLENGE-PRECISION.md)
     }
     return metrics

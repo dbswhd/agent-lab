@@ -656,10 +656,11 @@ def run_consensus_agent_rounds(
                 context_log=context_log,
                 extra_follow_up=(
                     "[품질 게이트 — 강제 반론] 이번 토론은 이견 없이 수렴했습니다. "
-                    "합의 확정 전 점검으로, 지금까지의 제안에서 가장 약한 가정이나 "
-                    "누락된 리스크 1건을 골라 CHALLENGE 또는 AMEND envelope로 "
-                    "실질적 반론·대안을 제시하세요. 형식적 반론은 금지 — 정말 "
-                    "반론이 없으면 그 근거를 한 줄로 밝히고 ENDORSE 하세요."
+                    "합의 확정 전 점검으로, 완료를 실제로 막을 만한 약한 가정이나 "
+                    "누락된 리스크가 있으면 1건을 골라 CHALLENGE 또는 AMEND envelope로 "
+                    "실질적 반론·대안을 제시하세요. 형식적 반론은 금지 — "
+                    "완료를 막지 않는 부가 관찰만 있으면 NOTE(라운드 연장 없음), "
+                    "정말 반론이 없으면 그 근거를 한 줄로 밝히고 ENDORSE 하세요."
                 ),
                 efficiency_mode=efficiency_mode,
                 slim_context=efficiency_mode,

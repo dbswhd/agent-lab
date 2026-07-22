@@ -23,7 +23,7 @@ CONVERGENCE_DIMENSIONS: tuple[str, ...] = (
 )
 
 _CONFLICT_ACTS = frozenset({"CHALLENGE", "BLOCK", "AMEND"})
-_SUPPORT_ACTS = frozenset({"ENDORSE", "PASS"})
+_SUPPORT_ACTS = frozenset({"ENDORSE", "PASS", "NOTE"})
 
 
 def debate_convergence_gate_enabled() -> bool:

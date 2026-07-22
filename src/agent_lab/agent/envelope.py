@@ -9,10 +9,12 @@ from typing import Any, Literal
 
 from agent_lab.room.context import is_pass_response, is_pure_no_objection
 
-ActType = Literal["PROPOSE", "AMEND", "ENDORSE", "CHALLENGE", "PASS", "BLOCK", "MESSAGE"]
+ActType = Literal["PROPOSE", "AMEND", "ENDORSE", "CHALLENGE", "PASS", "BLOCK", "MESSAGE", "NOTE"]
 ConsensusVerdict = Literal["endorse", "pass", "substantive", "neutral"]
 
-VALID_ACTS: frozenset[str] = frozenset({"PROPOSE", "AMEND", "ENDORSE", "CHALLENGE", "PASS", "BLOCK", "MESSAGE"})
+VALID_ACTS: frozenset[str] = frozenset(
+    {"PROPOSE", "AMEND", "ENDORSE", "CHALLENGE", "PASS", "BLOCK", "MESSAGE", "NOTE"}
+)
 
 # Acts where the human-readable body should stay very short (token efficiency).
 COMPACT_ACTS: frozenset[str] = frozenset({"ENDORSE", "PASS"})
@@ -258,9 +260,15 @@ def classify_consensus_reply(
     envelope: dict[str, Any] | AgentEnvelope | None = None,
 ) -> ConsensusVerdict:
     """Prefer envelope act; fall back to phrase heuristics when legacy enabled."""
+    act = envelope_act(envelope)
+    # NOTE = consent + non-blocking observation. It must count as endorse even
+    # with a [PROPOSED:] follow-up in the body — that marker is harvested into
+    # tasks separately and must NOT re-open the anchor round (the whole point
+    # of the act: critics park side-issues without extending consensus).
+    if act == "NOTE":
+        return "endorse"
     if body_has_proposed(text):
         return "substantive"
-    act = envelope_act(envelope)
     if act == "ENDORSE":
         return "endorse"
     if act == "PASS":
@@ -324,7 +332,8 @@ Acts (pick one):
 - `PROPOSE` — new proposal or direction
 - `AMEND` — agree with anchor but change scope/steps/risks (starts new anchor round)
 - `ENDORSE` — full agreement with current anchor, **nothing** to add (never use with `[PROPOSED:]` or extra risks)
-- `CHALLENGE` — disagree with reasoning
+- `NOTE` — agreement + one **non-blocking** observation (counts as consent, does **not** extend the round; `[PROPOSED:]` in body becomes a follow-up task)
+- `CHALLENGE` — disagree with reasoning; use only when the issue should **block** completion
 - `PASS` — nothing new vs peers (peer review)
 - `BLOCK` — hard objection; must explain in body
 - `MESSAGE` — direct note to one teammate (`"to":"codex"`, optional `"message"`; body can repeat). Not for Human.
@@ -335,6 +344,7 @@ After the fence, write the normal readable reply for the Human.
 
 **Efficiency (R2+):**
 - `ENDORSE` / `PASS` → body **one line max** (e.g. `이의 없습니다` or `PASS`). Put reasoning in prior R1 if needed.
+- `NOTE` → body 1–3 lines: the observation only. Never restate agreement prose.
 - `AMEND` / `PROPOSE` / `CHALLENGE` → lead with the delta; skip re-summarizing R1 peers.
 - Always use the fence JSON so peers and turn_state can skip re-reading long prose.
 """
@@ -347,8 +357,9 @@ Start with fenced JSON, then your readable body:
 {"act":"ENDORSE","refs":[],"confidence":0.9}
 ```
 
-Acts: PROPOSE | AMEND | ENDORSE | CHALLENGE | PASS | BLOCK | MESSAGE
-ENDORSE/PASS → one-line body. Full rules: docs/HOOK-COMMUNICATE-REFORM.md
+Acts: PROPOSE | AMEND | ENDORSE | NOTE | CHALLENGE | PASS | BLOCK | MESSAGE
+ENDORSE/PASS → one-line body. NOTE = consent + non-blocking observation (no extra round).
+Full rules: docs/HOOK-COMMUNICATE-REFORM.md
 """
 
 DECISION_FORK_GUIDANCE_SHORT = """\

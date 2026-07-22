@@ -66,6 +66,19 @@ _EXECUTE_LANE_MARKERS: Final[tuple[str, ...]] = (
     "반영해",
     "실행해",
 )
+_BUILD_CONFIRM_MARKERS: Final[tuple[str, ...]] = (
+    "구현해줘",
+    "구현해주세요",
+    "구현하고 테스트",
+    "바로 구현",
+    "진행해줘",
+    "진행해주세요",
+    "만들어줘",
+    "만들어주세요",
+    "build it",
+    "implement it",
+    "go ahead and implement",
+)
 _READ_MARKERS: Final[tuple[str, ...]] = (
     "검토",
     "분석",
@@ -117,6 +130,17 @@ def is_execute_lane_topic(text: str) -> bool:
     if _has_marker(lowered, _EXECUTE_LANE_MARKERS):
         return True
     return "merge" in lowered and _has_marker(lowered, ("oracle", "승인", "approve", "verify"))
+
+
+def is_build_confirmation_topic(text: str) -> bool:
+    """Return whether a topic explicitly confirms 'implement/build this now' —
+    broader than the execute-lane vocabulary in is_execute_lane_topic (which
+    only matches dry-run/merge/worktree/oracle-style phrasing), narrow enough
+    to skip pure explanatory questions (e.g. "구현 방법을 설명해줘")."""
+    lowered = (text or "").strip().lower()
+    if not lowered:
+        return False
+    return _has_marker(lowered, _BUILD_CONFIRM_MARKERS)
 
 
 def observe_turn_intent(topic: str, run_meta: RunStateLike) -> TurnIntent:

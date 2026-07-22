@@ -126,6 +126,35 @@ def test_dedupe_adjacent_stream_dupes_halves_and_paragraphs():
     assert dedupe_adjacent_stream_dupes(exact + exact) == exact
 
 
+def test_dedupe_adjacent_stream_dupes_drops_repeated_tail_block():
+    """Dogfood regression: a cumulative-snapshot provider (Cursor) can
+    re-emit its whole completed answer behind a *different* short preamble
+    each time (not adjacent paragraphs, not an exact even split) — a real
+    duplicate observed in a live session's transcript."""
+    preamble_1 = "I am acting as Cursor in Agent Lab's multi-agent room.\n\n"
+    preamble_2 = "MESSAGE act 선택. 짧게 보고한다.\n\n"
+    answer = (
+        "**현황 (도구로 확인)**\n"
+        "- scratch/quant_momentum/는 아직 없음. 있는 건 scratch/calc_cli/, scratch/text_stats/뿐.\n"
+        "- 기존 scratch 패턴은 평탄 구조: <모듈>.py + test_<모듈>.py, argparse CLI, stdlib 위주.\n\n"
+        "**추가 리스크**\n"
+        "- pyproject.toml에 pandas/numpy 선언 없음. 로컬 venv에는 깔려 있지만 선언되지 않은 의존성임.\n\n"
+        "확인 필요: 구현 시 의존성을 stdlib csv로 갈지, 로컬 venv pandas를 쓸지 아직 레포에 결정 흔적 없음."
+    )
+    doubled = preamble_1 + answer + "\n\n" + preamble_2 + answer
+    cleaned = dedupe_adjacent_stream_dupes(doubled)
+    assert cleaned.count("결정 흔적 없음") == 1
+    assert cleaned.startswith(preamble_1.strip())
+    assert answer in cleaned
+
+
+def test_dedupe_adjacent_stream_dupes_keeps_short_incidental_repeats():
+    """A short recurring phrase (well under the tail-dupe threshold) is not
+    a stream-resync artifact — must not be collapsed."""
+    text = "합의합니다.\n\n다른 내용입니다.\n\n합의합니다."
+    assert dedupe_adjacent_stream_dupes(text) == text
+
+
 def test_choose_agent_reply_body_prefers_stream_when_result_is_tail_only():
     report = "A" * 4000 + "\n\n**axis 1** score 3/5"
     tail = "이미 반영 완료된 데이터입니다."

@@ -104,6 +104,31 @@ class CumulativeTextStreamer:
         self._buffer = ""
 
 
+
+# Below this, a matching tail block is treated as coincidental short-phrase
+# repetition rather than a genuinely re-emitted answer.
+_TAIL_DUPE_MIN_CHARS = 150
+
+
+def _dedupe_repeated_tail_block(t: str) -> str:
+    """Drop a substantial tail of ``t`` that exactly duplicates an earlier
+    block in the same text (e.g. a cumulative-snapshot provider like Cursor
+    re-emitting its full completed answer after a stream resync glitch —
+    see ``CumulativeTextStreamer``'s fallback branches, which can append a
+    whole new snapshot instead of diffing it against the buffer). Only
+    catches an *exact*, substantial repeat; distinct surrounding narration
+    on each side is left untouched."""
+    n = len(t)
+    if n < _TAIL_DUPE_MIN_CHARS * 2:
+        return t
+    for k in range(n // 2, _TAIL_DUPE_MIN_CHARS - 1, -1):
+        tail = t[n - k :]
+        idx = t.find(tail)
+        if idx != -1 and idx < n - k:
+            return t[: idx + k].rstrip()
+    return t
+
+
 def dedupe_adjacent_stream_dupes(text: str) -> str:
     """Drop back-to-back repeated paragraphs and exact halved duplicates."""
     t = text.strip()
@@ -112,6 +137,7 @@ def dedupe_adjacent_stream_dupes(text: str) -> str:
     half = len(t) // 2
     if len(t) % 2 == 0 and half > 0 and t[:half] == t[half:]:
         return t[:half]
+    t = _dedupe_repeated_tail_block(t)
     parts = re.split(r"\n{2,}", t)
     if len(parts) < 2:
         return t

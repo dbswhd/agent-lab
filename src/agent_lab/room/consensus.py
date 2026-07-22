@@ -102,7 +102,9 @@ def is_substantive_reply(
 ) -> bool:
     """Prefer envelope act; fall back to phrase heuristics."""
     act = envelope_act(envelope)
-    if act in ("ENDORSE", "PASS"):
+    # NOTE is consent-side: its observation body must not make it "substantive"
+    # (substantive replies re-open the anchor round).
+    if act in ("ENDORSE", "PASS", "NOTE"):
         return False
     if act in ("PROPOSE", "AMEND", "CHALLENGE", "BLOCK"):
         return True
@@ -182,7 +184,9 @@ def consensus_follow_up(
         f"{anchor_line}"
         f"{delta_line}\n"
         f"완전 동의(`act: ENDORSE`)는 추가 제안·리스크·`[PROPOSED:]` 없을 때만. "
-        f"보완이 있으면 `act: AMEND` 로 수정안을 쓰세요 (새 앵커 라운드). "
+        f"동의하지만 **완료를 막지 않는** 부가 관찰이 있으면 `act: NOTE` — "
+        f"동의로 처리되고 라운드를 늘리지 않으며, 본문의 `[PROPOSED:]`는 후속 작업으로 수집됩니다. "
+        f"앵커 자체를 바꿔야 하면 `act: AMEND` 로 수정안을 쓰세요 (새 앵커 라운드). "
         f"`ENDORSE`/`PASS` 본문은 1줄로 짧게 (fence JSON 필수). "
     )
     if legacy_endorse_enabled():

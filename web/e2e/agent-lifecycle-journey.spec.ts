@@ -198,6 +198,8 @@ function activeExecution(state: FixtureState): Record<string, unknown> | null {
           }
         : null,
     approved_by: "human:e2e",
+    auto_merge: false,
+    trust_budget_used: 0,
   };
 }
 
@@ -452,7 +454,10 @@ function sessionDetail(state: FixtureState): Record<string, unknown> {
       plan_revision: state.planRevision,
       plan_hash: state.planHash,
       approved_by: state.approvedBy,
-      actions: state.phase === "intake" ? [] : [recommendedAction],
+      actions:
+        state.phase === "intake" || state.phase === "succeeded"
+          ? []
+          : [recommendedAction],
       executions: execution ? [execution] : [],
       plan_workflow:
         state.phase === "intake"
@@ -608,7 +613,10 @@ async function installFixture(page: Page, state: FixtureState): Promise<void> {
       return;
     }
     if (path === `/api/sessions/${SESSION_ID}/plan-actions`) {
-      const action = state.phase === "intake" ? null : recommendedAction;
+      const action =
+        state.phase === "intake" || state.phase === "succeeded"
+          ? null
+          : recommendedAction;
       await fulfillJson(route, {
         recommended: action,
         now: action ? [action] : [],
@@ -1036,6 +1044,16 @@ async function browserReadModel(page: Page): Promise<Record<string, unknown>> {
   }, SESSION_ID);
 }
 
+async function assertFinalBrowserSurface(page: Page): Promise<void> {
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Oracle 통과" })).toBeVisible();
+  await expect(page.locator("[data-active-decision-id]")).toHaveCount(0);
+  await expect(page.getByText("Execute 승인 필요")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Execute", exact: true }),
+  ).toHaveCount(0);
+}
+
 async function approvePlanAndAwaitDryRun(page: Page): Promise<void> {
   const review = page.locator(".plan-approval-strip");
   const approveAndExecute = review.getByRole("button", {
@@ -1092,6 +1110,17 @@ function expectFinalAudit(
   expect(
     state.requests.some((request) => request.path.includes("/auto-merge")),
   ).toBe(false);
+  expect(runtimePayload(state)).toMatchObject({
+    autonomy: {
+      trust_budget: { auto_merge_remaining: 0, auto_merge_total: 0 },
+      signals: { auto_approve_enabled: false },
+    },
+  });
+  expect(execution).toMatchObject({
+    approved_by: "human:e2e",
+    auto_merge: false,
+    trust_budget_used: 0,
+  });
   expect(state.audits).not.toHaveLength(0);
 }
 
@@ -1182,6 +1211,7 @@ test("connected Human-gated journey reaches PASS only with durable evidence", as
       negative_assertion: "trust-budget auto-merge remains unused",
     },
   ]);
+  await assertFinalBrowserSurface(page);
   await page.screenshot({
     path: resolve(EVIDENCE_DIR, "happy-final-pass.png"),
     fullPage: true,
@@ -1231,6 +1261,9 @@ test("Oracle FAIL repairs through bounded re-discuss retries before PASS", async
     repair_attempt: 0,
     max_repair_attempts: 2,
   });
+  const noticeClose = page.locator(".composer-notice-card__dismiss").first();
+  if (await noticeClose.isVisible()) await noticeClose.click();
+  await page.locator(".ctx-mission").scrollIntoViewIfNeeded();
   await page.screenshot({
     path: resolve(EVIDENCE_DIR, "repair-oracle-fail.png"),
     fullPage: true,
@@ -1279,6 +1312,7 @@ test("Oracle FAIL repairs through bounded re-discuss retries before PASS", async
     post_state: "SUCCEEDED@v8",
     negative_assertion: "pending decision is empty only after Oracle PASS",
   });
+  await assertFinalBrowserSurface(page);
   await page.screenshot({
     path: resolve(EVIDENCE_DIR, "repair-final-pass.png"),
     fullPage: true,

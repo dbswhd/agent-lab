@@ -1,5 +1,12 @@
+import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
-import { expect, test, type Page, type Route } from "playwright/test";
+import {
+  expect,
+  test,
+  type Page,
+  type Route,
+  type TestInfo,
+} from "playwright/test";
 
 const SESSION_ID = "lifecycle-acceptance";
 const SESSION_TOPIC = "Lifecycle acceptance";
@@ -11,6 +18,7 @@ const EVIDENCE_DIR = resolve(
   process.cwd(),
   "../.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3/browser",
 );
+const HUMAN_PROVENANCE_HEADER = "x-agent-lab-e2e-human-provenance";
 
 const planMarkdown = `## 목표
 Decision Queue에서 Oracle PASS까지 한 흐름으로 검증합니다.
@@ -551,11 +559,122 @@ function recordRequest(state: FixtureState, route: Route): RequestReceipt {
   return receipt;
 }
 
+function parsedBody(receipt: RequestReceipt): Record<string, unknown> | null {
+  try {
+    const value: unknown = JSON.parse(receipt.body);
+    return value !== null && typeof value === "object" && !Array.isArray(value)
+      ? Object.fromEntries(Object.entries(value))
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+async function rejectUntrustedGateRequest(
+  route: Route,
+  expectedProvenance: string,
+  body: Record<string, unknown> | null,
+): Promise<boolean> {
+  if (
+    route.request().headers()[HUMAN_PROVENANCE_HEADER] !== expectedProvenance
+  ) {
+    await fulfillJson(
+      route,
+      { detail: { code: "human_provenance_required" } },
+      403,
+    );
+    return true;
+  }
+  if (
+    body?.auto_approve === true ||
+    body?.auto_merge === true ||
+    body?.trust_budget_used !== undefined
+  ) {
+    await fulfillJson(
+      route,
+      { detail: { code: "human_gate_cannot_be_automated" } },
+      403,
+    );
+    return true;
+  }
+  const path = new URL(route.request().url()).pathname;
+  const permissions = body?.permissions;
+  const bodyIsExpected = path.endsWith("/plan/approve")
+    ? JSON.stringify(body) === "{}"
+    : path.endsWith("/execute/resolve") &&
+      body?.execution_id === EXECUTION_ID &&
+      body.vote === "approve" &&
+      permissions !== null &&
+      typeof permissions === "object" &&
+      !Array.isArray(permissions) &&
+      Object.keys(body).sort().join(",") === "execution_id,permissions,vote";
+  if (!bodyIsExpected) {
+    await fulfillJson(
+      route,
+      { detail: { code: "invalid_gate_decision" } },
+      409,
+    );
+    return true;
+  }
+  return false;
+}
+
 function addGateLedger(state: FixtureState, entry: GateLedgerEntry): void {
   state.gateLedger.push(entry);
 }
 
 async function installFixture(page: Page, state: FixtureState): Promise<void> {
+  const humanProvenance = randomUUID();
+  await page.addInitScript(
+    ({ headerName, headerValue }) => {
+      let trustedGateIntent: "plan" | "execute" | null = null;
+      window.addEventListener(
+        "click",
+        (event) => {
+          if (!event.isTrusted) return;
+          const target =
+            event.target instanceof Element
+              ? event.target.closest("button")
+              : null;
+          const label = target?.textContent?.trim() ?? "";
+          if (label === "승인하고 실행" || label === "승인만") {
+            trustedGateIntent = "plan";
+          } else if (
+            label === "승인" &&
+            target?.closest('[aria-label="실행 승인 대기"]')
+          ) {
+            trustedGateIntent = "execute";
+          }
+          window.setTimeout(() => {
+            trustedGateIntent = null;
+          }, 0);
+        },
+        true,
+      );
+      const originalFetch = window.fetch.bind(window);
+      window.fetch = (input, init) => {
+        const url = new URL(
+          input instanceof Request ? input.url : String(input),
+          window.location.href,
+        );
+        const intent = url.pathname.endsWith("/plan/approve")
+          ? "plan"
+          : url.pathname.endsWith("/execute/resolve")
+            ? "execute"
+            : null;
+        if (intent === null || intent !== trustedGateIntent) {
+          return originalFetch(input, init);
+        }
+        trustedGateIntent = null;
+        const headers = new Headers(
+          input instanceof Request ? input.headers : init?.headers,
+        );
+        headers.set(headerName, headerValue);
+        return originalFetch(input, { ...init, headers });
+      };
+    },
+    { headerName: HUMAN_PROVENANCE_HEADER, headerValue: humanProvenance },
+  );
   await page.route(/^http:\/\/127\.0\.0\.1:\d+\/api\//, async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -796,7 +915,16 @@ async function installFixture(page: Page, state: FixtureState): Promise<void> {
       path === `/api/sessions/${SESSION_ID}/plan/approve` &&
       request.method() === "POST"
     ) {
-      recordRequest(state, route);
+      const receipt = recordRequest(state, route);
+      if (
+        await rejectUntrustedGateRequest(
+          route,
+          humanProvenance,
+          parsedBody(receipt),
+        )
+      ) {
+        return;
+      }
       const preVersion = state.version;
       state.approvedPlanHash = state.planHash;
       state.approvedBy = "human:e2e";
@@ -872,7 +1000,16 @@ async function installFixture(page: Page, state: FixtureState): Promise<void> {
       path === `/api/sessions/${SESSION_ID}/execute/resolve` &&
       request.method() === "POST"
     ) {
-      recordRequest(state, route);
+      const receipt = recordRequest(state, route);
+      if (
+        await rejectUntrustedGateRequest(
+          route,
+          humanProvenance,
+          parsedBody(receipt),
+        )
+      ) {
+        return;
+      }
       const preVersion = state.version;
       state.phase = state.kind === "repair" ? "oracle_fail" : "succeeded";
       state.version += 1;
@@ -1067,6 +1204,20 @@ async function assertFinalBrowserSurface(page: Page): Promise<void> {
   ).toHaveCount(0);
 }
 
+function evidenceScreenshotPath(
+  testInfo: TestInfo,
+  artifactName: string,
+): string {
+  const testSlug = testInfo.title
+    .replaceAll(/[^a-zA-Z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+  const project = testInfo.project.name || "default";
+  return resolve(
+    EVIDENCE_DIR,
+    `${project}-repeat-${testInfo.repeatEachIndex}-${testSlug}-${artifactName}.png`,
+  );
+}
+
 async function approvePlanAndAwaitDryRun(page: Page): Promise<void> {
   const review = page.locator(".plan-approval-strip");
   const approveAndExecute = review.getByRole("button", {
@@ -1139,7 +1290,7 @@ function expectFinalAudit(
 
 test("connected Human-gated journey reaches PASS only with durable evidence", async ({
   page,
-}) => {
+}, testInfo) => {
   // Given: an existing Room session is idle and every production gate remains Human-controlled.
   const state = createState("happy");
   await initialize(page);
@@ -1226,14 +1377,180 @@ test("connected Human-gated journey reaches PASS only with durable evidence", as
   ]);
   await assertFinalBrowserSurface(page);
   await page.screenshot({
-    path: resolve(EVIDENCE_DIR, "happy-final-pass.png"),
+    path: evidenceScreenshotPath(testInfo, "happy-final-pass"),
     fullPage: true,
   });
 });
 
-test("Oracle FAIL repairs through bounded re-discuss retries before PASS", async ({
+test("direct and automated gate requests cannot create approval or success evidence", async ({
   page,
 }) => {
+  // Given: the plan gate is pending and only a real rendered UI click can mint fixture provenance.
+  const state = createState("happy");
+  state.phase = "plan_pending";
+  state.version = 2;
+  await initialize(page);
+  await installFixture(page, state);
+  await openFixtureSession(page);
+
+  // When: direct requests omit provenance, forge it, or claim automation authority.
+  const planStatuses = await page.evaluate(async (sessionId) => {
+    const endpoint = `/api/sessions/${sessionId}/plan/approve`;
+    const requests = [
+      fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      }),
+      fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-agent-lab-e2e-human-provenance": "forged",
+        },
+        body: "{}",
+      }),
+      fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-agent-lab-e2e-human-provenance": "forged",
+        },
+        body: JSON.stringify({
+          auto_approve: true,
+          trust_budget_used: 1,
+        }),
+      }),
+    ];
+    return Promise.all(
+      (await Promise.all(requests)).map((response) => response.status),
+    );
+  }, SESSION_ID);
+
+  // Then: the pending plan remains unapproved with no audit or evidence.
+  expect(planStatuses).toEqual([403, 403, 403]);
+  expect(state).toMatchObject({
+    phase: "plan_pending",
+    version: 2,
+    approvedPlanHash: null,
+    approvedBy: null,
+    audits: [],
+    gateLedger: [],
+  });
+
+  // Given: a durable execution diff is pending Human review.
+  state.phase = "execute_pending";
+  state.version = 4;
+  state.approvedPlanHash = PLAN_HASH_V1;
+  state.approvedBy = "human:e2e";
+
+  // When: direct merge requests omit provenance, forge identity, or request auto-merge.
+  const mergeStatuses = await page.evaluate(
+    async ({ sessionId, executionId }) => {
+      const endpoint = `/api/sessions/${sessionId}/execute/resolve`;
+      const post = (body: Record<string, unknown>, provenance?: string) =>
+        fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(provenance
+              ? { "x-agent-lab-e2e-human-provenance": provenance }
+              : {}),
+          },
+          body: JSON.stringify(body),
+        });
+      const requests = [
+        post({
+          execution_id: executionId,
+          vote: "approve",
+          permissions: {},
+        }),
+        post(
+          {
+            execution_id: "wrong-execution",
+            vote: "approve",
+            permissions: {},
+          },
+          "forged",
+        ),
+        post(
+          {
+            execution_id: executionId,
+            vote: "approve",
+            permissions: {},
+            auto_merge: true,
+            trust_budget_used: 1,
+          },
+          "forged",
+        ),
+      ];
+      return Promise.all(
+        (await Promise.all(requests)).map((response) => response.status),
+      );
+    },
+    { sessionId: SESSION_ID, executionId: EXECUTION_ID },
+  );
+
+  // Then: the diff remains unmerged and success evidence stays empty.
+  expect(mergeStatuses).toEqual([403, 403, 403]);
+  expect(state.phase).toBe("execute_pending");
+  expect(state.version).toBe(4);
+  expect(state.audits).toEqual([]);
+  expect(state.gateLedger).toEqual([]);
+  expect(activeExecution(state)).toMatchObject({
+    status: "pending_approval",
+    merge: null,
+    oracle: null,
+  });
+  expect(runtimePayload(state)).toMatchObject({
+    evidence: { entries: [] },
+  });
+
+  // Given: an optimistic-lock Inbox decision is current at version seven.
+  state.phase = "question";
+  state.version = 7;
+  state.staleResolved = false;
+
+  // When: callers submit the wrong version or decision identity.
+  const decisionStatuses = await page.evaluate(
+    async ({ sessionId, decisionId }) => {
+      const endpoint = `/api/sessions/${sessionId}/inbox/${decisionId}/resolve`;
+      const post = (body: Record<string, unknown>) =>
+        fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+      const responses = await Promise.all([
+        post({
+          decision_id: decisionId,
+          mission_id: "mission-lifecycle-1",
+          expected_version: 6,
+          selected: ["safe"],
+        }),
+        post({
+          decision_id: "wrong-decision",
+          mission_id: "mission-lifecycle-1",
+          expected_version: 7,
+          selected: ["safe"],
+        }),
+      ]);
+      return responses.map((response) => response.status);
+    },
+    { sessionId: SESSION_ID, decisionId: staleQuestion.id },
+  );
+
+  // Then: neither optimistic-lock attack resolves the Human decision.
+  expect(decisionStatuses).toEqual([409, 409]);
+  expect(state.version).toBe(7);
+  expect(state.staleResolved).toBe(false);
+  expect(state.audits).toEqual([]);
+  expect(state.gateLedger).toEqual([]);
+});
+
+test("Oracle FAIL repairs through bounded re-discuss retries before PASS", async ({
+  page,
+}, testInfo) => {
   // Given: a connected journey whose first post-merge Oracle verdict is forced to FAIL.
   const state = createState("repair");
   await initialize(page);
@@ -1278,7 +1595,7 @@ test("Oracle FAIL repairs through bounded re-discuss retries before PASS", async
   if (await noticeClose.isVisible()) await noticeClose.click();
   await page.locator(".ctx-mission").scrollIntoViewIfNeeded();
   await page.screenshot({
-    path: resolve(EVIDENCE_DIR, "repair-oracle-fail.png"),
+    path: evidenceScreenshotPath(testInfo, "repair-oracle-fail"),
     fullPage: true,
   });
 
@@ -1327,14 +1644,14 @@ test("Oracle FAIL repairs through bounded re-discuss retries before PASS", async
   });
   await assertFinalBrowserSurface(page);
   await page.screenshot({
-    path: resolve(EVIDENCE_DIR, "repair-final-pass.png"),
+    path: evidenceScreenshotPath(testInfo, "repair-final-pass"),
     fullPage: true,
   });
 });
 
 test("stale expected_version returns 409 without corrupting the resolved state", async ({
   page,
-}) => {
+}, testInfo) => {
   // Given: the canonical backend order promotes the high-priority question ahead of a queued item.
   const samePriorityAndTimeA = {
     ...queuedQuestion,
@@ -1359,7 +1676,7 @@ test("stale expected_version returns 409 without corrupting the resolved state",
   await openFixtureSession(page);
   await assertSingleActiveDecision(page, staleQuestion.id);
   await page.screenshot({
-    path: resolve(EVIDENCE_DIR, "single-active-decision-queued.png"),
+    path: evidenceScreenshotPath(testInfo, "single-active-decision-queued"),
     fullPage: true,
   });
   const before = await browserReadModel(page);

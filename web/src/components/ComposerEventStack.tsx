@@ -175,6 +175,8 @@ export function ComposerEventStack({
   );
   const effectiveInboxPendingCount =
     missionReadModel?.inbox_summary?.pending_count ?? inboxPendingCount;
+  const activeDecisionId =
+    missionReadModel?.open_execution_gates[0]?.gate_id ?? undefined;
 
   function scrollStackRoot() {
     rootRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -212,8 +214,8 @@ export function ComposerEventStack({
 
   const workflowPhase = (
     missionReadModel?.plan?.phase ??
-    planWorkflow?.phase ??
     runtime?.plan_workflow?.phase ??
+    planWorkflow?.phase ??
     ""
   ).toUpperCase();
 
@@ -415,7 +417,11 @@ export function ComposerEventStack({
 
   return (
     <div className="composer-stack-scroll" ref={rootRef}>
-      <div className="composer-event-stack" data-composer-lane={activeLane}>
+      <div
+        className="composer-event-stack"
+        data-composer-lane={activeLane}
+        data-active-decision-id={activeDecisionId}
+      >
         {activeLane !== "work" ? (
           <DecisionQueueHeader
             activeLane={activeLane}

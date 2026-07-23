@@ -556,7 +556,7 @@ function addGateLedger(state: FixtureState, entry: GateLedgerEntry): void {
 }
 
 async function installFixture(page: Page, state: FixtureState): Promise<void> {
-  await page.route(/^http:\/\/127\.0\.0\.1:4173\/api\//, async (route) => {
+  await page.route(/^http:\/\/127\.0\.0\.1:\d+\/api\//, async (route) => {
     const request = route.request();
     const url = new URL(request.url());
     const path = url.pathname;

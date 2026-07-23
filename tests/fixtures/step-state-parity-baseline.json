@@ -1,0 +1,18 @@
+{
+  "phase_mismatches": [],
+  "repair_mismatches": [
+    {
+      "action_index": 2,
+      "action_repair_counts": 2,
+      "fixture": "mission_loop_discuss_recovery",
+      "repair_history_len": 0
+    },
+    {
+      "action_index": 1,
+      "action_repair_counts": 1,
+      "fixture": "mission_loop_verify_repair",
+      "repair_history_len": 0
+    }
+  ],
+  "unmapped_statuses": []
+}

@@ -301,6 +301,8 @@ def test_fast_bucket_collection_budget():
     # goal_ledger policy-decision entries (test_pipeline_goal_ledger.py) —
     # mission_topology/mission_topology_reroute now carry a machine-readable
     # decision/revision/trigger payload alongside the existing note string.
+    # 2026-07-23: the step-state parity characterization ratchet
+    # (test_step_state_parity_ratchet.py) fits under 3602; no bump needed.
     assert count <= 3602, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 

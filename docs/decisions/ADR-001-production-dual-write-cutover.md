@@ -2,9 +2,9 @@
 
 ## Status
 
-Accepted — **Controlled cohort GO (v3d) and Full traffic soak PASS (historical evidence). Slice 1–3 soft-authority implementation is a retired compatibility record. Journal-first Wave A read-model composites shipped. M6 hard retire still pending separate Human approval.**
+Accepted — **Controlled cohort GO (v3d) and Full traffic soak PASS (historical evidence). Slice 1/3 (plan + execution) soft-authority re-enabled 2026-07-23, cohort-gated behind DUAL_WRITE + a non-empty session allowlist. Slice 2 (inbox) stays retired permanently, superseded by the stronger AGENT_LAB_MISSION_AUTHORITY path. Journal-first Wave A read-model composites shipped. M6 hard retire still pending separate Human approval.**
 
-> **Current runtime (M6-9, 2026-07-14):** Slice 1–3 authority functions are retired and disabled/fail-closed. The corresponding authority environment variables are no longer registered or honored. Any authority enable commands, profile-default statements, or empty-allowlist examples retained below are **historical evidence only**, not operator configuration. The dual-write bridge itself requires a non-empty session allowlist; an empty allowlist disables it.
+> **Current runtime (2026-07-23 update):** Slice 1 (`AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY`) and Slice 3 (`AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY`) are re-registered flags, default `"1"` on balanced/thorough/autonomous profiles, and are live for any session in `AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS` (non-empty allowlist required — the 2026-07-14 "empty allowlist = all sessions" shortcut does NOT apply; a session must be explicitly named). Slice 2 (`AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY`) remains hardcoded disabled/fail-closed and de-registered — inbox authority lives instead through `AGENT_LAB_MISSION_AUTHORITY`/Wave B, which carries the full item payload rather than just a gate id. The 2026-07-14 "retired, historical only" framing below for Slices 1 and 3 is superseded by this re-enable; it is kept for audit history.
 
 ## Date
 
@@ -54,7 +54,7 @@ Agent Lab은 기존 `run.json`·`plan_workflow`·`mission_loop` writer를 유지
 5. 기존 writer와 compatibility projection은 유지한다. flag OFF rollback이 통과했으므로 즉시(재시작 후) legacy-only로 되돌릴 수 있다.
 6. Full traffic soak **통과 후**에만 Human이 legacy writer retire 시점·irreversible cleanup 범위를 승인한다.
 
-> **Historical/non-runtime record:** Decisions 7–9 and their linked Slice runbooks preserve the 2026-07-14 enable evidence. They are retained for audit and do not authorize current runtime configuration; Slice 1–3 authority functions now remain disabled/fail-closed.
+> **2026-07-23 update:** Decisions 7 (plan) and 9 (execution) below are now the live configuration again — re-enabled cohort-gated, per the Status update above. Decision 8 (inbox) stays historical/non-runtime; that slice was superseded by `AGENT_LAB_MISSION_AUTHORITY` rather than re-enabled. Decisions 7–9 and their linked Slice runbooks otherwise preserve the original 2026-07-14 enable evidence for audit.
 
 7. **Slice 1 (M4 plan soft authority) — Human enable GO (2026-07-14); profile default ON.** Dogfood/production API runs with `AGENT_LAB_MISSION_DUAL_WRITE=1` + `AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY=1`. balanced/thorough/autonomous apply `PLAN_WRITE_AUTHORITY=1` as fill-in default (still no-op without dual-write). Live smoke: approve → `plan_approve_commit` / `APPROVED` / `PlanApproved`; reject `REFINE` → `plan_reject_commit`. Inbox/execute soft slices and M6 hard delete remain separate Human gates. Runbook: [dual-write-retire-slice-plan-soft-2026-07-14](../redesign-2026-07/evidence/dual-write-retire-slice-plan-soft-2026-07-14.md). Artifact: `/tmp/agent-lab-dw-plan-authority-20260714/`.
 8. **Slice 2 (inbox execution-gate soft authority) — enable GO (2026-07-14).** Mission-first gate open/close + `human_inbox` projection. Supersede gate close + harvest gate sync completed with Decision 9. Runbook: [dual-write-retire-slice-inbox-soft-2026-07-14](../redesign-2026-07/evidence/dual-write-retire-slice-inbox-soft-2026-07-14.md).

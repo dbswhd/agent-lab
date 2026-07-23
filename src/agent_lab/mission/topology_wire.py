@@ -30,6 +30,17 @@ The arm-time decision is not static:
 
 ``manager_bottleneck`` / ``exploration`` have no signal source yet so they are
 always False (recorded in the ``signals`` provenance).
+
+M6 scope note: this module's state (``run.json["mission_topology"]``,
+``mission_loop.action_repair_cap_override``, ``mission_loop.consecutive_verify_passes``)
+is intentionally legacy-only with no ``mission/kernel.py`` command/event
+equivalent. Building one now would only matter once the
+``AGENT_LAB_MISSION_DUAL_WRITE`` bounded cohort extends authority to plan/topology
+decisions, which is deliberately not in progress (Wave B/inbox authority was
+chosen over that track — see
+docs/redesign-2026-07/evidence/m6-final-retire-2026-07-14/deletion-manifest.json
+``m6_scope_exclusions``). Revisit only alongside that larger authority
+expansion, not in isolation.
 """
 
 from pathlib import Path

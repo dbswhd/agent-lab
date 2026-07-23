@@ -414,11 +414,38 @@ def test_plan_write_authority_on_mission_first_then_side_effects(tmp_path: Path,
     monkeypatch.setenv("AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY", "1")
 
     from agent_lab.mission.dual_write import commit_plan_approval, plan_write_authority_enabled
+    from agent_lab.plan.workflow_approval import (
+        approve_plan_with_mission_authority,
+        ensure_plan_workflow_approved,
+    )
 
-    assert plan_write_authority_enabled(folder) is False
+    assert plan_write_authority_enabled(folder) is True
+
+    # Mission commit alone leaves journal + projected phase before side effects.
     commit = commit_plan_approval(folder, goal="ship")
-    assert commit["mirrored"] is False
-    assert commit["reason"] == "plan_write_authority_disabled"
+    assert commit["mirrored"] is True
+    assert commit["operation"] == "plan_approve_commit"
+    journal = folder / ".agent-lab" / "mission-events.jsonl"
+    assert journal.is_file()
+    journal_text = journal.read_text(encoding="utf-8")
+    assert "PlanApproved" in journal_text
+    assert read_run_meta(folder)["plan_workflow"]["phase"] == "APPROVED"
+
+    # Fresh journal for the full path test in a sibling session (own allowlist entry).
+    folder2 = tmp_path / "session-auth"
+    folder2.mkdir()
+    (folder2 / "plan.md").write_text("# Plan\n\n- ship", encoding="utf-8")
+    (folder2 / "run.json").write_text(
+        '{"plan_workflow":{"enabled":true,"phase":"HUMAN_PENDING"}}',
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS", f"{folder.name},{folder2.name}")
+
+    result = approve_plan_with_mission_authority(folder2, goal="ship")
+    assert result["plan_workflow"]["phase"] == "APPROVED"
+    assert result["mission_dual_write"]["mirrored"] is True
+    ensure_plan_workflow_approved(folder2)
+    assert MissionApplication(folder2, "ship").load().state is MissionState.READY_TO_EXECUTE
 
 
 def test_plan_write_authority_commit_is_idempotent(tmp_path: Path, monkeypatch) -> None:
@@ -430,10 +457,9 @@ def test_plan_write_authority_commit_is_idempotent(tmp_path: Path, monkeypatch) 
 
     first = commit_plan_approval(folder, goal="ship")
     second = commit_plan_approval(folder, goal="ship")
-    assert first["mirrored"] is False
-    assert second["mirrored"] is False
-    assert first["reason"] == "plan_write_authority_disabled"
-    assert second["reason"] == "plan_write_authority_disabled"
+    assert first["mirrored"] is True
+    assert second["mirrored"] is True
+    assert MissionApplication(folder, "ship").load().version == 2
 
 
 def test_plan_write_authority_reject_honors_refine(tmp_path: Path, monkeypatch) -> None:
@@ -443,8 +469,10 @@ def test_plan_write_authority_reject_honors_refine(tmp_path: Path, monkeypatch) 
 
     from agent_lab.plan.workflow_approval import reject_plan_with_mission_authority
 
-    with pytest.raises(ValueError, match="plan write authority is not enabled"):
-        reject_plan_with_mission_authority(folder, note="narrow scope", target_phase="REFINE")
+    result = reject_plan_with_mission_authority(folder, note="narrow scope", target_phase="REFINE")
+    assert result["plan_workflow"]["phase"] == "REFINE"
+    assert result["plan_workflow"].get("last_reject_note") == "narrow scope"
+    assert result["mission_dual_write"]["mirrored"] is True
 
 
 def test_plan_write_authority_off_reject_mirror_still_clarify(tmp_path: Path, monkeypatch) -> None:
@@ -470,7 +498,7 @@ def test_plan_write_authority_rollback_via_flag_off(tmp_path: Path, monkeypatch)
 
     from agent_lab.mission.dual_write import plan_write_authority_enabled
 
-    assert plan_write_authority_enabled(folder) is False
+    assert plan_write_authority_enabled(folder) is True
     monkeypatch.delenv("AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY", raising=False)
     assert plan_write_authority_enabled(folder) is False
 
@@ -596,26 +624,17 @@ def test_execution_write_authority_commit_approve(tmp_path: Path, monkeypatch) -
     monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
     monkeypatch.setenv("AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY", "1")
 
-    from agent_lab.mission.dual_write import (
-        commit_execution_transition,
-        execution_write_authority_enabled,
-        mirror_execution_transition,
-    )
+    from agent_lab.mission.dual_write import commit_execution_transition, execution_write_authority_enabled
 
-    assert execution_write_authority_enabled(folder) is False
+    assert execution_write_authority_enabled(folder) is True
     MissionApplication(folder, "ship").approve_plan()
-    commit = commit_execution_transition(
-        folder,
-        execution={"id": "exec-1", "status": "approved"},
-        phase="approve",
-    )
-    assert commit["mirrored"] is False
-    result = mirror_execution_transition(
+    result = commit_execution_transition(
         folder,
         execution={"id": "exec-1", "status": "approved"},
         phase="approve",
     )
     assert result["mirrored"] is True
+    assert result["operation"] == "execution_approve_commit"
     assert MissionApplication(folder, "ship").load().state is MissionState.VERIFYING
 
 
@@ -633,5 +652,5 @@ def test_execution_write_authority_reject_stays_legacy_only(tmp_path: Path, monk
         phase="reject",
     )
     assert result["mirrored"] is False
-    assert result["reason"] == "execution_write_authority_disabled"
+    assert result["reason"] == "legacy_only"
     assert MissionApplication(folder, "ship").load().state is MissionState.READY_TO_EXECUTE

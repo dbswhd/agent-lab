@@ -6,15 +6,15 @@
   "consumer_inventory": {
     "baseline_references": 251,
     "baseline_target_files": 12,
-    "references": 275,
+    "references": 277,
     "target_files": 18
   },
   "consumer_scan": [
     "evidence/task-4.json",
     "code-config/docs/redesign-2026-07/m6-compatibility-consumer-allowlist-2026-07-14.json"
   ],
-  "m6_8_duplicate_patch_stop": "evidence/task-8.json",
-  "m6_9_bridge_flag_retire": "evidence/task-9.json",
+  "m6_8_duplicate_patch_stop": "evidence/task-8.json (2026-07-14, superseded by tests/test_mission_inbox_authority.py added 2026-07-18 -- append_inbox_item now genuinely skips the legacy run.json human_inbox write for cohort sessions, stronger than what task-8.json originally certified)",
+  "m6_9_bridge_flag_retire": "evidence/task-9.json (reconfirmed 2026-07-23: plan/inbox/execution_write_authority_enabled still hardcoded False and de-registered from FLAG_REGISTRY)",
   "redaction": "evidence and reports redact user/temp paths and email-like values; session/journal content is checksum-only",
   "rollback_recovery": [
     "evidence/task-7.json",
@@ -23,6 +23,8 @@
   ],
   "wave_b_parity": [
     "evidence/task-5.json",
-    "evidence/task-6.json"
-  ]
+    "evidence/task-6.json",
+    "2026-07-23: mission_dual_write_verify.py --sessions sessions/ re-run -- hard_mismatch=39/missing=15 matches task-7.json's known_residual exactly (not new drift); mission_dual_write_journal_audit.py duplicate=0/error=0/invalid_json=0"
+  ],
+  "revalidated_at": "2026-07-23"
 }

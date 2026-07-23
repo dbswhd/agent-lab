@@ -307,7 +307,16 @@ def test_fast_bucket_collection_budget():
     # (test_mission_topology_wire.py) — early-replan repair-cap override on
     # topology plateau, a non-blocking Human inbox flag when plateau hits the
     # repair cap, and streak-gated topology de-escalation after a clean run.
-    assert count <= 3614, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-23: raised 3614 -> 3616 for the AGENT_LAB_MISSION_AUTHORITY
+    # disconnect-guard regression fix (test_room_disconnect_inbox_guard.py) —
+    # _session_has_pending_human_inbox now reads the authority-aware
+    # inbox_items_for_folder() instead of a raw run.json["human_inbox"] dict,
+    # which previously always returned empty for the live Wave B cohort.
+    # 2026-07-23: raised 3616 -> 3617 for restoring M6 Slice 1/3 soft
+    # authority (plan + execution write authority, cohort-gated) —
+    # test_run_profile.py gained a dedicated inbox-stays-retired test
+    # alongside the flipped-back plan-authority-on assertion.
+    assert count <= 3617, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

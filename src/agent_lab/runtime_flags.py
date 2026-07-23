@@ -50,6 +50,18 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         "Comma-separated session IDs allowed to use the dual-write bridge when enabled (empty disables the bridge)",
     ),
     FlagDef(
+        "AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY",
+        "feature",
+        "Soft retire Slice 1: Mission owns plan approve/reject phase (requires DUAL_WRITE + non-empty session allowlist; balanced/thorough/autonomous default on)",
+        default="1",
+    ),
+    FlagDef(
+        "AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY",
+        "feature",
+        "Soft retire Slice 3: fail-closed Mission commit after execute/merge/reverify (requires DUAL_WRITE + non-empty session allowlist; balanced/thorough/autonomous default on)",
+        default="1",
+    ),
+    FlagDef(
         "AGENT_LAB_MISSION_AUTHORITY",
         "feature",
         "Journal-owned Mission Inbox authority for the selected bounded cohort (default off)",

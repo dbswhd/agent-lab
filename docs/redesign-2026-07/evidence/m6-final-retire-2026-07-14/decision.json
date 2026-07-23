@@ -1,10 +1,13 @@
 {
   "approval_artifact": null,
   "approved_at": null,
-  "approver_one": null,
-  "approver_two": null,
-  "manifest_scope_note": "Deletion manifest retains 6 candidates and 12 protected paths; the authoritative compatibility inventory is 18 scoped files and 275 references, superseding the pre-Todo-5 12-file/251-reference baseline.",
+  "approver": null,
+  "approval_model": "single Human owner (solo-dev project; the 2026-07-14 two-person schema was documentation convention, not an org requirement -- confirmed by owner 2026-07-23)",
+  "manifest_scope_note": "Deletion manifest holds 6 candidates (mission/advance.py in scope, topology-router state/functions carved out via m6_scope_exclusions) and 12 protected paths. Authoritative compatibility inventory is 18 scoped files / 277 references as of 2026-07-23.",
   "owner": null,
-  "reason": "separate Human approval for irreversible deletion is absent",
-  "status": "NO-GO"
+  "reason": "2026-07-23 full re-verification of all 5 evidence categories (git-history drift, bridge-flag-retire, duplicate-patch-stop, wave-b-parity, ui-soak) found nothing that invalidates the 2026-07-14 findings. Not a two-person-approval gap (see approval_model). NOTE: this GO covers evidence freshness only -- see deletion-manifest.json's decision_scope_correction and execution_readiness table for the separate question of what is actually safe to delete per candidate.",
+  "status": "GO",
+  "go_note": "GO is a readiness declaration about evidence freshness, not an execution authorization. FINAL (2026-07-23, third pass): restored Slice 1/3 plan+execution soft authority (docs/redesign-2026-07/evidence/m6-plan-execution-authority-restoration-2026-07-23.md), then completed a full end-to-end line-level audit of every non-excluded candidate file. Definitive finding: no executable M6-1 legacy-write deletion exists under the current architecture -- the remaining legacy code is either out of scope, real decision behavior, or real domain data/logic with no Mission-kernel equivalent. Further progress requires a separate, larger kernel-expansion initiative (M4/M5-class, docs/redesign-2026-07/01-mission-kernel.md), not more work under this M6 packet. See deletion-manifest.json execution_readiness.conclusion for the full breakdown.",
+  "resynced_at": "2026-07-23",
+  "revalidated_at": "2026-07-23"
 }

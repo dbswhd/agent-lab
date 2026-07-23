@@ -1191,6 +1191,8 @@ Path-like values are home-masked in API/CLI output. Undocumented `AGENT_LAB_*` v
 | `AGENT_LAB_CRASH_RECOVERY` | boot-time reconcile of crashed in-flight merges, G3 (default on) |
 | `AGENT_LAB_MISSION_DUAL_WRITE` | opt-in legacy-route to Mission journal bridge; legacy writer remains first |
 | `AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS` | comma-separated session allowlist for controlled dual-write cohort; empty disables the bridge |
+| `AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY` | Slice 1 soft authority: Mission owns plan approve/reject phase (requires `DUAL_WRITE` + non-empty session allowlist; balanced/thorough/autonomous default on) |
+| `AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY` | Slice 3 soft authority: fail-closed Mission commit after execute/merge/reverify (requires `DUAL_WRITE` + non-empty session allowlist; balanced/thorough/autonomous default on) |
 | `AGENT_LAB_MISSION_AUTHORITY` | journal-owned Inbox authority for the selected bounded cohort; default off |
 | `AGENT_LAB_MISSION_AUTHORITY_SESSIONS` | comma-separated session allowlist for journal-owned Inbox authority; empty disables it |
 | `AGENT_LAB_MISSION_UI_READ_MODEL` | journal-first UI for migrated sessions; legacy sessions fallback server-side; default on |
@@ -1200,7 +1202,7 @@ Path-like values are home-masked in API/CLI output. Undocumented `AGENT_LAB_*` v
 | `AGENT_LAB_JUDGE_LIVE` | live LLM-as-judge quality eval in `score_session` (default off) |
 | `AGENT_LAB_JUDGE_MODEL` | override Claude model for the judge |
 
-> M6 Slice 1–3 authority variables are retired and are not supported runtime configuration. Their authority functions remain disabled/fail-closed; use only the non-empty session allowlist above for the compatibility bridge.
+> M6 Slice 1/3 authority (plan + execution) was re-enabled 2026-07-23, cohort-gated behind `DUAL_WRITE` + a non-empty session allowlist — see `AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY`/`AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY` above. Slice 2 (inbox) stays retired permanently — superseded by the stronger `AGENT_LAB_MISSION_AUTHORITY` path, which carries the full inbox item rather than just a gate id.
 
 ### Backend hardening (P0–P5, default off)
 

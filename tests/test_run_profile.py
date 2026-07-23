@@ -125,21 +125,26 @@ def test_balanced_profile_has_s1_feedback_flags() -> None:
     assert cfg.flags.get("AGENT_LAB_FEEDBACK_ADVISOR") == "1"
 
 
-def test_supervisor_profiles_do_not_register_retired_authority_flags() -> None:
+def test_supervisor_profiles_default_plan_write_authority_on() -> None:
+    """Slice 1/3 (re-enabled 2026-07-23): authority defaults on; still no-op without DUAL_WRITE."""
     for name in ("balanced", "thorough", "autonomous"):
         cfg = resolve_profile(name)
         assert cfg is not None
-        assert "AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY" not in cfg.flags
-        assert "AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY" not in cfg.flags
-        assert "AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY" not in cfg.flags
-        assert "AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY" not in cfg.owns
-        assert "AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY" not in cfg.owns
-        assert "AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY" not in cfg.owns
+        assert cfg.flags.get("AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY") == "1"
+        assert cfg.flags.get("AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY") == "1"
     fast = resolve_profile("fast")
     assert fast is not None
     assert "AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY" not in fast.flags
-    assert "AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY" not in fast.flags
     assert "AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY" not in fast.flags
+
+
+def test_no_profile_registers_retired_inbox_write_authority_flag() -> None:
+    """Slice 2 stays retired -- superseded by AGENT_LAB_MISSION_AUTHORITY (Wave B)."""
+    for name in ("fast", "balanced", "thorough", "autonomous"):
+        cfg = resolve_profile(name)
+        assert cfg is not None
+        assert "AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY" not in cfg.flags
+        assert "AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY" not in cfg.owns
 
 
 def test_thorough_profile_uses_supervisor_preset() -> None:

@@ -1,7 +1,8 @@
 {
   "approval_required": {
-    "separate_human": true,
-    "two_person_confirmation": true
+    "separate_human": false,
+    "two_person_confirmation": false,
+    "note": "Solo-dev project; the packet was authored with an enterprise-style two-person approval schema by convention, not an actual org requirement. Owner (2026-07-23) confirmed single-approver is sufficient. Fields retained for schema stability, not as a live blocker."
   },
   "candidates": [
     "src/agent_lab/mission/tick.py",
@@ -11,7 +12,75 @@
     "src/agent_lab/clarity.py",
     "app/server/routers/room.py"
   ],
-  "decision": "NO-GO",
+  "m6_scope_exclusions": [
+    {
+      "path": "src/agent_lab/mission/advance.py",
+      "excluded_state": [
+        "run.json[\"mission_topology\"]",
+        "mission_loop.action_repair_cap_override",
+        "mission_loop.consecutive_verify_passes"
+      ],
+      "excluded_functions": [
+        "src/agent_lab/mission/topology_wire.py::reroute_mission_topology_after_verify",
+        "src/agent_lab/mission/topology_wire.py::deescalate_mission_topology_after_pass"
+      ],
+      "reason": "2026-07-23 session added a post-verify topology router whose state lives entirely in the legacy mission_loop dict, with no mission/kernel.py command/event equivalent (kernel.py also has no PAUSE/RESUME/CANCEL/CLARIFY/DISCUSS analogs -- a pre-existing gap this only adds to). Migrating it now would only matter once the AGENT_LAB_MISSION_DUAL_WRITE bounded cohort extends authority to plan/topology decisions, which is deliberately not in progress (owner chose Wave B/inbox authority over that track). Building kernel scaffolding in isolation would not actually unblock this file for M6 -- M6 requires the kernel to be verified as replacing the legacy writer, and that cutover isn't happening for topology.",
+      "decision": "excluded from M6 indefinitely -- revisit only alongside a real plan/topology authority expansion, not standalone",
+      "resolution": "advance.py's OTHER duplicate legacy lifecycle writers may still be retired under M6 once that work starts; this exclusion is scoped to the topology-router state/functions listed above only, not the whole file."
+    }
+  ],
+  "decision": "GO",
+  "decision_scope_correction": "IMPORTANT (2026-07-23, same-day correction): the GO below only re-verified that the 2026-07-14 EVIDENCE is still fresh (nothing regressed). It did NOT check the separate execution_readiness table below, which is what m6-precheck-retire-scope-2026-07-14.md actually gates per-candidate deletion on -- that table's blockers are independent of Human sign-off and mostly still apply. GO means 'the evidence packet can be trusted', not 'these files are ready to have code deleted from them'. See execution_readiness for the real per-item status.",
+  "decision_reason": "2026-07-23 full re-verification across all 5 remaining evidence categories: (1) git-history drift for the 5 non-advance.py candidates -- only tick.py has a post-07-14 commit (2026-07-18, mission-authority inbox plumbing, no new unmigrated legacy state, covered by the 277-reference consumer scan and tests/test_mission_inbox_authority.py); transitions.py/orchestration.py/clarity.py/room.py had no unrelated commits until the 2026-07-23 room.py disconnect-guard bug fix (see execution_readiness.inbox_rows). (2) bridge-flag-retire: plan/inbox/execution_write_authority_enabled still hardcoded False and fully de-registered from FLAG_REGISTRY -- reconfirmed. (3) duplicate-patch-stop: append_inbox_item now genuinely skips the legacy human_inbox write for cohort sessions (added 2026-07-18, stronger than the original task-8.json evidence). (4) wave-b-parity: mission_dual_write_verify.py / mission_dual_write_journal_audit.py re-run clean against current sessions/ -- the 39 hard_mismatch / 15 missing in the full inventory exactly match task-7.json's pre-known residual baseline, not new drift; duplicate=0/error=0/invalid_json=0. (5) ui-soak: AGENT_LAB_MISSION_UI_READ_MODEL still default-on, all 5 web consumers structurally unchanged, 179 web tests pass. mission/advance.py's topology-router gap is resolved via m6_scope_exclusions, not kernel migration. See coverage.json and README.md for the full breakdown.",
+  "execution_readiness": {
+    "source": "docs/redesign-2026-07/evidence/m6-precheck-retire-scope-2026-07-14.md §3, re-verified 2026-07-23",
+    "items": [
+      {
+        "surface": "plan_phase_write",
+        "candidate_files": [],
+        "status": "N/A -- no candidate file to audit",
+        "reason": "2026-07-23: plan_write_authority_enabled() restored and proven live via real HTTP route (POST /plan/approve, /plan/reject) -- see docs/redesign-2026-07/evidence/m6-plan-execution-authority-restoration-2026-07-23.md. This removed the structural blocker, but the only place this surface's writer lives is src/agent_lab/plan/workflow_approval.py, which is permanently protected_never_delete_in_m6 (it's the fallback path for non-cohort sessions, ~100% of traffic) -- there is no candidate file where this surface could ever produce a deletion, precondition satisfied or not."
+      },
+      {
+        "surface": "inbox_rows",
+        "candidate_files": [],
+        "status": "SATISFIED for AGENT_LAB_MISSION_AUTHORITY-cohort sessions only",
+        "reason": "2026-07-23 finding: the 07-14/07-16 'row writer still required' conclusion was produced entirely under OpenExecutionGate/AGENT_LAB_MISSION_DUAL_WRITE (id/kind/reason only, structurally incomplete) -- it never tested OpenInboxItem/AGENT_LAB_MISSION_AUTHORITY (the actually-live Wave B path), which stores the full item (prompt/options/summary/risks) in mission.inbox_items and already skips the legacy human_inbox row write (human_inbox.py::append_inbox_item/create_inbox_item/resolve_inbox_item). Proven via tests/test_mission_inbox_authority.py (8/8) and a fresh read-model render with zero legacy rows present. This is not itself a deletion -- human_inbox.py stays protected -- but it means the M6-order step-2 precondition ('inbox decision store rich enough for UI') is met for this cohort. A real, separate bug was found and fixed in the same investigation: app/server/routers/room.py::_session_has_pending_human_inbox read run.json[\"human_inbox\"] directly and always returned False for authority-cohort sessions, silently breaking the SSE-disconnect grace period -- fixed to use inbox_items_for_folder(), see tests/test_room_disconnect_inbox_guard.py."
+      },
+      {
+        "surface": "inbox_gates",
+        "candidate_files": [],
+        "status": "N/A -- additive only",
+        "reason": "'Keep journal gates' per precheck -- nothing to delete here."
+      },
+      {
+        "surface": "execute_side_effects_duplicate_fsm",
+        "candidate_files": [],
+        "status": "N/A -- no candidate file to audit",
+        "reason": "2026-07-23: execution_write_authority_enabled() restored and proven at the function level (tests/test_mission_dual_write.py::test_execution_write_authority_commit_approve/::test_execution_write_authority_reject_stays_legacy_only). The only file where a duplicate FSM update could have lived, mission/advance.py, is excluded from this M6 pass via m6_scope_exclusions (unrelated topology-router reason). worktree/merge/Oracle runners (plan/execute_merge.py, plan/execute_verify.py) are permanently protected regardless. No candidate file remains for this surface."
+      },
+      {
+        "surface": "mission_loop",
+        "candidate_files": ["src/agent_lab/mission/tick.py", "src/agent_lab/runtime/transitions.py", "src/agent_lab/runtime/orchestration.py", "src/agent_lab/clarity.py"],
+        "status": "AUDITED 2026-07-23 -- NO SAFE CANDIDATE FOUND (structural, not a temporary blocker)",
+        "reason": "Full end-to-end read of all 4 files (not grep sampling) after both authority preconditions (inbox + plan/execute) went live. Per-file finding: (1) tick.py -- writes only mission_schedule/_session_folder (out of scope); the actual mission_loop mutations it triggers live in mission/loop.py & mission/board.py (out of this review's scope), invoked here as pure scheduling decisions, not redundant records. (2) runtime/transitions.py -- zero patch_run_meta/stamp_run_meta calls; it's a declarative transition table + pure guard/read functions only. (3) runtime/orchestration.py -- its own write (run['orchestration']) is an out-of-scope observability cache; the mission_loop/plan_workflow mutation it can trigger (orchestration_reconcile.py drift correction) is genuine corrective behavior with no Mission-kernel equivalent (Mission has no concept of 'plan_substate vs mission_loop.phase drift' -- that's a legacy-internal consistency check that remains meaningful even for dual-write cohort sessions). (4) clarity.py -- writes mission_loop.clarity (CLARIFY-phase ambiguity panel scores + confirmed-facts store); mission/kernel.py's Mission dataclass and projection.py's MISSION_LOOP_STATUS_FIELDS whitelist have NO clarity concept at all -- this is real, irreplaceable domain data, not a redundant record; deleting it for cohort sessions would silently lose clarity history with nothing to reconstruct from. Conclusion: this is not 'not audited yet' -- it is audited and confirmed to have zero safe candidates given the current architecture. The only way to change this is a genuine kernel expansion (Mission gaining a clarity-panel concept, or becoming sole authority on both sides of the orchestration drift-check), which is out-of-scope M4/M5-class work (docs/redesign-2026-07/01-mission-kernel.md), not an M6 cleanup."
+      },
+      {
+        "surface": "dual_write_bridges_flags",
+        "candidate_files": [],
+        "status": "BLOCKED (by design, last step -- and now moot, see conclusion)",
+        "reason": "'Delete last, after single authority proven' -- single authority is now proven for inbox (Wave B) and plan/execute (2026-07-23 restoration, cohort-scoped). But since the line-level audit above found zero deletable duplicates upstream, there is nothing for this step to follow -- it isn't 'waiting its turn', the thing it was meant to come after never materializes under the current architecture. src/agent_lab/mission/dual_write.py stays protected regardless."
+      },
+      {
+        "surface": "objection_block",
+        "candidate_files": [],
+        "status": "OUT OF M6 SCOPE",
+        "reason": "Product invariant, untouched by design."
+      }
+    ],
+    "conclusion": "FINAL (2026-07-23, third pass, same day). Restored plan (Slice 1) and execution (Slice 3) soft authority, proven live for the AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS cohort -- see m6-plan-execution-authority-restoration-2026-07-23.md. This lifted the structural blocker (authority existing) on plan_phase_write, execute_side_effects_duplicate_fsm, and mission_loop. A full end-to-end line-level audit of all 5 non-excluded candidate files then found ZERO safe, executable legacy-write deletions -- not because anything is still blocked, but because the files' legacy code is either (a) out of scope for the fields in question, (b) real scheduling/decision behavior rather than a redundant record, or (c) real domain data (clarity panels) or real corrective logic (orchestration drift-check) with no Mission-kernel equivalent to make it redundant. This is a structural finding, not a temporary one: M6-1 ('stop duplicate legacy lifecycle patches') has no viable target under the current architecture. Making it viable would require Mission's kernel to genuinely absorb clarity-panel data and become sole authority on both sides of the orchestration drift-check -- that is M4/M5-class kernel-expansion work (docs/redesign-2026-07/01-mission-kernel.md), a separate and much larger initiative, not an M6 cleanup PR. dual_write_bridges_flags therefore has nothing to follow. inbox_rows resolved into a documentation correction + a live bug fix (room.py), not a deletion; inbox_gates/objection_block are unaffected. **This M6 investigation is closed for now** -- the packet's evidence stays GO (trustworthy), authority is genuinely restored and cohort-proven, but there is no further executable M6 deletion work available without a new, separately-scoped kernel-expansion initiative."
+  },
+  "go_note": "GO is a readiness declaration about evidence freshness only. It is NOT an authorization to execute any deletion. After restoring plan/execution authority AND completing a full line-level audit of every non-excluded candidate (2026-07-23), the definitive finding is that there is no executable M6-1 deletion available under the current architecture -- see execution_readiness.conclusion. Further M6 progress requires a separate, larger kernel-expansion initiative, not more work under this packet.",
   "protected_never_delete_in_m6": [
     "src/agent_lab/human_inbox.py",
     "app/server/routers/human_inbox.py",
@@ -26,5 +95,8 @@
     "src/agent_lab/plan/workflow_approval.py",
     "src/agent_lab/mission/read_model.py"
   ],
-  "schema_version": 1
+  "schema_version": 3,
+  "resynced_at": "2026-07-23",
+  "revalidated_at": "2026-07-23",
+  "resynced_from": "2026-07-14 (see archive-manifest.json / m6-final-retire.tar.gz for the frozen original)"
 }

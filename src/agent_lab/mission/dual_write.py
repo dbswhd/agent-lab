@@ -64,15 +64,41 @@ def mission_authority_enabled(folder: Path | None = None) -> bool:
 
 
 def plan_write_authority_enabled(folder: Path | None = None) -> bool:
-    return False
+    """Soft retire slice 1: Mission journal owns plan phase writes.
+
+    Re-enabled 2026-07-23 (was hard-retired 2026-07-14 pending Wave B). Requires
+    dual-write, which now itself requires a non-empty session allowlist — so a
+    session must be explicitly named in ``AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS``
+    for authority to apply. Authority without the bridge is a hard no — callers
+    must fall back to legacy-first approve/reject.
+    """
+    if not is_truthy(os.getenv("AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY")):
+        return False
+    return dual_write_enabled(folder)
 
 
 def inbox_write_authority_enabled(folder: Path | None = None) -> bool:
+    """Soft retire slice 2 — permanently superseded, stays disabled.
+
+    Inbox authority went live through the stronger ``AGENT_LAB_MISSION_AUTHORITY``
+    path instead (``mission/inbox_application.py``: ``OpenInboxItem`` carries the
+    full item payload, unlike this slice's gate-only ``OpenExecutionGate``).
+    Restoring this would create a second, weaker inbox-authority mechanism.
+    """
     return False
 
 
 def execution_write_authority_enabled(folder: Path | None = None) -> bool:
-    return False
+    """Soft retire slice 3: Mission journal must record execute/merge/oracle transitions.
+
+    Re-enabled 2026-07-23 (was hard-retired 2026-07-14 pending Wave B). Requires
+    dual-write with a non-empty session allowlist. Legacy writers still perform
+    side effects first; this flag fail-closes the HTTP route when the Mission
+    commit does not mirror.
+    """
+    if not is_truthy(os.getenv("AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY")):
+        return False
+    return dual_write_enabled(folder)
 
 
 def _blocked_result(folder: Path, operation: str) -> dict[str, Any] | None:

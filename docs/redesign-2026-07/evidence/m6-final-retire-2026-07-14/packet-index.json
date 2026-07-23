@@ -1,26 +1,31 @@
 {
   "approval": {
     "approved_at": null,
-    "approver_one": null,
-    "approver_two": null,
+    "approver": null,
+    "approval_model": "single Human owner (solo-dev; see decision.json)",
     "owner": null
   },
   "archive": "m6-final-retire.tar.gz",
   "archive_mode": "0444",
   "archive_sha256": "e307101ded174e800a4b3a96b38b0270f140e3e98146228f8c27a91d1c3eaf98",
+  "archive_note": "Frozen 2026-07-14 snapshot, not resynced. Loose files in this directory (decision.json, deletion-manifest.json, coverage.json, packet-index.json, README.md) are the live tracking copies and were resynced/revalidated 2026-07-23 -- see resynced_at/revalidated_at fields.",
   "consumer_inventory": {
     "baseline_references": 251,
     "baseline_target_files": 12,
-    "references": 275,
+    "references": 277,
     "target_files": 18
   },
-  "deletion_manifest_sha256": "89dad37ae9a523ceaf6ac60c89e26dff6687e40185074a6e54363706d3275176",
+  "deletion_manifest_sha256": "713c790ccd0622c78f7113bc248ab42d42a59b8cd464ffd4a23464d782d24c8a",
   "manifest_scope": {
     "candidates": 6,
+    "m6_scope_exclusions": 1,
     "protected": 12,
-    "source": "current consumer scan"
+    "source": "current consumer scan (revalidated 2026-07-23)"
   },
   "packet": "m6-final-retire-2026-07-14",
   "redaction": "paths, temporary paths, and email-like values redacted; sessions/journals checksum-only",
-  "status": "NO-GO"
+  "status": "GO",
+  "go_note": "Readiness declaration about evidence freshness only -- see deletion-manifest.json execution_readiness. FINAL (2026-07-23): authority restored + full line-level audit completed. No executable M6-1 deletion exists under the current architecture. Further progress needs a separate kernel-expansion initiative, not more work under this packet.",
+  "resynced_at": "2026-07-23",
+  "revalidated_at": "2026-07-23"
 }

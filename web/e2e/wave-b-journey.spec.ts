@@ -53,6 +53,9 @@ type Journey =
   | "oracle-repair"
   | "human-resume";
 
+const activePlanRejectSessionId = "wave-b-active-plan-reject";
+const sessionScopes = ["active", "dogfood"] as const;
+
 async function mockWaveBJourneyApi(
   page: Page,
   requests: string[],
@@ -118,6 +121,12 @@ async function mockWaveBJourneyApi(
     if (url.pathname === "/api/sessions") {
       const sessions = [
         {
+          id: activePlanRejectSessionId,
+          topic: "Wave B 활성 계획 거절",
+          updated_at: "2026-07-15T00:00:00Z",
+          workflow: "room.parallel",
+        },
+        {
           id: "wave-b-plan-reject",
           topic: "Wave B plan reject",
           updated_at: "2026-07-15T00:00:00Z",
@@ -153,7 +162,9 @@ async function mockWaveBJourneyApi(
       const sessionId = sessionMatch[1];
       const isHumanResume =
         sessionId === "wave-b-human-resume" && !resolved;
-      const isPlanReject = sessionId === "wave-b-plan-reject";
+      const isPlanReject =
+        sessionId === "wave-b-plan-reject" ||
+        sessionId === activePlanRejectSessionId;
       const isDiffApprove = sessionId === "wave-b-diff-approve";
       const isOracleRepair = sessionId === "wave-b-oracle-repair";
 
@@ -225,7 +236,9 @@ async function mockWaveBJourneyApi(
       /^\/api\/sessions\/(wave-b-[^/]+)\/plan-actions$/,
     );
     if (planActionsMatch) {
-      const isPlanReject = planActionsMatch[1] === "wave-b-plan-reject";
+      const isPlanReject =
+        planActionsMatch[1] === "wave-b-plan-reject" ||
+        planActionsMatch[1] === activePlanRejectSessionId;
       const hidden = isPlanReject && rejected;
       await route.fulfill({
         json: {
@@ -422,9 +435,16 @@ async function initialize(page: Page) {
 
 async function openSession(page: Page, sessionId: string) {
   const session = page.getByTestId(`session-${sessionId}`);
-  await page.getByTestId("session-scope-dogfood").click();
-  await session.click();
-  await expect(session).toHaveAttribute("aria-current", "true");
+  for (const scope of sessionScopes) {
+    await page.getByTestId(`session-scope-${scope}`).click();
+    if ((await session.count()) === 0) continue;
+    await session.click();
+    await expect(session).toHaveAttribute("aria-current", "true");
+    return;
+  }
+  throw new Error(
+    `Session fixture was not present in a selectable rail scope: ${sessionId}`,
+  );
 }
 
 test("plan reject journey sends reject request and enters refine phase", async ({
@@ -434,7 +454,23 @@ test("plan reject journey sends reject request and enters refine phase", async (
   await initialize(page);
   await mockWaveBJourneyApi(page, requests, "plan-reject");
   await page.goto("/");
+
+  const activeSession = page.getByTestId(
+    `session-${activePlanRejectSessionId}`,
+  );
+  await expect(activeSession).toBeVisible();
+  await openSession(page, activePlanRejectSessionId);
+  await expect(page.getByTestId("session-scope-active")).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await expect(page.locator(".plan-approval-strip")).toBeVisible();
+
   await openSession(page, "wave-b-plan-reject");
+  await expect(page.getByTestId("session-scope-dogfood")).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
 
   const review = page.locator(".plan-approval-strip");
   await expect(review).toBeVisible();

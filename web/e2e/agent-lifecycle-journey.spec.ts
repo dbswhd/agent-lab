@@ -65,6 +65,19 @@ const staleQuestion = {
   ],
 };
 
+type InboxFixtureItem = typeof staleQuestion | typeof queuedQuestion;
+
+function canonicalInboxOrder(
+  items: readonly InboxFixtureItem[],
+): InboxFixtureItem[] {
+  return [...items].sort(
+    (left, right) =>
+      right.priority - left.priority ||
+      left.created_at.localeCompare(right.created_at) ||
+      left.id.localeCompare(right.id),
+  );
+}
+
 type FixtureKind = "happy" | "repair" | "stale" | "dirty";
 type FixturePhase =
   | "intake"
@@ -205,7 +218,7 @@ function activeExecution(state: FixtureState): Record<string, unknown> | null {
 
 function pendingInboxItems(state: FixtureState): Record<string, unknown>[] {
   if (state.phase === "question" && !state.staleResolved) {
-    return [staleQuestion, queuedQuestion];
+    return canonicalInboxOrder([queuedQuestion, staleQuestion]);
   }
   if (
     state.phase === "plan_pending" ||
@@ -1323,6 +1336,23 @@ test("stale expected_version returns 409 without corrupting the resolved state",
   page,
 }) => {
   // Given: the canonical backend order promotes the high-priority question ahead of a queued item.
+  const samePriorityAndTimeA = {
+    ...queuedQuestion,
+    id: "stable-a",
+    priority: 100,
+    created_at: staleQuestion.created_at,
+  };
+  const samePriorityAndTimeB = {
+    ...samePriorityAndTimeA,
+    id: "stable-b",
+  };
+  expect(
+    canonicalInboxOrder([
+      samePriorityAndTimeB,
+      queuedQuestion,
+      samePriorityAndTimeA,
+    ]).map((item) => item.id),
+  ).toEqual(["stable-a", "stable-b", queuedQuestion.id]);
   const state = createState("stale");
   await initialize(page);
   await installFixture(page, state);

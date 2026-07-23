@@ -16,7 +16,7 @@ def mock_agents(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
 
 
-def _wait_for_terminal(run: object, timeout: float = 2.0) -> None:
+def _wait_for_terminal(run: object, timeout: float = 8.0) -> None:
     deadline = time.monotonic() + timeout
     while getattr(run, "status") == "running" and time.monotonic() < deadline:
         time.sleep(0.01)

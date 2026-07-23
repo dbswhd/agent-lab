@@ -232,8 +232,8 @@ def _build_agent_options(
         def LocalAgentOptions(**kwargs: Any) -> Any:  # type: ignore[no-redef,misc]
             return _NS(**kwargs)
 
-        ModelSelection = None  # type: ignore[assignment]
-        ModelParameterValue = None  # type: ignore[assignment]
+        ModelSelection = None  # type: ignore[assignment,misc]
+        ModelParameterValue = None  # type: ignore[assignment,misc]
 
     key = str(api_key or os.getenv("CURSOR_API_KEY") or "").strip()
     if not key and not _cursor_oauth_available():

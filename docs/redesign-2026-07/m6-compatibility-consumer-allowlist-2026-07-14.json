@@ -259,9 +259,16 @@
       "path": "web/src/components/ContextOverviewPanel.tsx",
       "owner": "Mission overview panel",
       "operation": "read",
-      "thin_projection_fields": ["mission overview phase", "pause/circuit status"],
-      "rich_compatibility_fields": ["legacy overview fallback"],
-      "deferred": ["read-model UI flag and per-payload fallback"],
+      "thin_projection_fields": [
+        "mission overview phase",
+        "pause/circuit status"
+      ],
+      "rich_compatibility_fields": [
+        "legacy overview fallback"
+      ],
+      "deferred": [
+        "read-model UI flag and per-payload fallback"
+      ],
       "retirement_checkpoint": "M6-5"
     },
     {
@@ -269,9 +276,15 @@
       "path": "web/src/components/NotificationCenter.tsx",
       "owner": "Notification center",
       "operation": "read",
-      "thin_projection_fields": ["open execution gate count"],
-      "rich_compatibility_fields": ["local activity notifications"],
-      "deferred": ["read-model gate notification adapter"],
+      "thin_projection_fields": [
+        "open execution gate count"
+      ],
+      "rich_compatibility_fields": [
+        "local activity notifications"
+      ],
+      "deferred": [
+        "read-model gate notification adapter"
+      ],
       "retirement_checkpoint": "M6-5"
     },
     {
@@ -279,9 +292,15 @@
       "path": "web/src/utils/missionOverviewView.ts",
       "owner": "Mission overview projection helper",
       "operation": "read",
-      "thin_projection_fields": ["canonical phase label"],
-      "rich_compatibility_fields": ["legacy run mission loop"],
-      "deferred": ["read-model UI flag and per-payload fallback"],
+      "thin_projection_fields": [
+        "canonical phase label"
+      ],
+      "rich_compatibility_fields": [
+        "legacy run mission loop"
+      ],
+      "deferred": [
+        "read-model UI flag and per-payload fallback"
+      ],
       "retirement_checkpoint": "M6-5"
     },
     {
@@ -289,9 +308,15 @@
       "path": "web/src/components/MissionOverviewSection.tsx",
       "owner": "Mission overview renderer",
       "operation": "read",
-      "thin_projection_fields": ["localized phase labels"],
-      "rich_compatibility_fields": ["legacy overview view"],
-      "deferred": ["read-model UI flag and per-payload fallback"],
+      "thin_projection_fields": [
+        "localized phase labels"
+      ],
+      "rich_compatibility_fields": [
+        "legacy overview view"
+      ],
+      "deferred": [
+        "read-model UI flag and per-payload fallback"
+      ],
       "retirement_checkpoint": "M6-5"
     },
     {
@@ -299,9 +324,15 @@
       "path": "web/src/hooks/useAutonomySession.ts",
       "owner": "Autonomy session hook",
       "operation": "read",
-      "thin_projection_fields": ["paused canonical mission status"],
-      "rich_compatibility_fields": ["runtime autonomy payload"],
-      "deferred": ["read-model autonomy projection"],
+      "thin_projection_fields": [
+        "paused canonical mission status"
+      ],
+      "rich_compatibility_fields": [
+        "runtime autonomy payload"
+      ],
+      "deferred": [
+        "read-model autonomy projection"
+      ],
       "retirement_checkpoint": "M6-5"
     },
     {
@@ -309,9 +340,15 @@
       "path": "web/src/utils/missionReadModel.ts",
       "owner": "Mission read-model adapter",
       "operation": "read",
-      "thin_projection_fields": ["flag, migration, gate, and join validation"],
-      "rich_compatibility_fields": ["legacy per-payload fallback"],
-      "deferred": ["global default-on cutover"],
+      "thin_projection_fields": [
+        "flag, migration, gate, and join validation"
+      ],
+      "rich_compatibility_fields": [
+        "legacy per-payload fallback"
+      ],
+      "deferred": [
+        "global default-on cutover"
+      ],
       "retirement_checkpoint": "M6-5"
     }
   ],
@@ -430,53 +467,53 @@
     "src/agent_lab/mission/advance.py:467:patch_run_meta",
     "src/agent_lab/mission/advance.py:468:get_mission_loop",
     "src/agent_lab/mission/advance.py:468:read_run_meta",
-    "src/agent_lab/mission/advance.py:474:get_mission_loop",
-    "src/agent_lab/mission/advance.py:474:read_run_meta",
-    "src/agent_lab/mission/advance.py:485:get_mission_loop",
-    "src/agent_lab/mission/advance.py:485:legacy_import",
-    "src/agent_lab/mission/advance.py:493:get_mission_loop",
-    "src/agent_lab/mission/advance.py:498:mission_loop",
+    "src/agent_lab/mission/advance.py:491:get_mission_loop",
+    "src/agent_lab/mission/advance.py:491:read_run_meta",
     "src/agent_lab/mission/advance.py:49:get_mission_loop",
-    "src/agent_lab/mission/advance.py:501:patch_run_meta",
     "src/agent_lab/mission/advance.py:502:get_mission_loop",
-    "src/agent_lab/mission/advance.py:502:read_run_meta",
-    "src/agent_lab/mission/advance.py:510:human_inbox",
-    "src/agent_lab/mission/advance.py:510:legacy_import",
-    "src/agent_lab/mission/advance.py:510:pending_inbox_items",
-    "src/agent_lab/mission/advance.py:512:read_run_meta",
-    "src/agent_lab/mission/advance.py:516:pending_inbox_items",
-    "src/agent_lab/mission/advance.py:560:get_mission_loop",
-    "src/agent_lab/mission/advance.py:560:read_run_meta",
-    "src/agent_lab/mission/advance.py:566:get_mission_loop",
-    "src/agent_lab/mission/advance.py:566:legacy_import",
-    "src/agent_lab/mission/advance.py:582:read_run_meta",
-    "src/agent_lab/mission/advance.py:583:get_mission_loop",
-    "src/agent_lab/mission/advance.py:589:get_mission_loop",
+    "src/agent_lab/mission/advance.py:502:legacy_import",
+    "src/agent_lab/mission/advance.py:512:get_mission_loop",
+    "src/agent_lab/mission/advance.py:519:mission_loop",
+    "src/agent_lab/mission/advance.py:522:patch_run_meta",
+    "src/agent_lab/mission/advance.py:523:get_mission_loop",
+    "src/agent_lab/mission/advance.py:523:read_run_meta",
+    "src/agent_lab/mission/advance.py:531:human_inbox",
+    "src/agent_lab/mission/advance.py:531:legacy_import",
+    "src/agent_lab/mission/advance.py:531:pending_inbox_items",
+    "src/agent_lab/mission/advance.py:533:read_run_meta",
+    "src/agent_lab/mission/advance.py:537:pending_inbox_items",
+    "src/agent_lab/mission/advance.py:581:get_mission_loop",
+    "src/agent_lab/mission/advance.py:581:read_run_meta",
+    "src/agent_lab/mission/advance.py:587:get_mission_loop",
+    "src/agent_lab/mission/advance.py:587:legacy_import",
     "src/agent_lab/mission/advance.py:58:mission_loop",
-    "src/agent_lab/mission/advance.py:592:mission_loop",
-    "src/agent_lab/mission/advance.py:595:patch_run_meta",
-    "src/agent_lab/mission/advance.py:614:legacy_import",
-    "src/agent_lab/mission/advance.py:617:get_mission_loop",
+    "src/agent_lab/mission/advance.py:603:read_run_meta",
+    "src/agent_lab/mission/advance.py:604:get_mission_loop",
+    "src/agent_lab/mission/advance.py:610:get_mission_loop",
+    "src/agent_lab/mission/advance.py:613:mission_loop",
+    "src/agent_lab/mission/advance.py:616:patch_run_meta",
     "src/agent_lab/mission/advance.py:61:patch_run_meta",
-    "src/agent_lab/mission/advance.py:632:get_mission_loop",
-    "src/agent_lab/mission/advance.py:636:mission_loop",
-    "src/agent_lab/mission/advance.py:639:patch_run_meta",
-    "src/agent_lab/mission/advance.py:640:get_mission_loop",
-    "src/agent_lab/mission/advance.py:640:read_run_meta",
-    "src/agent_lab/mission/advance.py:670:get_mission_loop",
-    "src/agent_lab/mission/advance.py:670:read_run_meta",
-    "src/agent_lab/mission/advance.py:682:get_mission_loop",
-    "src/agent_lab/mission/advance.py:694:mission_loop",
-    "src/agent_lab/mission/advance.py:697:patch_run_meta",
-    "src/agent_lab/mission/advance.py:698:get_mission_loop",
-    "src/agent_lab/mission/advance.py:698:read_run_meta",
+    "src/agent_lab/mission/advance.py:635:legacy_import",
+    "src/agent_lab/mission/advance.py:638:get_mission_loop",
+    "src/agent_lab/mission/advance.py:660:get_mission_loop",
+    "src/agent_lab/mission/advance.py:665:mission_loop",
+    "src/agent_lab/mission/advance.py:668:patch_run_meta",
+    "src/agent_lab/mission/advance.py:669:get_mission_loop",
+    "src/agent_lab/mission/advance.py:669:read_run_meta",
+    "src/agent_lab/mission/advance.py:699:get_mission_loop",
+    "src/agent_lab/mission/advance.py:699:read_run_meta",
+    "src/agent_lab/mission/advance.py:711:get_mission_loop",
     "src/agent_lab/mission/advance.py:71:patch_run_meta",
-    "src/agent_lab/mission/advance.py:724:get_mission_loop",
-    "src/agent_lab/mission/advance.py:724:read_run_meta",
-    "src/agent_lab/mission/advance.py:752:get_mission_loop",
-    "src/agent_lab/mission/advance.py:752:read_run_meta",
+    "src/agent_lab/mission/advance.py:724:mission_loop",
+    "src/agent_lab/mission/advance.py:727:patch_run_meta",
+    "src/agent_lab/mission/advance.py:728:get_mission_loop",
+    "src/agent_lab/mission/advance.py:728:read_run_meta",
+    "src/agent_lab/mission/advance.py:754:get_mission_loop",
+    "src/agent_lab/mission/advance.py:754:read_run_meta",
     "src/agent_lab/mission/advance.py:76:get_mission_loop",
     "src/agent_lab/mission/advance.py:76:read_run_meta",
+    "src/agent_lab/mission/advance.py:782:get_mission_loop",
+    "src/agent_lab/mission/advance.py:782:read_run_meta",
     "src/agent_lab/mission/advance.py:81:get_mission_loop",
     "src/agent_lab/mission/advance.py:81:legacy_import",
     "src/agent_lab/mission/advance.py:83:read_run_meta",
@@ -557,7 +594,7 @@
     "web/src/components/ComposerEventStack.tsx:311:mission_loop",
     "web/src/components/ComposerEventStack.tsx:311:web_mission_loop",
     "web/src/components/ComposerEventStack.tsx:39:mission_ui_read_model",
-    "web/src/components/ComposerEventStack.tsx:490:web_plan_workflow",
+    "web/src/components/ComposerEventStack.tsx:556:web_plan_workflow",
     "web/src/components/ContextOverviewPanel.tsx:22:mission_ui_read_model",
     "web/src/components/ContextOverviewPanel.tsx:31:mission_ui_read_model",
     "web/src/components/ContextOverviewPanel.tsx:82:mission_ui_read_model",

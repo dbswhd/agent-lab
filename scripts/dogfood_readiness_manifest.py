@@ -6,7 +6,7 @@ from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 
 class EvidenceTier(StrEnum):
@@ -46,6 +46,12 @@ class EvidenceRecord(BaseModel):
     def require_proof_or_next_gate(self) -> EvidenceRecord:
         if self.status is GateStatus.PASS and not self.raw_paths:
             raise ValueError("PASS evidence requires at least one raw path")
+        if (
+            self.tier is EvidenceTier.LIVE
+            and self.status is GateStatus.PASS
+            and self.sample_size == 0
+        ):
+            raise ValueError("live PASS sample_size must be positive")
         if self.status is not GateStatus.PASS and (not self.owner or not self.next_gate):
             raise ValueError("OPEN/deferred evidence requires owner and next_gate")
         return self
@@ -126,6 +132,7 @@ class ReadinessManifest(BaseModel):
 class OracleResult(BaseModel):
     model_config = ConfigDict(frozen=True)
     verdict: str = ""
+    source: str = ""
     evidence: tuple[str, ...] = ()
     checked_paths: tuple[str, ...] = ()
 
@@ -166,4 +173,27 @@ def load_manifest(path: Path) -> ReadinessManifest:
     missing = [str(raw) for raw in raw_paths if not resolve_artifact(raw, Path.cwd()).is_file()]
     if missing:
         raise ValueError(f"raw artifact path missing: {', '.join(missing)}")
+    for row in manifest.evidence:
+        if row.tier is not EvidenceTier.LIVE or row.status is not GateStatus.PASS:
+            continue
+        live_oracle_seen = False
+        for raw in row.raw_paths:
+            resolved = resolve_artifact(raw, Path.cwd())
+            if resolved.name != "run.json":
+                continue
+            try:
+                run = RunArtifact.model_validate_json(resolved.read_text(encoding="utf-8"))
+            except ValidationError:
+                continue
+            live_oracle_seen = any(
+                execution.oracle
+                and execution.oracle.verdict.lower() in {"pass", "fail"}
+                and bool(execution.oracle.source)
+                and not execution.oracle.source.lower().startswith("mock")
+                for execution in run.executions
+            )
+            if live_oracle_seen:
+                break
+        if not live_oracle_seen:
+            raise ValueError("live PASS requires a non-mock session run with an Oracle verdict")
     return manifest

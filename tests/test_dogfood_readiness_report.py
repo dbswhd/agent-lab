@@ -160,6 +160,35 @@ def test_packet_requires_raw_artifact_for_pass_evidence(tmp_path: Path) -> None:
         load_manifest(path)
 
 
+@pytest.mark.parametrize(
+    ("sample_size", "error"),
+    [
+        (0, "live PASS sample_size must be positive"),
+        (1, "live PASS requires a non-mock session run"),
+    ],
+)
+def test_live_pass_rejects_zero_sample_and_browser_only_proof(
+    tmp_path: Path,
+    sample_size: int,
+    error: str,
+) -> None:
+    # Given
+    path = _write_manifest(tmp_path)
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["evidence"][1] = {
+        "id": "live-dogfood",
+        "tier": "live",
+        "status": "PASS",
+        "sample_size": sample_size,
+        "raw_paths": [payload["evidence"][0]["raw_paths"][0]],
+    }
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    # When / Then
+    with pytest.raises(ValueError, match=error):
+        load_manifest(path)
+
+
 def test_markdown_names_flags_cohorts_paths_and_open_gate(tmp_path: Path) -> None:
     # Given
     packet = build_readiness_packet(load_manifest(_write_manifest(tmp_path)))

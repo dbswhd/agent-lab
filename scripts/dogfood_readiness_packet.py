@@ -106,11 +106,14 @@ def build_readiness_packet(manifest: ReadinessManifest) -> dict[str, JsonValue]:
         statuses = [row.status for row in records]
         if session_rows and tier is EvidenceTier.MOCK:
             statuses.append(GateStatus.PASS if success_sessions and repair_chains else GateStatus.OPEN)
+        sample_size = sum(row.sample_size for row in records) if records else len(session_rows)
+        if tier is EvidenceTier.LIVE and sample_size == 0:
+            statuses.append(GateStatus.OPEN)
         record_paths = [str(raw) for row in records for raw in row.raw_paths]
         session_paths = [str(row.run_path) for row in session_rows]
         tier_rows[tier.value] = {
             "status": _tier_status(statuses).value,
-            "sample_size": sum(row.sample_size for row in records) if records else len(session_rows),
+            "sample_size": sample_size,
             "raw_paths": list(dict.fromkeys([*record_paths, *session_paths])),
         }
     coverage = len(verdicts) / len(executions) if executions else 0.0

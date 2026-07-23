@@ -303,7 +303,11 @@ def test_fast_bucket_collection_budget():
     # decision/revision/trigger payload alongside the existing note string.
     # 2026-07-23: the step-state parity characterization ratchet
     # (test_step_state_parity_ratchet.py) fits under 3602; no bump needed.
-    assert count <= 3602, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-23: raised 3602 -> 3614 for the post-verify router completion
+    # (test_mission_topology_wire.py) — early-replan repair-cap override on
+    # topology plateau, a non-blocking Human inbox flag when plateau hits the
+    # repair cap, and streak-gated topology de-escalation after a clean run.
+    assert count <= 3614, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

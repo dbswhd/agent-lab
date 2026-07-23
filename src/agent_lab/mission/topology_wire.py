@@ -9,12 +9,27 @@ plus a goal_ledger breadcrumb. Consumers read the decision via the helpers here:
 SINGLE skips plan PEER_REVIEW (human gate preserved) and ``max_agents`` can only
 *lower* the dispatch fan-out cap.
 
-The arm-time decision is not static: ``reroute_mission_topology_after_verify``
-re-derives the need with a risk floor after each non-structural verify failure
-and applies an escalation-only swap (never a mid-mission downgrade), so a
-failing SINGLE mission regains peer review. ``manager_bottleneck`` /
-``exploration`` have no signal source yet so they are always False (recorded in
-the ``signals`` provenance).
+The arm-time decision is not static:
+
+- ``reroute_mission_topology_after_verify`` re-derives the need with a risk
+  floor after each non-structural verify failure and applies an
+  escalation-only swap (never a mid-mission downgrade), so a failing SINGLE
+  mission regains peer review. When a recompute finds no room left to
+  escalate (coordination has already been maxed out for this action), it
+  either nudges the repair cap down by one — via
+  ``mission_loop.action_repair_cap_override`` consumed by
+  ``mission/advance.py::_on_verify_fail`` — so the *existing* DISCUSS
+  recovery/replan path engages a repair sooner instead of burning another
+  wasted attempt, or (when this failure already exhausts the cap) flags a
+  non-blocking Human inbox item without touching phase/circuit_breaker.
+- ``deescalate_mission_topology_after_pass`` is the mirror: after a sustained
+  clean streak of verify passes (``mission_loop.consecutive_verify_passes``),
+  it downgrades one step toward a freshly-recomputed *baseline* need (no risk
+  floor) — but only when that baseline is genuinely smaller, so a mission
+  that's still objectively complex/risky stays escalated.
+
+``manager_bottleneck`` / ``exploration`` have no signal source yet so they are
+always False (recorded in the ``signals`` provenance).
 """
 
 from pathlib import Path
@@ -217,6 +232,68 @@ def ensure_mission_topology(folder: Path) -> dict[str, Any] | None:
 
 
 _HISTORY_CAP = 10
+_DEESCALATE_STREAK = 3
+
+
+def _flag_human_attention(run_in: RunState, *, action_index: int, current: dict[str, Any]) -> None:
+    """Non-blocking Human inbox note — never touches phase/circuit_breaker.
+
+    Mirrors mission/board.py's ``_apply_overflow`` pattern: dedup by
+    (source, action_ref), append via the pure ``append_inbox_item`` (safe to
+    call inside a patch_run_meta closure), then resync ``inbox_pending``.
+    """
+    from agent_lab.human_inbox import append_inbox_item, compute_inbox_pending, inbox_items, new_inbox_item
+
+    source = "topology_router_plateau"
+    ref = str(action_index)
+    for item in inbox_items(run_in):
+        if item.get("status") == "pending" and str(item.get("source") or "") == source and item.get(
+            "action_ref"
+        ) == ref:
+            return
+    item = new_inbox_item(
+        kind="question",
+        source=source,
+        prompt=(
+            f"Action #{action_index} is still failing after coordination escalated to "
+            f"{current.get('kind') or 'single'} (max_agents={current.get('max_agents') or 1}) — "
+            "repair cap reached. DISCUSS recovery engages automatically; flagging for visibility."
+        ),
+        summary=f"topology_router_plateau: action {action_index}",
+        action_ref=ref,
+        options=[{"id": "ack", "label": "Acknowledge"}],
+    )
+    append_inbox_item(run_in, item)
+    run_in["inbox_pending"] = compute_inbox_pending(run_in)
+
+
+def _handle_plateau(
+    run_in: RunState,
+    ml: dict[str, Any],
+    *,
+    action_index: int,
+    count: int,
+    max_rep: int,
+    current: dict[str, Any],
+) -> None:
+    """No topology escalation happened for this failure.
+
+    Coordination is already maxed out for this action. If this failure
+    already exhausts the repair cap, flag a Human (the existing DISCUSS
+    recovery path is about to engage). Otherwise nudge the cap down by one so
+    that path engages *next* fail instead of burning another repair attempt
+    coordination alone won't fix — but only from the 2nd fail on, so a
+    naturally single-agent task's first failure never early-triggers this.
+    """
+    if count + 1 >= max_rep:
+        _flag_human_attention(run_in, action_index=action_index, current=current)
+        return
+    if count >= 1:
+        overrides = dict(ml.get("action_repair_cap_override") or {})
+        overrides[str(action_index)] = count + 1
+        ml2 = dict(ml)
+        ml2["action_repair_cap_override"] = overrides
+        run_in["mission_loop"] = ml2
 
 
 def reroute_mission_topology_after_verify(
@@ -267,12 +344,12 @@ def reroute_mission_topology_after_verify(
         need, signals = build_coordination_need(run_in, risk_floor=floor)
         candidate = choose_topology(need)
         candidate_dict = _decision_dict(candidate)
-        if candidate_dict == current:
-            return run_in
         cur_kind = str(current.get("kind") or "")
         cur_max_raw = current.get("max_agents")
         cur_max = cur_max_raw if isinstance(cur_max_raw, int) else 1
-        if not (cur_kind == str(TopologyKind.SINGLE) or candidate.max_agents > cur_max):
+        escalated = candidate_dict != current and (cur_kind == str(TopologyKind.SINGLE) or candidate.max_agents > cur_max)
+        if not escalated:
+            _handle_plateau(run_in, ml, action_index=action_index, count=count, max_rep=max_rep, current=current)
             return run_in
 
         revision_raw = record.get("revision")
@@ -320,6 +397,114 @@ def reroute_mission_topology_after_verify(
             "to": replaced_out,
             "revision": revision_out,
             "trigger": trigger,
+        },
+    )
+    return replaced_out
+
+
+def deescalate_mission_topology_after_pass(folder: Path, *, action_index: int) -> dict[str, Any] | None:
+    """One-shot topology de-escalation after a sustained clean streak.
+
+    Mirror of ``reroute_mission_topology_after_verify`` on the pass side —
+    deliberately a *separate* function so escalation's never-downgrade
+    contract (see its docstring) is never touched by this code path. Only
+    fires when the topology is escalated beyond SINGLE and the mission has
+    gone ``_DEESCALATE_STREAK`` consecutive verify passes with no intervening
+    failure. Downgrades to a freshly-recomputed baseline need (no risk floor)
+    only when that baseline is genuinely smaller than the current decision —
+    a mission that's still objectively complex/risky stays escalated even
+    after a clean streak. Resets the streak on de-escalation so the next one
+    needs its own full streak (self-limiting; no explicit one-step-at-a-time
+    cap is needed).
+    """
+    if not mission_topology_enabled():
+        return None
+    from agent_lab.goal_ledger import append_goal_event
+    from agent_lab.run.meta import patch_run_meta
+
+    replaced_out: dict[str, Any] | None = None
+    prev_out: dict[str, Any] | None = None
+    phase_out: str | None = None
+    revision_out: int = 0
+    trigger_out: str = ""
+
+    def _swap(run_in: RunState) -> RunState:
+        nonlocal replaced_out, prev_out, phase_out, revision_out, trigger_out
+        record = run_in.get("mission_topology")
+        if not isinstance(record, dict):
+            return run_in
+        current = record.get("decision")
+        current = current if isinstance(current, dict) else {}
+        if str(current.get("kind") or "") == str(TopologyKind.SINGLE):
+            return run_in
+
+        ml = run_in.get("mission_loop")
+        ml = ml if isinstance(ml, dict) else {}
+        streak = int(ml.get("consecutive_verify_passes") or 0)
+        if streak < _DEESCALATE_STREAK:
+            return run_in
+
+        need, signals = build_coordination_need(run_in)
+        candidate = choose_topology(need)
+        candidate_dict = _decision_dict(candidate)
+        cur_max_raw = current.get("max_agents")
+        cur_max = cur_max_raw if isinstance(cur_max_raw, int) else 1
+        smaller = candidate.max_agents < cur_max or (
+            candidate_dict.get("kind") == str(TopologyKind.SINGLE)
+            and current.get("kind") != str(TopologyKind.SINGLE)
+        )
+        if not smaller:
+            return run_in
+
+        revision_raw = record.get("revision")
+        revision = revision_raw if isinstance(revision_raw, int) else 1
+        history = [h for h in (record.get("history") or []) if isinstance(h, dict)]
+        history.append(
+            {
+                "decision": current,
+                "at": record.get("at"),
+                "revision": revision,
+                "trigger": record.get("trigger"),
+            }
+        )
+        trigger = f"verify_pass_streak_{streak}"
+        record["decision"] = candidate_dict
+        record["need"] = _need_dict(need)
+        record["signals"] = signals
+        record["at"] = utc_now_iso()
+        record["revision"] = revision + 1
+        record["trigger"] = trigger
+        record["history"] = history[-_HISTORY_CAP:]
+        run_in["mission_topology"] = record
+
+        ml2 = dict(ml)
+        ml2["consecutive_verify_passes"] = 0
+        run_in["mission_loop"] = ml2
+
+        replaced_out = candidate_dict
+        prev_out = current
+        phase_out = str(ml.get("phase")) if ml.get("phase") else None
+        revision_out = revision + 1
+        trigger_out = trigger
+        return run_in
+
+    patch_run_meta(folder, _swap)
+    if replaced_out is None:
+        return None
+    append_goal_event(
+        folder,
+        "mission_topology_deescalate",
+        phase=phase_out,
+        note=(
+            f"{(prev_out or {}).get('kind')}→{replaced_out['kind']} "
+            f"max_agents {(prev_out or {}).get('max_agents')}→{replaced_out['max_agents']} "
+            f"trigger={trigger_out}"
+        ),
+        payload={
+            "from": prev_out,
+            "to": replaced_out,
+            "revision": revision_out,
+            "trigger": trigger_out,
         },
     )
     return replaced_out

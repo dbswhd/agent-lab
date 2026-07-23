@@ -478,7 +478,14 @@ def on_verify_result(
             pass  # topology reroute must never break verify handling
 
     if verdict_norm == "pass":
-        return _on_verify_pass(folder, action_index, ml, oracle=oracle)
+        result = _on_verify_pass(folder, action_index, ml, oracle=oracle)
+        from agent_lab.mission.topology_wire import deescalate_mission_topology_after_pass
+
+        try:
+            deescalate_mission_topology_after_pass(folder, action_index=action_index)
+        except Exception:
+            pass  # topology de-escalation must never break verify handling
+        return result
 
     _advance_verify_with_policy(folder, {"oracle": oracle, "status": "failed", "blocked_message": reason}, action_index)
     ml = get_mission_loop(read_run_meta(folder))
@@ -498,13 +505,17 @@ def _on_verify_pass(
     pending = [i for i in (ml.get("pending_action_indices") or []) if i != action_index]
     repairs = dict(ml.get("action_repair_counts") or {})
     repairs.pop(str(action_index), None)
+    cap_overrides = dict(ml.get("action_repair_cap_override") or {})
+    cap_overrides.pop(str(action_index), None)
 
     def _advance(run: dict[str, Any]) -> dict[str, Any]:
         m = get_mission_loop(run)
         m["pending_action_indices"] = pending
         m["action_repair_counts"] = repairs
+        m["action_repair_cap_override"] = cap_overrides
         m["phase"] = "MISSION_DONE" if not pending else "EXECUTE_QUEUE"
         m["current_action_index"] = pending[0] if pending else None
+        m["consecutive_verify_passes"] = int(m.get("consecutive_verify_passes") or 0) + 1
         run["mission_loop"] = m
         return run
 
@@ -635,6 +646,13 @@ def _on_verify_fail(
     count = int(repairs.get(key) or 0)
     repairs[key] = count
     max_rep = int(ml.get("max_repair_per_action") or DEFAULT_MAX_REPAIR_PER_ACTION)
+    cap_override = (ml.get("action_repair_cap_override") or {}).get(key)
+    if isinstance(cap_override, int) and cap_override > 0:
+        # Topology router signal: coordination is already maxed out for this
+        # action and a prior fail already happened — pull the cap in so
+        # DISCUSS recovery engages sooner instead of burning a repair attempt
+        # more review can't fix (mission/topology_wire.py::_handle_plateau).
+        max_rep = min(max_rep, cap_override)
 
     if count < max_rep:
 
@@ -643,6 +661,7 @@ def _on_verify_fail(
             m["action_repair_counts"] = repairs
             m["phase"] = "REPAIR"
             m["current_action_index"] = action_index
+            m["consecutive_verify_passes"] = 0
             run["mission_loop"] = m
             return run
 
@@ -694,6 +713,7 @@ def _on_verify_fail(
         m["phase"] = "DISCUSS"
         m["current_action_index"] = action_index
         m["iteration"] = int(m.get("iteration") or 0) + 1
+        m["consecutive_verify_passes"] = 0
         m["discuss_recovery"] = {
             "pending": not structural,
             "reason": reason,

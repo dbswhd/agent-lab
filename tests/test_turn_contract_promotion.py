@@ -63,15 +63,21 @@ def test_shadow_evidence_records_unsafe_under_route_without_hiding_it() -> None:
     assert evidence["shadow_applied_parity"] is False
 
 
-def _promotion_rows(stage: str, *, count: int, parity: bool = True) -> list[dict[str, object]]:
-    start = datetime(2026, 7, 1, tzinfo=UTC)
+def _promotion_rows(
+    stage: str,
+    *,
+    count: int,
+    parity: bool = True,
+    start: datetime | None = None,
+) -> list[dict[str, object]]:
+    start = start or datetime(2026, 7, 1, tzinfo=UTC)
     rows: list[dict[str, object]] = []
     for index in range(count):
         rows.append(
             {
                 "phase": "turn",
                 "session_id": f"{stage}-{index}",
-                "ts": (start + timedelta(hours=(8 * 24 * index / max(count - 1, 1)))).isoformat(),
+                "ts": (start + timedelta(hours=(7 * 24 * index / max(count - 1, 1)))).isoformat(),
                 "rollout_mode": stage,
                 "candidate_contract_id": "critical_review",
                 "applied_contract_id": "critical_review" if parity else "quick_read",
@@ -88,8 +94,9 @@ def test_promotion_report_requires_history_and_human_go() -> None:
     shadow = _promotion_rows("shadow", count=10)
     stage = _promotion_rows("roles", count=10)
 
-    insufficient = build_promotion_report(shadow + stage[:9], stage="roles")
-    ready = build_promotion_report(shadow + stage, stage="roles")
+    as_of = datetime(2026, 7, 8, tzinfo=UTC)
+    insufficient = build_promotion_report(shadow + stage[:9], stage="roles", as_of=as_of)
+    ready = build_promotion_report(shadow + stage, stage="roles", as_of=as_of)
 
     assert insufficient["decision"] == "BLOCK"
     assert "eligible_sessions<10" in insufficient["blocking_reasons"]
@@ -105,12 +112,50 @@ def test_promotion_report_rejects_malformed_and_unsafe_rows() -> None:
     stage[0]["applied_contract_id"] = "quick_read"
     rows: list[dict[str, object]] = shadow + stage + [{"session_id": "stale"}, {"ts": "not-a-date"}]
 
-    report = build_promotion_report(rows, stage="adaptive")
+    report = build_promotion_report(rows, stage="adaptive", as_of=datetime(2026, 7, 8, tzinfo=UTC))
 
     assert report["decision"] == "BLOCK"
     assert report["safety_floor_violations"] == 1
     assert report["critical_under_routing"] == 1
     assert report["malformed_rows"] == 2
+
+
+def test_promotion_report_excludes_ten_stale_2020_rows() -> None:
+    shadow = _promotion_rows("shadow", count=10)
+    stale_roles = _promotion_rows(
+        "roles",
+        count=10,
+        start=datetime(2020, 1, 1, tzinfo=UTC),
+    )
+
+    report = build_promotion_report(
+        shadow + stale_roles,
+        stage="roles",
+        as_of=datetime(2026, 7, 8, tzinfo=UTC),
+    )
+
+    assert report["eligible_sessions"] == 0
+    assert report["stale_rows"] == 10
+    assert report["metrics_green"] is False
+    assert report["decision"] == "BLOCK"
+
+
+def test_promotion_report_excludes_nan_and_naive_timestamp_rows() -> None:
+    shadow = _promotion_rows("shadow", count=10)
+    stage = _promotion_rows("adaptive", count=10)
+    stage[0]["latency_ms"] = float("nan")
+    stage[1]["ts"] = datetime(2026, 7, 2).isoformat()
+
+    report = build_promotion_report(
+        shadow + stage,
+        stage="adaptive",
+        as_of=datetime(2026, 7, 8, tzinfo=UTC),
+    )
+
+    assert report["eligible_sessions"] == 8
+    assert report["malformed_rows"] == 2
+    assert report["metrics_green"] is False
+    assert report["decision"] == "BLOCK"
 
 
 def test_promotion_cli_emits_machine_readable_gate(tmp_path: Path) -> None:

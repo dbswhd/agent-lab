@@ -104,7 +104,7 @@ matching outcome이 10건 미만이면 `bootstrap` 점수만 사용한다. 위�
 
 `roles`가 green이면 **Human GO: roles**가 필요하다. 그 다음에만 `adaptive` evidence window를 시작한다. `adaptive`가 green이어도 **Human GO: adaptive** 전에는 default를 변경하지 않는다. `AGENT_LAB_TURN_CONTRACT_MODE` 기본값은 계속 `shadow`이며, threshold 수정과 default flip은 별도 Human 결정이다.
 
-보고서는 turn outcome ledger의 session별 최신 row만 사용하고 malformed/stale row를 eligible 표본에서 제외한다.
+보고서는 현재 시각 기준 7일 observation window 안의 session별 최신 row만 사용한다. window 밖 stale row와 timezone 없는 timestamp·non-finite latency 같은 malformed row는 eligible 표본에서 제외한다.
 
 ```bash
 PYTHONPATH=src .venv/bin/python scripts/turn_contract_promotion_report.py \

@@ -9,7 +9,11 @@
 | Routing regression | `PYTHONPATH=src .venv/bin/pytest tests/test_turn_policy.py tests/test_eval_surface_graders.py -q` | `86 passed` | `task5/routing-regression.log` |
 | Lint | `PYTHONPATH=src .venv/bin/ruff check <Task5 paths>` | `All checks passed!` | `task5/ruff.log` |
 | Safe high-risk floor | deterministic direct Python invocation of `build_turn_contract_evidence` | applied=`critical_review`, `safety_floor_satisfied=true`, parity=`true` | `task5/manual-deterministic.json` |
-| Insufficient promotion history | same invocation with nine distinct `roles` sessions across eight days | decision=`BLOCK`, reason=`eligible_sessions<10`, violations=`0` | `task5/manual-deterministic.json` |
+| Insufficient promotion history | same invocation with nine distinct `roles` sessions across seven days | decision=`BLOCK`, reason=`eligible_sessions<10`, violations=`0` | `task5/manual-deterministic.json` |
+| Stale verifier probe | direct report invocation with ten `roles` rows from 2020 | eligible=`0`, stale=`10`, decision=`BLOCK` | `task5/verifier-manual.json` |
+| Malformed verifier probe | direct report invocation with one `NaN` latency and one timezone-naive timestamp | eligible=`8`, malformed=`2`, decision=`BLOCK` | `task5/verifier-manual.json` |
+| Verifier repair regression | `PYTHONPATH=src .venv/bin/pytest tests/test_turn_contract_promotion.py tests/test_outcome_harvester_execute.py tests/test_turn_contract.py tests/test_turn_contract_runtime.py tests/test_fast_inbox_skip.py -q` | `55 passed` | `task5/verifier-targeted.log` |
+| CLI fail-closed surface | `PYTHONPATH=src .venv/bin/pytest tests/test_turn_contract_promotion.py::test_promotion_cli_emits_machine_readable_gate -q` | `1 passed`, subprocess exit=`2`, JSON decision=`BLOCK` | `task5/verifier-cli.log` |
 
 ## Gate and invariants
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Mapping, Sequence
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any, Literal, TypedDict
 
 PromotionStage = Literal["roles", "adaptive"]
@@ -24,6 +24,7 @@ class PromotionReport(TypedDict):
     shadow_p95_latency_ms: int | None
     p95_latency_regression: float | None
     malformed_rows: int
+    stale_rows: int
     metrics_green: bool
     decision: Literal["BLOCK", "HUMAN_GO_REQUIRED"]
     blocking_reasons: list[str]
@@ -34,9 +35,12 @@ def _parse_timestamp(value: Any) -> datetime | None:
     if not isinstance(value, str):
         return None
     try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        timestamp = datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError:
         return None
+    if timestamp.tzinfo is None or timestamp.utcoffset() is None:
+        return None
+    return timestamp.astimezone(UTC)
 
 
 def _eligible_row(row: Mapping[str, Any]) -> bool:
@@ -51,6 +55,8 @@ def _eligible_row(row: Mapping[str, Any]) -> bool:
         and isinstance(row.get("shadow_applied_parity"), bool)
         and isinstance(row.get("safety_floor_satisfied"), bool)
         and isinstance(row.get("latency_ms"), (int, float))
+        and not isinstance(row.get("latency_ms"), bool)
+        and math.isfinite(float(row["latency_ms"]))
     )
 
 
@@ -58,9 +64,12 @@ def _latest_by_session(
     rows: Sequence[Mapping[str, Any]],
     *,
     mode: str,
-) -> tuple[list[Mapping[str, Any]], int]:
+    as_of: datetime,
+) -> tuple[list[Mapping[str, Any]], int, int]:
     latest: dict[str, tuple[datetime, Mapping[str, Any]]] = {}
     malformed = 0
+    stale = 0
+    window_start = as_of - timedelta(days=MIN_WINDOW_DAYS)
     for row in rows:
         if not _eligible_row(row):
             malformed += 1
@@ -72,10 +81,13 @@ def _latest_by_session(
         if timestamp is None:
             malformed += 1
             continue
+        if timestamp < window_start or timestamp > as_of:
+            stale += 1
+            continue
         previous = latest.get(session_id)
         if previous is None or timestamp > previous[0]:
             latest[session_id] = (timestamp, row)
-    return [item[1] for item in latest.values()], malformed
+    return [item[1] for item in latest.values()], malformed, stale
 
 
 def _p95(rows: Sequence[Mapping[str, Any]]) -> int | None:
@@ -89,10 +101,12 @@ def build_promotion_report(
     rows: Sequence[Mapping[str, Any]],
     *,
     stage: PromotionStage,
+    as_of: datetime | None = None,
 ) -> PromotionReport:
     """Evaluate evidence only; a green report still requires an explicit Human GO."""
-    stage_rows, malformed = _latest_by_session(rows, mode=stage)
-    shadow_rows, _ = _latest_by_session(rows, mode="shadow")
+    report_time = as_of.astimezone(UTC) if as_of is not None else datetime.now(UTC)
+    stage_rows, malformed, stale = _latest_by_session(rows, mode=stage, as_of=report_time)
+    shadow_rows, _, _ = _latest_by_session(rows, mode="shadow", as_of=report_time)
     timestamps = [_parse_timestamp(row.get("ts")) for row in stage_rows]
     valid_timestamps = [timestamp for timestamp in timestamps if timestamp is not None]
     window_days = (
@@ -146,6 +160,7 @@ def build_promotion_report(
         "shadow_p95_latency_ms": shadow_p95,
         "p95_latency_regression": round(regression, 6) if regression is not None else None,
         "malformed_rows": malformed,
+        "stale_rows": stale,
         "metrics_green": metrics_green,
         "decision": "HUMAN_GO_REQUIRED" if metrics_green else "BLOCK",
         "blocking_reasons": reasons,

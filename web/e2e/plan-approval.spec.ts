@@ -48,7 +48,7 @@ async function mockPlanApprovalApi(
   const hasAction = options.hasAction ?? true;
   const blockingObjection = options.blockingObjection ?? false;
   const question = () => questionPending;
-  await page.route(/^http:\/\/127\.0\.0\.1:4173\/api\//, async (route) => {
+  await page.route(/^http:\/\/127\.0\.0\.1:\d+\/api\//, async (route) => {
     const request = route.request();
     const url = new URL(request.url());
     const key = `${request.method()} ${url.pathname}`;
@@ -357,9 +357,21 @@ async function initializePlanReview(page: Page) {
   });
 }
 
-async function openPlanReview(page: Page) {
-  await page.getByRole("button", { name: "Plan approval review" }).click();
-  await expect(page.locator(".plan-approval-strip")).toBeVisible();
+async function openPlanReview(page: Page, expectPlanStrip = true) {
+  const session = page.getByTestId("session-plan-review");
+  for (const scope of ["active", "dogfood"] as const) {
+    await page.getByTestId(`session-scope-${scope}`).click();
+    if ((await session.count()) === 0) continue;
+    await session.click();
+    await expect(session).toHaveAttribute("aria-current", "true");
+    if (expectPlanStrip) {
+      await expect(page.locator(".plan-approval-strip")).toBeVisible();
+    }
+    return;
+  }
+  throw new Error(
+    "Session fixture was not present in a selectable rail scope: plan-review",
+  );
 }
 
 test("plan review is one decision surface and approval starts dry-run", async ({
@@ -430,7 +442,7 @@ test("question surface keeps options, freeform fallback, and submit state togeth
     },
   );
   await page.goto("/");
-  await page.getByRole("button", { name: "Plan approval review" }).click();
+  await openPlanReview(page, false);
 
   const question = page.locator(".human-inbox--composer");
   await page.setViewportSize({ width: 1440, height: 900 });

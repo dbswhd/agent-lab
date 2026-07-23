@@ -1,6 +1,14 @@
 import { defineConfig } from "playwright/test";
 
-const port = process.env.PLAYWRIGHT_WEB_PORT ?? "4173";
+const portInput = process.env.PLAYWRIGHT_WEB_PORT ?? "4173";
+if (!/^[1-9]\d{0,4}$/.test(portInput)) {
+  throw new TypeError("PLAYWRIGHT_WEB_PORT must be a decimal TCP port");
+}
+const portNumber = Number(portInput);
+if (portNumber > 65_535) {
+  throw new RangeError("PLAYWRIGHT_WEB_PORT must be between 1 and 65535");
+}
+const port = String(portNumber);
 const baseURL = `http://127.0.0.1:${port}`;
 
 export default defineConfig({

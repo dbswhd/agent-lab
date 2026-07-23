@@ -10,7 +10,7 @@ const agents = Array.from({ length: 6 }, (_, index) => ({
 }));
 
 async function mockApi(page: Page) {
-  await page.route(/^http:\/\/127\.0\.0\.1:4173\/api\//, async (route) => {
+  await page.route(/^http:\/\/127\.0\.0\.1:\d+\/api\//, async (route) => {
     const url = new URL(route.request().url());
     if (url.pathname === "/api/health") {
       await route.fulfill({ json: { ok: true, agents } });

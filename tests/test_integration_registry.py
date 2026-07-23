@@ -294,7 +294,10 @@ def test_fast_bucket_collection_budget():
     # (test_mission_topology_wire.py) — deterministic choose_topology() decision
     # recorded to run.json mission_topology; SINGLE skips plan PEER_REVIEW; max_agents
     # lowers dispatch fan-out (never raises past the existing env clamp).
-    assert count <= 3589, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-23: raised 3589 -> 3601 for the post-verify escalation-only topology
+    # reroute (risk-floored recompute after non-structural verify failures, never
+    # downgrades) and thorough/autonomous default-on profile tests.
+    assert count <= 3601, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

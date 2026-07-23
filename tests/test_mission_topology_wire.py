@@ -8,12 +8,14 @@ from typing import Any
 
 import pytest
 
+from agent_lab.mission.advance import on_verify_result
 from agent_lab.mission.loop import enable_mission_loop
-from agent_lab.mission.topology import TopologyKind
+from agent_lab.mission.topology import RiskLevel, TopologyKind
 from agent_lab.mission.topology_wire import (
     build_coordination_need,
     ensure_mission_topology,
     mission_topology_decision,
+    reroute_mission_topology_after_verify,
     topology_max_agents,
     topology_skips_peer_review,
 )
@@ -250,3 +252,204 @@ def test_parse_dispatch_trims_to_topology_cap(monkeypatch: pytest.MonkeyPatch) -
     assert spec is not None
     assert len(spec.agents) == 2
     assert spec.trimmed_agents == ("claude",)
+
+
+# --- post-verify escalation-only reroute ---
+
+
+def test_build_need_risk_floor_raises_and_signals(monkeypatch: pytest.MonkeyPatch) -> None:
+    need, signals = build_coordination_need({"topic": "fix typo"}, risk_floor=RiskLevel.MEDIUM)
+    assert need.risk == RiskLevel.MEDIUM
+    assert signals["risk_floor"] == "medium"
+    need, signals = build_coordination_need({"topic": "fix typo"})
+    assert signals["risk_floor"] is None
+
+
+def test_build_need_risk_floor_never_lowers() -> None:
+    need, _ = build_coordination_need(
+        {"topic": "production security migration"}, risk_floor=RiskLevel.MEDIUM
+    )
+    assert need.risk == RiskLevel.HIGH
+
+
+def _ledger_reroute_events(folder: Path) -> list[dict[str, Any]]:
+    ledger = read_run_meta(folder).get("goal_ledger") or []
+    return [e for e in ledger if e.get("event") == "mission_topology_reroute"]
+
+
+def test_reroute_fail_escalates_single_to_quorum(
+    session_folder: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("AGENT_LAB_MISSION_TOPOLOGY", "1")
+    patch_run_meta(
+        session_folder,
+        lambda run: {
+            **run,
+            "topic": "production security migration of the payment path",
+            "agents": ["cursor", "codex", "claude"],
+            "mission_topology": _record("single", 1),
+        },
+    )
+    result = reroute_mission_topology_after_verify(
+        session_folder, verdict="fail", reason="tests red", action_index=1
+    )
+    assert result is not None
+    assert result["kind"] == str(TopologyKind.PEER_QUORUM)
+    stored = read_run_meta(session_folder)["mission_topology"]
+    assert stored["revision"] == 2
+    assert stored["trigger"] == "verify_fail_action_1"
+    assert len(stored["history"]) == 1
+    assert stored["history"][0]["decision"]["kind"] == "single"
+    assert len(_ledger_reroute_events(session_folder)) == 1
+
+
+def test_reroute_structural_fail_noop(session_folder: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AGENT_LAB_MISSION_TOPOLOGY", "1")
+    original = _record("single", 1)
+    patch_run_meta(
+        session_folder,
+        lambda run: {
+            **run,
+            "topic": "production security migration",
+            "mission_topology": original,
+        },
+    )
+    result = reroute_mission_topology_after_verify(
+        session_folder, verdict="fail", reason="worktree missing", action_index=1
+    )
+    assert result is None
+    assert read_run_meta(session_folder)["mission_topology"]["decision"] == original["decision"]
+    assert not _ledger_reroute_events(session_folder)
+
+
+def test_reroute_pass_flag_off_missing_record_noop(
+    session_folder: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("AGENT_LAB_MISSION_TOPOLOGY", "1")
+    patch_run_meta(
+        session_folder,
+        lambda run: {**run, "mission_topology": _record("single", 1)},
+    )
+    assert reroute_mission_topology_after_verify(session_folder, verdict="pass", action_index=1) is None
+
+    monkeypatch.delenv("AGENT_LAB_MISSION_TOPOLOGY", raising=False)
+    assert reroute_mission_topology_after_verify(session_folder, verdict="fail", action_index=1) is None
+
+    monkeypatch.setenv("AGENT_LAB_MISSION_TOPOLOGY", "1")
+    folder2 = session_folder.parent / "no-record"
+    folder2.mkdir()
+    (folder2 / "run.json").write_text("{}", encoding="utf-8")
+    assert reroute_mission_topology_after_verify(folder2, verdict="fail", action_index=1) is None
+
+
+def test_reroute_never_downgrades(session_folder: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AGENT_LAB_MISSION_TOPOLOGY", "1")
+    original = _record("peer_quorum", 3)
+    patch_run_meta(
+        session_folder,
+        lambda run: {**run, "topic": "fix typo", "mission_topology": original},
+    )
+    result = reroute_mission_topology_after_verify(
+        session_folder, verdict="fail", reason="tests red", action_index=1
+    )
+    assert result is None
+    stored = read_run_meta(session_folder)["mission_topology"]
+    assert stored["decision"] == original["decision"]
+    assert stored.get("revision", 1) == original.get("revision", 1)
+
+
+def test_reroute_repair_cap_floors_high(session_folder: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AGENT_LAB_MISSION_TOPOLOGY", "1")
+    patch_run_meta(
+        session_folder,
+        lambda run: {
+            **run,
+            "topic": "fix typo",
+            "agents": ["cursor", "codex", "claude"],
+            "mission_topology": _record("single", 1),
+            "mission_loop": {
+                "action_repair_counts": {"1": 1},
+                "max_repair_per_action": 2,
+            },
+        },
+    )
+    result = reroute_mission_topology_after_verify(
+        session_folder, verdict="fail", reason="tests red", action_index=1
+    )
+    assert result is not None
+    stored = read_run_meta(session_folder)["mission_topology"]
+    assert stored["need"]["risk"] == "high"
+    assert stored["signals"]["risk_floor"] == "high"
+
+
+def test_reroute_history_capped(session_folder: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AGENT_LAB_MISSION_TOPOLOGY", "1")
+    record = _record("single", 1)
+    record["history"] = [
+        {"decision": _record("single", 1)["decision"], "at": "t", "revision": 1, "trigger": None}
+        for _ in range(10)
+    ]
+    patch_run_meta(
+        session_folder,
+        lambda run: {
+            **run,
+            "topic": "production security migration",
+            "agents": ["cursor", "codex", "claude"],
+            "mission_topology": record,
+        },
+    )
+    result = reroute_mission_topology_after_verify(
+        session_folder, verdict="fail", reason="tests red", action_index=1
+    )
+    assert result is not None
+    stored = read_run_meta(session_folder)["mission_topology"]
+    assert len(stored["history"]) == 10
+
+
+def test_on_verify_result_fail_triggers_reroute_phase_unchanged(
+    session_folder: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("AGENT_LAB_MISSION_TOPOLOGY", "1")
+    enable_mission_loop(session_folder)
+
+    def _verify(run: dict[str, Any]) -> dict[str, Any]:
+        run["topic"] = "production security migration of the payment path"
+        run["agents"] = ["cursor", "codex", "claude"]
+        run["mission_topology"] = _record("single", 1)
+        ml = run.setdefault("mission_loop", {})
+        ml.update(
+            {
+                "enabled": True,
+                "phase": "VERIFY",
+                "pending_action_indices": [1],
+                "current_action_index": 1,
+            }
+        )
+        return run
+
+    patch_run_meta(session_folder, _verify)
+    out = on_verify_result(session_folder, action_index=1, verdict="fail", reason="tests red")
+    assert out["phase"] == "REPAIR"
+    run = read_run_meta(session_folder)
+    assert run["mission_loop"]["last_verify"]["status"] == "fail"
+    stored = run["mission_topology"]
+    assert stored["decision"]["kind"] == str(TopologyKind.PEER_QUORUM)
+
+
+def test_consumers_see_escalated_decision(
+    session_folder: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("AGENT_LAB_MISSION_TOPOLOGY", "1")
+    patch_run_meta(
+        session_folder,
+        lambda run: {
+            **run,
+            "topic": "production security migration of the payment path",
+            "agents": ["cursor", "codex", "claude"],
+            "mission_topology": _record("single", 1),
+        },
+    )
+    reroute_mission_topology_after_verify(session_folder, verdict="fail", action_index=1)
+    run = read_run_meta(session_folder)
+    assert topology_skips_peer_review(run) is False
+    assert topology_max_agents(run) == 3

@@ -261,6 +261,24 @@ def test_f2_ownership_spread_across_profiles() -> None:
     assert counts["balanced"] >= 40
 
 
+def test_thorough_and_autonomous_default_mission_topology_on() -> None:
+    thorough = resolve_profile("thorough")
+    autonomous = resolve_profile("autonomous")
+    assert thorough is not None and autonomous is not None
+    assert thorough.flags.get("AGENT_LAB_MISSION_TOPOLOGY") == "1"
+    assert autonomous.flags.get("AGENT_LAB_MISSION_TOPOLOGY") == "1"
+    fast = resolve_profile("fast")
+    balanced = resolve_profile("balanced")
+    assert fast is not None and balanced is not None
+    assert "AGENT_LAB_MISSION_TOPOLOGY" not in fast.flags
+    assert "AGENT_LAB_MISSION_TOPOLOGY" not in balanced.flags
+
+
+def test_mission_topology_membership_is_thorough_autonomous() -> None:
+    membership = flag_profile_membership()
+    assert membership.get("AGENT_LAB_MISSION_TOPOLOGY") == ["thorough", "autonomous"]
+
+
 def test_apply_run_profile_ignores_owns_only(monkeypatch: pytest.MonkeyPatch) -> None:
     """Membership-only owns must not force env values."""
     monkeypatch.delenv("AGENT_LAB_EFFICIENCY", raising=False)

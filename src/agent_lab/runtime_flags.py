@@ -205,7 +205,8 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         "feature",
         "Arm-time deterministic topology decision (choose_topology) recorded to run.json "
         "mission_topology; SINGLE skips plan PEER_REVIEW and max_agents lowers dispatch "
-        "fan-out (default off)",
+        "fan-out. Escalation-only re-decision after non-structural verify failures "
+        "(default off; on by default in thorough/autonomous profiles)",
     ),
     FlagDef(
         "AGENT_LAB_DRIFT_AUDIT",

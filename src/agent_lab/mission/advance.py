@@ -467,6 +467,16 @@ def on_verify_result(
     patch_run_meta(folder, _save_verify)
     ml = get_mission_loop(read_run_meta(folder))
 
+    if verdict_norm != "pass":
+        from agent_lab.mission.topology_wire import reroute_mission_topology_after_verify
+
+        try:
+            reroute_mission_topology_after_verify(
+                folder, verdict=verdict_norm, reason=reason, action_index=action_index
+            )
+        except Exception:
+            pass  # topology reroute must never break verify handling
+
     if verdict_norm == "pass":
         return _on_verify_pass(folder, action_index, ml, oracle=oracle)
 

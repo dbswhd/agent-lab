@@ -261,8 +261,7 @@ async function mockPlanApprovalApi(
       return;
     }
     if (
-      url.pathname ===
-        "/api/sessions/plan-review/inbox/question-1/resolve" &&
+      url.pathname === "/api/sessions/plan-review/inbox/question-1/resolve" &&
       request.method() === "POST"
     ) {
       requests.push(key);
@@ -491,9 +490,11 @@ test("question surface keeps options, freeform fallback, and submit state togeth
   await expect(question.locator("textarea")).toHaveValue("");
 
   await question.getByRole("button", { name: "제출" }).click();
-  await expect.poll(() => resolveBodies.at(-1)).toEqual({
-    selected: ["staged"],
-  });
+  await expect
+    .poll(() => resolveBodies.at(-1))
+    .toEqual({
+      selected: ["staged"],
+    });
   await expect(question.locator("textarea")).toHaveAttribute(
     "placeholder",
     "기타 — 직접 입력…",
@@ -574,12 +575,8 @@ test("dry-run failure preserves the approval decision and explains recovery", as
   await expect(page.locator(".work-surface--alert")).toContainText(
     "Plan 승인은 유지되었습니다.",
   );
-  await page
-    .getByRole("button", { name: "dry-run 다시 시도" })
-    .click();
+  await page.getByRole("button", { name: "dry-run 다시 시도" }).click();
   await expect
-    .poll(() =>
-      requests.filter((entry) => entry.includes("/execute/dry-run")),
-    )
+    .poll(() => requests.filter((entry) => entry.includes("/execute/dry-run")))
     .toHaveLength(2);
 });

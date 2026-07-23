@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import {
   expect,
@@ -18,7 +17,6 @@ const EVIDENCE_DIR = resolve(
   process.cwd(),
   "../.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3/browser",
 );
-const HUMAN_PROVENANCE_HEADER = "x-agent-lab-e2e-human-provenance";
 
 const planMarkdown = `## 목표
 Decision Queue에서 Oracle PASS까지 한 흐름으로 검증합니다.
@@ -559,122 +557,11 @@ function recordRequest(state: FixtureState, route: Route): RequestReceipt {
   return receipt;
 }
 
-function parsedBody(receipt: RequestReceipt): Record<string, unknown> | null {
-  try {
-    const value: unknown = JSON.parse(receipt.body);
-    return value !== null && typeof value === "object" && !Array.isArray(value)
-      ? Object.fromEntries(Object.entries(value))
-      : null;
-  } catch {
-    return null;
-  }
-}
-
-async function rejectUntrustedGateRequest(
-  route: Route,
-  expectedProvenance: string,
-  body: Record<string, unknown> | null,
-): Promise<boolean> {
-  if (
-    route.request().headers()[HUMAN_PROVENANCE_HEADER] !== expectedProvenance
-  ) {
-    await fulfillJson(
-      route,
-      { detail: { code: "human_provenance_required" } },
-      403,
-    );
-    return true;
-  }
-  if (
-    body?.auto_approve === true ||
-    body?.auto_merge === true ||
-    body?.trust_budget_used !== undefined
-  ) {
-    await fulfillJson(
-      route,
-      { detail: { code: "human_gate_cannot_be_automated" } },
-      403,
-    );
-    return true;
-  }
-  const path = new URL(route.request().url()).pathname;
-  const permissions = body?.permissions;
-  const bodyIsExpected = path.endsWith("/plan/approve")
-    ? JSON.stringify(body) === "{}"
-    : path.endsWith("/execute/resolve") &&
-      body?.execution_id === EXECUTION_ID &&
-      body.vote === "approve" &&
-      permissions !== null &&
-      typeof permissions === "object" &&
-      !Array.isArray(permissions) &&
-      Object.keys(body).sort().join(",") === "execution_id,permissions,vote";
-  if (!bodyIsExpected) {
-    await fulfillJson(
-      route,
-      { detail: { code: "invalid_gate_decision" } },
-      409,
-    );
-    return true;
-  }
-  return false;
-}
-
 function addGateLedger(state: FixtureState, entry: GateLedgerEntry): void {
   state.gateLedger.push(entry);
 }
 
 async function installFixture(page: Page, state: FixtureState): Promise<void> {
-  const humanProvenance = randomUUID();
-  await page.addInitScript(
-    ({ headerName, headerValue }) => {
-      let trustedGateIntent: "plan" | "execute" | null = null;
-      window.addEventListener(
-        "click",
-        (event) => {
-          if (!event.isTrusted) return;
-          const target =
-            event.target instanceof Element
-              ? event.target.closest("button")
-              : null;
-          const label = target?.textContent?.trim() ?? "";
-          if (label === "승인하고 실행" || label === "승인만") {
-            trustedGateIntent = "plan";
-          } else if (
-            label === "승인" &&
-            target?.closest('[aria-label="실행 승인 대기"]')
-          ) {
-            trustedGateIntent = "execute";
-          }
-          window.setTimeout(() => {
-            trustedGateIntent = null;
-          }, 0);
-        },
-        true,
-      );
-      const originalFetch = window.fetch.bind(window);
-      window.fetch = (input, init) => {
-        const url = new URL(
-          input instanceof Request ? input.url : String(input),
-          window.location.href,
-        );
-        const intent = url.pathname.endsWith("/plan/approve")
-          ? "plan"
-          : url.pathname.endsWith("/execute/resolve")
-            ? "execute"
-            : null;
-        if (intent === null || intent !== trustedGateIntent) {
-          return originalFetch(input, init);
-        }
-        trustedGateIntent = null;
-        const headers = new Headers(
-          input instanceof Request ? input.headers : init?.headers,
-        );
-        headers.set(headerName, headerValue);
-        return originalFetch(input, { ...init, headers });
-      };
-    },
-    { headerName: HUMAN_PROVENANCE_HEADER, headerValue: humanProvenance },
-  );
   await page.route(/^http:\/\/127\.0\.0\.1:\d+\/api\//, async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -915,16 +802,7 @@ async function installFixture(page: Page, state: FixtureState): Promise<void> {
       path === `/api/sessions/${SESSION_ID}/plan/approve` &&
       request.method() === "POST"
     ) {
-      const receipt = recordRequest(state, route);
-      if (
-        await rejectUntrustedGateRequest(
-          route,
-          humanProvenance,
-          parsedBody(receipt),
-        )
-      ) {
-        return;
-      }
+      recordRequest(state, route);
       const preVersion = state.version;
       state.approvedPlanHash = state.planHash;
       state.approvedBy = "human:e2e";
@@ -1000,16 +878,7 @@ async function installFixture(page: Page, state: FixtureState): Promise<void> {
       path === `/api/sessions/${SESSION_ID}/execute/resolve` &&
       request.method() === "POST"
     ) {
-      const receipt = recordRequest(state, route);
-      if (
-        await rejectUntrustedGateRequest(
-          route,
-          humanProvenance,
-          parsedBody(receipt),
-        )
-      ) {
-        return;
-      }
+      recordRequest(state, route);
       const preVersion = state.version;
       state.phase = state.kind === "repair" ? "oracle_fail" : "succeeded";
       state.version += 1;
@@ -1382,170 +1251,99 @@ test("connected Human-gated journey reaches PASS only with durable evidence", as
   });
 });
 
-test("direct and automated gate requests cannot create approval or success evidence", async ({
+test("frontend mock contract emits gate requests only from rendered Human actions", async ({
   page,
 }) => {
-  // Given: the plan gate is pending and only a real rendered UI click can mint fixture provenance.
+  // Given: this frontend-only mock contract starts before any rendered Human gate action.
   const state = createState("happy");
-  state.phase = "plan_pending";
-  state.version = 2;
   await initialize(page);
   await installFixture(page, state);
   await openFixtureSession(page);
+  await submitTopic(page);
 
-  // When: direct requests omit provenance, forge it, or claim automation authority.
-  const planStatuses = await page.evaluate(async (sessionId) => {
-    const endpoint = `/api/sessions/${sessionId}/plan/approve`;
-    const requests = [
-      fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: "{}",
-      }),
-      fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-agent-lab-e2e-human-provenance": "forged",
-        },
-        body: "{}",
-      }),
-      fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-agent-lab-e2e-human-provenance": "forged",
-        },
-        body: JSON.stringify({
-          auto_approve: true,
-          trust_budget_used: 1,
-        }),
-      }),
-    ];
-    return Promise.all(
-      (await Promise.all(requests)).map((response) => response.status),
-    );
-  }, SESSION_ID);
-
-  // Then: the pending plan remains unapproved with no audit or evidence.
-  expect(planStatuses).toEqual([403, 403, 403]);
+  // Then: rendering a pending plan cannot approve or merge it by itself.
+  expect(
+    state.requests.filter(
+      (request) =>
+        request.path.endsWith("/plan/approve") ||
+        request.path.endsWith("/execute/resolve"),
+    ),
+  ).toEqual([]);
   expect(state).toMatchObject({
     phase: "plan_pending",
     version: 2,
     approvedPlanHash: null,
     approvedBy: null,
     audits: [],
-    gateLedger: [],
   });
 
-  // Given: a durable execution diff is pending Human review.
-  state.phase = "execute_pending";
-  state.version = 4;
-  state.approvedPlanHash = PLAN_HASH_V1;
-  state.approvedBy = "human:e2e";
+  // When: the Human clicks the rendered plan approval control.
+  await approvePlanAndAwaitDryRun(page);
 
-  // When: direct merge requests omit provenance, forge identity, or request auto-merge.
-  const mergeStatuses = await page.evaluate(
-    async ({ sessionId, executionId }) => {
-      const endpoint = `/api/sessions/${sessionId}/execute/resolve`;
-      const post = (body: Record<string, unknown>, provenance?: string) =>
-        fetch(endpoint, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(provenance
-              ? { "x-agent-lab-e2e-human-provenance": provenance }
-              : {}),
-          },
-          body: JSON.stringify(body),
-        });
-      const requests = [
-        post({
-          execution_id: executionId,
-          vote: "approve",
-          permissions: {},
-        }),
-        post(
-          {
-            execution_id: "wrong-execution",
-            vote: "approve",
-            permissions: {},
-          },
-          "forged",
-        ),
-        post(
-          {
-            execution_id: executionId,
-            vote: "approve",
-            permissions: {},
-            auto_merge: true,
-            trust_budget_used: 1,
-          },
-          "forged",
-        ),
-      ];
-      return Promise.all(
-        (await Promise.all(requests)).map((response) => response.status),
-      );
-    },
-    { sessionId: SESSION_ID, executionId: EXECUTION_ID },
+  // Then: the frontend sends one normal plan payload and no merge decision.
+  const planRequests = state.requests.filter((request) =>
+    request.path.endsWith("/plan/approve"),
   );
-
-  // Then: the diff remains unmerged and success evidence stays empty.
-  expect(mergeStatuses).toEqual([403, 403, 403]);
+  expect(planRequests).toHaveLength(1);
+  expect(JSON.parse(planRequests[0]?.body ?? "null")).toEqual({});
+  expect(
+    state.requests.filter((request) =>
+      request.path.endsWith("/execute/resolve"),
+    ),
+  ).toEqual([]);
   expect(state.phase).toBe("execute_pending");
   expect(state.version).toBe(4);
   expect(state.audits).toEqual([]);
-  expect(state.gateLedger).toEqual([]);
   expect(activeExecution(state)).toMatchObject({
     status: "pending_approval",
     merge: null,
     oracle: null,
   });
-  expect(runtimePayload(state)).toMatchObject({
-    evidence: { entries: [] },
-  });
 
-  // Given: an optimistic-lock Inbox decision is current at version seven.
-  state.phase = "question";
-  state.version = 7;
-  state.staleResolved = false;
+  // When: the Human clicks the rendered execution approval control.
+  await page
+    .getByRole("region", { name: "실행 승인 대기" })
+    .getByRole("button", { name: "승인" })
+    .click();
 
-  // When: callers submit the wrong version or decision identity.
-  const decisionStatuses = await page.evaluate(
-    async ({ sessionId, decisionId }) => {
-      const endpoint = `/api/sessions/${sessionId}/inbox/${decisionId}/resolve`;
-      const post = (body: Record<string, unknown>) =>
-        fetch(endpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        });
-      const responses = await Promise.all([
-        post({
-          decision_id: decisionId,
-          mission_id: "mission-lifecycle-1",
-          expected_version: 6,
-          selected: ["safe"],
-        }),
-        post({
-          decision_id: "wrong-decision",
-          mission_id: "mission-lifecycle-1",
-          expected_version: 7,
-          selected: ["safe"],
-        }),
-      ]);
-      return responses.map((response) => response.status);
-    },
-    { sessionId: SESSION_ID, decisionId: staleQuestion.id },
+  // Then: exactly one normal merge decision is sent with no automation fields.
+  const mergeRequests = state.requests.filter((request) =>
+    request.path.endsWith("/execute/resolve"),
   );
-
-  // Then: neither optimistic-lock attack resolves the Human decision.
-  expect(decisionStatuses).toEqual([409, 409]);
-  expect(state.version).toBe(7);
-  expect(state.staleResolved).toBe(false);
-  expect(state.audits).toEqual([]);
-  expect(state.gateLedger).toEqual([]);
+  expect(mergeRequests).toHaveLength(1);
+  const mergeBody = JSON.parse(mergeRequests[0]?.body ?? "null") as Record<
+    string,
+    unknown
+  >;
+  expect(Object.keys(mergeBody).sort()).toEqual([
+    "execution_id",
+    "permissions",
+    "vote",
+  ]);
+  expect(mergeBody).toMatchObject({
+    execution_id: EXECUTION_ID,
+    vote: "approve",
+    permissions: {
+      cursor: {},
+      codex: {},
+      claude: {},
+    },
+  });
+  expect(state).toMatchObject({
+    phase: "succeeded",
+    version: 5,
+    approvedBy: "human:e2e",
+  });
+  expect(state.audits).toHaveLength(1);
+  expect(
+    state.requests.some(
+      (request) =>
+        request.path.includes("auto-") ||
+        request.body.includes("auto_approve") ||
+        request.body.includes("auto_merge") ||
+        request.body.includes("trust_budget"),
+    ),
+  ).toBe(false);
 });
 
 test("Oracle FAIL repairs through bounded re-discuss retries before PASS", async ({

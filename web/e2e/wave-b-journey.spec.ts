@@ -420,8 +420,11 @@ async function initialize(page: Page) {
   });
 }
 
-async function openSession(page: Page, name: string) {
-  await page.getByRole("button", { name }).click();
+async function openSession(page: Page, sessionId: string) {
+  const session = page.getByTestId(`session-${sessionId}`);
+  await page.getByTestId("session-scope-dogfood").click();
+  await session.click();
+  await expect(session).toHaveAttribute("aria-current", "true");
 }
 
 test("plan reject journey sends reject request and enters refine phase", async ({
@@ -431,7 +434,7 @@ test("plan reject journey sends reject request and enters refine phase", async (
   await initialize(page);
   await mockWaveBJourneyApi(page, requests, "plan-reject");
   await page.goto("/");
-  await openSession(page, "Wave B plan reject");
+  await openSession(page, "wave-b-plan-reject");
 
   const review = page.locator(".plan-approval-strip");
   await expect(review).toBeVisible();
@@ -457,7 +460,7 @@ test("diff approve journey resolves pending execution", async ({ page }) => {
   await initialize(page);
   await mockWaveBJourneyApi(page, requests, "diff-approve");
   await page.goto("/");
-  await openSession(page, "Wave B diff approve");
+  await openSession(page, "wave-b-diff-approve");
 
   // A pending execution activates the composer stack's "execute_queue" lane
   // (highest priority after plan_approval, per composerStackLane.ts) — that
@@ -483,7 +486,7 @@ test("Oracle repair journey re-verifies failed execution", async ({
   await initialize(page);
   await mockWaveBJourneyApi(page, requests, "oracle-repair");
   await page.goto("/");
-  await openSession(page, "Wave B Oracle repair");
+  await openSession(page, "wave-b-oracle-repair");
 
   // Same execute_queue lane as the diff-approve journey — the compact
   // ExecuteQueueBar, not #work-execute-queue (see the diff-approve journey
@@ -505,7 +508,7 @@ test("human resume journey answers inbox question", async ({ page }) => {
   await initialize(page);
   await mockWaveBJourneyApi(page, requests, "human-resume");
   await page.goto("/");
-  await openSession(page, "Wave B human resume");
+  await openSession(page, "wave-b-human-resume");
 
   const inbox = page.locator(".human-inbox--composer");
   await expect(inbox).toBeVisible();

@@ -34,7 +34,7 @@
 6. [Composer·메시지 전송](#6-composermessage-전송)
 7. [Room 턴 오케스트레이션](#7-room-턴-오케스트레이션)
 8. [Transcript](#8-transcript)
-9. [Work surface (plan + execute)](#9-work-surface-plan--execute)
+9. [Decision Queue + execution lifecycle (plan + execute)](#9-decision-queue--execution-lifecycle-plan--execute)
 10. [Tasks·합의·이의·산출물](#10-tasks합의이의산출물)
 11. [Human Inbox](#11-human-inbox)
 12. [Goal Loop](#12-goal-loop)
@@ -105,7 +105,7 @@
 | **Turn / 턴** | Human 메시지 1회 + 그에 대한 에이전트 라운드 전체 |
 | **Round / 라운드** | 같은 턴 안 에이전트 웨이브 (R1, R2, …) |
 | **Room** | 선택 에이전트 병렬·순차 토론 (기본 cursor+codex+claude, optional kimi_work) |
-| **Work** | plan 문서 + execute/review/approval **단일 surface** |
+| **Decision Queue + internal `work` lane** | plan 승인·execute·review·approval의 현재 action과 결과 evidence. navigation tab이 아님 |
 | **Scribe** | `plan.md`를 쓰는 정리 에이전트 (기본 Claude) |
 | **Gate** | 조건 충족 전 다음 단계 진행 불가 |
 
@@ -138,7 +138,7 @@ Human Composer 전송
     → POST /api/room/runs (SSE)
     → agent_lab.room (`room/turn_flow.py`): clarifier? → agent rounds → consensus? → scribe?
     → chat.jsonl + run.json + plan.md 갱신
-    → SSE events → web UI (Transcript / Run / Work / Tasks)
+    → SSE events → web UI (Transcript / Composer Decision Queue / Inspector)
 ```
 
 ### 2.4 설정 파일 우선순위
@@ -233,9 +233,9 @@ AGENT_LAB_GOAL_LOOP=1
 
 레거시 alias (`work` / `review` / `artifacts` / `plan` / `run`)는 호환 입력을 `transcript` 또는 `background`로 정규화할 뿐 visible navigation tab이 아니다. 이 alias와 Work tab 설계는 archive/history material이다.
 
-### 4.3 Work 내부 단계 (stepper)
+### 4.3 Execution phase 내부 단계 (Composer stepper)
 
-`WorkStatusBar` — 5단계 stepper:
+Composer internal `work` lane의 `WorkStatusBar` — 5단계 stepper. 이 컴포넌트명은 navigation tab을 뜻하지 않는다.
 
 ```text
 실행 준비 → 실행 검토 → 변경 중 → 변경 검토 → 검증 완료
@@ -245,7 +245,7 @@ AGENT_LAB_GOAL_LOOP=1
 
 | Resolver | 우선순위 | 역할 |
 |----------|----------|------|
-| `GET /api/sessions/{id}/runtime` → `work_phase` | **최우선** (`WorkToolPanel` / `WorkStatusBar`) | Python SSOT [`work_phase.py`](../src/agent_lab/runtime/work_phase.py) |
+| `GET /api/sessions/{id}/runtime` → `work_phase` | **최우선** (Composer internal `work` lane components) | Python SSOT [`work_phase.py`](../src/agent_lab/runtime/work_phase.py) |
 | `resolveWorkPhaseFromMission()` | runtime 없을 때, 미션 `phase` 매핑 | Layer 6 FSM → stepper |
 | `resolveWorkPhase()` | mission 매핑 `null`일 때 fallback | plan · execution · Oracle에서 **5상태** 파생 (`done`·`merge_verify` 포함) |
 
@@ -257,7 +257,7 @@ AGENT_LAB_GOAL_LOOP=1
 | `merge_verify` | merged·review_required·oracle pending / `VERIFY` | PlanExecutePanel · Oracle 배지 |
 | `done` | Oracle pass + completed / `MISSION_DONE` | 완료 표시 |
 
-**미션 일시정지:** `MISSION_PAUSED`이면 stepper는 `last_partial.resume_phase` 기준으로 강조하고 **Paused** 배지를 표시합니다. 재개는 Work alert의 「미션 재개」.
+**미션 일시정지:** `MISSION_PAUSED`이면 stepper는 `last_partial.resume_phase` 기준으로 강조하고 **Paused** 배지를 표시합니다. 재개는 Composer mission status의 「미션 재개」 action.
 
 ### 4.4 Inspector tabs
 
@@ -392,7 +392,7 @@ sessions/2026-06-02-my-topic/
 | **■ 중지** | `cancelRoomRun` |
 | **`/`** | 슬래시 메뉴 |
 
-Work **「지금 정리」**는 명시적 `synthesize_only` Scribe run이다.
+Composer internal `work` lane의 **「지금 정리」**는 명시적 `synthesize_only` Scribe run이다.
 
 ### 6.2 자동 라우팅
 
@@ -627,7 +627,7 @@ plan `(ref: chat.jsonl#L12)` → Transcript 해당 줄 scroll + 2.6s highlight.
 
 ---
 
-## 9. Work surface (plan + execute)
+## 9. Decision Queue + execution lifecycle (plan + execute)
 
 ### 9.1 `plan.md` 구조 (Scribe)
 
@@ -650,27 +650,29 @@ Scribe prompt (`ROOM_SCRIBE`): 한국어, 필수 섹션 **`## 지금 실행`**, 
 
 내용 unchanged면 disk write skip.
 
-### 9.2 Work 레이아웃 (현재)
+### 9.2 Composer/internal execution layout (현재)
 
 ```text
-WorkStatusBar (stepper + freshness)
-WorkDecisionPanel (Approve · Blocked · Verified)
+Composer Decision Queue (one active blocking action)
+Internal `work` lane: WorkStatusBar + WorkDecisionPanel (Approve · Blocked · Verified)
 PlanApprovalPanel (조건부: plan workflow HUMAN_PENDING)
-PlanTabToolbar (전송 시 plan 갱신 · 지금 정리)
+Composer routing/status hint (현재 action · 지금 정리)
 [ExecuteQueueBar | ConsensusDryRunGateBar]  ← 조건부
 PlanDocument
 PlanExecutePanel
 [execution history footer]
 ```
 
-### 9.3 PlanTabToolbar
+`WorkStatusBar`, `WorkDecisionPanel`, and `PlanExecutePanel` are internal Composer surfaces. They are not visible Work navigation tabs.
 
-| 컨트롤 | 게이트 |
+### 9.3 Legacy plan receipt compatibility (history)
+
+| legacy control | 현재 의미 |
 |--------|--------|
-| **전송 시 plan 갱신** | running/synthesizing 시 disabled |
-| **지금 정리** | synthesize_only SSE |
+| **전송 시 plan 갱신** | archive/history only; topic-only Composer does not expose this toggle |
+| **지금 정리** | Composer internal `work` lane의 `synthesize_only` SSE |
 
-상태: `planAfterSend` — `localStorage` `agent-lab-plan-after-send`; send 후 `finally`에서 OFF reset.
+Legacy 상태 키 `planAfterSend` (`agent-lab-plan-after-send`)는 history/compatibility reference이며 현재 Composer authority가 아니다.
 
 ### 9.4 Plan execute 파이프라인
 
@@ -706,24 +708,24 @@ plan ## 지금 실행
 - Linked task jump
 - Cursor ready 필요 경로 있음
 
-### 9.7 Work decision surface
+### 9.7 Decision Queue decision surface
 
-Work 상단은 사용자가 문서 없이 세 질문을 판단하게 하는 요약 표면입니다.
+Composer Decision Queue는 사용자가 문서 없이 세 질문을 판단하게 하는 요약 표면입니다. 세부 evidence는 internal `work` lane과 Inspector에 남습니다.
 
-| 질문 | Work 표시 | 상세/액션 소유자 |
+| 질문 | Decision Queue 표시 | 상세/액션 소유자 |
 |------|-----------|------------------|
 | 지금 무엇을 승인해야 하나? | `Approve` cell + primary CTA | plan 승인: `PlanApprovalPanel`, merge 승인: `PlanExecutePanel` |
 | 왜 막혔나? | `Blocked` cell + checks/evidence anchor | BLOCK objection, pre_execute hook, merge checks, runtime gate |
 | 결과가 검증됐나? | `Verified` cell | Oracle badge, `EvidenceGatesPanel`, evidence timeline |
 
-Tasks는 Work로 점프하는 요약을 제공하지만, plan approval 전문 UI는 Work가 소유합니다.
+후속 단계는 queue hint로 연결되며, plan approval 전문 UI는 Decision Queue에서 `PlanApprovalPanel`로 연다.
 
 ### 9.8 Consensus → execute 연결
 
 ♾️ `reached` 후:
 
 - SSE `consensus_plan_sync_*`
-- optional `consensus_dry_run_proposal` — Work에서 dry-run CTA
+- optional `consensus_dry_run_proposal` — Decision Queue의 `execute_queue` lane에서 dry-run CTA
 
 ### 9.9 Hook · Communicate (Room Router)
 
@@ -1296,7 +1298,7 @@ Tauri log: `~/Library/Logs/Agent Lab/agent-lab-api.log`
 
 ### plan 안 바뀜
 
-- Work 「전송 시 plan 갱신」OFF → 「지금 정리」
+- Composer internal `work` lane의 「지금 정리」 또는 routing signal 확인
 - `scribe_skipped` / plan 알림 확인
 
 ### ♾️ 안 끝남
@@ -1316,7 +1318,7 @@ Tauri log: `~/Library/Logs/Agent Lab/agent-lab-api.log`
 
 | 용어 | 뜻 |
 |------|-----|
-| **Work** | plan + execute 통합 surface |
+| **Composer Decision Queue / internal `work` lane** | plan 승인·execute·review·결과 evidence의 현재 surface (navigation tab 아님) |
 | **ENDORSE** | ♾️ 할 일·주장 동의 envelope act |
 | **Objection** | CHALLENGE/BLOCK — execute 반대 |
 | **Dry-run** | worktree에서 미리 실행 |

@@ -1,11 +1,13 @@
 # Agent Lab 기능·동작 명세 (USER-GUIDE)
 
-> **Canonical product spec (Tier 1).** Doc index: [docs/README.md](./README.md) · Shipped matrix: [EXTERNAL-REFS-TRACEABILITY.md](./EXTERNAL-REFS-TRACEABILITY.md)
+> **Canonical product spec (Tier 1).** Doc index: [docs/README.md](./README.md) · Evidence matrix: [EXTERNAL-REFS-TRACEABILITY.md](./EXTERNAL-REFS-TRACEABILITY.md)
+>
+> **현재 상태 (2026-07-23):** Composer는 topic-only이며 Composer 위 **Decision Queue**가 현재 Human action의 SSOT다. Wave B/browser evidence는 red라 **not browser-accepted**이며, 아래 구현·회귀 증거의 존재만으로 shipped/complete로 판정하지 않는다.
 
 > **목적:** UI/UX를 전면 재설계할 때 참고하는 **기능·로직·상태** 문서  
 > **대상:** 제품·디자인·프론트·백엔드 개발자  
 > **기준 코드:** `main` 브랜치 — `web/src/`, `src/agent_lab/`  
-> **관련 설계:** [WORK-TAB-IA.md](./WORK-TAB-IA.md) · [HUMAN-INBOX.md](./HUMAN-INBOX.md) · [04-multi-agent-room.md](./04-multi-agent-room.md) · [GOAL-LOOP.md](./GOAL-LOOP.md) · [EXECUTE-WORKTREE-REFORM.md](./EXECUTE-WORKTREE-REFORM.md)
+> **관련 설계:** [archive/legacy/WORK-TAB-IA.md](./archive/legacy/WORK-TAB-IA.md) (archive) · [HUMAN-INBOX.md](./HUMAN-INBOX.md) · [archive/legacy/04-multi-agent-room.md](./archive/legacy/04-multi-agent-room.md) (archive) · [archive/rfcs/GOAL-LOOP.md](./archive/rfcs/GOAL-LOOP.md) (history) · [archive/rfcs/EXECUTE-WORKTREE-REFORM.md](./archive/rfcs/EXECUTE-WORKTREE-REFORM.md) (history)
 
 ---
 
@@ -38,10 +40,10 @@
 12. [Goal Loop](#12-goal-loop)
 13. [Context·효율·에이전트 역량](#13-context효율에이전트-역량)
 14. [Plugins·슬래시 명령](#14-plugins슬래시-명령)
-15. [Run 탭](#15-run-탭)
-16. [Artifacts 탭](#16-artifacts-탭)
+15. [Run stream (legacy section)](#15-run-stream-legacy-section)
+16. [Artifacts data (legacy section)](#16-artifacts-data-legacy-section)
 17. [Settings·Health·진단](#17-settingshealth진단)
-18. [Workbench (Overview / Tasks / Inbox / Tools)](#18-workbench-overview--tasks--inbox--tools)
+18. [Inspector (Overview / Tools)](#18-inspector-overview--tools)
 19. [알림·SSE·스트리밍](#19-알림sse스트리밍)
 20. [키보드·상태 유지(localStorage)](#20-키보드상태-유지localstorage)
 21. [REST API 개요](#21-rest-api-개요)
@@ -198,37 +200,38 @@ AGENT_LAB_GOAL_LOOP=1
 
 ## 4. 정보 구조(IA)
 
-> **설계 의도:** Plan 탭과 Review 탭을 **Work** 하나로 합친다. 사용자는 “어느 탭?”이 아니라 **작업 단계**를 본다. ([WORK-TAB-IA.md](./WORK-TAB-IA.md))
+> **현재 IA:** 제거된 Work navigation tab이나 Plan/Review tab을 다시 노출하지 않는다. topic-only Composer의 **Decision Queue**가 현재 Human action 하나를 보여 주고, 내부 `work` lane이 실행·결과·evidence를 제공한다. 과거 Work tab 통합안은 [archive/legacy/WORK-TAB-IA.md](./archive/legacy/WORK-TAB-IA.md)에서만 참고한다.
 
 ### 4.1 앱 셸 (Room 모드)
 
 ```text
 ┌─────────────────┬──────────────────────────────────┬─────────────────┐
-│ Session rail    │ Transcript + taskbar-dock           │ Workbench       │
-│ (세션 목록)     │ Composer (하단)                     │ Overview/Tasks/ │
-│ Health chip     │                                     │ Inbox/Tools     │
+│ Session rail    │ Transcript + Composer + taskbar   │ Inspector        │
+│ (세션 목록)     │ Composer (하단)                     │ Overview/Tools  │
+│ Health chip     │ Decision Queue (현재 action 1개)  │ Overview/Tools   │
 └─────────────────┴──────────────────────────────────┴─────────────────┘
 ```
 
-**Workbench Tools** (`rightPanelMode`): `plan`(visible label **Work**, `WorkToolPanel` + approve/execute/verify), `background`, `diff`, `files`, `preview`, `terminal`.
+**Composer internal lanes:** `plan_approval` → `execute_queue` → `consensus` → `inbox` → `clarify` → `work`. `work`는 Composer 내부 lane이며 제거된 Work navigation tab과 다른 개념이다.
+
+**Workspace navigation** (`web/src/utils/workspaceTabs.ts`): `Transcript` (⌘1), `Diff` (⌘2), `Background` (⌘3), `Files` (⌘4), `Preview` (⌘5), `Terminal` (⌘6). Inspector tabs are `Overview` and `Tools`.
 
 별도 **Settings 페이지** (`shellView === "settings"`) — Context 미리보기·에이전트 cwd·Plugin·진단.
 
 **Classic 모드:** 레거시 Planner→Critic→Scribe (`RunPanel` / `SessionViewer`). Room이 기본·권장.
 
-### 4.2 Workspace · Tools 탭
+### 4.2 Workspace navigation tabs
 
 | ID | 라벨 | 단축키 | 역할 |
 |----|------|--------|------|
 | `transcript` | Transcript | ⌘1 | Human·에이전트 대화 전체 |
-| `plan` | Work | ⌘2 | `WorkToolPanel` — plan approval + execute/review/verification |
+| `diff` | Diff | ⌘2 | execute diff |
 | `background` | Background | ⌘3 | 백그라운드 태스크 |
-| `diff` | Diff | ⌘4 | execute diff |
-| `files` | Files | ⌘5 | workspace files · Monaco |
-| `preview` | Preview | ⌘6 | dev preview |
-| `terminal` | Terminal | ⌘7 | xterm |
+| `files` | Files | ⌘4 | workspace files · Monaco |
+| `preview` | Preview | ⌘5 | dev preview |
+| `terminal` | Terminal | ⌘6 | xterm |
 
-레거시 alias: `work` / `review` / `artifacts` → `plan`, `run` → `background`, `chat` → `transcript`.
+레거시 alias (`work` / `review` / `artifacts` / `plan` / `run`)는 호환 입력을 `transcript` 또는 `background`로 정규화할 뿐 visible navigation tab이 아니다. 이 alias와 Work tab 설계는 archive/history material이다.
 
 ### 4.3 Work 내부 단계 (stepper)
 
@@ -256,26 +259,23 @@ AGENT_LAB_GOAL_LOOP=1
 
 **미션 일시정지:** `MISSION_PAUSED`이면 stepper는 `last_partial.resume_phase` 기준으로 강조하고 **Paused** 배지를 표시합니다. 재개는 Work alert의 「미션 재개」.
 
-### 4.4 Workbench 탭
+### 4.4 Inspector tabs
 
 | ID | 라벨 | 역할 |
 |----|------|------|
-| `overview` | Overview | ContextOverviewPanel — mission · plan meta · context-layer 토글 · 진단 드로어 |
-| `tasks` | Tasks | Goal loop · HumanGate · plan approval |
-| `inbox` | Inbox | Human Inbox · Discuss Inbox · notifications |
-| `tools` | Tools | Workbench tool modes (`plan`, `diff`, `files`, …) |
+| `overview` | Overview | ContextOverviewPanel — mission · plan meta · diagnostics drawer |
+| `tools` | Tools | read-only tool context and workspace utilities |
 
-**Context 미리보기는 Workbench 탭이 아님** — Settings 페이지 Workspace 섹션.
+Human decisions are not an Inspector tab: they remain in the Composer Decision Queue. Context preview remains in the Settings Workspace section.
 
 ### 4.5 탭 자동 전환 규칙
 
-**Tools 기본 모드** (`resolveDefaultWorkspaceTab`):
+**Workspace 기본 모드** (`resolveDefaultWorkspaceTab`):
 
 1. `hasDryRunDiff` → **diff**
-2. `hasPendingExecution` OR `planMd` 비어 있지 않음 → **plan** (WorkToolPanel)
-3. else → **transcript**
+2. else → **transcript**
 
-**Workbench 기본:** blocker 있으면 **tasks**; else **overview**.
+**Inspector 기본:** **overview**. Blocker가 있어도 Decision Queue가 현재 action을 소유하며 Inspector tab을 자동으로 바꾸지 않는다.
 
 **핀(pin) 동작:** 사용자가 탭/모드를 직접 고르면 해당 세션 동안 고정. run 시작/종료는 inspector 쪽만 재평가(Transcript pin 유지).
 
@@ -285,8 +285,8 @@ AGENT_LAB_GOAL_LOOP=1
 |--------|------|
 | plan ref 클릭 | transcript + 줄 하이라이트 |
 | TaskBar 할 일 클릭 | transcript |
-| Human inbox / blocker 알림 | workbench inbox |
-| dry-run / plan sync 알림 | tools → plan |
+| Human inbox / blocker 알림 | Composer Decision Queue |
+| dry-run / plan sync 알림 | Composer internal `execute_queue` / `work` lane |
 | Bridge 실패 | settings |
 
 ### 4.6 Transcript 밖 조건부 strip
@@ -407,7 +407,7 @@ Composer에는 preset·Plan picker를 노출하지 않는다. TurnContract는 to
 
 ### 6.3 Decision Queue
 
-plan 승인, build 질문, 격리 실행, merge 결정은 Composer 위 **Decision Queue**에서 우선순위에 따라 한 번에 하나만 확장한다. 이후 결정은 짧은 queue hint로 알리고, Work는 현재 단계·결과·evidence를 소유한다.
+plan 승인, build 질문, 격리 실행, merge 결정은 Composer 위 **Decision Queue**에서 우선순위에 따라 한 번에 하나만 확장한다. 이후 결정은 짧은 queue hint로 알리고, 내부 `work` lane은 현재 단계·결과·evidence를 소유한다. 이 lane은 제거된 Work navigation tab이 아니다.
 
 Human Inbox는 질문·build GO·skill/autonomy 결정을 제공하며, plan/execute 고유 action owner는 기존 `PlanApprovalPanel`·`PlanExecutePanel`을 유지한다. 단일 표면은 gate를 합쳐 보이는 것이며 gate를 우회하지 않는다.
 
@@ -943,7 +943,9 @@ History: `command_history` max 50.
 
 ---
 
-## 15. Run 탭
+## 15. Run stream (legacy section)
+
+> Archive/history note: Run is not a current workspace navigation tab. Active progress is emitted through the Transcript and Composer event stack.
 
 `TurnRunPanel`:
 
@@ -957,7 +959,9 @@ History: `command_history` max 50.
 
 ---
 
-## 16. Artifacts 탭
+## 16. Artifacts data (legacy section)
+
+> Archive/history note: Artifacts is not a current workspace navigation tab. Artifact evidence remains available from the relevant Composer/Inspector surfaces.
 
 - `roomTasks.artifacts` 역순 목록
 - producer · kind · summary · path
@@ -994,30 +998,20 @@ Boot: 90× retry + 45s interval refresh.
 
 ---
 
-## 18. Workbench (Overview / Tasks / Inbox / Tools)
+## 18. Inspector (Overview / Tools)
 
 ### 18.1 Overview
 
-`ContextOverviewPanel` — mission headline, plan summary, context-layer toggles, diagnostics drawer (goal/team are shown in `GoalLoopBanner` / rail).
+`ContextOverviewPanel` — mission headline, plan summary, context-layer toggles, diagnostics drawer. Goal/team and Human decisions are surfaced through Composer events, not extra navigation tabs.
 
-### 18.2 Tasks
+### 18.2 Tools
 
-Goal loop banner + plan approval + HumanGate panels.
+Workspace utility panels: `DiffToolPanel`, `WorkspaceFilesPanel`, `PreviewPanel`, `TerminalPanel`, `BackgroundTasksPanel`. Plan approval, execute, merge, and Oracle gates stay in the Composer Decision Queue/internal lanes.
 
-Blocker 시 auto-focus tasks tab.
-
-### 18.3 Inbox
-
-`HumanInboxPanel`, `NotificationCenter` (P0/P1/P2 — [NOTIFICATION-TAXONOMY.md](./NOTIFICATION-TAXONOMY.md)). Inbox는 `Inbox | Activity` 2개 segment — kind(질문·실행·스킬)와 provenance(MCP·Harvest)는 행 배지로 구분. Discuss recovery는 `DiscussRecoveryBanner`로 Inbox에 fold.
-
-### 18.4 Tools
-
-`WorkbenchPanel` + tool modes: `WorkToolPanel`(plan/execute), `DiffToolPanel`, `WorkspaceFilesPanel`, `PreviewPanel`, `TerminalPanel`, `BackgroundTasksPanel`.
-
-### 18.5 Workbench chrome
+### 18.3 Inspector chrome
 
 - Toggle: toolbar / **⌃⌘I**
-- Width drag resize — persist workbench width prefs
+- Width drag resize — persist inspector width prefs
 
 ---
 
@@ -1343,11 +1337,11 @@ Tauri log: `~/Library/Logs/Agent Lab/agent-lab-api.log`
 | 항목 | 명세/의도 | 현재 코드 |
 |------|-----------|-----------|
 | **Permission modal** | 첫 전송 전 확인 | discuss 기본 bypass · **Mission autonomous 구간** 재진입 시 `RoomChat`에서 재확인 |
-| **Composer plan toggle** | — | **제거됨** — Work only (의도적, WORK-TAB-IA) |
+| **Composer Plan toggle** | — | **제거됨** — topic-only Composer와 Decision Queue가 현재 contract. 내부 `work` lane은 navigation tab이 아님. 과거 설계는 [archive/legacy/WORK-TAB-IA.md](./archive/legacy/WORK-TAB-IA.md) |
 | **Inspector Context tab** | — | **Settings로 이동** · `contextSidebarPrefs` orphan |
 | **⌘5** | Artifacts? | App 등록 · **shortcut map 없음** |
 | **⌘. Stop** | mission pause | `run_control` cancel + `mission_loop` pause · Work 탭 **미션 재개** 버튼 |
-| **Plan/Review 탭 이름** | legacy docs | 코드는 **Work** 단일 탭 |
+| **Plan/Review/Work 탭 이름** | legacy/archive docs | visible navigation은 Transcript · Diff · Background · Files · Preview · Terminal; Inspector는 Overview · Tools |
 | **Human Inbox execute MCP** | reference-fidelity | discuss harvest **부분 구현** ([HUMAN-INBOX.md](./HUMAN-INBOX.md)) |
 
 ---
@@ -1382,7 +1376,7 @@ python scripts/smoke_room.py   # 37 baselines — mission_loop_execute_queue | p
 make score-session SESSION=sessions/<id>   # mission_loop.* KPI
 ```
 
-Live 품질 체크: [MISSION-DOGFOOD.md](./MISSION-DOGFOOD.md).
+Live 품질 체크 history: [archive/legacy/MISSION-DOGFOOD.md](./archive/legacy/MISSION-DOGFOOD.md).
 
 ---
 
@@ -1416,14 +1410,14 @@ Live 품질 체크: [MISSION-DOGFOOD.md](./MISSION-DOGFOOD.md).
 | 문서 | 내용 |
 |------|------|
 | [developer-agent-console.md](./developer-agent-console.md) | 콘솔 레이아웃 |
-| [WORK-TAB-IA.md](./WORK-TAB-IA.md) | Work 탭 통합 설계 |
-| [04-multi-agent-room.md](./04-multi-agent-room.md) | Room 백엔드 |
+| [archive/legacy/WORK-TAB-IA.md](./archive/legacy/WORK-TAB-IA.md) | Archive: Work 탭 통합 설계 (현재 navigation SSOT 아님) |
+| [archive/legacy/04-multi-agent-room.md](./archive/legacy/04-multi-agent-room.md) | Archive: Room 백엔드 |
 | [05-room-agent-roles.md](./05-room-agent-roles.md) | 에이전트 역할 |
 | [HUMAN-INBOX.md](./HUMAN-INBOX.md) | Inbox RFC |
-| [GOAL-LOOP.md](./GOAL-LOOP.md) | Goal Oracle |
+| [archive/rfcs/GOAL-LOOP.md](./archive/rfcs/GOAL-LOOP.md) | History: Goal Oracle |
 | [MISSION-LOOP-C-OMO.md](./MISSION-LOOP-C-OMO.md) | Mission Loop FSM |
-| [MISSION-DOGFOOD.md](./MISSION-DOGFOOD.md) | Live mission KPI checklist |
-| [EXECUTE-WORKTREE-REFORM.md](./EXECUTE-WORKTREE-REFORM.md) | execute/worktree |
+| [archive/legacy/MISSION-DOGFOOD.md](./archive/legacy/MISSION-DOGFOOD.md) | Archive: live mission KPI checklist |
+| [archive/rfcs/EXECUTE-WORKTREE-REFORM.md](./archive/rfcs/EXECUTE-WORKTREE-REFORM.md) | History: execute/worktree |
 | [PLUGIN-DISCOVERY.md](./PLUGIN-DISCOVERY.md) | plugins |
 | [STABILITY.md](./STABILITY.md) | 운영·포트·CI |
 

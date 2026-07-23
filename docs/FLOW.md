@@ -1,6 +1,7 @@
 # Agent Lab — 현재 구조 및 플로우
 
-> **Status:** canonical current flow · **최종 업데이트:** 2026-07-10
+> **Status:** canonical current flow · **최종 업데이트:** 2026-07-23
+> **Browser gate:** Wave B evidence is red and **not browser-accepted**. Implementation/test references below do not mean shipped or complete browser acceptance.
 > **턴 제어:** [TURN-CONTRACT.md](./TURN-CONTRACT.md) · **평가:** [EVAL-CONTRACT.md](./EVAL-CONTRACT.md)
 > **관련 문서:** [ARCHITECTURE.md](./ARCHITECTURE.md) (모듈 지도) · [USER-GUIDE.md](./USER-GUIDE.md) (기능 상세) · [NORTH-STAR.md](./NORTH-STAR.md) (방향)
 
@@ -11,7 +12,7 @@
 **"신뢰 수준에 따라 자율도가 조정되는 Mission Platform"**
 
 - Fugu/Harness처럼 완전 자율 처리는 하지 않는다 — Human gate는 선택이 아닌 설계.
-- 신뢰도 HIGH + 위험도 LOW → 자동 통과. 불확실할 때는 반드시 인간을 거친다.
+- 신뢰도 HIGH + 위험도 LOW도 Human gate를 자동 통과시키지 않는다. 불확실할 때는 반드시 인간을 거친다.
 - 5개 모트는 어떤 이니셔티브에서도 약화 금지: **BLOCK→409 · worktree 격리 · Oracle+Repair · run.json 감사 · Human Inbox**
 
 ---
@@ -19,7 +20,7 @@
 ## 2. 전체 플로우 개요
 
 ```
-사용자 입력 (topic)
+사용자 입력 (topic-only Composer)
       │
       ▼
 ┌─────────────────────────────────────────────┐
@@ -29,20 +30,20 @@
 │  consensus / BLOCK / CHALLENGE / AMEND      │
 │  TurnPolicy trigger 시 Scribe → plan.md      │
 └────────────────┬────────────────────────────┘
-                 │ plan.md (Human approved)
+                 │ Decision Queue: plan approval (Human action)
                  ▼
 ┌─────────────────────────────────────────────┐
 │  PLAN (계약)                                │
 │  clarify → peer review gate → Human approve │
 │  plan_workflow FSM                          │
 └────────────────┬────────────────────────────┘
-                 │ approved plan
+                 │ approved plan (Decision Queue)
                  ▼
 ┌─────────────────────────────────────────────┐
 │  EXECUTE (격리)                             │
 │  git worktree dry-run                       │
 │  Human diff 검토 → merge approve            │
-│  Trust auto-merge (LOW risk + Oracle green) │
+│  trust classifier는 advisory; gate 자동 승인 아님 │
 └────────────────┬────────────────────────────┘
                  │ merged diff
                  ▼
@@ -54,12 +55,14 @@
 └────────────────┬────────────────────────────┘
                  │ PASS
                  ▼
-             DONE / Mission loop 재진입
+             DONE / Mission loop 재진입 (Oracle PASS only)
 ```
 
 ### 2.1 Room preset과 TurnContract
 
-Composer preset은 현재 `fast`/`supervisor` 호환 축으로 남아 있다. TurnContract는 이를 한 번에 제거하지 않고 `shadow → roles → adaptive`로 topology 권한을 이관한다.
+Composer는 topic-only다. `fast`/`supervisor`는 picker에 노출되지 않는 내부 호환 축이며, Decision Queue가 현재 Human action 하나를 소유한다. 내부 Composer `work` lane은 실행·결과 surface이고 제거된 Work navigation tab이 아니다.
+
+현재 visible workspace navigation은 Transcript · Diff · Background · Files · Preview · Terminal이고 Inspector는 Overview · Tools다. 과거 preset/Plan toggle/Work tab 설명은 [TURN-MODES.md](./TURN-MODES.md) 및 [archive/legacy/WORK-TAB-IA.md](./archive/legacy/WORK-TAB-IA.md)의 history로만 참고한다.
 
 - `fast`: 즉답 중심, harvest 제한, team lead MCP 유지
 - `supervisor`: team/consensus와 plan workflow 사용 가능
@@ -71,7 +74,7 @@ Composer preset은 현재 `fast`/`supervisor` 호환 축으로 남아 있다. Tu
 
 **MCP-first 방향:** agent MCP SSOT · orchestrator harvest deprecate · Scribe/plan 분리 → [MCP-FIRST-INBOX.md](./MCP-FIRST-INBOX.md).
 
-**Work phase SSOT:** `GET /api/sessions/{id}/runtime` → `work_phase` 필드
+**Work phase SSOT:** `GET /api/sessions/{id}/runtime` → `work_phase` 필드. 표시와 Human action은 Composer Decision Queue/internal lanes에 우선 연결한다.
 
 ---
 
@@ -159,7 +162,7 @@ execute 진입 가능
 
 **plan.md SSOT:** `sessions/<id>/plan.md` — 에이전트별 기여 + 미해결 BLOCK 섹션 포함.
 
-**template 기반 bypass:** `sessions/_templates/{id}/` hash match → `approve_plan_bypass()` (반복 태스크 자동화).
+**template 기반 history:** `sessions/_templates/{id}/` hash match는 반복 태스크의 참고 신호일 뿐이며 현재 Human plan approval을 우회하지 않는다.
 
 ---
 
@@ -175,9 +178,8 @@ Cursor / Codex dry-run (MCP Inbox 연결)
 diff 생성 → SideBySideDiff UI
     ↓
 Human diff 검토
-    ↓ merge_classifier (LOW risk + Oracle green)
-┌─── trust auto-merge (30s timeout) ← LOW + HIGH
-└─── Human approve ← MEDIUM / HIGH
+    ↓ merge_classifier (advisory risk/evidence classification)
+└─── Human approve (Decision Queue; all risk classes)
     ↓
 worktree merge → main
     ↓
@@ -191,8 +193,8 @@ worktree 정리 + provenance + task 완료
 | objection gate | `room_objections.py` | BLOCK 없음 |
 | pre_execute | `plan_execute_verify.py` | syntax_gate + sandbox_policy |
 | merge_checks | `merge_checks.py` | syntax OK + no conflict |
-| trust auto-merge | `auto_merge.py`, `merge_classifier.py` | `docs_only`/`test_only`/`single_file` + Oracle green |
-| Human approve | `plan_execute.resolve_execution` | dev profile default |
+| merge classification | `merge_classifier.py` | risk/evidence hint only; no automatic gate approval |
+| Human approve | `plan_execute.resolve_execution` | required before merge |
 
 ---
 

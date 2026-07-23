@@ -1,11 +1,19 @@
 # External refs plan — traceability matrix
 
-Maps items in [`EXTERNAL-REFS-PLAN.md`](archive/rfcs/EXTERNAL-REFS-PLAN.md) to **shipped code**, **regression/smoke evidence**, or **future fixture tickets**.
-This document is the hub for **plan vs reality**. It does not explain *why* an item was adopted — see PLAN §anchor for that context.
+Maps items in [`EXTERNAL-REFS-PLAN.md`](archive/rfcs/EXTERNAL-REFS-PLAN.md) to **code evidence**, **regression/smoke evidence**, or **future fixture tickets**.
+This document is the hub for **plan vs reality**. It does not explain *why* an item was adopted — see PLAN §anchor for that context. A ✅ row is scoped to its listed code/test artifact; it does not imply current Wave B/browser acceptance.
 
-**Status legend:** ✅ shipped · 🔶 partial · ⬜ future · ❌ dropped  
+**Status legend:** ✅ evidence-backed code · 🔶 partial / acceptance pending · ⬜ future · ❌ dropped
 **Related:** [EXTERNAL-REFS-PLAN.md](archive/rfcs/EXTERNAL-REFS-PLAN.md) (why/what) · [MD-WRITING-PLAN.md](MD-WRITING-PLAN.md) (MD authoring guide)
 **Dev-tool cross-ref:** `CC-CLAUDE` is tracked in [§Dev-tool](#dev-tool--prompt-layer-md-writing-plan-items) only (not duplicated in the runtime table below).
+
+## Current UX acceptance status
+
+- Composer is **topic-only**; preset and Plan pickers are not visible.
+- The Composer **Decision Queue** is the current Human-action SSOT and exposes one active blocking decision at a time.
+- The internal Composer `work` lane renders execution/result evidence; it is **not** the removed Work navigation tab.
+- Visible workspace tabs are Transcript, Diff, Background, Files, Preview, Terminal; Inspector tabs are Overview and Tools (`web/src/utils/workspaceTabs.ts`).
+- **Wave B/browser acceptance: not accepted.** Current evidence is red. Prior `wave-b-journey.spec.ts` 4/4 output is mock/API or historical evidence and must not be read as shipped/complete browser acceptance.
 
 ---
 
@@ -100,7 +108,9 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 
 ## Partial
 
-_(none — MCP-INBOX Phase A–E shipped; see §Shipped.)_
+| ID | Source | Item | Status | Evidence | Notes |
+|----|--------|------|--------|----------|-------|
+| UX-WAVE-B | Room UX | Composer Decision Queue + current workspace tab browser acceptance | 🔶 | [11-ui-ux-surface-map.md](redesign-2026-07/11-ui-ux-surface-map.md), [m6-ui-read-model-dogfood-2026-07-16.md](redesign-2026-07/evidence/m6-ui-read-model-dogfood-2026-07-16.md) | Current Wave B evidence red/not browser-accepted; prior 4/4 is historical mock/API evidence only. |
 
 ---
 

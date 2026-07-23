@@ -77,7 +77,10 @@ def test_record_execute_outcome_persists_contract_and_regret(tmp_path, monkeypat
         "contract_id": "quick_read",
         "source": "shadow",
         "safety_floor": "quick_read",
+        "rollout_mode": "shadow",
+        "applied": False,
     }
+    run["cost_ledger"] = {"cumulative": {"usd": 0.125}}
     (folder / "run.json").write_text(json.dumps(run), encoding="utf-8")
 
     record_execute_outcome(
@@ -93,6 +96,15 @@ def test_record_execute_outcome_persists_contract_and_regret(tmp_path, monkeypat
     assert row["contract_id"] == "quick_read"
     assert row["contract_source"] == "shadow"
     assert row["route_regret_signals"] == ["under_routed"]
+    assert row["candidate_contract_id"] == "quick_read"
+    assert row["applied_contract_id"] == "standard_collab"
+    assert row["safety_floor_satisfied"] is True
+    assert row["roster"] == ["cursor", "codex", "claude"]
+    assert row["rounds_used"] == 1
+    assert row["consensus"] is False
+    assert row["latency_ms"] == 0
+    assert row["cost_usd"] == 0.125
+    assert row["shadow_applied_parity"] is False
 
 
 def test_record_execute_outcome_tags_harness_infra_on_skipped_verdict(tmp_path, monkeypatch) -> None:

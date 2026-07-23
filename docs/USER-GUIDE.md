@@ -291,7 +291,7 @@ Human decisions are not an Inspector tab: they remain in the Composer Decision Q
 
 ### 4.6 Transcript 밖 조건부 strip
 
-Work 탭이 아닐 때:
+Composer Decision Queue가 primary로 표시되지 않을 때:
 
 - `ExecuteQueueBar` (compact) — pending execution 있을 때
 - `ConsensusDryRunGateBar` — consensus dry-run proposal 있을 때
@@ -607,7 +607,7 @@ parse 실패 시 `envelopeParseError` + “envelope 없음” 경고.
 
 plan `(ref: chat.jsonl#L12)` → Transcript 해당 줄 scroll + 2.6s highlight.
 
-`planRefWarnings`: plan ref와 chat 줄 token overlap 낮으면 Work 탭 정보 배너 (plan 무효화 아님).
+`planRefWarnings`: plan ref와 chat 줄 token overlap 낮으면 Composer 정보 배너 (plan 무효화 아님).
 
 ### 8.5 실패·부분 성공 표시
 
@@ -1055,7 +1055,7 @@ disconnect → synthetic `run_failed`
 | `plan_updated` | scribe success |
 | `consensus_done` | ♾️ 턴 종료 |
 
-Composer 하단 5s status (`sendReceipt.ts`) — Work 탭에선 plan receipt 숨김 가능.
+Composer 하단 5s status (`sendReceipt.ts`) — Decision Queue가 active일 때도 plan receipt는 보조 상태로 유지한다.
 
 ### 19.4 Cancel / lock
 
@@ -1340,30 +1340,30 @@ Tauri log: `~/Library/Logs/Agent Lab/agent-lab-api.log`
 | **Composer Plan toggle** | — | **제거됨** — topic-only Composer와 Decision Queue가 현재 contract. 내부 `work` lane은 navigation tab이 아님. 과거 설계는 [archive/legacy/WORK-TAB-IA.md](./archive/legacy/WORK-TAB-IA.md) |
 | **Inspector Context tab** | — | **Settings로 이동** · `contextSidebarPrefs` orphan |
 | **⌘5** | Artifacts? | App 등록 · **shortcut map 없음** |
-| **⌘. Stop** | mission pause | `run_control` cancel + `mission_loop` pause · Work 탭 **미션 재개** 버튼 |
+| **⌘. Stop** | mission pause | `run_control` cancel + `mission_loop` pause · Composer/Inspector의 **미션 재개** action |
 | **Plan/Review/Work 탭 이름** | legacy/archive docs | visible navigation은 Transcript · Diff · Background · Files · Preview · Terminal; Inspector는 Overview · Tools |
 | **Human Inbox execute MCP** | reference-fidelity | discuss harvest **부분 구현** ([HUMAN-INBOX.md](./HUMAN-INBOX.md)) |
 
 ---
 
-## 28. Mission Loop (Work 탭)
+## 28. Mission Loop (Composer + Inspector)
 
 `AGENT_LAB_MISSION_LOOP=1` 또는 세션에서 미션 활성화 시 FSM이 plan gate → execute queue → verify/repair를 자동 진행합니다. SSOT: [MISSION-LOOP-C-OMO.md](./MISSION-LOOP-C-OMO.md).
 
-### Work 탭 구성
+### Composer lifecycle 구성
 
 | 영역 | 설명 |
 |------|------|
 | **Stepper** | 5단계: `plan_draft` → `review_needed` → `execute_pending` → `merge_verify` → `done` (§4.3) |
 | **Pause alert** | `MISSION_PAUSED` 시 사유·재개 phase 안내 + **미션 재개** |
-| **Mission strip** | 목표 · phase · 다음 action · circuit breaker · autonomous 배지 |
+| **Mission status** | 목표 · phase · 다음 action · circuit breaker · autonomous 배지 |
 | **Setup (접기)** | 세션 plugin allowlist — execute/repair MCP merge |
 
 ### 운영 단축키·동작
 
 - **⌘.** — 진행 중 run cancel; 미션은 `MISSION_PAUSED` + `last_partial` 기록
 - **Autonomous** — plan gate 통과 후 execute 구간; 구간 재진입 시 permission 재확인
-- **Circuit breaker** — Momus cap·구조 실패 시 discuss recovery; Work strip에 사유 표시
+- **Circuit breaker** — Momus cap·구조 실패 시 discuss recovery; Composer mission status에 사유 표시
 
 ### Inspector · Context
 
@@ -1390,18 +1390,18 @@ Live 품질 체크 history: [archive/legacy/MISSION-DOGFOOD.md](./archive/legacy
 ### B — 기획서 만들기
 
 1. A로 토론
-2. Work → **지금 정리** 또는 routing signal에 따른 plan 정리 → 보완 질문 → 반복
+2. Composer internal `work` lane의 **지금 정리** 또는 routing signal에 따른 plan 정리 → 보완 질문 → 반복
 
 ### C — 합의
 
-1. preset **supervisor** · Tasks 동의/blocker 확인
-2. Work plan 확인
+1. preset **supervisor** · Composer Decision Queue에서 동의/blocker 확인
+2. Composer internal `work` lane의 plan evidence 확인
 
 ### D — 코드 반영
 
 1. plan `## 지금 실행`
-2. Work → dry-run → diff → Merge 승인
-3. Tasks 완료
+2. Composer Decision Queue → internal `work` lane dry-run → Diff tab → Merge 승인
+3. Decision Queue에서 후속 task 완료 확인
 
 ---
 

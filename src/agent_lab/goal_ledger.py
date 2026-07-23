@@ -1,9 +1,13 @@
 """Goal-progress ledger embedded in run.json (AGENT_LAB_PIPELINE).
 
-Optional, additive ``run.json["goal_ledger"]``: a capped list of ``{at, event, mode, phase, note}``
-entries tracking pipeline goal progress. The field is leniently validated by run_schema and is
-additive, so crash_recovery (which round-trips run.json through patch_run_meta/validate_run)
-tolerates it without change.
+Optional, additive ``run.json["goal_ledger"]``: a capped list of
+``{at, event, mode, phase, note, payload}`` entries tracking pipeline goal progress. ``payload``
+is an optional structured sub-dict for policy-decision events (e.g. mission_topology's
+decision/revision/trigger) — ``note`` stays the human-readable rendering that existing consumers
+(context/bundle.py, context/adapters.py) already parse, so adding ``payload`` is additive and
+backward compatible. The field is leniently validated by run_schema and is additive, so
+crash_recovery (which round-trips run.json through patch_run_meta/validate_run) tolerates it
+without change.
 """
 
 from __future__ import annotations
@@ -22,6 +26,7 @@ def append_goal_event(
     mode: str | None = None,
     phase: str | None = None,
     note: str | None = None,
+    payload: dict[str, Any] | None = None,
     dedup_mode: bool = False,
 ) -> dict[str, Any]:
     """Append a goal-progress entry to run.json goal_ledger (capped, optional dedup on mode)."""
@@ -34,6 +39,8 @@ def append_goal_event(
         entry["phase"] = phase
     if note is not None:
         entry["note"] = note
+    if payload is not None:
+        entry["payload"] = payload
 
     def _patch(run: dict[str, Any]) -> dict[str, Any]:
         raw = run.get("goal_ledger")

@@ -25,6 +25,19 @@ def test_append_goal_event_persists(tmp_path: Path) -> None:
     assert led[0]["event"] == "mode_route" and led[0]["mode"] == "CONSENSUS" and led[0]["at"]
 
 
+def test_append_goal_event_payload_is_optional_and_additive(tmp_path: Path) -> None:
+    from agent_lab.run.meta import read_run_meta
+
+    _write(tmp_path, {})
+    goal_ledger.append_goal_event(tmp_path, "mode_route", mode="CONSENSUS")
+    goal_ledger.append_goal_event(
+        tmp_path, "policy_decision", payload={"decision": {"kind": "single"}, "revision": 1}
+    )
+    led = read_run_meta(tmp_path).get("goal_ledger", [])
+    assert "payload" not in led[0]
+    assert led[1]["payload"] == {"decision": {"kind": "single"}, "revision": 1}
+
+
 def test_append_goal_event_dedup(tmp_path: Path) -> None:
     from agent_lab.run.meta import read_run_meta
 

@@ -108,7 +108,11 @@ def test_ensure_mission_topology_stamps_once(
     stored = read_run_meta(session_folder).get("mission_topology")
     assert stored is not None
     assert stored["decision"]["kind"] == str(TopologyKind.SINGLE)
-    assert len(_ledger_topology_events(session_folder)) == 1
+    events = _ledger_topology_events(session_folder)
+    assert len(events) == 1
+    assert events[0]["payload"]["decision"] == stored["decision"]
+    assert events[0]["payload"]["revision"] == 1
+    assert events[0]["payload"]["trigger"] is None
     # second call: no rewrite, no duplicate ledger event
     assert ensure_mission_topology(session_folder) is None
     assert read_run_meta(session_folder).get("mission_topology") == stored
@@ -300,7 +304,12 @@ def test_reroute_fail_escalates_single_to_quorum(
     assert stored["trigger"] == "verify_fail_action_1"
     assert len(stored["history"]) == 1
     assert stored["history"][0]["decision"]["kind"] == "single"
-    assert len(_ledger_reroute_events(session_folder)) == 1
+    events = _ledger_reroute_events(session_folder)
+    assert len(events) == 1
+    assert events[0]["payload"]["to"]["kind"] == str(TopologyKind.PEER_QUORUM)
+    assert events[0]["payload"]["from"]["kind"] == "single"
+    assert events[0]["payload"]["revision"] == 2
+    assert events[0]["payload"]["trigger"] == "verify_fail_action_1"
 
 
 def test_reroute_structural_fail_noop(session_folder: Path, monkeypatch: pytest.MonkeyPatch) -> None:

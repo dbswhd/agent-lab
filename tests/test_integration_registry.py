@@ -297,7 +297,11 @@ def test_fast_bucket_collection_budget():
     # 2026-07-23: raised 3589 -> 3601 for the post-verify escalation-only topology
     # reroute (risk-floored recompute after non-structural verify failures, never
     # downgrades) and thorough/autonomous default-on profile tests.
-    assert count <= 3601, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-23: raised 3601 -> 3602 for a structured `payload` sub-dict on
+    # goal_ledger policy-decision entries (test_pipeline_goal_ledger.py) —
+    # mission_topology/mission_topology_reroute now carry a machine-readable
+    # decision/revision/trigger payload alongside the existing note string.
+    assert count <= 3602, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

@@ -211,6 +211,7 @@ def ensure_mission_topology(folder: Path) -> dict[str, Any] | None:
             f"kind={decision['kind']} max_agents={decision['max_agents']} "
             f"fallback={decision['fallback']} — {decision['reason']}"
         ),
+        payload={"decision": decision, "revision": record.get("revision", 1), "trigger": None},
     )
     return record
 
@@ -246,9 +247,10 @@ def reroute_mission_topology_after_verify(
     replaced_out: dict[str, Any] | None = None
     prev_out: dict[str, Any] | None = None
     phase_out: str | None = None
+    revision_out: int = 0
 
     def _swap(run_in: RunState) -> RunState:
-        nonlocal replaced_out, prev_out, phase_out
+        nonlocal replaced_out, prev_out, phase_out, revision_out
         record = run_in.get("mission_topology")
         if not isinstance(record, dict):
             return run_in
@@ -297,6 +299,7 @@ def reroute_mission_topology_after_verify(
         replaced_out = candidate_dict
         prev_out = current
         phase_out = str(ml.get("phase")) if ml.get("phase") else None
+        revision_out = revision + 1
         return run_in
 
     patch_run_meta(folder, _swap)
@@ -312,6 +315,12 @@ def reroute_mission_topology_after_verify(
             f"max_agents {(prev_out or {}).get('max_agents')}→{replaced_out['max_agents']} "
             f"trigger={trigger} — {replaced_out['reason']}"
         ),
+        payload={
+            "from": prev_out,
+            "to": replaced_out,
+            "revision": revision_out,
+            "trigger": trigger,
+        },
     )
     return replaced_out
 

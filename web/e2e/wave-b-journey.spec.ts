@@ -67,7 +67,7 @@ async function mockWaveBJourneyApi(
   let executeResolved = false;
   const executionId = "execution-1";
 
-  await page.route(/^http:\/\/127\.0\.0\.1:4173\/api\//, async (route) => {
+  await page.route((url) => url.pathname.startsWith("/api/"), async (route) => {
     const request = route.request();
     const url = new URL(request.url());
     const key = `${request.method()} ${url.pathname}`;

@@ -74,6 +74,42 @@ def test_none_folder_does_not_block_disconnect_kill():
     assert _session_has_pending_human_inbox(None) is False
 
 
+def test_pending_human_inbox_blocks_disconnect_kill_for_authority_cohort(tmp_path, monkeypatch):
+    """Regression: AGENT_LAB_MISSION_AUTHORITY sessions store pending inbox items
+    in the Mission journal only (human_inbox is popped from run.json) -- reading
+    run.json["human_inbox"] directly always finds nothing and silently breaks the
+    disconnect grace period for the live Wave B cohort."""
+    from agent_lab.human_inbox import create_inbox_item
+    from app.server.routers.room import _session_has_pending_human_inbox
+
+    folder = tmp_path / "authority"
+    folder.mkdir()
+    write_run_meta(folder, {"topic": "ship"})
+    monkeypatch.setenv("AGENT_LAB_MISSION_AUTHORITY", "1")
+    monkeypatch.setenv("AGENT_LAB_MISSION_AUTHORITY_SESSIONS", "authority")
+
+    create_inbox_item(folder, kind="question", source="test", prompt="Which scope?")
+
+    assert "human_inbox" not in read_run_meta(folder)
+    assert _session_has_pending_human_inbox(folder) is True
+
+
+def test_resolved_human_inbox_does_not_block_disconnect_kill_for_authority_cohort(tmp_path, monkeypatch):
+    from agent_lab.human_inbox import create_inbox_item, resolve_inbox_item
+    from app.server.routers.room import _session_has_pending_human_inbox
+
+    folder = tmp_path / "authority"
+    folder.mkdir()
+    write_run_meta(folder, {"topic": "ship"})
+    monkeypatch.setenv("AGENT_LAB_MISSION_AUTHORITY", "1")
+    monkeypatch.setenv("AGENT_LAB_MISSION_AUTHORITY_SESSIONS", "authority")
+
+    item = create_inbox_item(folder, kind="question", source="test", prompt="Which scope?")
+    resolve_inbox_item(folder, item["id"], decision="safe")
+
+    assert _session_has_pending_human_inbox(folder) is False
+
+
 def test_stream_cancel_requests_session_cancel_without_pending_human_inbox(tmp_path, monkeypatch):
     from app.server.routers.room import _cancel_room_stream_worker
 

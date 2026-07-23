@@ -267,12 +267,9 @@ def _session_has_pending_human_inbox(folder: Path | None) -> bool:
     """
     if folder is None:
         return False
-    from agent_lab.run.meta import read_run_meta
+    from agent_lab.human_inbox import inbox_items_for_folder
 
-    inbox = read_run_meta(folder).get("human_inbox") or []
-    if not isinstance(inbox, list):
-        return False
-    return any(isinstance(item, dict) and item.get("status") == "pending" for item in inbox)
+    return any(item.get("status") == "pending" for item in inbox_items_for_folder(folder))
 
 
 def _cancel_room_stream_worker(*, folder: Path | None, run_session_id: str | None) -> bool:

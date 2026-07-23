@@ -43,12 +43,19 @@ class DispatchRequest:
     trimmed_agents: tuple[str, ...] = ()
 
 
-def dispatch_max_fanout() -> int:
+def dispatch_max_fanout(run_meta: RunStateLike | None = None) -> int:
     raw = (os.getenv("AGENT_LAB_DISPATCH_MAX_FANOUT") or "3").strip()
     try:
-        return max(1, min(3, int(raw)))
+        base = max(1, min(3, int(raw)))
     except ValueError:
-        return 3
+        base = 3
+    if run_meta is not None:
+        from agent_lab.mission.topology_wire import topology_max_agents
+
+        cap = topology_max_agents(run_meta)
+        if cap is not None:
+            base = max(1, min(base, cap))
+    return base
 
 
 def parse_delegate_from_message(text: str) -> dict[str, str] | None:
@@ -71,7 +78,9 @@ def _parse_agent_list(raw: str) -> list[str]:
     return seen
 
 
-def parse_dispatch_from_message(text: str) -> DispatchRequest | None:
+def parse_dispatch_from_message(
+    text: str, run_meta: RunStateLike | None = None
+) -> DispatchRequest | None:
     """Precedence: DELEGATE (single) then DISPATCH parallel."""
     single = parse_delegate_from_message(text)
     if single:
@@ -87,7 +96,7 @@ def parse_dispatch_from_message(text: str) -> DispatchRequest | None:
     prompt = (m.group(2) or m.group(3) or "").strip()
     if len(agents) < 2 or len(prompt) < 4:
         return None
-    cap = dispatch_max_fanout()
+    cap = dispatch_max_fanout(run_meta)
     trimmed: tuple[str, ...] = ()
     if len(agents) > cap:
         trimmed = tuple(agents[cap:])
@@ -512,7 +521,7 @@ def run_parallel_delegate(
     }
     if trimmed:
         ledger_entry["trimmed_agents"] = trimmed
-        ledger_entry["fanout_cap"] = dispatch_max_fanout()
+        ledger_entry["fanout_cap"] = dispatch_max_fanout(run_meta)
     append_dispatch_ledger(run_meta, ledger_entry)
     _run_pre_post_dispatch_hooks(
         event="post_dispatch",
@@ -624,7 +633,7 @@ def try_dispatch_turn(
 ) -> list[Any] | None:
     if clarifier_questions:
         return None
-    spec = parse_dispatch_from_message(body)
+    spec = parse_dispatch_from_message(body, run_meta=run_meta)
     if not spec:
         return None
     if spec.op == "single_delegate":

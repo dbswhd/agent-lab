@@ -358,6 +358,9 @@ def enable_mission_loop(
         return run
 
     patch_run_meta(folder, _board)
+    from agent_lab.mission.topology_wire import ensure_mission_topology
+
+    ensure_mission_topology(folder)
     ensure_mission_notepads(folder)
     append_wisdom_note(
         folder,

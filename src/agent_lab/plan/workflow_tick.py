@@ -175,19 +175,23 @@ def _execute_plan_workflow_tick(
         return out
 
     if phase == "PEER_REVIEW":
-        objections = open_plan_objections(read_run_meta(folder))
+        from agent_lab.mission.topology_wire import topology_skips_peer_review
+
+        run_now = read_run_meta(folder)
+        objections = open_plan_objections(run_now)
+        topology_skip = topology_skips_peer_review(run_now)
         peer_round = int(pw.get("peer_review_round") or 0)
         max_peer = effective_max_peer_review_rounds(pw)
         last_verdict = str(pw.get("last_peer_verdict") or "")
         iterate_requested = last_verdict in {"iterate", "reject"}
-        if (objections or iterate_requested) and peer_round < max_peer:
+        if not topology_skip and (objections or iterate_requested) and peer_round < max_peer:
             set_plan_workflow_phase(folder, "REFINE")
             out["phase"] = "REFINE"
             out["advance"] = "REFINE"
             out["peer_iterate"] = last_verdict or "objections"
             return out
         evaluation = _evaluate_plan_for_human_pending(folder, plan_md)
-        if evaluation.get("status") == "reject" and peer_round < max_peer:
+        if not topology_skip and evaluation.get("status") == "reject" and peer_round < max_peer:
 
             def _refine_gate(run_in: dict[str, Any]) -> dict[str, Any]:
                 return apply_plan_substate_patch(
@@ -202,6 +206,8 @@ def _execute_plan_workflow_tick(
             return out
 
         pending_notices: list[str] = []
+        if topology_skip:
+            pending_notices.append("topology_single_peer_skip")
         if objections and peer_round >= max_peer:
             pending_notices.append("peer_review_cap_reached")
         if evaluation.get("status") == "reject":

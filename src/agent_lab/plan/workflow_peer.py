@@ -55,7 +55,11 @@ def run_plan_peer_review_round(
         plan_peer_review_uses_role_lanes,
         plan_scribe_agent,
     )
+    from agent_lab.mission.topology_wire import topology_skips_peer_review
     from agent_lab.room import run_parallel_round
+
+    if topology_skips_peer_review(run_meta):
+        return []
 
     active = [a for a in (agents or available_agents()) if a in AGENT_IDS]
     active_ids = [str(a) for a in active]

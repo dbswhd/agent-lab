@@ -290,7 +290,11 @@ def test_fast_bucket_collection_budget():
     # system-addon regression (test_hook_communicate_remaining.py) — real
     # dogfood run showed Claude never learned NOTE existed because every
     # production call site requests compact=True, which didn't enumerate acts.
-    assert count <= 3574, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-23: raised 3574 -> 3589 for AGENT_LAB_MISSION_TOPOLOGY arm-time wiring
+    # (test_mission_topology_wire.py) — deterministic choose_topology() decision
+    # recorded to run.json mission_topology; SINGLE skips plan PEER_REVIEW; max_agents
+    # lowers dispatch fan-out (never raises past the existing env clamp).
+    assert count <= 3589, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

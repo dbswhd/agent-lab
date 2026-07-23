@@ -201,6 +201,13 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
     ),
     FlagDef("AGENT_LAB_MISSION_AUTORUN", "feature", "Auto-advance mission loop after approve"),
     FlagDef(
+        "AGENT_LAB_MISSION_TOPOLOGY",
+        "feature",
+        "Arm-time deterministic topology decision (choose_topology) recorded to run.json "
+        "mission_topology; SINGLE skips plan PEER_REVIEW and max_agents lowers dispatch "
+        "fan-out (default off)",
+    ),
+    FlagDef(
         "AGENT_LAB_DRIFT_AUDIT",
         "feature",
         "C2: periodic L3 autonomous-mission plan-vs-execution drift audit -> Inbox proposal (default on)",

@@ -1,7 +1,8 @@
 # NOW — 지금 무엇을 해야 하는가 (종합 상태 표면)
 
-> **작성:** 2026-07-08 · **갱신:** 2026-07-15 (§7.4 SSE cursor + §7.3 Human Inbox optimistic locking 완료 반영) · **역할:** "오늘/이번 주/다음/동결"을 한 곳에서 판정한다.
+> **작성:** 2026-07-08 · **갱신:** 2026-07-23 (Composer Decision Queue rebaseline) · **역할:** "오늘/이번 주/다음/동결"을 한 곳에서 판정한다.
 > **이 문서가 아닌 것:** 방향·구조·턴·평가 계약의 SSOT가 아니다. 이 문서는 **상태 포인터**만 갖는다.
+> **Browser acceptance:** Wave B/browser evidence is currently red and **not browser-accepted**. Mock/API or implementation evidence below must not be read as shipped/complete browser acceptance.
 > **ID 규칙:** 소스 namespace를 보존한다 (`N*`, `F*`, `HS*`, `TC-*`, `ABS-P2-*`). bare `P1/P2` 신규 사용 금지.
 > **진실 순서:** runtime 동작은 code+tests, 현재 상태는 NOW, 방향·구조·턴·평가는 아래 담당 문서가 각각 소유한다.
 
@@ -29,18 +30,18 @@
 | --- | --- | --- |
 | Step 0 authority/baseline | ✅ 완료 | 문서 상태·canonical 링크 유지 |
 | Step 1 Mission application adapter | ✅ controlled opt-in cohort | 실제 `sessions/` route 10건·rollback 2건 통과; 전용 process/route에서만 `AGENT_LAB_MISSION_DUAL_WRITE=1` 적용. 운영 절차: [controlled cohort runbook](./redesign-2026-07/evidence/dual-write-controlled-cohort-runbook-2026-07-13.md) |
-| Step 2 MissionReadModel/UI contract | ✅ API + SSE cursor + UI wiring 완료 (2026-07-15) | `web/e2e/wave-b-journey.spec.ts` 4/4 통과(plan reject·diff approve·Oracle repair·human resume); `11-ui-ux-surface-map.md` §7 구현 순서 1~5 전부 완료 |
+| Step 2 MissionReadModel/UI contract | 구현·API/SSE wiring evidence 있음; **browser acceptance 미승인 (Wave B red)** | 이전 `web/e2e/wave-b-journey.spec.ts` 4/4 결과는 mock/API evidence로 보존되며 현재 브라우저 gate를 닫지 않는다. `11-ui-ux-surface-map.md` §7 구현 흔적과 acceptance를 분리한다. |
 | Step 3 Decision Queue vertical slice | ✅ route + Room dogfood + optimistic locking (2026-07-15) | production Human Inbox route와 실제 Room dogfood 2건 통과; `decision_id`/`mission_id`/`expected_version` 라운드트립으로 stale/중복 answer는 409 — `MissionApplication.guard_inbox_answer`. run.json 쓰기와의 완전 원자성(single transaction)은 여전히 별도 트랙 |
 | Step 4 Execute/merge/Oracle | ✅ route parity + repair event | merge parity·fail→repair·RepairScheduled bridge·G3 process kill/restart 통과 |
 | Step 5 Durable runtime hardening | ✅ shadow + fault pass | scheduler ActivityQueue validation, committed-side-effect restart recovery; production daemon opt-in remains |
-| Step 6–7 bounded authority/read-model cutover | **Wave B bounded cohort 진행 중** | `AGENT_LAB_MISSION_AUTHORITY=1` + non-empty `AGENT_LAB_MISSION_AUTHORITY_SESSIONS` 세션은 Inbox item open/resolve와 execution gate를 Mission journal 한 batch로 기록하며 `run.json` Inbox writer를 건너뛴다. `AGENT_LAB_MISSION_UI_READ_MODEL` 기본값은 `1`; migrated 세션은 journal-first UI, legacy 세션은 read-model endpoint의 server-side fallback을 사용한다. bounded cohort의 route/API, stale answer, 재시작 복구와 내부 gate/clarifier read 경로 검증을 완료했다. M6 hard delete와 full-traffic 전환은 아직 금지하며 Human이 full cutover를 판정한다. |
+| Step 6–7 bounded authority/read-model cutover | **Wave B bounded cohort 진행 중; browser acceptance 미승인** | `AGENT_LAB_MISSION_AUTHORITY=1` + non-empty `AGENT_LAB_MISSION_AUTHORITY_SESSIONS` 세션은 Inbox item open/resolve와 execution gate를 Mission journal 한 batch로 기록하며 `run.json` Inbox writer를 건너뛴다. `AGENT_LAB_MISSION_UI_READ_MODEL` 기본값은 `1`; migrated 세션은 journal-first UI, legacy 세션은 read-model endpoint의 server-side fallback을 사용한다. route/API·stale answer·재시작 복구 evidence는 있으나 Wave B browser gate가 red라 shipped/complete로 판정하지 않는다. M6 hard delete와 full-traffic 전환은 아직 금지하며 Human이 full cutover를 판정한다. |
 
 **안전 경계:** 비-cohort 세션은 기존 `plan_workflow`·`mission_loop`·`human_inbox` writer를 그대로 사용한다. `AGENT_LAB_MISSION_AUTHORITY`는 non-empty session allowlist가 있는 bounded cohort에서만 활성화되며 빈 allowlist는 비활성화한다. cohort 세션의 Inbox writer는 journal authority로 우회되고, execute side effect·legacy plan projection·M6 hard delete는 아직 기존 경계를 유지한다. full-traffic 전환 전 Human 판정이 필요하다. [journal-first design](./redesign-2026-07/evidence/journal-first-read-projection-design-2026-07-14.md).
 
 > **Human 결정 (2026-07-08):** dogfood를 제대로 돌릴 만큼 개발이 성숙하지 않았다고 판단 — **지금 할 수 있는 코드 작업을 우선**한다. dogfood/운영 트랙(구 큐 1~3)은 §「보류 — dogfood 재개 시」로 이동.
 > **Human 결정 (2026-07-09):** 코드 트랙 큐 소진 확인(아래) 후 **보류 해제 — dogfood 재개**. F7 7일 시계 재시작(`make dogfood-track-f7-start` → start_date=2026-07-09, 마감 2026-07-16 — 경과한 07-12 시한은 이 재시작으로 대체). 아래 §「지금 — 라이브 dogfood 트랙」이 신규 실행 큐.
 
-### 완료 — 코드 트랙 (07-08~07-09, dogfood 보류 기간)
+### 기록 — 코드 트랙 (07-08~07-09, historical shipped claims; current browser acceptance 아님)
 
 HS0~HS5 전부(HS5-1~7·B1-B4 포함) ✅ 07-08~07-09 shipped (Impl **Tier B**, Human 명시 확인 후 착수).
 커밋 `6325c845`(merge_gate.py 코어) + HS5-3 후속 커밋(Tier A + L2 경량 승인 —
@@ -63,7 +64,7 @@ execute에서 나오는데 태그는 턴 행에서만 도출 — turn 행 197개
 `feedback_report.py` 소비) · HS4-2 완료(`_TAG_TOPIC_MAP` 3개 태그 전부 근거 topic 확보 — 신규 X5/X6
 dogfood 시나리오). 둘 다 mock-only, dogfood 무관.
 
-**큐 비어 있음** (2026-07-09) — 문서 정비 백로그(§4)는 2026-07-08자로 이미 표 소진 완료, HS0~HS5(+HS5-3, HS0-4, HS4-2)도 전부 shipped. HS6은 위 검토대로 보류. 다음 코드 트랙 항목은 §1 재검토 트리거(HS-M5 addressable 패턴, 또는 새 Human 지시) 발생 시 여기 추가.
+**큐 비어 있음** (2026-07-09, historical snapshot) — 문서 정비 백로그(§4)는 당시 표 소진, HS0~HS5(+HS5-3, HS0-4, HS4-2)도 당시 code evidence 기준 shipped였다. 이는 현재 Wave B/browser acceptance를 의미하지 않는다. HS6은 위 검토대로 보류.
 
 **2026-07-09 dogfood 재개 인프라:** `scripts/dogfood_progress.py` + `make dogfood-progress` / `dogfood-progress-auto` — suite-log 진행도 + X1(mission)·X2(plan→execute→Oracle) mock 자동. Human gate는 우회하지 않음(approve 명시 호출).
 
@@ -89,7 +90,7 @@ dogfood 시나리오). 둘 다 mock-only, dogfood 무관.
 
 시작: `eval "$(make -s dogfood-track-env)" && make dev`(또는 `make api`) → 라이브 세션 진행 → 중간 gate는 `make dogfood-live-gates-watch SESSION_ID=<id>`(수집 아님, Question/MCP/execute 자동 처리). 세션 후 수집은 `feedback-report` / `dogfood-progress-record` / `dogfood-track` 별도 실행.
 
-Composer preset 제거(WORKFLOW §8.2 **P2**)는 S1~S3 eval green 선행 — 위 게이트와 별개로 계속 대기.
+Composer preset 제거(WORKFLOW §8.2 **P2**)는 archive roadmap item이다. 현재 Composer는 이미 topic-only이며 picker를 노출하지 않는다. Wave B/browser acceptance gate는 별도이며 red 상태다.
 
 ### 분기 리뷰 묶음 (한 세션에서 일괄 — NORTH-STAR §3.3 분기 행)
 
@@ -101,9 +102,9 @@ N5 전역 bandit · N7/S3 구현(설계만 ✅) · HS6/HS7 · HSIL Tier D 전체
 
 ---
 
-## 2. shipped 확인 대장 (문서보다 앞선 코드)
+## 2. Historical shipped 확인 대장 (문서보다 앞선 코드; browser acceptance와 별도)
 
-개별 문서에 아직 반영 안 된 shipped 상태. **문서를 읽다 여기와 충돌하면 이쪽이 맞다.**
+개별 문서에 아직 반영 안 된 historical code evidence. **이 표는 현재 UX/browser acceptance를 닫지 않으며, 문서 상태와 충돌하면 최신 evidence gate를 우선한다.**
 
 | 항목 | 증거 | 낡은 문서 위치 |
 |------|------|----------------|

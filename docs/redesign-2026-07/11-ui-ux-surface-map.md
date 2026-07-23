@@ -1,6 +1,6 @@
 # 11 — Mission first-pass UI/UX surface map
 
-> **상태:** In progress / D0
+> **상태:** In progress / D0 · **Wave B/browser acceptance: not accepted (current evidence red)**
 > **목적:** first-pass Mission/Activity/Decision 계약을 사용자가 실제로 이해하고 조작할 수 있는 UI 표면으로 번역한다.
 > **선행:** [04 Human UX](./04-human-experience-api-ui.md), [06 Async Runtime](./06-asynchronous-mission-runtime.md), [08 Messaging](./08-collaboration-messaging.md)
 > **현재 UI SSOT:** [ROOM-TRANSCRIPT-CONTRACT.md](../ROOM-TRANSCRIPT-CONTRACT.md), [MCP-FIRST-INBOX.md](../MCP-FIRST-INBOX.md), [CONSOLE-PRODUCTIZATION.md](../CONSOLE-PRODUCTIZATION.md)
@@ -21,7 +21,7 @@
 | `HumanInboxPanel` / `DecisionQueueHeader` | `human_inbox[]`                                        | pending question, 추천, 영향, expiry, stale conflict                         | Inbox가 lifecycle writer가 되지 않도록 answer command만 발행    |
 | `SessionStatusLine`                       | profile, sandbox, autonomy                             | mission health, activity wait, reconnect/daemon 상태를 compact chip으로 표시 | 상태 chip이 CTA를 대신하지 않음                                 |
 | Transcript/SSE                            | chat, progress, activity rows                          | durable event와 ephemeral progress를 시각적으로 구분                         | reconnect 후 durable event가 중복 표시되지 않아야 함            |
-| Context sidebar                           | Overview/Tasks/Inbox                                   | Mission overview, tasks/objections, decision queue                           | 기존 Quick/Activity 중복 탭을 재도입하지 않음                   |
+| Inspector                                  | Overview/Tools                                         | Mission overview, diagnostics, workspace utilities                          | Human decision은 Composer Decision Queue가 소유; 제거된 Work/Tasks/Inbox tab을 재도입하지 않음 |
 
 ## 3. 사용자 상태 언어
 
@@ -51,7 +51,7 @@
 
 `Plan rejected`, `Mission paused`, `Inbox pending`, `merge review`를 각각 별도 배너로 쌓지 않는다. 하나의 Decision Queue item으로 합치고, 나머지는 evidence drawer에 둔다.
 
-**현재 착수 결과:** `mission/read_model.py`가 사용자 action projection을 제공하고, `mission/application.py`가 plan/Human answer adapter를 제공한다. `/api/sessions/{id}/mission/read-model` read-only route도 추가했으며, journal 없는 세션은 `migrated=false`로 구분한다. React surface·SSE cursor wiring과 browser QA는 아직 다음 단계다.
+**현재 착수 결과:** `mission/read_model.py`가 사용자 action projection을 제공하고, `mission/application.py`가 plan/Human answer adapter를 제공한다. `/api/sessions/{id}/mission/read-model` read-only route도 추가했으며, journal 없는 세션은 `migrated=false`로 구분한다. React surface·SSE cursor wiring 구현 흔적은 있으나 Wave B/browser QA가 red라 browser acceptance는 아직 승인되지 않았다.
 
 ## 5. 구현 시 충돌 방지 규칙
 
@@ -73,16 +73,16 @@
 
 ## 7. 구현 순서
 
-1. ✅ `/api/sessions/{id}/mission/read-model`과 legacy projection parity를 고정한다.
-2. ✅ `ComposerEventStack`에 Decision Queue precedence를 연결한다.
-3. ✅ `WorkStatusBar`/`WorkspaceCard`에 activity·merge·Oracle evidence를 추가한다. (merge — `MergeChecksPanel`; activity — `EvidenceTimeline`; Oracle — 신규 `OracleEvidencePanel`, `WorkspaceCard.tsx`에 배선)
-4. ✅ SSE cursor/reconnect와 durable event merge를 연결한다. (§7.4, 2026-07-14/15 완료 — 아래 §7.4 참고)
-5. ✅ Playwright journey로 plan reject, diff approve, Oracle repair, Human resume을 검증한다. (`web/e2e/wave-b-journey.spec.ts`, 4/4 통과)
+1. ✅ `/api/sessions/{id}/mission/read-model`과 legacy projection parity를 고정한다. (implementation evidence)
+2. ✅ `ComposerEventStack`에 Decision Queue precedence를 연결한다. (implementation evidence)
+3. ✅ `WorkStatusBar`/`WorkspaceCard`에 activity·merge·Oracle evidence를 추가한다. (implementation evidence; merge — `MergeChecksPanel`; activity — `EvidenceTimeline`; Oracle — `OracleEvidencePanel`)
+4. ✅ SSE cursor/reconnect와 durable event merge를 연결한다. (implementation evidence; browser acceptance pending)
+5. ❌ Wave B Playwright journey browser acceptance — current evidence red/not accepted. 이전 `web/e2e/wave-b-journey.spec.ts` 4/4 결과는 mock/API evidence로 [archive evidence](./evidence/m6-ui-read-model-dogfood-2026-07-16.md)에 보존한다.
 
 ## 8. Wave B join / cross-source 우선순위 계약
 
 > 이 섹션은 2026-07-14 커밋 `32c9f3d` 이후 편입되었다.  
-> 현재 상태: payload parsing boundary + read-model field precedence + browser SSE cursor wiring(§7.4) 모두 완료.
+> 현재 상태: payload parsing boundary + read-model field precedence + browser SSE cursor wiring 구현은 있으며, Wave B browser acceptance는 red/not accepted다.
 
 ### 8.1 내부 join: `inbox_items` ↔ `open_execution_gates`
 
@@ -131,7 +131,7 @@ legacy fallback은 read-model 자체가 `null`일 때만 발동한다.
 | durable event merge on reconnect | `web/src/utils/missionReadModel.ts` | SSE notification → `fetchMissionReadModel` snapshot + epoch guard |
 | §7.3 `HumanInboxPanel` answer optimistic locking | `agent_lab/mission/application.py` (`guard_inbox_answer`), `app/server/routers/human_inbox.py`, `HumanInboxPanel.tsx` | `decision_id`/`mission_id`/`expected_version` round-trip; stale/duplicate answer → 409 before `resolve_inbox_item` runs; optional field, legacy clients unaffected |
 
-현재 비보장/미착수 항목 없음 — §7 구현 순서 1~5 전부 완료.
+현재 비보장 항목: Wave B browser acceptance 및 full lifecycle evidence. §7의 implementation evidence가 acceptance gate를 닫지 않는다.
 
 ### §7.4 SSE cursor inventory (2026-07-14)
 
@@ -140,4 +140,4 @@ legacy fallback은 read-model 자체가 `null`일 때만 발동한다.
 - Client stream: `web/src/api/client.ts` `consumeSse()` uses `fetch`+`ReadableStream`. `fetchMissionEventsSSE()` sends `Last-Event-ID` and receives mission journal notifications.
 - Read-model consumers: `HumanInboxPanel`, `NotificationCenter`, `WorkToolPanel`, `ContextOverviewPanel`, `ComposerEventStack`, `useAutonomySession`, `useRoomChatInteractions`, `useRoomSseHandler`.
 - `useMissionReadModel` replaced 2.5s polling with initial snapshot + durable SSE stream; reconnects use `model.event_cursor` as `Last-Event-ID` and epoch guard drops stale responses.
-- **§7.4 status: complete.**
+- **§7.4 status:** implementation present; browser acceptance pending (Wave B red).

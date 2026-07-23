@@ -10,7 +10,9 @@ AI 개발 작업을 계획·승인·격리 실행·검증하는 Human-in-the-loo
 ## Room (2026-07)
 - **Composer:** topic-only — preset·Plan picker는 숨김; dogfood 기본 `supervisor`
 - **Turn control:** TurnContract가 roster·round·consensus, TurnPolicy가 Scribe·plan FSM·task effect를 결정 — [TURN-CONTRACT.md](../docs/TURN-CONTRACT.md)
-- **Human surface:** 결정은 Composer의 Decision Queue와 Work에서 한 번에 하나씩 처리
+- **Human surface:** Composer의 Decision Queue가 현재 Human action 하나를 우선 표시한다. 내부 `work` lane은 실행·결과 surface일 뿐, 제거된 Work navigation tab이 아니다.
+- **Workspace navigation:** 현재 visible tabs는 Transcript · Diff · Background · Files · Preview · Terminal이며, Inspector는 Overview · Tools다 (`web/src/utils/workspaceTabs.ts`).
+- **Browser acceptance:** Wave B evidence는 현재 red로 **not browser-accepted** 상태다. 이 문서와 관련 문서는 이를 shipped/complete로 표현하지 않는다.
 - **에이전트:** cursor, codex, claude, kimi_work (+ kimi/local). `/model`로 composition
 - **Kimi Work:** daimon bridge, Loop envelope peer
 

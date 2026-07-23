@@ -72,6 +72,20 @@ function pendingItems(items: HumanInboxItem[]): HumanInboxItem[] {
   );
 }
 
+export type InboxDecisionQueueProjection = {
+  readonly active: HumanInboxItem | null;
+  readonly queuedCount: number;
+};
+
+export function projectInboxDecisionQueue(
+  items: readonly HumanInboxItem[],
+): InboxDecisionQueueProjection {
+  return {
+    active: items[0] ?? null,
+    queuedCount: Math.max(items.length - 1, 0),
+  };
+}
+
 function isActionableInboxItem(item: HumanInboxItem): boolean {
   return item.status === "pending" && item.actionable !== false;
 }
@@ -624,7 +638,14 @@ export function HumanInboxPanel({
 }: Props) {
   const { locale } = useLocale();
   const ko = locale === "ko";
-  const [items, setItems] = useState<HumanInboxItem[]>([]);
+  const [modelReloadTick, setModelReloadTick] = useState(0);
+  const { model: missionReadModel } = useMissionReadModel(
+    sessionId,
+    reloadKey + modelReloadTick,
+  );
+  const [items, setItems] = useState<HumanInboxItem[]>(
+    () => missionReadModel?.inbox_items ?? [],
+  );
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [freeformDraft, setFreeformDraft] = useState<Record<string, string>>(
@@ -634,11 +655,6 @@ export function HumanInboxPanel({
     {},
   );
   const [composerExpanded, setComposerExpanded] = useState(true);
-  const [modelReloadTick, setModelReloadTick] = useState(0);
-  const { model: missionReadModel } = useMissionReadModel(
-    sessionId,
-    reloadKey + modelReloadTick,
-  );
 
   useEffect(() => {
     const rows = missionReadModel?.inbox_items;
@@ -886,13 +902,14 @@ export function HumanInboxPanel({
     locale,
   };
 
-  const lead = visiblePending[0];
+  const inboxQueue = projectInboxDecisionQueue(visiblePending);
+  const lead = inboxQueue.active;
   const leadSubject = lead
     ? lead.kind === "question"
       ? cleanSubject(lead.prompt)
       : (lead.summary ?? lead.prompt)
     : "";
-  const multi = visiblePending.length > 1;
+  const multi = inboxQueue.queuedCount > 0;
 
   return (
     <div
@@ -928,8 +945,8 @@ export function HumanInboxPanel({
           <span className="human-inbox__composer-meta composer-dock-card__meta">
             {multi
               ? ko
-                ? `${visiblePending.length}건 대기`
-                : `${visiblePending.length} pending`
+                ? `다음 ${inboxQueue.queuedCount}건 대기`
+                : `${inboxQueue.queuedCount} queued`
               : ko
                 ? "답변하면 작업이 재개됩니다"
                 : "Your answer resumes the workflow"}
@@ -949,16 +966,16 @@ export function HumanInboxPanel({
         <>
           {error ? <div className="human-inbox__error">{error}</div> : null}
           <div className="human-inbox__items composer-dock-card__body">
-            {visiblePending.map((item) => (
+            {lead ? (
               <InboxRow
-                key={item.id}
-                item={item}
+                key={lead.id}
+                item={lead}
                 {...rowProps}
                 onRefClick={onRefClick}
-                hideHead={!multi && item.kind === "question"}
+                hideHead={!multi && lead.kind === "question"}
                 flat
               />
-            ))}
+            ) : null}
           </div>
         </>
       ) : null}

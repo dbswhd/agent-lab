@@ -24,7 +24,7 @@ Agent Lab은 **AI 개발 작업을 계획·승인·격리 실행·검증하는 H
 |------|------|
 | **Transcript** | append-only 대화 로그 |
 | **ComposerEventStack** | Human Inbox resolve · plan approval · execute queue · consensus gate · `PlanExecutePanel` |
-| **Composer** | message · preset · Plan toggle · attachments |
+| **Composer** | topic-only message · attachments (room preset is a setting/session default; Plan controls are hidden) |
 | **ComposerNoticeCard** | recovery · connection · non-actionable alerts only |
 | **ComposerActivityPanel** | collapsible notification feed (구 Inbox Activity) |
 

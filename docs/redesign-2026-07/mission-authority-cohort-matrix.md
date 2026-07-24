@@ -1,6 +1,6 @@
 # Mission authority bounded-cohort matrix
 
-Status: validation contract only. No production cohort is activated by this document or its harness.
+Status: validation contract only. No production cohort is activated by this document or its harness. The current Task 7 packet has live readiness `OPEN` (`n=0`) and `default_change_authorized=false`; browser-contract acceptance does not alter this, and any default routing/authority change still requires explicit Human GO — [DOGFOOD-READINESS-STATUS.md](../DOGFOOD-READINESS-STATUS.md).
 
 Plan and execution authority share `AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS`; Inbox authority independently uses `AGENT_LAB_MISSION_AUTHORITY_SESSIONS`.
 

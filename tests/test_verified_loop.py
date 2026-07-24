@@ -354,6 +354,31 @@ def test_session_meta_preserves_mission_loop() -> None:
     assert run_meta["turn_budget"]["used"] == 2
 
 
+def test_session_meta_preserves_autonomy_and_trust_budget() -> None:
+    """N4-D3 / Phase C1 — PATCH /autonomy must survive the next room turn."""
+    assert "autonomy" in SESSION_META_KEYS
+    assert "trust_budget" in SESSION_META_KEYS
+    assert "risk_pin" in SESSION_META_KEYS
+    run_meta: dict = {"topic": "t", "last_turn": {}}
+    prev = {
+        "autonomy": {
+            "level": "L2",
+            "last_effective": "L2",
+            "transitions": [{"from": "L0", "to": "L2", "reason": "dogfood"}],
+        },
+        "trust_budget": {
+            "auto_merge_remaining": 10,
+            "auto_merge_total": 10,
+            "classifier_allow": ["docs_only", "test_only", "single_file"],
+        },
+        "risk_pin": {"category": "trading", "pinned_to": "L1"},
+    }
+    preserve_session_meta_from_prev(run_meta, prev)
+    assert run_meta["autonomy"]["level"] == "L2"
+    assert run_meta["trust_budget"]["auto_merge_total"] == 10
+    assert run_meta["risk_pin"]["pinned_to"] == "L1"
+
+
 def test_stale_done_before_approval_ignored(tmp_path: Path) -> None:
     folder = _session(tmp_path)
     record_proposed_goal(

@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 import time
 import urllib.error
@@ -56,6 +57,45 @@ import x2_lift_dogfood_live_repeat as x2  # noqa: E402
 # to get there before giving up.
 PLAN_STRUCTURE_MARKERS = ("## Must", "## Parallel waves")
 MAX_PLAN_RETRIES = 2
+# Peers sometimes dump scratch plans at repo-root artifacts/plans/ during discuss
+# retries; those untracked paths trip the next pass with base_branch_dirty.
+_SCRATCH_PLAN_GLOBS = ("artifacts/plans/x2-lift*.md", "artifacts/plans/x2_lift*.md")
+
+
+def _is_git_tracked(rel: str) -> bool:
+    try:
+        out = subprocess.run(
+            ["git", "ls-files", "--error-unmatch", "--", rel],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError:
+        return False
+    return out.returncode == 0
+
+
+def _scrub_scratch_plans() -> list[str]:
+    """Remove *untracked* x2-lift scratch plans left by prior dogfood passes.
+
+    Never delete git-tracked plans (e.g. artifacts/plans/x2-lift-typo-fix.md) —
+    that itself dirties the tree and trips the next pass with base_branch_dirty.
+    """
+    removed: list[str] = []
+    for pattern in _SCRATCH_PLAN_GLOBS:
+        for path in ROOT.glob(pattern):
+            if not path.is_file():
+                continue
+            rel = str(path.relative_to(ROOT))
+            if _is_git_tracked(rel):
+                continue
+            try:
+                path.unlink()
+            except OSError:
+                continue
+            removed.append(rel)
+    return removed
 
 
 def _promote_l2(session_id: str) -> dict:
@@ -117,7 +157,7 @@ def _ensure_structured_plan(session_id: str, *, room_timeout: float) -> dict:
     continuation turn on the same session (instead of blind-approving a
     conversational stub) up to MAX_PLAN_RETRIES times. phase == APPROVED
     always short-circuits as ready, regardless of plan.md's shape."""
-    info: dict = {"retries": 0}
+    info: dict = {"retries": 0, "scrubbed_after_retry": []}
     phase = x2._wait_human_pending(session_id, timeout=10.0)
     while phase == "HUMAN_PENDING" and not _plan_structured(session_id) and info["retries"] < MAX_PLAN_RETRIES:
         info["retries"] += 1
@@ -130,6 +170,10 @@ def _ensure_structured_plan(session_id: str, *, room_timeout: float) -> dict:
             timeout=room_timeout,
             topic_override=_retry_topic(info["retries"]),
         )
+        scrubbed = _scrub_scratch_plans()
+        if scrubbed:
+            info["scrubbed_after_retry"].extend(scrubbed)
+            print(f"    scrubbed after retry: {scrubbed}", flush=True)
         phase = x2._wait_human_pending(session_id, timeout=x2.DEFAULT_PLAN_WAIT_TIMEOUT)
     if phase == "HUMAN_PENDING" and not _plan_structured(session_id):
         phase = _wait_approved_grace(session_id)
@@ -142,6 +186,10 @@ def _run_iteration(index: int, total: int, *, allow_dirty: bool, room_timeout: f
     print(f"\n=== L2 dogfood pass {index}/{total} ===", flush=True)
     result: dict = {"pass": index, "ok": False}
     try:
+        scrubbed = _scrub_scratch_plans()
+        if scrubbed:
+            result["scrubbed_scratch_plans"] = scrubbed
+            print(f"    scrubbed scratch plans: {scrubbed}", flush=True)
         result["dogfood_prepare"] = x2._prepare_dogfood()
 
         session_id, events, elapsed, stream_note = x2._room_run(timeout=room_timeout)

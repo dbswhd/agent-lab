@@ -205,6 +205,7 @@ def resolve_session_inbox_item(
                 decision=body.decision,
                 note=body.note,
                 append_chat=body.append_chat,
+                actor=body.actor,
             )
         else:
             item = resolve_inbox_item(
@@ -215,6 +216,7 @@ def resolve_session_inbox_item(
                 decision=body.decision,
                 note=body.note,
                 append_chat=body.append_chat,
+                actor=body.actor,
             )
             bridge = mirror_inbox_resolution(folder, item_id=item_id, answer=body.decision or "")
     except ValueError as exc:

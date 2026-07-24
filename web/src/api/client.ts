@@ -2670,6 +2670,7 @@ export type HumanInboxItem = {
   plan_revision?: string | null;
   created_at?: string;
   resolved_at?: string | null;
+  resolved_by?: string | null;
   actionable?: boolean;
   mission_gate_status?: "terminal_orphan" | "missing_row" | "stale";
   /** §7.3 — optimistic-lock version; send back as `expected_version` on resolve. */

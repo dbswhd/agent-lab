@@ -13,7 +13,14 @@ export function buildHumanDecisionLanes(
   discussPaused: boolean,
 ): HumanDecisionLane[] {
   const gates = runtime?.gates;
-  const discussBlocked = discussPaused || gates?.discuss?.open === false;
+  // A fresh runtime snapshot confirming the gate is open wins over the
+  // client-only `discussPaused` flag — that flag only flips back to false
+  // when *this* tab is the one that resolves the inbox item (see
+  // useRoomChatInteractions.handleInboxResolved), so another tab/session
+  // resolving it would otherwise leave this tab's banner stuck forever.
+  const discussGateOpen = gates?.discuss?.open;
+  const discussBlocked =
+    discussGateOpen === true ? false : discussPaused || discussGateOpen === false;
   return [
     {
       id: "discuss",

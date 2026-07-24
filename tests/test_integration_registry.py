@@ -316,7 +316,13 @@ def test_fast_bucket_collection_budget():
     # authority (plan + execution write authority, cohort-gated) —
     # test_run_profile.py gained a dedicated inbox-stays-retired test
     # alongside the flipped-back plan-authority-on assertion.
-    assert count <= 3617, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-24: raised 3617 -> 3633 for the Human Inbox live-signal + MCP
+    # elicitation work: trace_recorder tool_done-closes-span regression test,
+    # human_inbox resolved_by actor-attribution tests, new
+    # test_room_inbox_pause_bridge.py (cross-process inbox_pause SSE bridge),
+    # and new test_mcp_elicit_ask_human.py (ask_human elicitation attempt +
+    # capability-gated fallback).
+    assert count <= 3633, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

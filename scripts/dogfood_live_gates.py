@@ -124,7 +124,11 @@ def _resolve_inbox(
 ) -> dict[str, Any]:
     item_id = str(item.get("id") or "")
     kind = str(item.get("kind") or "")
-    body: dict[str, Any] = {"append_chat": True, "status": "resolved"}
+    body: dict[str, Any] = {
+        "append_chat": True,
+        "status": "resolved",
+        "actor": "automation:dogfood_live_gates",
+    }
 
     if kind in _AUTO_BUILD_KINDS or item.get("source") == "mcp_propose_build":
         body["decision"] = "go"

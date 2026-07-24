@@ -83,6 +83,35 @@ def test_create_and_resolve_question(session_folder: Path):
     assert "[HUMAN-DECISION:" in record["content"]
 
 
+def test_resolve_defaults_actor_to_human(session_folder: Path):
+    item = create_inbox_item(
+        session_folder,
+        kind="question",
+        source="manual",
+        prompt="Scope?",
+        options=[{"id": "a", "label": "A"}, {"id": "b", "label": "B"}],
+    )
+    resolved = resolve_inbox_item(session_folder, item["id"], selected=["a"])
+    assert resolved["resolved_by"] == "human"
+
+
+def test_resolve_records_explicit_automation_actor(session_folder: Path):
+    item = create_inbox_item(
+        session_folder,
+        kind="question",
+        source="manual",
+        prompt="Scope?",
+        options=[{"id": "a", "label": "A"}, {"id": "b", "label": "B"}],
+    )
+    resolved = resolve_inbox_item(
+        session_folder,
+        item["id"],
+        selected=["a"],
+        actor="automation:dogfood_live_gates",
+    )
+    assert resolved["resolved_by"] == "automation:dogfood_live_gates"
+
+
 def test_build_blocked_by_pending_question(session_folder: Path):
     create_inbox_item(
         session_folder,

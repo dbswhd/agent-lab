@@ -61,6 +61,20 @@ def test_tool_span_parented_to_agent(tmp_path: Path) -> None:
     assert tool["parent_id"] == agent["span_id"]
 
 
+def test_tool_span_closed_by_tool_done_without_output(tmp_path: Path) -> None:
+    """Codex success exits (exit_code 0) and empty-result Cursor/Claude tool
+    calls emit ``tool_done`` with no ``tool_output`` — the span must still
+    close instead of dangling open until a later cancel flushes it incomplete."""
+    rec = TraceRecorder(tmp_path, {}, None, human_turn=1)
+    rec("agent_start", {"agent": "codex", "round": 1})
+    rec("tool_start", {"agent": "codex", "round": 1, "tool": "shell"})
+    rec("tool_done", {"agent": "codex", "round": 1, "tool": "shell"})
+    rec("agent_done", {"agent": "codex", "round": 1})
+    spans = _spans(tmp_path)
+    tool = next(s for s in spans if s["kind"] == "tool")
+    assert tool["status"] == "ok"
+
+
 def test_cost_delta_attached_from_ledger(tmp_path: Path) -> None:
     run_meta: dict[str, Any] = {
         "cost_ledger": {"by_agent": {"claude": {"tokens_in": 100, "tokens_out": 10, "usd": 0.01}}}

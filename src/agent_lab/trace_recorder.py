@@ -106,7 +106,10 @@ class TraceRecorder:
             self._close_agent(agent, rnd, "ok" if typ == "agent_done" else "error")
         elif typ == "tool_start":
             self._open_tool(agent, rnd, str(payload.get("tool") or "tool"))
-        elif typ == "tool_output":
+        elif typ in ("tool_output", "tool_done"):
+            # tool_done is the unambiguous completion signal — some bridges
+            # (Codex success exits, empty-result Cursor/Claude calls) skip
+            # tool_output entirely, which left the span open until cancel.
             self._close_tool(agent, rnd)
         elif typ == "dispatch_start":
             self._open_dispatch(payload)

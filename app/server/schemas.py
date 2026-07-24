@@ -114,6 +114,10 @@ class HumanInboxResolveRequest(BaseModel):
     decision_id: str | None = None
     mission_id: str | None = None
     expected_version: int | None = Field(default=None, ge=0)
+    # Who made this call — defaults to "human" (the only caller today is the
+    # Human Inbox UI panel); automation callers (dogfood_live_gates.py etc.)
+    # must self-identify so a readiness/evidence packet can tell them apart.
+    actor: str | None = None
 
 
 class PlanExecuteIsolationOverrideRequest(BaseModel):

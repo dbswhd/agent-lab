@@ -140,6 +140,43 @@ def _drain_room_event_queue(
         yield ev
 
 
+def _new_cross_process_inbox_pause_events(
+    folder: Path,
+    cursor: int,
+) -> tuple[list[dict[str, Any]], int]:
+    """Detect Human Inbox items created by an out-of-process caller (the
+    ``agent-lab-inbox`` MCP stdio server, a separate OS process from this
+    request's ``generate()``) and surface the same ``inbox_pause`` signal the
+    in-process ``decision-fork`` harvest path already fires directly via
+    ``on_event`` (see ``room/consensus_rounds.py``).
+
+    The human_inbox module's item-creation helper always appends an
+    ``item_id``-bearing ``inbox_pending`` row to ``live.jsonl`` regardless of
+    caller process, so tailing that file (already done for SSE-reconnect in
+    ``_room_resume_events``) is enough — no new IPC needed. CLARIFY-phase
+    markers (``plan_scribe.py`` / ``turn_policy.py``) also write
+    ``inbox_pending`` rows but never include ``item_id``; the filter below
+    excludes those on purpose.
+    """
+    from agent_lab.room.live_log import read_live_room_log
+
+    rows = read_live_room_log(folder)
+    new_rows = rows[cursor:]
+    out = [
+        {
+            "type": "inbox_pause",
+            "reason": "inbox_pending",
+            "item_id": row["item_id"],
+            "kind": row.get("kind"),
+            "source": row.get("source"),
+            "message": "Human Inbox 항목 생성 — Discuss가 응답을 기다립니다.",
+        }
+        for row in new_rows
+        if row.get("type") == "inbox_pending" and "item_id" in row
+    ]
+    return out, len(rows)
+
+
 def _room_server_timeout_sec() -> float | None:
     raw = (os.getenv(_ROOM_SERVER_TIMEOUT_ENV) or "").strip()
     if not raw:
@@ -443,6 +480,7 @@ async def _stream_synthesize_only(
         result: dict[str, Any] = {}
         loop = asyncio.get_running_loop()
         worker: asyncio.Future[Any] | None = None
+        inbox_pause_cursor = 0
 
         def on_event(typ: str, payload: dict[str, Any]) -> None:
             loop.call_soon_threadsafe(event_q.put_nowait, {"type": typ, **payload})
@@ -541,6 +579,11 @@ async def _stream_synthesize_only(
                     ):
                         yield sse(payload)
                     return
+                new_pause_events, inbox_pause_cursor = _new_cross_process_inbox_pause_events(
+                    folder, inbox_pause_cursor
+                )
+                for pause_ev in new_pause_events:
+                    yield sse(pause_ev)
                 try:
                     ev = await asyncio.wait_for(event_q.get(), timeout=0.25)
                 except asyncio.TimeoutError:
@@ -875,6 +918,7 @@ async def create_room_run(
         disconnected = False
         loop = asyncio.get_running_loop()
         worker: asyncio.Future[Any] | None = None
+        inbox_pause_cursor = 0
 
         def on_event(typ: str, payload: dict[str, Any]) -> None:
             loop.call_soon_threadsafe(event_q.put_nowait, {"type": typ, **payload})
@@ -1012,6 +1056,12 @@ async def create_room_run(
                     ):
                         yield sse(payload)
                     return
+                if folder is not None:
+                    new_pause_events, inbox_pause_cursor = _new_cross_process_inbox_pause_events(
+                        folder, inbox_pause_cursor
+                    )
+                    for pause_ev in new_pause_events:
+                        yield sse(pause_ev)
                 try:
                     ev = await asyncio.wait_for(event_q.get(), timeout=0.25)
                 except asyncio.TimeoutError:
@@ -1038,6 +1088,12 @@ async def create_room_run(
                 await _wait_for_room_worker_cancel_ack(worker)
                 for ev in _drain_room_event_queue(event_q, result):
                     yield sse(ev)
+                if folder is not None:
+                    new_pause_events, inbox_pause_cursor = _new_cross_process_inbox_pause_events(
+                        folder, inbox_pause_cursor
+                    )
+                    for pause_ev in new_pause_events:
+                        yield sse(pause_ev)
                 for payload in _room_run_terminal_events(
                     result,
                     run_session_id=run_session_id,
@@ -1045,6 +1101,12 @@ async def create_room_run(
                     yield sse(payload)
                 return
             await worker
+            if folder is not None:
+                new_pause_events, inbox_pause_cursor = _new_cross_process_inbox_pause_events(
+                    folder, inbox_pause_cursor
+                )
+                for pause_ev in new_pause_events:
+                    yield sse(pause_ev)
             for payload in _room_run_terminal_events(
                 result,
                 run_session_id=run_session_id,

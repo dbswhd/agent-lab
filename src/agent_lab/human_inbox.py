@@ -545,6 +545,7 @@ def resolve_inbox_item(
     note: str | None = None,
     append_chat: bool = True,
     expected_version: int | None = None,
+    actor: str | None = None,
 ) -> dict[str, Any]:
     from agent_lab.mission.dual_write import mission_authority_enabled
 
@@ -584,6 +585,7 @@ def resolve_inbox_item(
 
         item["status"] = status
         item["resolved_at"] = resolved_at
+        item["resolved_by"] = actor or "human"
         if selected is not None:
             item["resolved_selected"] = selected
             item["resolved_choice"] = ",".join(selected) if selected else ""

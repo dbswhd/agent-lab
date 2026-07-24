@@ -30,6 +30,8 @@ type Props = {
   transcriptLoading: string;
   transcriptEmpty: string;
   transcriptEmptyHint: string;
+  openInCursorLabel?: string;
+  onOpenInCursor?: () => void;
   showJumpButton: boolean;
   forceScrollButton?: boolean;
   scrollToBottom: () => void;
@@ -54,6 +56,8 @@ export function RoomTranscriptPanel({
   transcriptLoading,
   transcriptEmpty,
   transcriptEmptyHint,
+  openInCursorLabel,
+  onOpenInCursor,
   showJumpButton,
   forceScrollButton,
   scrollToBottom,
@@ -101,6 +105,15 @@ export function RoomTranscriptPanel({
             </span>
             <span className="empty-state__title">{transcriptEmpty}</span>
             <span className="empty-state__hint">{transcriptEmptyHint}</span>
+            {onOpenInCursor && openInCursorLabel ? (
+              <button
+                type="button"
+                className="btn btn--sm"
+                onClick={onOpenInCursor}
+              >
+                {openInCursorLabel}
+              </button>
+            ) : null}
           </div>
         ) : null}
         {(() => {

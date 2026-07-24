@@ -18,13 +18,23 @@ from agent_lab.run.profile import (
     resolve_profile,
 )
 
-_ALL_PROFILES = ("fast", "balanced", "thorough", "autonomous")
+_ALL_PROFILES = ("fast", "small", "balanced", "thorough", "autonomous")
 
 
 def test_resolve_profile_fast() -> None:
     cfg = resolve_profile("fast")
     assert cfg is not None
     assert cfg.profile == "fast"
+
+
+def test_resolve_profile_small_keeps_moats() -> None:
+    cfg = resolve_profile("small")
+    assert cfg is not None
+    assert cfg.profile == "small"
+    assert cfg.flags["AGENT_LAB_ROOM_PRESET"] == "supervisor"
+    assert cfg.flags["AGENT_LAB_ORACLE_LIVE"] == "1"
+    assert "AGENT_LAB_AUTO_APPROVE_THRESHOLD" not in cfg.flags
+    assert cfg.flags.get("AGENT_LAB_EFFICIENCY") == "1"
 
 
 def test_resolve_profile_balanced() -> None:
@@ -81,12 +91,12 @@ def test_default_run_profile_normalized(monkeypatch: pytest.MonkeyPatch) -> None
 
 def test_list_profiles_count() -> None:
     profiles = list_profiles()
-    assert len(profiles) == 4
+    assert len(profiles) == 5
 
 
 def test_list_profiles_stable_order() -> None:
     ids = [cfg.profile for cfg in list_profiles()]
-    assert ids == ["fast", "balanced", "thorough", "autonomous"]
+    assert ids == ["fast", "small", "balanced", "thorough", "autonomous"]
 
 
 def test_all_profiles_have_flags() -> None:
@@ -127,7 +137,7 @@ def test_balanced_profile_has_s1_feedback_flags() -> None:
 
 def test_supervisor_profiles_default_plan_write_authority_on() -> None:
     """Slice 1/3 (re-enabled 2026-07-23): authority defaults on; still no-op without DUAL_WRITE."""
-    for name in ("balanced", "thorough", "autonomous"):
+    for name in ("small", "balanced", "thorough", "autonomous"):
         cfg = resolve_profile(name)
         assert cfg is not None
         assert cfg.flags.get("AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY") == "1"
@@ -140,7 +150,7 @@ def test_supervisor_profiles_default_plan_write_authority_on() -> None:
 
 def test_no_profile_registers_retired_inbox_write_authority_flag() -> None:
     """Slice 2 stays retired -- superseded by AGENT_LAB_MISSION_AUTHORITY (Wave B)."""
-    for name in ("fast", "balanced", "thorough", "autonomous"):
+    for name in _ALL_PROFILES:
         cfg = resolve_profile(name)
         assert cfg is not None
         assert "AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY" not in cfg.flags
@@ -198,7 +208,7 @@ def test_profile_catalog_shape(monkeypatch: pytest.MonkeyPatch) -> None:
     assert "profiles" in cat
     assert "default" in cat
     assert "active" in cat
-    assert len(cat["profiles"]) == 4
+    assert len(cat["profiles"]) == 5
     assert cat["default"] == "balanced"
 
 
@@ -300,12 +310,14 @@ def test_flags_payload_includes_profile_membership() -> None:
     room_preset = next(row for row in payload["flags"] if row["name"] == "AGENT_LAB_ROOM_PRESET")
     assert set(room_preset["profiles"]) == {
         "fast",
+        "small",
         "balanced",
         "thorough",
         "autonomous",
     }
     efficiency = next(row for row in payload["flags"] if row["name"] == "AGENT_LAB_EFFICIENCY")
     assert "fast" in efficiency["profiles"]
+    assert "small" in efficiency["profiles"]
 
 
 def test_flags_payload_profile_filter() -> None:

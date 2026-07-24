@@ -21,7 +21,7 @@
 - API 라우터: `app/server/routers/`에 추가 (`main.py` 직접 추가 금지)
 - `run.json`: `patch_run_meta()` 경유
 - **run_meta (F4):** 합의/턴 진행 중 in-memory `run_meta` 변경은 `stamp_run_meta()` / `.update()` 사용; 디스크는 턴 종료 `_write_session_files` replay 또는 `patch_run_meta()`만. 중간 `read_run_meta()` 재적재 후 patch 금지. `run_meta[` subscript 금지 — `tests/test_run_meta_write_discipline.py` (allowlist empty).
-- **Run profile (N2/F2):** `AGENT_LAB_RUN_PROFILE=fast|balanced|thorough|autonomous` — SSOT `src/agent_lab/run/profile.py`. 신규 **feature** 플래그는 최소 1개 프로필의 `flags`(적용 기본값) 또는 `owns`(소속만)에 넣는다 — `tests/test_run_profile.py::test_f2_every_feature_flag_has_owner` 가드.
+- **Run profile (N2/F2):** `AGENT_LAB_RUN_PROFILE=fast|small|balanced|thorough|autonomous` — SSOT `src/agent_lab/run/profile.py`. 신규 **feature** 플래그는 최소 1개 프로필의 `flags`(적용 기본값) 또는 `owns`(소속만)에 넣는다 — `tests/test_run_profile.py::test_f2_every_feature_flag_has_owner` 가드.
 - **Trading (F5):** `trading_mission/` · `quant/` 는 extension lane. 코어 Room/plan/inbox PR에 trading 표면을 늘리지 않는다. 코어→trading 경계는 `extensions/quant_trading.py` 만.
 - subprocess: `subprocess_env.subprocess_env()` (env 전체 상속 금지)
 - 테스트: mock-only (`AGENT_LAB_MOCK_AGENTS=1`), 실 LLM CI 금지

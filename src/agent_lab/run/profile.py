@@ -1,10 +1,11 @@
-"""Run Profile System (N2) — four named flag presets.
+"""Run Profile System (N2) — named flag presets.
 
-Four profiles cover the main operational modes. Individual AGENT_LAB_* overrides
+Profiles cover the main operational modes. Individual AGENT_LAB_* overrides
 always take precedence over profile defaults (profiles only fill in unset flags).
 
 Profiles:
-  fast        — single agent, auto-approve low-risk, Oracle mock
+  fast        — single agent, auto-approve low-risk, Oracle mock (throughput; weakens gates)
+  small       — Small Mission: supervisor human gate + Oracle live + lean efficiency (moat-safe)
   balanced    — supervisor preset, human gate, Oracle live (default)
   thorough    — supervisor + adversarial + live judge, human gate, Oracle live
   autonomous  — mission loop + auto-approve medium-risk, Oracle live
@@ -20,7 +21,7 @@ import os
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-RunProfile = Literal["fast", "balanced", "thorough", "autonomous"]
+RunProfile = Literal["fast", "small", "balanced", "thorough", "autonomous"]
 
 # Throughput / lean context (membership; applied defaults stay in flags).
 _FAST_OWNS: frozenset[str] = frozenset(
@@ -254,6 +255,30 @@ _PROFILE_CONFIGS: dict[str, RunProfileConfig] = {
             "AGENT_LAB_ORACLE_LIVE": "",
             "AGENT_LAB_ADVERSARIAL_LIVE": "",
             "AGENT_LAB_JUDGE_LIVE": "",
+        },
+        owns=_FAST_OWNS,
+    ),
+    "small": RunProfileConfig(
+        profile="small",
+        description=(
+            "Small Mission — supervisor human gate, Oracle live, lean efficiency; "
+            "same moats as balanced with shorter ceremony (not an IDE agent mode)"
+        ),
+        flags={
+            "AGENT_LAB_ROOM_PRESET": "supervisor",
+            "AGENT_LAB_ORACLE_LIVE": "1",
+            "AGENT_LAB_ADVERSARIAL_LIVE": "",
+            "AGENT_LAB_JUDGE_LIVE": "",
+            "AGENT_LAB_EFFICIENCY": "1",
+            "AGENT_LAB_EFFICIENCY_CONSENSUS_ROUNDS": "2",
+            "AGENT_LAB_EFFICIENCY_CONSENSUS_CALLS": "4",
+            "AGENT_LAB_TURN_METRICS": "1",
+            "AGENT_LAB_OUTCOME_LEDGER": "1",
+            "AGENT_LAB_FEEDBACK_ADVISOR": "1",
+            "AGENT_LAB_PLAN_FSM_SKILL_FIRST": "1",
+            "AGENT_LAB_CORRECTION_HARVESTER": "1",
+            "AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY": "1",
+            "AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY": "1",
         },
         owns=_FAST_OWNS,
     ),

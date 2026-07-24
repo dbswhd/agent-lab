@@ -31,6 +31,7 @@ const questionItem = {
   source: "claude",
   caller_agent: "claude",
   created_at: "2026-07-15T00:00:00Z",
+  decision_version: 7,
   options: [
     {
       id: "safe",
@@ -47,6 +48,65 @@ const questionItem = {
   ],
 };
 
+function missionReadModelPayload(input: {
+  sessionId: string;
+  resolved: boolean;
+  rejected: boolean;
+  journey: Journey;
+}): Record<string, unknown> {
+  const isHumanResume = input.sessionId === "wave-b-human-resume";
+  const isPlanReject = input.sessionId === "wave-b-plan-reject";
+  const inbox = isHumanResume && !input.resolved ? [questionItem] : [];
+  const awaitingPlan =
+    isPlanReject && !input.rejected && input.journey === "plan-reject";
+  return {
+    session_id: input.sessionId,
+    migrated: true,
+    source: "mission_journal",
+    mission_id: "mission-wave-b",
+    goal: "Wave B journey",
+    state: isHumanResume
+      ? "AWAITING_HUMAN"
+      : awaitingPlan
+        ? "AWAITING_PLAN_DECISION"
+        : "EXECUTING",
+    version: 7,
+    plan_revision: 2,
+    plan_hash: "plan-hash",
+    approved_plan_hash: awaitingPlan ? null : "plan-hash",
+    repair_attempt: 0,
+    max_repair_attempts: 2,
+    oracle_verdict: null,
+    next_action: isHumanResume ? "answer_inbox" : "continue",
+    event_cursor: 7,
+    operational_status: isHumanResume ? "awaiting_human" : "executing",
+    open_execution_gates: inbox.map((item) => ({
+      gate_id: item.id,
+      kind: item.kind,
+    })),
+    legacy_phase: isHumanResume ? "WAITING_FOR_HUMAN" : "EXECUTE",
+    plan: {
+      phase: awaitingPlan ? "HUMAN_PENDING" : "APPROVED",
+      hash: "plan-hash",
+      approved_hash: awaitingPlan ? null : "plan-hash",
+      pending_approval: awaitingPlan,
+    },
+    work_phase: awaitingPlan ? "review_needed" : "execute_pending",
+    mission_overview: {
+      phase_label: isHumanResume ? "WAITING_FOR_HUMAN" : "EXECUTE",
+      paused: isHumanResume,
+      circuit_breaker: false,
+      pending_inbox_count: inbox.length,
+    },
+    inbox_summary: {
+      pending_count: inbox.length,
+      pending_questions: inbox.length,
+      pending_builds: 0,
+    },
+    inbox_items: inbox,
+  };
+}
+
 type Journey =
   | "plan-reject"
   | "diff-approve"
@@ -57,6 +117,7 @@ async function mockWaveBJourneyApi(
   page: Page,
   requests: string[],
   journey: Journey,
+  postBodies: Record<string, unknown>[] = [],
 ) {
   let rejected = false;
   let resolved = false;
@@ -115,6 +176,34 @@ async function mockWaveBJourneyApi(
       return;
     }
 
+    const readModelMatch = url.pathname.match(
+      /^\/api\/sessions\/(wave-b-[^/]+)\/mission\/read-model$/,
+    );
+    if (readModelMatch) {
+      requests.push(key);
+      await route.fulfill({
+        json: missionReadModelPayload({
+          sessionId: readModelMatch[1],
+          resolved,
+          rejected,
+          journey,
+        }),
+      });
+      return;
+    }
+
+    const missionEventsMatch = url.pathname.match(
+      /^\/api\/sessions\/(wave-b-[^/]+)\/mission\/events$/,
+    );
+    if (missionEventsMatch) {
+      await route.fulfill({
+        status: 200,
+        contentType: "text/event-stream",
+        body: "event: ping\ndata: {}\n\n",
+      });
+      return;
+    }
+
     if (url.pathname === "/api/sessions") {
       const sessions = [
         {
@@ -142,7 +231,9 @@ async function mockWaveBJourneyApi(
           workflow: "room.parallel",
         },
       ];
-      await route.fulfill({ json: { sessions } });
+      await route.fulfill({
+        json: { ok: true, sessions, total: sessions.length },
+      });
       return;
     }
 
@@ -378,6 +469,11 @@ async function mockWaveBJourneyApi(
       request.method() === "POST"
     ) {
       requests.push(key);
+      try {
+        postBodies.push(request.postDataJSON() as Record<string, unknown>);
+      } catch {
+        postBodies.push({});
+      }
       resolved = true;
       await route.fulfill({
         json: {
@@ -421,6 +517,8 @@ async function initialize(page: Page) {
 }
 
 async function openSession(page: Page, name: string) {
+  // English-only fixture topics classify as Dogfood (no Hangul heuristic).
+  await page.getByRole("tab", { name: "Dogfood" }).click();
   await page.getByRole("button", { name }).click();
 }
 
@@ -502,10 +600,15 @@ test("Oracle repair journey re-verifies failed execution", async ({
 
 test("human resume journey answers inbox question", async ({ page }) => {
   const requests: string[] = [];
+  const postBodies: Record<string, unknown>[] = [];
   await initialize(page);
-  await mockWaveBJourneyApi(page, requests, "human-resume");
+  await mockWaveBJourneyApi(page, requests, "human-resume", postBodies);
   await page.goto("/");
   await openSession(page, "Wave B human resume");
+
+  await expect.poll(() =>
+    requests.some((row) => row.includes("/mission/read-model")),
+  ).toBe(true);
 
   const inbox = page.locator(".human-inbox--composer");
   await expect(inbox).toBeVisible();
@@ -520,4 +623,10 @@ test("human resume journey answers inbox question", async ({ page }) => {
   await expect.poll(() => requests).toContain(
     "POST /api/sessions/wave-b-human-resume/inbox/question-1/resolve",
   );
+  await expect.poll(() => postBodies.length).toBeGreaterThan(0);
+  expect(postBodies[0]).toMatchObject({
+    decision_id: "question-1",
+    mission_id: "mission-wave-b",
+    expected_version: 7,
+  });
 });

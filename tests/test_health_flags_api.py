@@ -57,7 +57,7 @@ def test_health_flags_profile_filter(client: TestClient):
     assert res.status_code == 200
     body = res.json()
     assert body["profile_filter"] == "autonomous"
-    assert body["profiles"] == ["fast", "balanced", "thorough", "autonomous"]
+    assert body["profiles"] == ["fast", "small", "balanced", "thorough", "autonomous"]
     assert body["flags"]
     assert all("autonomous" in (row.get("profiles") or []) for row in body["flags"])
 
@@ -66,11 +66,13 @@ def test_profiles_endpoint(client: TestClient):
     res = client.get("/api/profiles")
     assert res.status_code == 200
     body = res.json()
-    assert body["profile_count"] == 4
-    assert len(body["profiles"]) == 4
+    assert body["profile_count"] == 5
+    assert len(body["profiles"]) == 5
     assert "flag_membership" in body
     assert "AGENT_LAB_ROOM_PRESET" in body["flag_membership"]
     assert body["feature_flags_fallback_balanced"] == []
+    ids = [row["id"] for row in body["profiles"]]
+    assert ids == ["fast", "small", "balanced", "thorough", "autonomous"]
     for row in body["profiles"]:
         assert "owns" in row
         assert row["owned_count"] >= len(row["flags"])

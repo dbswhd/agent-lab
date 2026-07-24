@@ -182,11 +182,12 @@ export function FirstRunOnboarding({
     <main className="first-run" aria-labelledby="first-run-title">
       <section className="first-run__panel">
         <header className="first-run__header">
-          <span className="first-run__eyebrow">Setup wizard</span>
+          <span className="first-run__eyebrow">Mission Control</span>
           <h2 id="first-run-title">Agent Lab 시작 준비</h2>
           <p>
-            AI 개발 작업을 plan.md로 정리하고 Human 승인 뒤 worktree에서
-            실행·검증하려면 agent, workspace, sample session을 먼저 확인합니다.
+            Cursor · Codex · Claude를 조율하는 Human-in-the-loop Mission
+            Control입니다. plan.md 계약 → Human 승인 → worktree 실행 → Oracle
+            검증까지 한 흐름으로 묶습니다. 단독 빠른 수정은 Cursor에서 하세요.
           </p>
         </header>
 

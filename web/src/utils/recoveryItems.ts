@@ -13,7 +13,8 @@ export type RecoveryKind =
   | "run_failed"
   | "partial_turn"
   | "oracle_fail"
-  | "discuss_recovery";
+  | "discuss_recovery"
+  | "readiness_blocked";
 
 export type RecoverySeverity =
   | "blocking_execute"
@@ -145,13 +146,16 @@ export type RecoveryActionId =
   | "reconnect_kimi_work"
   | "release_lock"
   | "retry_failed_agents"
+  | "continue_partial"
   | "open_work"
   | "open_inbox"
+  | "reverify_oracle"
   | "run_discuss_recovery";
 
 export type RecoveryAction = {
   readonly id: RecoveryActionId;
   readonly label: string;
+  readonly executionId?: string;
 };
 
 export type RecoveryItem = {
@@ -237,6 +241,9 @@ function authAction(row: AgentHealthRow): RecoveryAction {
   }
   if (row.id === "codex") {
     return { id: "reconnect_codex", label: "Codex 재로그인" };
+  }
+  if (row.id === "cursor") {
+    return { id: "reconnect_cursor", label: "Cursor bridge 재연결" };
   }
   return { id: "open_settings", label: "Settings 열기" };
 }
@@ -411,7 +418,10 @@ function buildFailureItem(
       id: "retry_failed_agents",
       label: "실패한 에이전트만 재시도",
     },
-    secondaryAction: { id: "refresh_health", label: "상태 재확인" },
+    secondaryAction: {
+      id: "continue_partial",
+      label: "성공 답변만 유지하고 계속",
+    },
   };
 }
 
@@ -464,7 +474,10 @@ export function buildRecoveryItems(
       source: "health",
       affectedAgentIds: [row.id],
       primaryAction: { id: "reconnect_cursor", label: "Bridge 재연결" },
-      secondaryAction: { id: "open_settings", label: "Settings 열기" },
+      secondaryAction: {
+        id: "open_settings",
+        label: "Settings · Cursor 제외",
+      },
     });
   }
 
@@ -508,11 +521,15 @@ export function buildRecoveryItems(
       severity: "blocking_execute",
       title: `Oracle 검증 실패 · ${oracleFailure.action_index ?? "?"}`,
       reason:
-        "완료로 볼 수 없습니다. Work에서 재검증 또는 repair 흐름을 선택하세요.",
+        "완료로 볼 수 없습니다. Oracle 재검증 또는 repair 흐름을 선택하세요.",
       details: oracleDetail(oracleFailure),
       source: "execute",
-      primaryAction: { id: "open_work", label: "Work 열기" },
-      secondaryAction: { id: "open_inbox", label: "Inbox 확인" },
+      primaryAction: {
+        id: "reverify_oracle",
+        label: "Oracle 재검증",
+        executionId: oracleFailure.id,
+      },
+      secondaryAction: { id: "open_work", label: "Work에서 상세 보기" },
     });
   }
 
@@ -533,7 +550,7 @@ export function buildRecoveryItems(
   const readinessBlocked = input.readiness?.verdict === "blocked";
   if (readinessBlocked && items.length === 0) {
     items.push({
-      kind: "partial_turn",
+      kind: "readiness_blocked",
       severity: "blocking_send",
       title: "전송 전에 연결 확인이 필요합니다.",
       reason:

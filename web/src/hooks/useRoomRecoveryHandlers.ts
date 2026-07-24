@@ -6,6 +6,7 @@ import {
   reconnectKimiWorkBridge,
   releaseRoomRunLock,
   retryAgents,
+  reverifyPlanExecution,
 } from "../api/client";
 import { fetchReadiness, type ReadinessResponse } from "../api/client";
 import {
@@ -15,6 +16,7 @@ import {
 import { dispatchNotification } from "../utils/pushNotification";
 import { notifyDesktop } from "../utils/desktopNotify";
 import { focusComposerInput } from "../utils/taskBarCopy";
+import { fullAgentPermissions } from "../utils/agentPermissions";
 import {
   recoveryItemKey,
   type RecoveryResolutionEvent,
@@ -206,7 +208,8 @@ export function useRoomRecoveryActions({
       const tracksResolution =
         actionId !== "open_settings" &&
         actionId !== "open_work" &&
-        actionId !== "open_inbox";
+        actionId !== "open_inbox" &&
+        actionId !== "continue_partial";
       let attemptId: string | null = null;
       if (tracksResolution) {
         attemptId = beginRecoveryAttempt(
@@ -262,6 +265,11 @@ export function useRoomRecoveryActions({
           case "retry_failed_agents":
             await handleRetryFailedAgents();
             return;
+          case "continue_partial":
+            setRecoveryFailure(null);
+            openTranscriptTab();
+            focusComposerInput();
+            return;
           case "open_work":
             openWorkTab();
             setWorkFocus("execute");
@@ -269,6 +277,23 @@ export function useRoomRecoveryActions({
           case "open_inbox":
             openHumanInbox();
             return;
+          case "reverify_oracle": {
+            const sid = sessionId ?? activeSessionIdRef.current;
+            const executionId = item.primaryAction.executionId;
+            if (!sid || !executionId) {
+              openWorkTab();
+              setWorkFocus("execute");
+              return;
+            }
+            await reverifyPlanExecution(
+              sid,
+              executionId,
+              fullAgentPermissions(),
+            );
+            await onSessionChange(sid);
+            setRecoveryFailure(null);
+            return;
+          }
           case "run_discuss_recovery":
             await handleDiscussRecoveryRun();
             return;
@@ -283,6 +308,7 @@ export function useRoomRecoveryActions({
       }
     },
     [
+      activeSessionIdRef,
       beginRecoveryAttempt,
       executeSlashCommand,
       finishRecoveryAction,
@@ -292,9 +318,12 @@ export function useRoomRecoveryActions({
       lastPlainSendTextRef,
       notifyRecoveryStarted,
       onOpenSettings,
+      onSessionChange,
       openHumanInbox,
+      openTranscriptTab,
       openWorkTab,
       refreshRecoveryReadiness,
+      sessionId,
       setRecoveryBusyAction,
       setRecoveryFailure,
       setWorkFocus,

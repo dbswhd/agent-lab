@@ -429,7 +429,7 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
     FlagDef(
         "AGENT_LAB_RUN_PROFILE",
         "feature",
-        "Operational profile that sets flag defaults (fast|balanced|thorough|autonomous)",
+        "Operational profile that sets flag defaults (fast|small|balanced|thorough|autonomous)",
     ),
     FlagDef("AGENT_LAB_CLARIFIER", "feature", "Short-topic clarifier SSE before agents"),
     FlagDef("AGENT_LAB_CLARIFIER_INTERVIEW", "feature", "Multi-turn clarifier interview mode"),

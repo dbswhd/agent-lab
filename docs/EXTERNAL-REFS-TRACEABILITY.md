@@ -110,7 +110,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 
 | ID | Source | Item | Status | Evidence | Notes |
 |----|--------|------|--------|----------|-------|
-| UX-WAVE-B | Room UX | Composer Decision Queue + current workspace tab browser acceptance | 🔶 | [11-ui-ux-surface-map.md](redesign-2026-07/11-ui-ux-surface-map.md), [m6-ui-read-model-dogfood-2026-07-16.md](redesign-2026-07/evidence/m6-ui-read-model-dogfood-2026-07-16.md) | Current Wave B evidence red/not browser-accepted; prior 4/4 is historical mock/API evidence only. |
+| UX-WAVE-B | Room UX | Composer Decision Queue + current workspace tab browser acceptance | 🔶 | [11-ui-ux-surface-map.md](redesign-2026-07/11-ui-ux-surface-map.md), [m6-ui-read-model-dogfood-2026-07-16.md](redesign-2026-07/evidence/m6-ui-read-model-dogfood-2026-07-16.md), `web/e2e/wave-b-journey.spec.ts` | Phase A: journey now mocks `/mission/read-model` + asserts inbox version-guard POST body. Still 🔶 until live Room dogfood + §7.5 Human acceptance; mock/API alone does not close browser acceptance. |
 
 ---
 

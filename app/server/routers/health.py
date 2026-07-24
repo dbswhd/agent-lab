@@ -117,7 +117,7 @@ def health_harness() -> dict[str, Any]:
 
 @router.get("/profiles")
 def run_profiles() -> dict[str, Any]:
-    """Run profile catalog — four named flag presets (fast|balanced|thorough|autonomous)."""
+    """Run profile catalog — named flag presets (fast|small|balanced|thorough|autonomous)."""
     return profile_catalog()
 
 

@@ -66,6 +66,7 @@ function resolvedMessage(kind: RecoveryKind): string {
     case "auth_expired":
     case "bridge_failed":
     case "partial_turn":
+    case "readiness_blocked":
       return "재확인 완료. Composer에서 다시 보낼 수 있습니다.";
     case "run_failed":
       return "상태 확인이 완료되었습니다. 요청을 다시 시도할 수 있습니다.";
@@ -87,6 +88,8 @@ function stillBlockedMessage(item: RecoveryItem): string {
       return "잠금 해제 후에도 실행 잠금이 남아 있습니다. 상태를 다시 확인하세요.";
     case "partial_turn":
       return "재확인 후에도 최근 턴 오류가 남아 있습니다. Settings 또는 composer 상태를 확인하세요.";
+    case "readiness_blocked":
+      return "재확인 후에도 전송 준비가 막혀 있습니다. Settings에서 연결 상태를 확인하세요.";
     case "run_failed":
       return "재확인 후에도 요청 오류가 남아 있습니다. 세부 원인을 확인한 뒤 다시 시도하세요.";
     case "oracle_fail":

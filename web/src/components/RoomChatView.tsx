@@ -165,6 +165,17 @@ export function RoomChatView({ chat }: Props) {
               transcriptLoading: chat.localeMsg.transcriptLoading,
               transcriptEmpty: chat.localeMsg.transcriptEmpty,
               transcriptEmptyHint: chat.localeMsg.transcriptEmptyHint,
+              openInCursorLabel: chat.workspacePath
+                ? chat.localeMsg.openInCursor
+                : undefined,
+              onOpenInCursor: chat.workspacePath
+                ? () => {
+                    void import("../utils/openInCursor").then(
+                      ({ openWorkspaceInCursor }) =>
+                        openWorkspaceInCursor(chat.workspacePath),
+                    );
+                  }
+                : undefined,
               showJumpButton: chat.transcript.showJumpButton,
               forceScrollButton: chat.tweaks.forceScrollButton,
               scrollToBottom: chat.transcript.scrollToBottom,

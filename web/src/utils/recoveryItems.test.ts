@@ -203,6 +203,50 @@ describe("buildRecoveryItems", () => {
     expect(items[0]?.secondaryAction?.label).toBe("상태 재확인");
   });
 
+  it("surfaces Oracle reverify as the primary recovery action", () => {
+    const items = buildRecoveryItems(
+      input({
+        executions: [
+          {
+            id: "exec-9",
+            action_index: 2,
+            status: "merged",
+            oracle: { verdict: "fail", detail: "tests failed" },
+            oracle_verdict: "fail",
+          },
+        ],
+      }),
+    );
+    expect(items[0]?.kind).toBe("oracle_fail");
+    expect(items[0]?.primaryAction).toEqual({
+      id: "reverify_oracle",
+      label: "Oracle 재검증",
+      executionId: "exec-9",
+    });
+  });
+
+  it("uses readiness_blocked kind for readiness-only blockers", () => {
+    const items = buildRecoveryItems(
+      input({
+        readiness: {
+          verdict: "blocked",
+          session_id: "s1",
+          agents: ["claude"],
+          next_actions: ["Settings에서 인증을 확인하세요"],
+          checks: [
+            {
+              id: "claude_auth",
+              agent: "claude",
+              ok: false,
+              detail: "auth expired",
+            },
+          ],
+        },
+      }),
+    );
+    expect(items[0]?.kind).toBe("readiness_blocked");
+  });
+
   it("resolves after health or retry removes the source state", () => {
     const [item] = buildRecoveryItems(
       input({

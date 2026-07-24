@@ -49,7 +49,7 @@ constraints에 정책이 이미 있음 — **「discuss/plan 모드입니다」 
 - 코어 PR에 `trading_mission/` · `quant/` 표면 확대 (F5 — extension lane)
 
 ## Run profile (N2 / F2)
-- `AGENT_LAB_RUN_PROFILE`: `fast` · `balanced`(default) · `thorough` · `autonomous`
+- `AGENT_LAB_RUN_PROFILE`: `fast` · `small`(Small Mission) · `balanced`(default) · `thorough` · `autonomous`
 - SSOT: `src/agent_lab/run/profile.py` — `flags` = applied defaults, `owns` = membership only
 - catalog: `GET /api/profiles` · flags: `make list-flags --profile …` / `GET /api/health/flags?profile=`
 - 신규 feature 플래그는 `flags` 또는 `owns`에 소속 필수 (F2)

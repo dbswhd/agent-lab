@@ -54,7 +54,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--profile",
-        choices=["fast", "balanced", "thorough", "autonomous"],
+        choices=["fast", "small", "balanced", "thorough", "autonomous"],
         help="Only flags owned by a run profile (N2)",
     )
     parser.add_argument("--json", action="store_true", help="Emit JSON (default: table)")

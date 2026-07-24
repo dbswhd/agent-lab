@@ -102,6 +102,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 | PLAN-UX | Gajae Code · Cursor · Claude Code · Codex | 단일 Plan 검토·승인 surface | ✅ | `PlanApprovalPanel.tsx`, `WorkToolPanel.tsx`, `plan_pending.py`, `web/e2e/plan-approval.spec.ts` | HUMAN_PENDING에서 primary CTA 하나; whole-plan hash로 action snapshot 중복 승인 제거; execute·merge·Oracle gate 유지 |
 | MCP-INBOX | Human Inbox MCP-first (harvest off, lead/single-flight, source badge) | ✅ | [MCP-FIRST-INBOX.md](MCP-FIRST-INBOX.md), `inbox_mcp_policy.py`, `HumanInboxPanel.tsx`, `tests/test_mcp_first_inbox.py` | Phase A–E; legacy `AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST=1` |
 | UX-WAVE-B | Room UX | Composer Decision Queue + current workspace tab browser acceptance | ✅ | [wave-b-browser-acceptance-2026-07-24.md](redesign-2026-07/evidence/wave-b-browser-acceptance-2026-07-24.md), `web/e2e/wave-b-live-journey.spec.ts`, `scripts/run_wave_b_live_acceptance.sh`, `web/e2e/wave-b-journey.spec.ts` | Live uvicorn+Vite 4/4 PASS (2026-07-24). Mock suite remains CI regression. Oracle live asserts CTA→reverify wiring (pending seed may 409); full worktree repair E2E out of scope. |
+| MC-TT | Mission Control Phase B | Time-to-trust (decision latency · evidence strip · Needs input age · F8 cost chip) | ✅ | [phase-b-small-mission-dogfood-2026-07-24.md](redesign-2026-07/evidence/phase-b-small-mission-dogfood-2026-07-24.md), `decision_latency.py`, `executeEvidenceStrip.ts`, `sessionStatusLine.ts`, `NeedsInputBadge.tsx`, `scripts/run_phase_b_small_mission_dogfood.sh` | B1–B4 shipped; Small Mission live dogfood PASS (2026-07-24). |
 
 **Planning canonical:** [MISSION-BOARD-ADOPTION.md](MISSION-BOARD-ADOPTION.md) (P1–P4 shipped).
 
@@ -111,7 +112,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 
 | ID | Source | Item | Status | Evidence | Notes |
 |----|--------|------|--------|----------|-------|
-| MC-TT | Mission Control Phase B | Time-to-trust (decision latency · evidence strip · Needs input age · F8 cost chip) | 🔶 | `decision_latency.py`, `tests/test_decision_latency.py`, `executeEvidenceStrip.ts`, `sessionStatusLine.ts`, `NeedsInputBadge.tsx` | Instrumentation + UI density shipped; dogfood exit (“1–2h mission without docs”) still open. |
+| _(none)_ | | | | | |
 
 ---
 

@@ -19,9 +19,23 @@ class MissionInboxAuthorityError(ValueError):
 
 
 def mission_authority_enabled(folder: Path) -> bool:
+    """Journal-owned Inbox authority for this session.
+
+    Fail-closed unless ``AGENT_LAB_MISSION_AUTHORITY`` is truthy **and** the
+    session allowlist is non-empty. Full-traffic cutover (Phase C / C2) uses
+    the sentinel ``*`` or ``__all__`` in ``AGENT_LAB_MISSION_AUTHORITY_SESSIONS``
+    to mean every session — empty list still disables (no accidental cutover).
+    M6 hard-delete of legacy writers remains a separate Human gate.
+    """
+    if not is_truthy(os.getenv("AGENT_LAB_MISSION_AUTHORITY")):
+        return False
     raw = (os.getenv("AGENT_LAB_MISSION_AUTHORITY_SESSIONS") or "").strip()
     cohort = frozenset(item.strip() for item in raw.split(",") if item.strip())
-    return is_truthy(os.getenv("AGENT_LAB_MISSION_AUTHORITY")) and bool(cohort) and folder.name in cohort
+    if not cohort:
+        return False
+    if "*" in cohort or "__all__" in cohort:
+        return True
+    return folder.name in cohort
 
 
 def open_inbox_item(application: MissionApplication, item: Mapping[str, JsonValue]) -> Mission:

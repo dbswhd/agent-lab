@@ -1,0 +1,5 @@
+Python is great.
+Agent Lab is a multi-agent developer console.
+Line counting is useful.
+So is character counting.
+Four lines total here.

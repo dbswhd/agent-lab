@@ -1,0 +1,81 @@
+{
+  "total": 0,
+  "verdict_eligible_total": 0,
+  "turn_signal_total": 0,
+  "oracle_verdict_coverage": 0.0,
+  "turn_source_counts": {
+    "default": 0,
+    "history": 0,
+    "explore": 0
+  },
+  "by_source": {
+    "default": {
+      "n": 0,
+      "clean_pass_rate": 0.0,
+      "repair_rate": 0.0,
+      "block_rate": 0.0,
+      "accepted_challenge_rate": 0.0,
+      "avg_score": 0.0
+    },
+    "history": {
+      "n": 0,
+      "clean_pass_rate": 0.0,
+      "repair_rate": 0.0,
+      "block_rate": 0.0,
+      "accepted_challenge_rate": 0.0,
+      "avg_score": 0.0
+    },
+    "explore": {
+      "n": 0,
+      "clean_pass_rate": 0.0,
+      "repair_rate": 0.0,
+      "block_rate": 0.0,
+      "accepted_challenge_rate": 0.0,
+      "avg_score": 0.0
+    }
+  },
+  "by_source_category": {
+    "default": {},
+    "history": {},
+    "explore": {}
+  },
+  "advisor_lift": {
+    "history_vs_default": null,
+    "explore_vs_default": null
+  },
+  "escalation_rate_by_level": {
+    "L0": null,
+    "L1": null,
+    "L2": null,
+    "L3": null
+  },
+  "correction_patterns": {
+    "total": 0,
+    "by_pattern": {},
+    "correction_recurrence_rate": null
+  },
+  "tool_cards": {
+    "n": 0,
+    "tool_card_hit_rate": null
+  },
+  "self_patch": {
+    "n": 0,
+    "eligible_n": 0,
+    "self_patch_eligible_rate": null
+  },
+  "harness_attribution": {
+    "total": 0,
+    "resolved": 0,
+    "model_resolved_rate": 0.0,
+    "harness_failure_count": 0,
+    "harness_failure_rate": 0.0,
+    "model_unresolved_count": 0,
+    "by_attribution": {
+      "model": 0,
+      "harness": 0
+    }
+  },
+  "harness_patch": null,
+  "harness_reproducibility": null,
+  "stuck_discuss_sessions": []
+}

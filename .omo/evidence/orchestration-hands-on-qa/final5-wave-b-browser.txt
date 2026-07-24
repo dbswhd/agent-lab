@@ -1,0 +1,10 @@
+Surface: browser UI (Wave B mocked-API contract)
+Exact invocation:
+  ln -s /Users/yoonjong/Projects/agent-lab/web/node_modules web/node_modules
+  PLAYWRIGHT_WEB_PORT=4178 npm --prefix web run test:e2e -- --config playwright.config.ts e2e/wave-b-journey.spec.ts --reporter=line
+  rm web/node_modules
+Commit under test: 611a57da35bf1f55214b43bac19cce33b0acd9f4
+Exit: 0
+Observed action log: Running 4 tests using 1 worker; 4 passed (6.6s)
+Scenarios: plan reject, diff approve, Oracle repair reverify, human resume answer.
+The temporary dependency symlink was removed; review worktree remained clean at the exact SHA.

@@ -1,0 +1,46 @@
+{
+  "task": 4,
+  "recorded_at_utc": "2026-07-23T15:31:42Z",
+  "verification_target": {
+    "worktree": "/Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment",
+    "head": "f64fe74ef801deda0e044af4f84c2a6934c38619",
+    "task4_source_commit": "7abd77b1c2298285a4d01e32303d80d1ff72c012"
+  },
+  "success_criteria": [
+    {
+      "criterion": "Two ordered pending Human Inbox questions expose only the canonical first question as the active primary decision, with the remainder represented as queued.",
+      "scenario": "Server-render HumanInboxPanel from a read model holding question-first then question-queued.",
+      "invocation": "cd /Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/web && npx vitest run /Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/web/src/components/HumanInboxPanel.test.ts /Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/web/src/components/ComposerEventStack.test.tsx",
+      "exit_code": 0,
+      "binary_observable": "Test Files 2 passed (2); Tests 6 passed (6). The rendered-panel assertion contains the first prompt and '1 queued', omits the second prompt, and finds exactly one >Submit< token.",
+      "artifact": "/Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/web/src/components/HumanInboxPanel.test.ts",
+      "judgment": "PASS"
+    },
+    {
+      "criterion": "The browser lifecycle maintains exactly one active decision CTA for two ordered gates.",
+      "scenario": "Run the stale expected_version lifecycle journey that supplies the ordered-gate state.",
+      "invocation": "cd /Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/web && npx playwright test e2e/agent-lifecycle-journey.spec.ts --grep 'stale expected_version' --reporter=line",
+      "exit_code": 0,
+      "binary_observable": "1 passed (2.6s). The journey asserts one data-active-decision-id stack and one active Korean approval/Submit CTA.",
+      "artifact": "/Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3/browser/single-active-decision-queued.png",
+      "judgment": "PASS"
+    },
+    {
+      "criterion": "The changed web application type-checks and produces a production bundle.",
+      "scenario": "Production build after the rendered active/queued test revision.",
+      "invocation": "cd /Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/web && npm run build",
+      "exit_code": 0,
+      "binary_observable": "tsc and Vite completed; 347 modules transformed; build finished in 1.56s. Vite emitted only its non-failing chunk-size warning.",
+      "judgment": "PASS"
+    },
+    {
+      "criterion": "Task evidence is structurally valid and the worktree has no whitespace errors.",
+      "scenario": "Evidence and diff integrity check.",
+      "invocation": "jq empty .omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-4.json && git -C /Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment diff --check",
+      "exit_code": 0,
+      "binary_observable": "both commands exited successfully without output",
+      "judgment": "PASS"
+    }
+  ],
+  "scope_note": "Commit f64fe74e includes the strengthened Task 4 component test and a Task 3 lifecycle test due to a shared-index race. Task 4 source implementation is committed in 7abd77b1; no history was rewritten."
+}

@@ -9,6 +9,14 @@
       "session_ids": ["codex:wave-b-m6-retire-plan"],
       "status": "active",
       "worktree_path": null
+    },
+    "agent-lab-ux-flow-alignment-roadmap": {
+      "work_id": "agent-lab-ux-flow-alignment-roadmap",
+      "active_plan": ".omo/plans/agent-lab-ux-flow-alignment-roadmap.md",
+      "plan_name": "agent-lab-ux-flow-alignment-roadmap",
+      "session_ids": ["codex:agent-lab-ux-flow-alignment-roadmap"],
+      "status": "active",
+      "worktree_path": "/Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment"
     }
   }
 }

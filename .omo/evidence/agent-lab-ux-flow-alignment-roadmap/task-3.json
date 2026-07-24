@@ -1,0 +1,152 @@
+{
+  "task": "3",
+  "title": "Frontend browser golden journey and evidence assertions",
+  "status": "PASS_WITH_EXPLICIT_SCOPE",
+  "recorded_at_utc": "2026-07-23T18:03:02Z",
+  "source_commit": "f60e3b35e8645b0f3611cf115f2195925ce1650d",
+  "provenance": {
+    "repository": "/Users/yoonjong/Projects/agent-lab",
+    "verification_worktree": "/Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment",
+    "environment": {
+      "os": "Darwin 25.6.0 arm64",
+      "shell": "zsh",
+      "surface": "web/ Playwright/Vite frontend fixture",
+      "source_head_observed": "f60e3b35e8645b0f3611cf115f2195925ce1650d"
+    },
+    "profile": "frontend-fixture-only; AGENT_LAB_RUN_PROFILE was not applied to these browser mocks",
+    "flags": {
+      "fixture_health_flags": [
+        {
+          "name": "AGENT_LAB_MISSION_UI_READ_MODEL",
+          "value": "1",
+          "effective": "1"
+        }
+      ],
+      "authority": "not exercised by this frontend-only fixture",
+      "autonomy": "L0 / Human controlled; auto_approve_enabled=false; auto_merge_remaining=0"
+    },
+    "cohort": "non-production frontend golden-fixture cohort; no Mission authority rollout cohort",
+    "session_fixture_ids": {
+      "session_id": "lifecycle-acceptance",
+      "mission_id": "mission-lifecycle-1",
+      "execution_id": "execution-golden-1",
+      "decision_ids": ["stale-question-1", "queued-question-2"],
+      "plan_hashes": [
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      ],
+      "merge_sha_fixture": "cccccccccccccccccccccccccccccccccccccccc"
+    },
+    "raw_artifacts": {
+      "security_context_fix": "/Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3/raw/security-context-fix",
+      "code_lane_repair": "/Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3/raw/code-lane-repair",
+      "browser_artifacts": "/Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3/browser",
+      "trace_artifacts": "/Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3/traces"
+    }
+  },
+  "scope_boundary": "This task proves frontend rendering, browser request construction, read-model/SSE-shaped state, and stateful fixture behavior only. It makes no claim about production backend authentication, authorization, durable storage, real route side effects, restart durability, or authority. Task 6 owns disposable-repository routes, real authority, restart, rollback, and persistence.",
+  "supersession": {
+    "prior_reports": [
+      "/Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3/task-3-manual-qa.md",
+      "/Users/yoonjong/Projects/agent-lab/.omo/evidence/task-3-code-review.md",
+      "/Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/.omo/evidence/task3-golden-journey-gate-review.md"
+    ],
+    "statement": "The pre-fix clean-start failure and review-in-progress/old-SHA claims are historical and superseded by the post-fix lanes below. They are not current PASS evidence. The worktree manual QA at the first path above is retained as an unmodified historical report; this record is the canonical current handoff."
+  },
+  "verification": [
+    {
+      "scenario": "Connected lifecycle golden journey",
+      "invocation": "cd /Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/web && PLAYWRIGHT_WEB_PORT=4283 npx playwright test e2e/agent-lifecycle-journey.spec.ts --reporter=line",
+      "exit_code": 0,
+      "binary_observable": "6 passed; covers Human plan/execute/merge/Oracle PASS, frontend request contract, Oracle FAIL repair, stale 409, reload, dirty/malformed guards",
+      "artifact_path": "/Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3/raw/code-lane-repair/lifecycle.log",
+      "artifact_persisted": true,
+      "judgment": "PASS"
+    },
+    {
+      "scenario": "Three-repeat lifecycle flake check",
+      "invocation": "cd /Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/web && PLAYWRIGHT_WEB_PORT=4293 npx playwright test e2e/agent-lifecycle-journey.spec.ts --repeat-each=3 --workers=1 --reporter=line",
+      "exit_code": 0,
+      "binary_observable": "18 passed; repeat-indexed screenshots are nonempty",
+      "artifact_paths": [
+        "/Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3/raw/code-lane-repair/lifecycle-repeat-3.log",
+        "/Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3/raw/security-context-fix/screenshot-inventory.txt"
+      ],
+      "artifact_persisted": true,
+      "judgment": "PASS"
+    },
+    {
+      "scenario": "Affected nondefault-port browser specs",
+      "invocation": "cd /Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/web && PLAYWRIGHT_WEB_PORT=4297 npx playwright test e2e/mission-read-model-parity.spec.ts e2e/ui-simplification.spec.ts e2e/plan-approval.spec.ts --workers=1 --reporter=line",
+      "exit_code": 0,
+      "binary_observable": "17 passed",
+      "artifact_path": "/Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3/raw/code-lane-repair/affected-nondefault.log",
+      "artifact_persisted": true,
+      "judgment": "PASS"
+    },
+    {
+      "scenario": "Full nondefault-port E2E regression",
+      "invocation": "cd /Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/web && PLAYWRIGHT_WEB_PORT=4301 npx playwright test --reporter=line",
+      "exit_code": 0,
+      "binary_observable": "27 passed",
+      "artifact_path": "/Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3/raw/code-lane-repair/all-e2e.log",
+      "artifact_persisted": true,
+      "judgment": "PASS"
+    },
+    {
+      "scenario": "Frontend unit regression",
+      "invocation": "cd /Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/web && npm test",
+      "exit_code": 0,
+      "binary_observable": "43 test files passed; 185 tests passed",
+      "artifact_path": "/Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3/raw/code-lane-repair/unit.log",
+      "artifact_persisted": true,
+      "judgment": "PASS"
+    },
+    {
+      "scenario": "Production type-check and bundle",
+      "invocation": "cd /Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/web && npm run build",
+      "exit_code": 0,
+      "binary_observable": "tsc and Vite completed; 347 modules transformed; bundle emitted",
+      "artifact_path": "/Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3/raw/code-lane-repair/build.log",
+      "artifact_persisted": true,
+      "judgment": "PASS"
+    },
+    {
+      "scenario": "Focused formatting and diff hygiene",
+      "invocation": "npx prettier --check e2e/agent-lifecycle-journey.spec.ts playwright.config.ts; git diff --check",
+      "exit_code": 0,
+      "binary_observable": "Prettier all matched files pass; diff_check=pass",
+      "artifact_paths": [
+        "/Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3/raw/code-lane-repair/prettier.log",
+        "/Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3/raw/code-lane-repair/diff-check.log"
+      ],
+      "artifact_persisted": true,
+      "judgment": "PASS"
+    },
+    {
+      "scenario": "Strict invalid-port fail-closed probe",
+      "invocation": "Playwright config-load probes for PLAYWRIGHT_WEB_PORT=4173;touch <marker>, 0, 65536, and abc",
+      "exit_code": 0,
+      "binary_observable": "Each probe reports status 1; marker_created=no",
+      "artifact_path": "/Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3/raw/security-context-fix/port-validation-probe.log",
+      "artifact_persisted": true,
+      "judgment": "PASS"
+    }
+  ],
+  "review_lanes": {
+    "goal": "PASS — lifecycle 6/6 and affected nondefault 17/17",
+    "code": "PASS — frontend contract 1/1, plan/lifecycle 6/6, Prettier and diff check",
+    "qa": "PASS — 6/6 lifecycle, 18/18 repeat, 16 nonempty screenshots, 3 nonempty traces; request-count assertions are inside the fixture test and are not represented as a separate count line in the log",
+    "security": "PASS — no gate request before rendered Human action, no unsolicited transition, stale/dirty/Oracle/invalid-port checks",
+    "context": "PASS — full E2E 27/27 on nondefault port; no production runtime/default/authority change claimed"
+  },
+  "known_watch": "The 1,544 pure-LOC fixture/spec surface is an implementation-mirroring maintenance risk. It is explicitly frontend fixture scope and does not establish Task 6 production durability or authority.",
+  "evidence_files": [
+    ".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3.json",
+    ".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3.md",
+    ".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3/task-3-manual-qa.md",
+    ".omo/evidence/task-3-code-review.md",
+    ".omo/evidence/task3-golden-journey-gate-review.md",
+    ".omo/evidence/task3-visual-oracle-a-r2-gate-review.md"
+  ]
+}

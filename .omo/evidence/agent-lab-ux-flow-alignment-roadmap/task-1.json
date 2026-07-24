@@ -1,0 +1,100 @@
+{
+  "task": "1",
+  "plan": ".omo/plans/agent-lab-ux-flow-alignment-roadmap.md",
+  "baseline": {
+    "command": "for f in .agent-lab/PROJECT.md docs/USER-GUIDE.md docs/05-room-agent-roles.md docs/FLOW.md docs/NOW.md docs/redesign-2026-07/11-ui-ux-surface-map.md docs/EXTERNAL-REFS-TRACEABILITY.md; do echo \"### $f\"; rg -n -i 'work tab|workbench|plan toggle|plan picker|wave b|4/4|shipped|complete|decision queue|topic-only' \"$f\" || true; done",
+    "exit_code": 0,
+    "captured_before_edits": true,
+    "exact_output": "### .agent-lab/PROJECT.md\n11:- **Composer:** topic-only — preset·Plan picker는 숨김; dogfood 기본 `supervisor`\n13:- **Human surface:** 결정은 Composer의 Decision Queue와 Work에서 한 번에 하나씩 처리\n### docs/USER-GUIDE.md\n3:> **Canonical product spec (Tier 1).** Doc index: [docs/README.md](./README.md) · Shipped matrix: [EXTERNAL-REFS-TRACEABILITY.md](./EXTERNAL-REFS-TRACEABILITY.md)\n44:18. [Workbench (Overview / Tasks / Inbox / Tools)](#18-workbench-overview--tasks--inbox--tools)\n207:│ Session rail    │ Transcript + taskbar-dock           │ Workbench       │\n213:**Workbench Tools** (`rightPanelMode`): `plan`(visible label **Work**, `WorkToolPanel` + approve/execute/verify), `background`, `diff`, `files`, `preview`, `terminal`.\n255:| `done` | Oracle pass + completed / `MISSION_DONE` | 완료 표시 |\n259:### 4.4 Workbench 탭\n266:| `tools` | Tools | Workbench tool modes (`plan`, `diff`, `files`, …) |\n268:**Context 미리보기는 Workbench 탭이 아님** — Settings 페이지 Workspace 섹션.\n278:**Workbench 기본:** blocker 있으면 **tasks**; else **overview**.\n288:| Human inbox / blocker 알림 | workbench inbox |\n357:| `completed_steps` | 에이전트 재개용 (턴 내 replay) |\n399:Composer에는 preset·Plan picker를 노출하지 않는다. TurnContract는 topic·risk·intent·matching outcomes에서 agent 상한·round·consensus를 고르고, TurnPolicy와 Plan FSM이 Scribe·clarify·task effect를 결정한다.\n403:- Human 결정 대기 → Decision Queue에서 현재 결정 표시\n408:### 6.3 Decision Queue\n410:plan 승인, build 질문, 격리 실행, merge 결정은 Composer 위 **Decision Queue**에서 우선순위에 따라 한 번에 하나만 확장한다. 이후 결정은 짧은 queue hint로 알리고, Work는 현재 단계·결과·evidence를 소유한다.\n496:  → SSE complete\n523:   - `incomplete`: open_tasks / open_objections / cap / no_anchor\n568:`completed_steps`: 키 `turn_{n}_round_{r}_{agent}` — 같은 턴 재시도 시 성공 agent skip.\n580:| `system` | 라운드 구분선, 턴 실패, consensus incomplete |\n618:| `consensus_incomplete` | 구분선 `── 합의 미완 · … ──` |\n812:| Complete gate | linked execution pending/review 시 block |\n845:- Transcript **popup** (턴 complete + pending)\n997:## 18. Workbench (Overview / Tasks / Inbox / Tools)\n1015:`WorkbenchPanel` + tool modes: `WorkToolPanel`(plan/execute), `DiffToolPanel`, `WorkspaceFilesPanel`, `PreviewPanel`, `TerminalPanel`, `BackgroundTasksPanel`.\n1017:### 18.5 Workbench chrome\n1020:- Toggle: toolbar / **⌃⌘I**\n1029:terminal: `complete` | `error` | `run_failed`  \n1045:| `complete` | 턴 종료 + send_receipt + inbox_pending |\n1047:| `consensus_incomplete` | reason code |\n1104:| `agent-lab-plan-after-send*` | legacy Plan toggle key — 현재 topic-only Composer에서는 authority 아님 |\n1133:| POST | `/api/sessions/{id}/tasks/{tid}/complete` | task complete |\n1346:| **Composer plan toggle** | — | **제거됨** — Work only (의도적, WORK-TAB-IA) |\n1432:*코드 기준: `web/src/utils/workspaceTabs.ts`, `web/src/components/RoomChat.tsx`, `web/src/components/WorkToolPanel.tsx`, `web/src/components/WorkPanel.tsx`, `src/agent_lab/room/`, `src/agent_lab/room/tasks.py`, `src/agent_lab/room/team_orchestration.py`. Shipped status: TRACEABILITY + tests.*\n### docs/05-room-agent-roles.md\n3:Agent Lab Room 에이전트 역할과 **Plan toggle OFF/ON** 턴 규칙.  \n22:| Preset | UI | turn_profile | Plan toggle | consensus |\n100:## Plan toggle OFF vs ON (Compose mode)\n### docs/FLOW.md\n### docs/NOW.md\n32:| Step 2 MissionReadModel/UI contract | ✅ API + SSE cursor + UI wiring 완료 (2026-07-15) | `web/e2e/wave-b-journey.spec.ts` 4/4 통과(plan reject·diff approve·Oracle repair·human resume); `11-ui-ux-surface-map.md` §7 구현 순서 1~5 전부 완료 |\n33:| Step 3 Decision Queue vertical slice | ✅ route + Room dogfood + optimistic locking (2026-07-15) | production Human Inbox route와 실제 Room dogfood 2건 통과; `decision_id`/`mission_id`/`expected_version` 라운드트립으로 stale/중복 answer는 409 — `MissionApplication.guard_inbox_answer`. run.json 쓰기와의 완전 원자성(single transaction)은 여전히 별도 트랙 |\n36:| Step 6–7 bounded authority/read-model cutover | **Wave B bounded cohort 진행 중** | `AGENT_LAB_MISSION_AUTHORITY=1` + non-empty `AGENT_LAB_MISSION_AUTHORITY_SESSIONS` 세션은 Inbox item open/resolve와 execution gate를 Mission journal 한 batch로 기록하며 `run.json` Inbox writer를 건너뛴다. `AGENT_LAB_MISSION_UI_READ_MODEL` 기본값은 `1`; migrated 세션은 journal-first UI, legacy 세션은 read-model endpoint의 server-side fallback을 사용한다. bounded cohort의 route/API, stale answer, 재시작 복구와 내부 gate/clarifier read 경로 검증을 완료했다. M6 hard delete와 full-traffic 전환은 아직 금지하며 Human이 full cutover를 판정한다. |\n45:HS0~HS5 전부(HS5-1~7·B1-B4 포함) ✅ 07-08~07-09 shipped (Impl **Tier B**, Human 명시 확인 후 착수).\n62:**2026-07-09 추가 shipped**: HS0-4 `harness_reproducibility_pp`(preset A/B swap — `make dogfood-suite-reproducibility`,\n66:**큐 비어 있음** (2026-07-09) — 문서 정비 백로그(§4)는 2026-07-08자로 이미 표 소진 완료, HS0~HS5(+HS5-3, HS0-4, HS4-2)도 전부 shipped. HS6은 위 검토대로 보류. 다음 코드 트랙 항목은 §1 재검토 트리거(HS-M5 addressable 패턴, 또는 새 Human 지시) 발생 시 여기 추가.\n96:① `AGENT_LAB_QUARTER_BUDGET_USD` 실값 + `make f8-cost-report` 정례화 ② §2.5 흡수 매트릭스 재검토 — SSOT [ABSORB-CC-CODEX-2026-07.md](./ABSORB-CC-CODEX-2026-07.md) (CC/Codex 로컬+공식; Wave 0–2 + **ABS-P2-worktree-yaml** shipped; 잔여 **ABS-P2-skills** N7 동결 · **ABS-P2-hooks/workflows** 문서만) ③ §1.4 KPI 리뷰 ④ N5/S2 재평가 ⑤ dogfood-first 만료 검토 (`history.n` ≥ 30) ⑥ ADR rebuild 재평가 (§3.5).\n104:## 2. shipped 확인 대장 (문서보다 앞선 코드)\n106:개별 문서에 아직 반영 안 된 shipped 상태. **문서를 읽다 여기와 충돌하면 이쪽이 맞다.**\n### docs/redesign-2026-07/11-ui-ux-surface-map.md\n18:| `ComposerEventStack`                      | `plan_workflow`, `runtime`, inbox count, execute queue | `Decision Queue`의 primary CTA와 최근 Mission event 요약                     | 여러 legacy phase를 직접 조합하지 않도록 read model 하나로 축소 |\n24:| Context sidebar                           | Overview/Tasks/Inbox                                   | Mission overview, tasks/objections, decision queue                           | 기존 Quick/Activity 중복 탭을 재도입하지 않음                   |\n37:| `AWAITING_HUMAN`         | 답변이 필요합니다       | Decision Queue 열기   | question, options, impact, expiry       |\n52:`Plan rejected`, `Mission paused`, `Inbox pending`, `merge review`를 각각 별도 배너로 쌓지 않는다. 하나의 Decision Queue item으로 합치고, 나머지는 evidence drawer에 둔다.\n68:- [ ] keyboard로 `Decision Queue → evidence → answer → resume`를 완료할 수 있다.\n77:2. ✅ `ComposerEventStack`에 Decision Queue precedence를 연결한다.\n80:5. ✅ Playwright journey로 plan reject, diff approve, Oracle repair, Human resume을 검증한다. (`web/e2e/wave-b-journey.spec.ts`, 4/4 통과)\n82:## 8. Wave B join / cross-source 우선순위 계약\n143:- **§7.4 status: complete.**\n### docs/EXTERNAL-REFS-TRACEABILITY.md\n3:Maps items in [`EXTERNAL-REFS-PLAN.md`](archive/rfcs/EXTERNAL-REFS-PLAN.md) to **shipped code**, **regression/smoke evidence**, or **future fixture tickets**.\n6:**Status legend:** ✅ shipped · 🔶 partial · ⬜ future · ❌ dropped  \n12:## Shipped (evidence in repo)\n55:| CENT-durable | Centaur | Durable completed_steps resume | ✅ | `run_meta.py`, `room.py`, `sessions/_regression/durable_completed_steps/` | |\n97:**Planning canonical:** [MISSION-BOARD-ADOPTION.md](MISSION-BOARD-ADOPTION.md) (P1–P4 shipped).\n103:_(none — MCP-INBOX Phase A–E shipped; see §Shipped.)_\n113:| _(none — HOOK-COMM core shipped 2026-06-07)_ | | |\n115:_(Dev-tool MD items in §Dev-tool are shipped.)_\n130:| MD-PROJECT | Prompt | PROJECT.md workspace injection | ✅ | `session_guidance.py` | Shipped |\n138:Mission Board backlog (MB-9…MB-11) is **shipped** — see [MISSION-BOARD-ADOPTION.md](MISSION-BOARD-ADOPTION.md) §9."
+  },
+  "notes": "Baseline captured before documentation edits; the output shows current topic-only language alongside stale Workbench/Plan-toggle instructions and unqualified Wave B 4/4/complete claims.",
+  "commit_sha": "f951a207d71882fffc47bd7d2c8aeb589486ae54",
+  "commit_message": "docs(ux): align remaining Work surface references",
+  "baseline_docs_commit_sha": "3a088488239d2ac4e9e3cfcd5ad1cca4d60f88ff",
+  "utc_recorded_at": "2026-07-23T14:38:39Z",
+  "changed_files": [
+    ".agent-lab/PROJECT.md",
+    "docs/USER-GUIDE.md",
+    "docs/05-room-agent-roles.md",
+    "docs/FLOW.md",
+    "docs/NOW.md",
+    "docs/redesign-2026-07/11-ui-ux-surface-map.md",
+    "docs/EXTERNAL-REFS-TRACEABILITY.md"
+  ],
+  "verification": [
+    {
+      "scenario": "adversarial stale terminology/status search",
+      "command": "python - <<'PY'\nfrom pathlib import Path\nimport re\nfiles = [Path('.agent-lab/PROJECT.md'), Path('docs/USER-GUIDE.md'), Path('docs/05-room-agent-roles.md'), Path('docs/FLOW.md'), Path('docs/NOW.md'), Path('docs/redesign-2026-07/11-ui-ux-surface-map.md'), Path('docs/EXTERNAL-REFS-TRACEABILITY.md')]\npattern = re.compile(r'workbench|work tab|plan toggle|plan picker|wave b.*4/4|4/4.*wave b', re.I)\nqualifiers = re.compile(r'archive|history|removed|not browser-accepted|browser acceptance|red|hidden|not visible|does not|아님|없다|제거|숨김|노출하지', re.I)\nmatches = [(f, n, line) for f in files for n, line in enumerate(f.read_text(encoding='utf-8').splitlines(), 1) if pattern.search(line)]\nif any(not qualifiers.search(line) for _, _, line in matches): raise SystemExit('FAIL unqualified stale claim')\nprint(f'PASS adversarial stale-term search: {len(matches)} matches, all explicitly hidden/removed/archive/red')\nPY",
+      "exit_code": 0,
+      "observable": "PASS adversarial stale-term search: 14 matches, all explicitly hidden/removed/archive/red",
+      "artifact_path": ".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-1-manual.md"
+    },
+    {
+      "scenario": "canonical-doc relative markdown links",
+      "command": "python - <<'PY'\nfrom pathlib import Path\nimport re\nfiles = [Path('.agent-lab/PROJECT.md'), Path('docs/USER-GUIDE.md'), Path('docs/05-room-agent-roles.md'), Path('docs/FLOW.md'), Path('docs/NOW.md'), Path('docs/redesign-2026-07/11-ui-ux-surface-map.md'), Path('docs/EXTERNAL-REFS-TRACEABILITY.md')]\nmissing=[]; count=0\nfor f in files:\n  for target in re.findall(r'!?\\[[^\\]]*\\]\\(([^)]+)\\)', f.read_text(encoding='utf-8')):\n    target=target.split('#',1)[0].strip()\n    if not target or '://' in target or target.startswith('mailto:'): continue\n    count+=1\n    if not (f.parent/target).resolve().exists(): missing.append(f'{f}:{target}')\nif missing: print('FAIL missing links'); print('\\n'.join(missing)); raise SystemExit(1)\nprint(f'PASS markdown relative-link check: {len(files)} files, {count} local targets exist')\nPY\ngit diff --check",
+      "exit_code": 0,
+      "observable": "PASS markdown relative-link check: 7 files, 93 local targets exist",
+      "artifact_path": ".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-1-manual.md"
+    },
+    {
+      "scenario": "whitespace and changed-section inspection",
+      "command": "git diff --check; sed -n '10,17p' .agent-lab/PROJECT.md; sed -n '200,242p;399,414p;994,1010p;1334,1343p' docs/USER-GUIDE.md; sed -n '1,8p;20,34p;100,110p' docs/05-room-agent-roles.md; sed -n '1,78p;160,200p' docs/FLOW.md; sed -n '1,40p;42,70p;105,110p' docs/NOW.md; sed -n '1,6p;73,88p;130,145p' docs/redesign-2026-07/11-ui-ux-surface-map.md; sed -n '1,20p;104,118p' docs/EXTERNAL-REFS-TRACEABILITY.md",
+      "exit_code": 0,
+      "observable": "git diff --check passed; manual sed output recorded with PASS interpretation",
+      "artifact_path": ".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-1-manual.md"
+    }
+  ],
+  "adversarial_classes": {
+    "stale_docs_status": "PASS: stale terms remain only with explicit hidden/removed/archive/red qualifiers",
+    "dirty_worktree_preservation": "PASS: unrelated .omo/boulder.json, plans, drafts, artifacts, scratch, and benchmark report were not staged",
+    "misleading_success_output": "PASS: all Wave B/browser language says red/not browser-accepted; prior 4/4 is labelled mock/API or historical",
+    "malformed_or_missing_links": "PASS: 93 local targets resolve",
+    "long_lived_server": "NOT_APPLICABLE: no server started"
+  },
+  "cleanup": {
+    "performed": "staged and committed only the seven task-scoped documentation files",
+    "preserved": [".omo/boulder.json", ".omo/drafts/", ".omo/plans/", "artifacts/plans/", "scratch/", "sessions/_benchmark/reports/l2-dogfood-report-20260723T121821Z.json"],
+    "evidence_files": [".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-1.json", ".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-1-manual.md"]
+  },
+  "followup": {
+    "reason": "Independent verifier found residual unqualified Korean Work-tab wording in USER-GUIDE.md.",
+    "commit_sha": "057d5932573c7c9608282fc6b0d9bfec40135dcf",
+    "commit_message": "docs(ux): remove residual Work tab wording",
+    "utc_recorded_at": "2026-07-23T14:42:26Z",
+    "semantic_audit_commit_sha": "f951a207d71882fffc47bd7d2c8aeb589486ae54",
+    "semantic_audit_commit_message": "docs(ux): align remaining Work surface references",
+    "semantic_audit_utc_recorded_at": "2026-07-23T14:47:50Z",
+    "changed_files": ["docs/USER-GUIDE.md"],
+    "corrections": [
+      "Replaced 'Work 탭이 아닐 때' with Composer Decision Queue primary-state wording.",
+      "Replaced Work-tab info banner and plan receipt hiding language with Composer status language.",
+      "Replaced Work-tab mission resume and Mission Loop Work-tab headings/configuration with Composer + Inspector terminology.",
+      "Replaced Work strip and appendix Work/Tasks navigation instructions with internal work lane, Decision Queue, and current tabs.",
+      "Rebased the Work surface, Work layout, Work decision surface, troubleshooting, and glossary entries to Decision Queue/current tabs or explicit internal/history labels."
+    ],
+    "verification": [
+      {
+        "scenario": "expanded Korean/English stale-term search",
+        "command": "Verbatim command is recorded in .omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-1-manual.md under Follow-up verifier rework: expanded Korean/English stale-term search",
+        "exit_code": 0,
+        "observable": "PASS expanded Korean/English stale-term search: 23 matches, all explicitly internal/hidden/removed/archive/red; exact checker reports matches=23 violations=0",
+        "artifact_path": ".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-1-manual.md"
+      },
+      {
+        "scenario": "follow-up links and whitespace",
+        "command": "Verbatim relative-link checker and git diff --check invocation is recorded in .omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-1-manual.md under Follow-up verifier rework",
+        "exit_code": 0,
+        "observable": "PASS markdown relative-link check: 7 files, 93 local targets exist; git diff --check passed",
+        "artifact_path": ".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-1-manual.md"
+      },
+      {
+        "scenario": "whole-file semantic Work occurrence audit",
+        "command": "Verbatim Python semantic classifier is recorded in .omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-1-manual.md under Whole-file semantic Work audit",
+        "exit_code": 0,
+        "observable": "PASS semantic Work occurrence audit: 64 occurrences classified as archive/history, internal lane/component, agent identity, or filesystem/worktree; no unclassified current Work navigation/surface claim",
+        "artifact_path": ".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-1-manual.md"
+      }
+    ],
+    "risk": "Browser acceptance remains intentionally red/not accepted; no product code or removed navigation surface was restored."
+  }
+}

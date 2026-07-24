@@ -1,0 +1,15 @@
+Surface: tracked dogfood readiness CLI
+Exact invocation:
+  /Users/yoonjong/Projects/agent-lab/.venv/bin/python scripts/dogfood_readiness_report.py --manifest docs/evidence/dogfood-readiness/manifest.json --out-dir /tmp/agent-lab-final5-readiness
+Commit under test: 611a57da35bf1f55214b43bac19cce33b0acd9f4
+Exit: 0
+Output:
+  readiness=OPEN
+  json=/tmp/agent-lab-final5-readiness/dogfood-readiness.json
+  markdown=/tmp/agent-lab-final5-readiness/dogfood-readiness.md
+Observed packet fields:
+  readiness=OPEN
+  evidence_by_tier.live.status=OPEN
+  evidence_by_tier.live.sample_size=0
+  default_change_authorized=false
+Note: manifest provenance commit_sha is 5677b7ea881a4bfd3c55fa57c1a97f1296d42df4; this is pre-existing fixture metadata, while the command was executed against exact SHA 611a57da.

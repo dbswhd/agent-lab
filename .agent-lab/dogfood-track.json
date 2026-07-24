@@ -3,7 +3,11 @@
   "f7": {
     "start_date": "2026-07-09"
   },
-  "hs_m5": {},
+  "hs_m5": {
+    "merged_at": "2026-07-24T21:06:17.355221+00:00",
+    "candidate_id": "pc-2026-07-24-fc0b8932",
+    "notes": "Phase C C3: merged fp:weak_taste:deep via merge_harness (755c38d9)"
+  },
   "notes": [],
-  "updated_at": "2026-07-09T09:24:33.784806+00:00"
+  "updated_at": "2026-07-24T21:06:17.355382+00:00"
 }

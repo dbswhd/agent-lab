@@ -336,12 +336,15 @@ def resolve_execution(
             )
 
             def _update_retry(run: RunState) -> RunState:
+                from agent_lab.decision_latency import record_gate_closed
+
                 rows = list(run.get("executions") or [])
                 for i, row in enumerate(rows):
                     if row.get("id") == execution_id:
                         rows[i] = target
                         break
                 run["executions"] = rows
+                record_gate_closed(run, kind="execute_approval", action=vote_norm)
                 return _append_execution_approval(run, approval)
 
             patch_run_meta(folder, _update_retry)
@@ -420,12 +423,15 @@ def resolve_execution(
     )
 
     def _update(run: RunState) -> RunState:
+        from agent_lab.decision_latency import record_gate_closed
+
         rows = list(run.get("executions") or [])
         for i, row in enumerate(rows):
             if row.get("id") == execution_id:
                 rows[i] = target
                 break
         run["executions"] = rows
+        record_gate_closed(run, kind="execute_approval", action=vote_norm)
         return _append_execution_approval(run, approval)
 
     patch_run_meta(folder, _update)

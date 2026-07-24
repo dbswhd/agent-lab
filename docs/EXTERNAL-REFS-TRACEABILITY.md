@@ -111,6 +111,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 | ID | Source | Item | Status | Evidence | Notes |
 |----|--------|------|--------|----------|-------|
 | UX-WAVE-B | Room UX | Composer Decision Queue + current workspace tab browser acceptance | 🔶 | [11-ui-ux-surface-map.md](redesign-2026-07/11-ui-ux-surface-map.md), [m6-ui-read-model-dogfood-2026-07-16.md](redesign-2026-07/evidence/m6-ui-read-model-dogfood-2026-07-16.md), `web/e2e/wave-b-journey.spec.ts` | Phase A: journey now mocks `/mission/read-model` + asserts inbox version-guard POST body. Still 🔶 until live Room dogfood + §7.5 Human acceptance; mock/API alone does not close browser acceptance. |
+| MC-TT | Mission Control Phase B | Time-to-trust (decision latency · evidence strip · Needs input age · F8 cost chip) | 🔶 | `decision_latency.py`, `tests/test_decision_latency.py`, `executeEvidenceStrip.ts`, `sessionStatusLine.ts`, `NeedsInputBadge.tsx` | Instrumentation + UI density shipped; dogfood exit (“1–2h mission without docs”) still open. |
 
 ---
 

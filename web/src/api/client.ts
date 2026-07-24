@@ -155,6 +155,17 @@ export type SessionDetail = {
   run?: Record<string, unknown>;
   attachments?: string[];
   observability?: SessionObservability;
+  /** F8 mission cost ledger + budget (session_helpers). */
+  cost?: {
+    ledger?: Record<string, unknown> | null;
+    budget?: {
+      spent_usd?: number;
+      limit_usd?: number | null;
+      warn_pct?: number;
+      warn?: boolean;
+      over?: boolean;
+    };
+  };
 };
 
 export type SessionGoalRecord = {
@@ -846,6 +857,8 @@ export type RuntimeSnapshot = {
     schedule_sandbox?: boolean;
     sandbox_intent?: string | null;
     run_profile?: string | null;
+    human_gate_opened_at?: string | null;
+    human_gate_kind?: string | null;
   };
   /** F8 quarterly cost rollup. */
   cost_quarter?: {

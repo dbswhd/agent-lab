@@ -495,6 +495,7 @@ export function ComposerEventStack({
             <ExecuteQueueBar
               pending={execPending}
               storedActions={storedActions}
+              mergeChecks={runtime?.merge_checks ?? null}
               busy={executeBusy}
               disabled={disabled}
               compact

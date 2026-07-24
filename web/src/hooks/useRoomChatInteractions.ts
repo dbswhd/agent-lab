@@ -617,19 +617,28 @@ export function useRoomChatInteractions(bootstrap: Bootstrap) {
     setText("");
   }
 
-  const steerEligible = Boolean(
-    sessionId &&
-    (running || runBusy) &&
-    !planShell.planWorkflowAwaitingApproval,
-  );
+  const steerEligible = Boolean(sessionId && (running || runBusy));
 
   const handleSteer = useCallback(() => {
     const msg = text.trim();
     if (!sessionId || !msg || steerBusy || !steerEligible) return;
     setSteerBusy(true);
     void steerSession(sessionId, msg)
-      .then(() => {
+      .then((result) => {
         setText("");
+        const queued = typeof result.queued === "number" ? result.queued : 1;
+        dispatchNotification(
+          {
+            tier: "P2",
+            title: "Steer queued",
+            body: `Informational steer queued (${queued})`,
+            sessionId,
+            kind: "steer_queued",
+            forceToast: true,
+          },
+          undefined,
+          notifyDesktop,
+        );
       })
       .catch(() => {
         /* keep text for retry */

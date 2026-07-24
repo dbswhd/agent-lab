@@ -391,6 +391,34 @@
   font-size: var(--text-micro);
   color: var(--label-tertiary);
 }
+.exec-queue-bar__evidence {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+  margin-top: 4px;
+}
+.exec-queue-bar__evidence-item {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 0 var(--space-6);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-soft);
+  background: var(--surface-raised, var(--surface-card));
+  font-size: var(--text-micro);
+  color: var(--label-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.exec-queue-bar__evidence-item--pass {
+  border-color: color-mix(in srgb, var(--ok) 35%, transparent);
+  color: var(--ok);
+}
+.exec-queue-bar__evidence-item--fail {
+  border-color: color-mix(in srgb, var(--danger) 35%, transparent);
+  color: var(--danger);
+}
 .exec-queue-bar__gate {
   font-size: var(--text-caption);
   color: var(--danger);

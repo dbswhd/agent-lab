@@ -166,6 +166,8 @@ def _finalize_plan_approval(
     start_execute_loop = approval_starts_execute_loop(run_before)
 
     def _approve(current: dict[str, Any]) -> dict[str, Any]:
+        from agent_lab.decision_latency import record_gate_closed
+
         if skip_phase_write:
             # Mission already projected phase/hash; only fill metadata/side fields.
             current = apply_plan_substate_patch(
@@ -187,6 +189,7 @@ def _finalize_plan_approval(
                 stamp_orchestration=False,
                 mirror_verified_loop=False,
             )
+        record_gate_closed(current, kind="plan_approval", action="approve")
 
         if start_execute_loop:
             current_loop = dict(current.get("verified_loop") or {})
@@ -255,6 +258,8 @@ def reject_plan(
     phase = target_phase if target_phase in allowed else "CLARIFY"
 
     def _reject(run: RunState) -> RunState:
+        from agent_lab.decision_latency import record_gate_closed
+
         patch_kwargs: dict[str, Any] = {}
         if note.strip():
             patch_kwargs["last_reject_note"] = note.strip()[:500]
@@ -265,6 +270,7 @@ def reject_plan(
             stamp_orchestration=False,
             **patch_kwargs,
         )
+        record_gate_closed(run_out, kind="plan_approval", action="reject")
         loop = dict(run_out.get("verified_loop") or {})
         loop["status"] = "proposing"
         run_out["verified_loop"] = loop

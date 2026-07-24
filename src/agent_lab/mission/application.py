@@ -245,6 +245,8 @@ class MissionApplication:
             return
 
         def update(run: RunState) -> RunState:
+            from agent_lab.decision_latency import record_gate_closed
+
             if projected == "APPROVED":
                 updated = apply_plan_substate_patch(
                     run,
@@ -254,6 +256,7 @@ class MissionApplication:
                     approved_by="human",
                     pop_fields=("last_reject_note", "notice", "last_plan_gate"),
                 )
+                record_gate_closed(updated, kind="plan_approval", action="approve")
             else:
                 updated = apply_plan_substate_patch(
                     run,
@@ -261,6 +264,8 @@ class MissionApplication:
                     last_reject_note=note.strip()[:500],
                     pop_fields=("notice", "last_plan_gate"),
                 )
+                if projected != "HUMAN_PENDING":
+                    record_gate_closed(updated, kind="plan_approval", action="reject")
             return RunState.from_memory(updated)
 
         patch_run_meta(self.session_folder, update)

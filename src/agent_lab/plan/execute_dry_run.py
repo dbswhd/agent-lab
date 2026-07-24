@@ -219,6 +219,10 @@ def _finalize_dry_run(
             executions.append(execution)
         run["actions"] = actions
         run["executions"] = executions
+        if str(execution.get("status") or "") == PENDING_STATUS:
+            from agent_lab.decision_latency import record_gate_opened
+
+            record_gate_opened(run, kind="execute_approval")
         return run
 
     patch_run_meta(folder, _append)

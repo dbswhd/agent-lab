@@ -1,4 +1,4 @@
-import type { PlanExecutionRecord } from "../api/client";
+import type { MergeChecksPayload, PlanExecutionRecord } from "../api/client";
 import {
   executionHistoryBadge,
   executionHistoryTitle,
@@ -8,10 +8,12 @@ import {
 import { executionStatusLabel } from "../hooks/usePlanExecute";
 import { executionApprovalGate } from "../utils/executeApprovalGate";
 import { oracleStatus } from "./PlanExecutePanelSupport";
+import { buildExecuteEvidenceStrip } from "../utils/executeEvidenceStrip";
 
 type Props = {
   pending: PlanExecutionRecord;
   storedActions: StoredPlanAction[];
+  mergeChecks?: MergeChecksPayload | null;
   busy?: boolean;
   disabled?: boolean;
   compact?: boolean;
@@ -28,6 +30,7 @@ type Props = {
  *  Drop-in for old component that used .execute-queue-bar (legacy-bridge.css).
  *
  *  Shows: badge · title · status · artifact path/page-count ·
+ *         evidence strip (diff · checks · Oracle) ·
  *         gate block reason (if blocked) · approve/reject/diff/reverify buttons.
  *  Approve button is disabled when gate.blocked === true. Reverify only shows
  *  when the Oracle verdict failed — this is the sole surface for it while a
@@ -36,6 +39,7 @@ type Props = {
 export function ExecuteQueueBar({
   pending,
   storedActions,
+  mergeChecks = null,
   busy,
   disabled,
   compact = false,
@@ -52,6 +56,11 @@ export function ExecuteQueueBar({
   const pdfPath = gate.pdfPath;
   const pageCount = gate.pageCount;
   const oracleFailed = ["failed", "fail"].includes(oracleStatus(pending) ?? "");
+  const evidence = buildExecuteEvidenceStrip(pending, mergeChecks);
+  const hasEvidence =
+    Boolean(evidence.diffLabel) ||
+    Boolean(evidence.checksLabel) ||
+    Boolean(evidence.oracleLabel);
 
   return (
     <div
@@ -81,6 +90,40 @@ export function ExecuteQueueBar({
             <span className="exec-queue-bar__artifact">
               {pdfPath ?? ""}
               {pageCount != null ? ` · ${pageCount}p` : ""}
+            </span>
+          ) : null}
+
+          {hasEvidence ? (
+            <span
+              className="exec-queue-bar__evidence"
+              data-testid="exec-queue-evidence"
+            >
+              {evidence.diffLabel ? (
+                <span className="exec-queue-bar__evidence-item">
+                  {evidence.diffLabel}
+                </span>
+              ) : null}
+              {evidence.checksLabel ? (
+                <span className="exec-queue-bar__evidence-item">
+                  {evidence.checksLabel}
+                </span>
+              ) : null}
+              {evidence.oracleLabel ? (
+                <span
+                  className={[
+                    "exec-queue-bar__evidence-item",
+                    evidence.oracleTone === "pass"
+                      ? "exec-queue-bar__evidence-item--pass"
+                      : evidence.oracleTone === "fail"
+                        ? "exec-queue-bar__evidence-item--fail"
+                        : undefined,
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                >
+                  {evidence.oracleLabel}
+                </span>
+              ) : null}
             </span>
           ) : null}
 

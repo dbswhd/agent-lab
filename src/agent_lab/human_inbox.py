@@ -442,8 +442,14 @@ def create_inbox_item(
         if bridge.get("mirrored") is not True:
             raise ValueError(f"mission inbox commit failed: {bridge.get('reason') or 'unknown'}")
 
-    if not authority:
-        patch_run_meta(folder, lambda run: append_inbox_item(run, item))
+    def _append_and_open(run: dict[str, Any]) -> dict[str, Any]:
+        from agent_lab.decision_latency import record_gate_opened
+
+        out = append_inbox_item(run, item) if not authority else run
+        record_gate_opened(out, kind=f"inbox_{kind}")
+        return out
+
+    patch_run_meta(folder, _append_and_open)
     try:
         from agent_lab.room.live_log import append_live_room_event
 
@@ -568,6 +574,18 @@ def resolve_inbox_item(
         authority_item = next((dict(item) for item in mission.inbox_items if item.get("id") == item_id), None)
         if authority_item is None:
             raise ValueError(f"inbox item not found: {item_id}")
+
+        def _close_gate(run: dict[str, Any]) -> dict[str, Any]:
+            from agent_lab.decision_latency import record_gate_closed
+
+            record_gate_closed(
+                run,
+                kind=f"inbox_{authority_item.get('kind') or 'item'}",
+                action=status,
+            )
+            return run
+
+        patch_run_meta(folder, _close_gate)
         if append_chat and status in ("resolved", "deferred"):
             _append_decision_to_chat(folder, authority_item)
         return authority_item
@@ -607,8 +625,10 @@ def resolve_inbox_item(
         run["human_inbox"] = inbox_items(run)
         updated = dict(item)
         from agent_lab.inbox.harvest import clear_inbox_fork_grace
+        from agent_lab.decision_latency import record_gate_closed
 
         clear_inbox_fork_grace(run)
+        record_gate_closed(run, kind=f"inbox_{item.get('kind') or 'item'}", action=status)
         return _sync_inbox_flag(run)
 
     patch_run_meta(folder, _resolve)

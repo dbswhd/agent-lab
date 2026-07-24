@@ -740,6 +740,12 @@
   font-size: var(--text-caption);
 }
 
+.needs-input-badge__age {
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-caption);
+  opacity: 0.8;
+}
+
 .needs-input-badge__count {
   font-variant-numeric: tabular-nums;
   font-size: var(--text-caption);
@@ -896,11 +902,21 @@
   font-weight: var(--weight-medium);
 }
 
+.workspace-chrome__run-badge--warn {
+  background: color-mix(in srgb, var(--warn) 18%, var(--surface-sunken));
+  color: var(--warn);
+}
+
+.workspace-chrome__run-badge--danger {
+  background: color-mix(in srgb, var(--danger) 18%, var(--surface-sunken));
+  color: var(--danger);
+}
+
 .session-status-line {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  max-width: 280px;
+  max-width: 320px;
   overflow: hidden;
 }
 

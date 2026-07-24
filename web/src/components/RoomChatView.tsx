@@ -54,9 +54,10 @@ export function RoomChatView({ chat }: Props) {
     () =>
       buildSessionStatusChips({
         runtime: chat.decisionRuntime,
+        session: chat.session,
         locale: chat.locale,
       }),
-    [chat.decisionRuntime, chat.locale],
+    [chat.decisionRuntime, chat.locale, chat.session],
   );
 
   useEffect(() => {

@@ -333,6 +333,10 @@ def apply_plan_substate_patch(
     for key in pop_fields:
         pw.pop(key, None)
     run["plan_workflow"] = pw
+    if phase == "HUMAN_PENDING":
+        from agent_lab.decision_latency import record_gate_opened
+
+        record_gate_opened(run, kind="plan_approval")
     if mirror_verified_loop:
         _mirror_verified_loop_status(run, pw)
     if stamp_orchestration:

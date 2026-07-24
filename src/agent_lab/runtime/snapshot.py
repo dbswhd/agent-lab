@@ -280,12 +280,17 @@ def _public_status_line(
         if isinstance(raw_intent, str) and raw_intent.strip():
             sandbox_intent = raw_intent.strip()
     profile = default_run_profile()
+    from agent_lab.decision_latency import active_gate
+
+    gate = active_gate(run)
     return {
         "isolation": isolation or None,
         "worktree": isolation == "worktree",
         "schedule_sandbox": bool(run.get("schedule_sandbox")),
         "sandbox_intent": sandbox_intent,
         "run_profile": profile,
+        "human_gate_opened_at": str(gate.get("opened_at")) if gate else None,
+        "human_gate_kind": str(gate.get("kind")) if gate else None,
     }
 
 

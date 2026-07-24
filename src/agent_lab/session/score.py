@@ -412,6 +412,22 @@ def score_session(folder: Path) -> dict[str, Any]:
     emergence_scores, emergence_counts = emergence_kpis(folder, run_meta, messages)
     plan_scores, plan_counts = _plan_workflow_kpis(run_meta)
 
+    from agent_lab.decision_latency import summarize_decision_latency
+
+    latency = summarize_decision_latency(run_meta)
+    latency_scores: dict[str, float | None] = {
+        "decision_latency_count": float(latency["count"]),
+        "decision_latency_p50_sec": latency["p50_sec"],
+        "decision_latency_p95_sec": latency["p95_sec"],
+        "decision_latency_open": 1.0 if latency.get("open") else 0.0,
+    }
+    latency_counts = {
+        "decision_latency_count": latency["count"],
+        "decision_latency_open_kind": (latency.get("open") or {}).get("kind")
+        if isinstance(latency.get("open"), dict)
+        else None,
+    }
+
     scores: dict[str, float | None] = {
         "objection_resolution_rate": obj_rate,
         "execute_first_try_rate": exec_rate,
@@ -425,6 +441,7 @@ def score_session(folder: Path) -> dict[str, Any]:
         **mission_scores,
         **emergence_scores,
         **plan_scores,
+        **latency_scores,
     }
     from agent_lab.quality_judge import judge_session
 
@@ -466,6 +483,7 @@ def score_session(folder: Path) -> dict[str, Any]:
             "mission_loop": mission_counts,
             "emergence": emergence_counts,
             "plan_workflow": plan_counts,
+            "decision_latency": latency_counts,
         },
         "summary_lines": summary_lines,
     }

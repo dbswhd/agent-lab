@@ -7,8 +7,8 @@
 | Tier | Result | Scope | Source artifact |
 | --- | --- | --- | --- |
 | mock | `PASS`, `n=2` | deterministic regression success and repair fixtures | `sessions/_regression/worktree_merge_ok/run.json`; `sessions/_regression/execute_verify_loop/run.json` |
-| browser | `PASS`, `n=4` | Wave B browser UI contract; API routes are mocked | `.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-7/wave-b-browser.txt` |
-| live | `OPEN`, `n=0` | credentialed operational success and FAIL→repair/re-discuss evidence is absent | `.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-7/dogfood-readiness.json` |
+| browser | `PASS`, `n=4` | Wave B browser UI contract; API routes are mocked | [`docs/evidence/dogfood-readiness/browser-contract.txt`](evidence/dogfood-readiness/browser-contract.txt) |
+| live | `OPEN`, `n=0` | credentialed operational success and FAIL→repair/re-discuss evidence is absent | [`docs/evidence/dogfood-readiness/manifest.json`](evidence/dogfood-readiness/manifest.json) |
 
 The browser result means **browser-contract acceptance is green**. It is not live evidence and does not close operational readiness.
 
@@ -27,10 +27,10 @@ Invocation:
 
 ```bash
 make dogfood-readiness-report \
-  MANIFEST=.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-7/manifest.json \
-  OUT_DIR=.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-7
+  MANIFEST=docs/evidence/dogfood-readiness/manifest.json \
+  OUT_DIR=/tmp/agent-lab-dogfood-readiness
 ```
 
 Binary observable: command exits `0`, the generated packet reports `readiness=OPEN`, and `default_change_authorized=false`.
 
-The `.omo` paths above are raw, non-tracked evidence kept out of Git intentionally; this concise tracked pointer preserves their current-state interpretation.
+The manifest is tracked and records the source commit used to author this fixture. Generated output is disposable and must not be read as provenance for a future commit.

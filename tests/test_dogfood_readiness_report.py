@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -202,3 +203,32 @@ def test_markdown_names_flags_cohorts_paths_and_open_gate(tmp_path: Path) -> Non
     assert "wave-b.txt" in markdown
     assert "F7 | OPEN" in markdown
     assert "No default change is authorized by this packet." in markdown
+
+
+def test_tracked_fixture_cli_stays_open_without_authorizing_defaults(tmp_path: Path) -> None:
+    # Given
+    manifest_path = _ROOT / "docs/evidence/dogfood-readiness/manifest.json"
+    output_dir = tmp_path / "packet"
+
+    # When
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(_ROOT / "scripts/dogfood_readiness_report.py"),
+            "--manifest",
+            str(manifest_path),
+            "--out-dir",
+            str(output_dir),
+        ],
+        cwd=_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    # Then
+    packet = json.loads((output_dir / "dogfood-readiness.json").read_text(encoding="utf-8"))
+    assert "readiness=OPEN" in completed.stdout
+    assert packet["readiness"] == "OPEN"
+    assert packet["evidence_by_tier"]["live"]["sample_size"] == 0
+    assert packet["default_change_authorized"] is False

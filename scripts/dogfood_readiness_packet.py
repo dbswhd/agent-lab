@@ -55,8 +55,7 @@ def build_readiness_packet(manifest: ReadinessManifest) -> dict[str, JsonValue]:
         for execution in executions
         if execution.oracle
         and execution.oracle.verdict.lower() == "pass"
-        and not execution.oracle.evidence
-        and not execution.oracle.checked_paths
+        and (not execution.oracle.evidence or not execution.oracle.checked_paths)
     )
     repairs = sum(len(execution.repair_history) for execution in executions)
     plateaus = sum(
@@ -124,7 +123,7 @@ def build_readiness_packet(manifest: ReadinessManifest) -> dict[str, JsonValue]:
     )
     metrics_ok = (
         coverage >= manifest.thresholds.oracle_coverage_min
-        and false_success <= manifest.thresholds.false_success_max
+        and false_success == 0
         and parity_gap is not None
         and parity_gap <= manifest.thresholds.parity_gap_max
         and success_sessions >= 1

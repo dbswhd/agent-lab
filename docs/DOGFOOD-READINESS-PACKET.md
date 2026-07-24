@@ -17,6 +17,14 @@ Oracle coverage, false-success count, repair attempts, retry-cap plateaus,
 gate latency, cohort/non-cohort success-rate gap, flags, cohort IDs, sample
 window, commit SHA, and raw paths.
 
+A `live` `PASS` must point to the exact live `sessions[].run_path` records it
+counts. Each run must identify that session and the manifest commit SHA, and
+its non-mock Oracle `PASS` must contain both `evidence[]` and
+`checked_paths[]`. The declared live sample size must equal the number of
+validated live runs. Any Oracle `PASS` missing either proof field is a
+false-success and keeps readiness `OPEN`; `false_success_max` cannot override
+that safety gate.
+
 At least one final Oracle PASS session and one Oracle FAIL→repair→PASS session
 are required. Overall readiness remains `OPEN` unless all evidence tiers and
 operational gates pass their declared thresholds. F7, N4-D3, and HS-M5 must be

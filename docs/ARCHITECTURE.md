@@ -54,7 +54,7 @@ flowchart TB
     subgraph frontend["Frontend web/src"]
         App[App.tsx shell]
         RoomUI[RoomChat + Composer]
-        WorkUI[Work / PlanExecute]
+        WorkUI[Composer event stack / PlanExecute]
         WB[Workbench panels]
         Settings[SettingsPage]
     end
@@ -106,7 +106,7 @@ flowchart TB
 | Scribe | `plan.md` 합성 | `room/plan_scribe.py` | (room SSE) | `PlanDocument.tsx` |
 | Clarifier | Socratic 요구사항 명확화 | `session_clarifier.py` | `plan_execute` clarifier | `RoomChat` interview UI |
 | Dispatch | worker delegate, parallel fan-out | `room/dispatch.py` | room router | `LiveAgentsStrip` |
-| Topic routing | quick/standard/deep/critical | `topic_router.py` | — | Room preset (`roomPresets.ts`) |
+| Topic routing | quick/standard/deep/critical | `topic_router.py` | — | setting/session Room preset (`roomPresets.ts`; Composer picker 없음) |
 
 ### 3.2 Plan (계약)
 
@@ -160,6 +160,8 @@ flowchart TB
 | Discuss inbox | `inbox_facilitator.py` | — | `HumanInboxPanel` (Harvest 배지) + `DiscussRecoveryBanner` |
 | MCP server | `inbox_mcp_server.py` | — | — |
 
+Human Inbox와 현재 Human action은 `ComposerEventStack`의 Decision Queue에 표시된다. 이는 별도 Workspace navigation tab이 아니다.
+
 ### 3.7 Runtime Harness
 
 | 기능 | Core | 문서 |
@@ -191,17 +193,18 @@ flowchart TB
 
 **로드맵:** [MISSION-OS-DIRECTION.md](./MISSION-OS-DIRECTION.md)
 
-### 3.10 Workspace Tools
+### 3.10 Workspace Navigation
 
 | 탭 | 단축키 | Component | API |
 |----|--------|-----------|-----|
 | Transcript | ⌘1 | `RoomChat` | room SSE |
-| Work | ⌘2 | `WorkToolPanel` | plan_execute, runtime |
+| Diff | ⌘2 | `DiffToolPanel` | plan_execute |
 | Background | ⌘3 | `BackgroundTasksPanel` | background_tasks |
-| Diff | ⌘4 | `DiffToolPanel` | plan_execute |
-| Files | ⌘5 | `WorkspaceFilesPanel` + Monaco | workspace_files |
-| Preview | ⌘6 | `PreviewPanel` | dev_preview |
-| Terminal | ⌘7 | `TerminalPanel` | WS terminal |
+| Files | ⌘4 | `WorkspaceFilesPanel` + Monaco | workspace_files |
+| Preview | ⌘5 | `PreviewPanel` | dev_preview |
+| Terminal | ⌘6 | `TerminalPanel` | WS terminal |
+
+`WorkToolPanel`은 Composer internal `work` lane의 실행 surface이며, visible navigation tab이 아니다.
 
 ### 3.11 Plugins & Commands
 
@@ -327,13 +330,13 @@ Additive, flag-gated layers from the LangGraph/OpenHands/Aider/SWE-agent gap ana
 `SessionRail`, `SessionList`, `MacTitlebar`, `ShellPortal`, `NewSessionDialog`, `FirstRunOnboarding`
 
 #### Room / Transcript (핵심 UX)
-`RoomChat` (~3.7k lines), `ChatComposer`, `ChatBubble`, `ComposerPreflightBar`, `RoomTaskBar`, `RoomRunStatusBar`, `TurnProgressStrip` — Composer mode: **fast / supervisor** presets (`roomPresets.ts`), not quick/team/loop segmented picker.
+`RoomChat` (~3.7k lines), `ChatComposer`, `ChatBubble`, `ComposerPreflightBar`, `RoomTaskBar`, `RoomRunStatusBar`, `TurnProgressStrip` — Composer는 topic-only다. Room preset은 setting/session default이며 fast/supervisor picker와 Plan toggle은 노출하지 않는다.
 
-#### Work / Plan / Execute
+#### Composer Decision Queue / Plan / Execute
 `WorkToolPanel`, `WorkPanel`, `WorkStatusBar`, `PlanExecutePanel` (~1.5k), `PlanDocument`, `PlanApprovalPanel`, `SideBySideDiff`, `MergeChecksPanel`, `ExecuteQueueBar`
 
 #### Workbench (우측 레일)
-`WorkbenchPanel`, `ContextOverviewPanel`, `HumanInboxPanel`, `HumanGatePanel`, `MissionOverviewSection`
+`WorkbenchPanel`, `ContextOverviewPanel`, `HumanGatePanel`, `MissionOverviewSection` — Human Inbox는 ComposerEventStack의 Decision Queue에서 연다.
 
 #### Mission / Evidence
 `EvidenceTimeline`, `EvidenceGatesPanel`, `WisdomSearchPanel`, `MissionBoardStrip`, `GoalLoopBanner`, `VerifiedLoopBanner`, `DiscussRecoveryBanner`
@@ -363,15 +366,15 @@ Additive, flag-gated layers from the LangGraph/OpenHands/Aider/SWE-agent gap ana
 | Mode | 패널 | 사용자 의도 |
 |------|------|-------------|
 | `overview` | Context overview, Mission | 지금 세션 전체 상태 |
-| `tasks` | Tasks, gates, plan approval | 해야 할 Human 결정 |
-| `inbox` | Human/Discuss inbox | 에이전트 질문 처리 |
-| `tools` | Workspace tabs (⌘1–7) | 파일·diff·터미널 |
+| `tools` | Workspace tabs (⌘1–6) | 파일·diff·터미널 |
 
-### 6.3 Work stepper (`WorkStatusBar`)
+Decision Queue와 Human Inbox는 ComposerEventStack에 있으며, internal `work` lane은 실행 결과·evidence를 보여 준다. 어느 것도 Work navigation tab이 아니다.
+
+### 6.3 Composer internal `work` lane stepper (`WorkStatusBar`)
 
 `실행 준비 → 실행 검토 → 변경 중 → 변경 검토 → 검증 완료`
 
-SSOT: `work_phase` from runtime API — UI와 백엔드 동기화.
+SSOT: `work_phase` from runtime API — Composer internal surface와 백엔드 동기화.
 
 ### 6.4 주요 사용자 플로우
 

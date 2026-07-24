@@ -1,7 +1,7 @@
 # Agent Lab — 현재 구조 및 플로우
 
 > **Status:** canonical current flow · **최종 업데이트:** 2026-07-23
-> **Browser gate:** Wave B evidence is red and **not browser-accepted**. Implementation/test references below do not mean shipped or complete browser acceptance.
+> **Browser gate:** Wave B evidence is **accepted** (2026-07-24) — [wave-b-browser-acceptance-2026-07-24.md](redesign-2026-07/evidence/wave-b-browser-acceptance-2026-07-24.md). Mock e2e alone is still not ship proof.
 > **턴 제어:** [TURN-CONTRACT.md](./TURN-CONTRACT.md) · **평가:** [EVAL-CONTRACT.md](./EVAL-CONTRACT.md)
 > **관련 문서:** [ARCHITECTURE.md](./ARCHITECTURE.md) (모듈 지도) · [USER-GUIDE.md](./USER-GUIDE.md) (기능 상세) · [NORTH-STAR.md](./NORTH-STAR.md) (방향)
 

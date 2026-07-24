@@ -1,7 +1,7 @@
 # External refs plan — traceability matrix
 
 Maps items in [`EXTERNAL-REFS-PLAN.md`](archive/rfcs/EXTERNAL-REFS-PLAN.md) to **code evidence**, **regression/smoke evidence**, or **future fixture tickets**.
-This document is the hub for **plan vs reality**. It does not explain *why* an item was adopted — see PLAN §anchor for that context. A ✅ row is scoped to its listed code/test artifact; it does not imply current Wave B/browser acceptance.
+This document is the hub for **plan vs reality**. It does not explain *why* an item was adopted — see PLAN §anchor for that context. A ✅ row is scoped to its listed code/test artifact; Wave B browser acceptance is tracked separately below when green.
 
 **Status legend:** ✅ evidence-backed code · 🔶 partial / acceptance pending · ⬜ future · ❌ dropped
 **Related:** [EXTERNAL-REFS-PLAN.md](archive/rfcs/EXTERNAL-REFS-PLAN.md) (why/what) · [MD-WRITING-PLAN.md](MD-WRITING-PLAN.md) (MD authoring guide)
@@ -13,7 +13,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 - The Composer **Decision Queue** is the current Human-action SSOT and exposes one active blocking decision at a time.
 - The internal Composer `work` lane renders execution/result evidence; it is **not** the removed Work navigation tab.
 - Visible workspace tabs are Transcript, Diff, Background, Files, Preview, Terminal; Inspector tabs are Overview and Tools (`web/src/utils/workspaceTabs.ts`).
-- **Wave B/browser acceptance: not accepted.** Current evidence is red. Prior `wave-b-journey.spec.ts` 4/4 output is mock/API or historical evidence and must not be read as shipped/complete browser acceptance.
+- **Wave B/browser acceptance: accepted (2026-07-24).** Evidence: [wave-b-browser-acceptance-2026-07-24.md](redesign-2026-07/evidence/wave-b-browser-acceptance-2026-07-24.md) — live uvicorn+Vite Playwright 4/4. Mock `wave-b-journey.spec.ts` remains CI regression only.
 
 ---
 
@@ -101,6 +101,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 | GJC-AUTH | Gajae-code v0.5.4 | Provider picker 기반 CLI 로그인 UX | ✅ | `provider_registry.py`, `auth_runs.py`, `routers/auth.py`, `AuthFlowPanel.tsx`, `ProviderStatusPanel.tsx`, `tests/test_auth_runs.py` | 공식 Codex·Claude·Cursor CLI credential을 source of truth로 사용 |
 | PLAN-UX | Gajae Code · Cursor · Claude Code · Codex | 단일 Plan 검토·승인 surface | ✅ | `PlanApprovalPanel.tsx`, `WorkToolPanel.tsx`, `plan_pending.py`, `web/e2e/plan-approval.spec.ts` | HUMAN_PENDING에서 primary CTA 하나; whole-plan hash로 action snapshot 중복 승인 제거; execute·merge·Oracle gate 유지 |
 | MCP-INBOX | Human Inbox MCP-first (harvest off, lead/single-flight, source badge) | ✅ | [MCP-FIRST-INBOX.md](MCP-FIRST-INBOX.md), `inbox_mcp_policy.py`, `HumanInboxPanel.tsx`, `tests/test_mcp_first_inbox.py` | Phase A–E; legacy `AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST=1` |
+| UX-WAVE-B | Room UX | Composer Decision Queue + current workspace tab browser acceptance | ✅ | [wave-b-browser-acceptance-2026-07-24.md](redesign-2026-07/evidence/wave-b-browser-acceptance-2026-07-24.md), `web/e2e/wave-b-live-journey.spec.ts`, `scripts/run_wave_b_live_acceptance.sh`, `web/e2e/wave-b-journey.spec.ts` | Live uvicorn+Vite 4/4 PASS (2026-07-24). Mock suite remains CI regression. Oracle live asserts CTA→reverify wiring (pending seed may 409); full worktree repair E2E out of scope. |
 
 **Planning canonical:** [MISSION-BOARD-ADOPTION.md](MISSION-BOARD-ADOPTION.md) (P1–P4 shipped).
 
@@ -110,7 +111,6 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 
 | ID | Source | Item | Status | Evidence | Notes |
 |----|--------|------|--------|----------|-------|
-| UX-WAVE-B | Room UX | Composer Decision Queue + current workspace tab browser acceptance | 🔶 | [11-ui-ux-surface-map.md](redesign-2026-07/11-ui-ux-surface-map.md), [m6-ui-read-model-dogfood-2026-07-16.md](redesign-2026-07/evidence/m6-ui-read-model-dogfood-2026-07-16.md), `web/e2e/wave-b-journey.spec.ts` | Phase A: journey now mocks `/mission/read-model` + asserts inbox version-guard POST body. Still 🔶 until live Room dogfood + §7.5 Human acceptance; mock/API alone does not close browser acceptance. |
 | MC-TT | Mission Control Phase B | Time-to-trust (decision latency · evidence strip · Needs input age · F8 cost chip) | 🔶 | `decision_latency.py`, `tests/test_decision_latency.py`, `executeEvidenceStrip.ts`, `sessionStatusLine.ts`, `NeedsInputBadge.tsx` | Instrumentation + UI density shipped; dogfood exit (“1–2h mission without docs”) still open. |
 
 ---

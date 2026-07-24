@@ -323,6 +323,7 @@ def new_inbox_item(
         "human_turn_id": human_turn_id,
         "caller_agent": str(caller_agent).strip().lower() if caller_agent else None,
         "created_at": _now_iso(),
+        "decision_version": 0,
         "resolved_at": None,
         "resolved_choice": None,
         "resolved_selected": None,

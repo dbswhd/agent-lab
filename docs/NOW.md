@@ -2,7 +2,7 @@
 
 > **작성:** 2026-07-08 · **갱신:** 2026-07-23 (Composer Decision Queue rebaseline) · **역할:** "오늘/이번 주/다음/동결"을 한 곳에서 판정한다.
 > **이 문서가 아닌 것:** 방향·구조·턴·평가 계약의 SSOT가 아니다. 이 문서는 **상태 포인터**만 갖는다.
-> **Browser acceptance:** Wave B/browser evidence is currently red and **not browser-accepted**. Mock/API or implementation evidence below must not be read as shipped/complete browser acceptance.
+> **Browser acceptance:** Wave B/browser evidence is **accepted** (2026-07-24). Live proof: [wave-b-browser-acceptance-2026-07-24.md](redesign-2026-07/evidence/wave-b-browser-acceptance-2026-07-24.md). Mock/API suites remain regression, not a substitute for that live packet.
 > **ID 규칙:** 소스 namespace를 보존한다 (`N*`, `F*`, `HS*`, `TC-*`, `ABS-P2-*`). bare `P1/P2` 신규 사용 금지.
 > **진실 순서:** runtime 동작은 code+tests, 현재 상태는 NOW, 방향·구조·턴·평가는 아래 담당 문서가 각각 소유한다.
 
@@ -30,11 +30,11 @@
 | --- | --- | --- |
 | Step 0 authority/baseline | ✅ 완료 | 문서 상태·canonical 링크 유지 |
 | Step 1 Mission application adapter | ✅ controlled opt-in cohort | 실제 `sessions/` route 10건·rollback 2건 통과; 전용 process/route에서만 `AGENT_LAB_MISSION_DUAL_WRITE=1` 적용. 운영 절차: [controlled cohort runbook](./redesign-2026-07/evidence/dual-write-controlled-cohort-runbook-2026-07-13.md) |
-| Step 2 MissionReadModel/UI contract | 구현·API/SSE wiring evidence 있음; **browser acceptance 미승인 (Wave B red)** | 이전 `web/e2e/wave-b-journey.spec.ts` 4/4 결과는 mock/API evidence로 보존되며 현재 브라우저 gate를 닫지 않는다. `11-ui-ux-surface-map.md` §7 구현 흔적과 acceptance를 분리한다. |
+| Step 2 MissionReadModel/UI contract | **browser acceptance accepted (2026-07-24)** | Live packet [wave-b-browser-acceptance-2026-07-24.md](redesign-2026-07/evidence/wave-b-browser-acceptance-2026-07-24.md). Mock `wave-b-journey.spec.ts` remains CI regression. |
 | Step 3 Decision Queue vertical slice | ✅ route + Room dogfood + optimistic locking (2026-07-15) | production Human Inbox route와 실제 Room dogfood 2건 통과; `decision_id`/`mission_id`/`expected_version` 라운드트립으로 stale/중복 answer는 409 — `MissionApplication.guard_inbox_answer`. run.json 쓰기와의 완전 원자성(single transaction)은 여전히 별도 트랙 |
 | Step 4 Execute/merge/Oracle | ✅ route parity + repair event | merge parity·fail→repair·RepairScheduled bridge·G3 process kill/restart 통과 |
 | Step 5 Durable runtime hardening | ✅ shadow + fault pass | scheduler ActivityQueue validation, committed-side-effect restart recovery; production daemon opt-in remains |
-| Step 6–7 bounded authority/read-model cutover | **Wave B bounded cohort 진행 중; browser acceptance 미승인** | `AGENT_LAB_MISSION_AUTHORITY=1` + non-empty `AGENT_LAB_MISSION_AUTHORITY_SESSIONS` 세션은 Inbox item open/resolve와 execution gate를 Mission journal 한 batch로 기록하며 `run.json` Inbox writer를 건너뛴다. `AGENT_LAB_MISSION_UI_READ_MODEL` 기본값은 `1`; migrated 세션은 journal-first UI, legacy 세션은 read-model endpoint의 server-side fallback을 사용한다. route/API·stale answer·재시작 복구 evidence는 있으나 Wave B browser gate가 red라 shipped/complete로 판정하지 않는다. M6 hard delete와 full-traffic 전환은 아직 금지하며 Human이 full cutover를 판정한다. |
+| Step 6–7 bounded authority/read-model cutover | **Wave B Decision Queue browser-accepted; full-traffic cutover still Human-gated** | `AGENT_LAB_MISSION_AUTHORITY=1` + non-empty `AGENT_LAB_MISSION_AUTHORITY_SESSIONS` 세션은 Inbox item open/resolve와 execution gate를 Mission journal 한 batch로 기록하며 `run.json` Inbox writer를 건너뛴다. `AGENT_LAB_MISSION_UI_READ_MODEL` 기본값은 `1`. Decision Queue live journeys are accepted (2026-07-24). M6 hard delete와 full-traffic 전환은 아직 금지하며 Human이 full cutover를 판정한다. |
 
 **안전 경계:** 비-cohort 세션은 기존 `plan_workflow`·`mission_loop`·`human_inbox` writer를 그대로 사용한다. `AGENT_LAB_MISSION_AUTHORITY`는 non-empty session allowlist가 있는 bounded cohort에서만 활성화되며 빈 allowlist는 비활성화한다. cohort 세션의 Inbox writer는 journal authority로 우회되고, execute side effect·legacy plan projection·M6 hard delete는 아직 기존 경계를 유지한다. full-traffic 전환 전 Human 판정이 필요하다. [journal-first design](./redesign-2026-07/evidence/journal-first-read-projection-design-2026-07-14.md).
 
@@ -90,7 +90,7 @@ dogfood 시나리오). 둘 다 mock-only, dogfood 무관.
 
 시작: `eval "$(make -s dogfood-track-env)" && make dev`(또는 `make api`) → 라이브 세션 진행 → 중간 gate는 `make dogfood-live-gates-watch SESSION_ID=<id>`(수집 아님, Question/MCP/execute 자동 처리). 세션 후 수집은 `feedback-report` / `dogfood-progress-record` / `dogfood-track` 별도 실행.
 
-Composer preset 제거(WORKFLOW §8.2 **P2**)는 archive roadmap item이다. 현재 Composer는 이미 topic-only이며 picker를 노출하지 않는다. Wave B/browser acceptance gate는 별도이며 red 상태다.
+Composer preset 제거(WORKFLOW §8.2 **P2**)는 archive roadmap item이다. 현재 Composer는 이미 topic-only이며 picker를 노출하지 않는다. Wave B/browser acceptance gate는 **accepted** (2026-07-24 live packet).
 
 ### 분기 리뷰 묶음 (한 세션에서 일괄 — NORTH-STAR §3.3 분기 행)
 

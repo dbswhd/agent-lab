@@ -16,11 +16,13 @@ import { useMissionReadModel } from "../utils/missionReadModel";
 function versionGuardFields(
   item: HumanInboxItem,
   missionId: string | null | undefined,
+  sessionId?: string | null,
 ): { decision_id?: string; mission_id?: string; expected_version?: number } {
   if (item.decision_version === undefined) return {};
+  const resolvedMissionId = missionId || sessionId || undefined;
   return {
     decision_id: item.id,
-    mission_id: missionId ?? undefined,
+    mission_id: resolvedMissionId,
     expected_version: item.decision_version,
   };
 }
@@ -700,7 +702,7 @@ export function HumanInboxPanel({
       try {
         await resolveInboxItem(sessionId, item.id, {
           selected: [optionId],
-          ...versionGuardFields(item, missionReadModel?.mission_id),
+          ...versionGuardFields(item, missionReadModel?.mission_id, sessionId),
         });
         const remaining = await reload();
         setModelReloadTick((value) => value + 1);
@@ -729,7 +731,7 @@ export function HumanInboxPanel({
       try {
         await resolveInboxItem(sessionId, item.id, {
           note,
-          ...versionGuardFields(item, missionReadModel?.mission_id),
+          ...versionGuardFields(item, missionReadModel?.mission_id, sessionId),
         });
         setFreeformDraft((prev) => {
           const next = { ...prev };
@@ -769,7 +771,7 @@ export function HumanInboxPanel({
       try {
         await resolveInboxItem(sessionId, item.id, {
           selected: decision === "approve" ? ["approve"] : ["reject"],
-          ...versionGuardFields(item, missionReadModel?.mission_id),
+          ...versionGuardFields(item, missionReadModel?.mission_id, sessionId),
         });
         const remaining = await reload();
         setModelReloadTick((value) => value + 1);
@@ -805,7 +807,7 @@ export function HumanInboxPanel({
         }
         await resolveInboxItem(sessionId, item.id, {
           decision,
-          ...versionGuardFields(item, missionReadModel?.mission_id),
+          ...versionGuardFields(item, missionReadModel?.mission_id, sessionId),
         });
         const remaining = await reload();
         setModelReloadTick((value) => value + 1);
@@ -842,7 +844,7 @@ export function HumanInboxPanel({
         await resolveInboxItem(sessionId, item.id, {
           status: "deferred",
           decision: "defer",
-          ...versionGuardFields(item, missionReadModel?.mission_id),
+          ...versionGuardFields(item, missionReadModel?.mission_id, sessionId),
         });
         const remaining = await reload();
         setModelReloadTick((value) => value + 1);

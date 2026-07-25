@@ -113,7 +113,7 @@
 | [MCP-TOOL-CONTRACT.md](./MCP-TOOL-CONTRACT.md) | Inbox / session plugin MCP 계약 |
 | [HYBRID-RELAY-WORKER.md](./HYBRID-RELAY-WORKER.md) | Cloudflare hybrid relay worker 배포 |
 | [F5-TRADING-ISOLATION.md](./F5-TRADING-ISOLATION.md) | NORTH-STAR F5 — **decided**; trading extension lane, core PR trading delta 0 |
-| [F7-REPO-MAP-COMPACTION-DOGFOOD.md](./F7-REPO-MAP-COMPACTION-DOGFOOD.md) | NORTH-STAR F7 — 7일 dogfood **진행 중**, 마감 2026-07-16 (`make f7-dogfood-report`) |
+| [F7-REPO-MAP-COMPACTION-DOGFOOD.md](./F7-REPO-MAP-COMPACTION-DOGFOOD.md) | NORTH-STAR F7 — **closed ON** (2026-07-25); revisit after more non-lift live sessions |
 | [F8-COST-VISIBILITY.md](./F8-COST-VISIBILITY.md) | NORTH-STAR F8 — **instrumented**, quarter cost ledger + L0 demotion |
 | [DESIGN-HARNESS-SELF-IMPROVE.md](./DESIGN-HARNESS-SELF-IMPROVE.md) | N6 전용 approved feature spec; HS 작업 시만 참조 |
 

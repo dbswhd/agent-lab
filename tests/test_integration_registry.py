@@ -327,7 +327,10 @@ def test_fast_bucket_collection_budget():
     # (test_plan_artifact.py) — diagnostics for each measured dead-plan shape,
     # persistence round-trip, staleness/backward-compat, write-seam wiring, and
     # the plan-gate cause reporting.
-    assert count <= 3682, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-25: raised 3682 -> 3700 for the P1 stage-2 scribe repair loop
+    # (test_plan_scribe_repair.py) — gating, diagnostic feedback, never-degrade
+    # guarantees, attempt bounding, and repair observability.
+    assert count <= 3700, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

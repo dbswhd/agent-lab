@@ -38,8 +38,13 @@ def synthesize_plan(
     backend_agent: AgentId | None = None,
     *,
     run_meta: RunStateLike | None = None,
+    repair_hint: str | None = None,
 ) -> str:
-    """Scribe pass using one agent backend."""
+    """Scribe pass using one agent backend.
+
+    ``repair_hint`` is the corrective instruction from a previous attempt whose plan
+    had no executable action (P1) — appended last so it dominates the prompt.
+    """
     from agent_lab.room.context import scribe_thread_block
     from agent_lab.room.scribe_enrichment import (
         build_scribe_enrichment,
@@ -86,6 +91,8 @@ def synthesize_plan(
         clarify_block = build_clarify_context_block(Path(str(folder_raw)))
         if clarify_block.strip():
             user = f"{user}\n\n---\n\n{clarify_block.strip()}"
+    if repair_hint and repair_hint.strip():
+        user = f"{user}\n\n---\n\n{repair_hint.strip()}"
     room = __import__("agent_lab.room", fromlist=["call_agent"])
     folder_raw = (run_meta or {}).get("_session_folder")
     folder = Path(str(folder_raw)) if folder_raw else None
@@ -370,6 +377,14 @@ def _apply_scribe_after_turn(
     try:
         room = __import__("agent_lab.room", fromlist=["synthesize_plan"])
         plan_md = room.synthesize_plan(topic, messages, run_meta=run_meta)
+        plan_md = _repair_dead_plan(
+            room,
+            plan_md,
+            topic=topic,
+            messages=messages,
+            run_meta=run_meta,
+            on_event=on_event,
+        )
         _emit_plan_actions_validation(plan_md, on_event)
         if on_event:
             on_event("scribe_done", {"chars": len(plan_md)})
@@ -380,6 +395,85 @@ def _apply_scribe_after_turn(
         if not (plan_before or "").strip():
             return f"## Plan synthesis failed\n\n{e}"
         return plan_before
+
+
+DEFAULT_PLAN_SCRIBE_REPAIR_ATTEMPTS = 1
+
+
+def plan_scribe_repair_attempts() -> int:
+    """How many corrective scribe retries a dead plan gets (``AGENT_LAB_PLAN_SCRIBE_REPAIR``).
+
+    Skipped under mock agents unless the flag is set explicitly: the mock scribe returns
+    a fixed stub, so retrying it burns a call and proves nothing. Tests that exercise the
+    repair path opt in by setting the flag.
+    """
+    raw = (os.getenv("AGENT_LAB_PLAN_SCRIBE_REPAIR") or "").strip().lower()
+    if raw:
+        if raw in ("0", "false", "no", "off"):
+            return 0
+        if raw.isdigit():
+            return int(raw)
+        return DEFAULT_PLAN_SCRIBE_REPAIR_ATTEMPTS
+    from agent_lab.env_flags import env_bool
+
+    if env_bool("AGENT_LAB_MOCK_AGENTS"):
+        return 0
+    return DEFAULT_PLAN_SCRIBE_REPAIR_ATTEMPTS
+
+
+def _repair_dead_plan(
+    room: Any,
+    plan_md: str,
+    *,
+    topic: str,
+    messages: list[ChatMessage],
+    run_meta: RunStateLike | None,
+    on_event: OnAgentEvent | None,
+) -> str:
+    """Re-run the scribe with the diagnostic when the plan has no executable action (P1).
+
+    Never degrades: a retry is kept only if it actually produces an executable plan,
+    otherwise the original plan stands.
+    """
+    from agent_lab.plan.artifact import build_plan_artifact, scribe_repair_instruction
+
+    attempts = plan_scribe_repair_attempts()
+    if attempts <= 0:
+        return plan_md
+
+    original = plan_md
+    latest = plan_md
+    for attempt in range(1, attempts + 1):
+        artifact = build_plan_artifact(latest or "")
+        hint = scribe_repair_instruction(artifact)
+        if not hint:
+            return latest
+        if on_event:
+            on_event(
+                "plan_scribe_repair",
+                {
+                    "attempt": attempt,
+                    "reason": artifact.diagnostics[0].code if artifact.diagnostics else "",
+                },
+            )
+        try:
+            retried = room.synthesize_plan(topic, messages, run_meta=run_meta, repair_hint=hint)
+        except Exception as exc:  # a failed repair must not lose the original plan
+            if on_event:
+                on_event("plan_scribe_repair_failed", {"attempt": attempt, "message": str(exc)})
+            return original
+        if build_plan_artifact(retried or "").is_executable:
+            if on_event:
+                on_event("plan_scribe_repair_ok", {"attempt": attempt})
+            return cast(str, retried)
+        if retried and retried.strip():
+            latest = retried
+
+    # No attempt produced an executable plan — keep the original rather than a
+    # retry that is equally dead but may have dropped content.
+    if on_event:
+        on_event("plan_scribe_repair_exhausted", {"attempts": attempts})
+    return original
 
 
 def _default_scribe_agent() -> AgentId:

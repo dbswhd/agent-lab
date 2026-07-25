@@ -565,6 +565,12 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         default="1",
     ),
     FlagDef(
+        "AGENT_LAB_PLAN_SCRIBE_REPAIR",
+        "feature",
+        "P1: retry the scribe with diagnostics when the plan has no executable action",
+        default="1",
+    ),
+    FlagDef(
         "AGENT_LAB_PLAN_PHASE_PROJECTION",
         "feature",
         "P0: mission kernel is authority for plan gate; contradicting plan phase is coerced",

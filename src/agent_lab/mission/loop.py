@@ -181,11 +181,25 @@ def evaluate_plan_gate(
         )
 
     if not actions:
+        # P1: say *why* the plan yields no action. "no section header" and "empty plan"
+        # used to be indistinguishable here, which is why 8.2% of real plans stalled
+        # without an actionable message.
+        from agent_lab.plan.artifact import diagnose_plan
+
+        diagnostics = diagnose_plan(plan_md or "")
+        primary = diagnostics[0] if diagnostics else None
         return _with_mcp_warnings(
             {
                 "status": "reject",
-                "reason": "no_executable_actions",
-                "failures": [{"action_index": None, "issues": ["no_executable_actions"]}],
+                "reason": primary.code if primary else "no_executable_actions",
+                "failures": [
+                    {
+                        "action_index": None,
+                        "issues": [d.code for d in diagnostics] or ["no_executable_actions"],
+                    }
+                ],
+                "diagnostics": [d.to_dict() for d in diagnostics],
+                "detail": f"{primary.message} {primary.hint}".strip() if primary else "",
             }
         )
     if failures:

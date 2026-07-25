@@ -41,9 +41,7 @@ _ALL_PAIRS = list(itertools.product(sorted(PLAN_PHASES_BY_MISSION_PHASE), sorted
 
 def test_contract_covers_every_mission_phase_the_projection_can_emit() -> None:
     """Every phase ``mission/projection.py`` can produce must have a contract row."""
-    emitted = {
-        _phase_for_mission(replace(new_mission("m", "goal"), state=state), None) for state in MissionState
-    }
+    emitted = {_phase_for_mission(replace(new_mission("m", "goal"), state=state), None) for state in MissionState}
     missing = emitted - set(PLAN_PHASES_BY_MISSION_PHASE)
     assert missing == set(), f"mission phases without a plan-phase contract: {sorted(missing)}"
 
@@ -247,8 +245,7 @@ def test_coercion_never_grants_approval_the_kernel_withheld() -> None:
         updated = apply_plan_substate_patch(run, phase=requested)
         if updated["plan_workflow"]["phase"] == "APPROVED":
             assert "APPROVED" in (allowed_plan_phases(mission_phase) or set()), (
-                f"coercion produced APPROVED under mission={mission_phase}, "
-                "which the kernel does not treat as approved"
+                f"coercion produced APPROVED under mission={mission_phase}, which the kernel does not treat as approved"
             )
 
 

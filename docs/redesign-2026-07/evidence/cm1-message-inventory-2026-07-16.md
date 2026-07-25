@@ -54,6 +54,10 @@ chat, live log, SSE가 같은 사실을 다르게 표현"과 동일 문제). 아
 | `inbox_pending` | `room/plan_scribe.py`, `turn_policy.py` | human_decision | at_least_once | Human Inbox 항목 발생 |
 | `inbox_pause` | `room/consensus_rounds.py` | human_decision | at_least_once | Inbox 대기로 인한 turn 일시정지 |
 | `plan_actions_validation` | `room/plan_scribe.py` | event | at_least_once | plan action 파싱/검증 결과 |
+| `plan_scribe_repair` | `room/plan_scribe.py` | progress | best_effort | 실행 가능 액션 없는 plan → 진단 첨부 scribe 재시도 시작 (P1) |
+| `plan_scribe_repair_ok` | `room/plan_scribe.py` | event | at_least_once | 재시도가 실행 가능한 plan 생성(terminal) |
+| `plan_scribe_repair_failed` | `room/plan_scribe.py` | event | at_least_once | 재시도 중 scribe 예외 — 원본 plan 유지(terminal) |
+| `plan_scribe_repair_exhausted` | `room/plan_scribe.py` | event | at_least_once | 재시도 한도 소진, 원본 plan 유지(terminal) |
 | `plan_workflow_pending` | `room/plan_scribe.py`, `turn_policy.py` | human_decision | at_least_once | plan 승인 대기 |
 | `plan_workflow_phase` | `plan/workflow_state.py` | event | at_least_once | plan_workflow.phase 전이 |
 | `scribe_start` | `room/plan_scribe.py`, `turn_meta.py` | progress | best_effort | scribe 작업 시작 |

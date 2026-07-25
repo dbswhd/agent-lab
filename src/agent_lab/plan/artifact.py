@@ -245,6 +245,35 @@ def plan_execution_blocker(folder: Path, plan_md: str) -> str | None:
     return f"{first.message} {first.hint}".strip()
 
 
+def scribe_repair_instruction(artifact: PlanArtifact) -> str:
+    """Corrective instruction fed back to the scribe when its plan cannot execute.
+
+    Returns "" when the plan is fine, so callers can treat truthiness as "needs repair".
+    """
+    if artifact.is_executable or not artifact.diagnostics:
+        return ""
+    lines = [
+        "The plan you just wrote cannot drive execution — it produced no executable action.",
+        "",
+        "Problem:",
+    ]
+    for diagnostic in artifact.diagnostics:
+        lines.append(f"- {diagnostic.message}")
+        if diagnostic.hint:
+            lines.append(f"  Fix: {diagnostic.hint}")
+    lines += [
+        "",
+        "Rewrite the plan so it contains at least one executable action under",
+        "'## 지금 실행', each numbered item carrying all three fields:",
+        "  - 무엇을: <what to change>",
+        "  - 어디서: <`path/to/file`>",
+        "  - 검증: <command or check that proves it>",
+        "",
+        "Keep the rest of the plan's content and intent; only make it executable.",
+    ]
+    return "\n".join(lines)
+
+
 def _diagnostics_payload(artifact: PlanArtifact) -> list[dict[str, str]]:
     return [d.to_dict() for d in artifact.diagnostics]
 
@@ -273,5 +302,6 @@ __all__ = [
     "plan_execution_blocker",
     "read_plan_artifact",
     "refresh_plan_artifact",
+    "scribe_repair_instruction",
     "write_plan_artifact",
 ]

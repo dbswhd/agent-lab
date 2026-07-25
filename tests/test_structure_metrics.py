@@ -493,7 +493,8 @@ def test_plan_import_graph_collects_modules() -> None:
     )
     assert proc.returncode == 0, proc.stderr
     payload = json.loads(proc.stdout)
-    assert payload["plan_module_count"] == 30
+    # 2026-07-25: 30 -> 31 for plan/artifact.py (P1 typed plan artifact).
+    assert payload["plan_module_count"] == 31
     assert "plan.refs" in payload["modules"]
     assert "plan.execute" in payload["modules"]
 

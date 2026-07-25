@@ -148,11 +148,47 @@ def apply_mission_loop_status_projection(folder: Path, mission: Mission) -> None
             all(mission_loop.get(key) == value for key, value in projected_fields.items())
             and autonomous.get("active") == autonomous_active
         ):
-            return run
+            return _carry_plan_phase(run)
         mission_loop.update(projected_fields)
         autonomous["active"] = autonomous_active
         mission_loop["autonomous_segment"] = autonomous
         run["mission_loop"] = mission_loop
-        return run
+        return _carry_plan_phase(run)
 
     patch_run_meta(folder, update)
+
+
+def _carry_plan_phase(run: RunState) -> RunState:
+    """Drag ``plan_workflow.phase`` along when the kernel moves the gate (P0).
+
+    The write-seam guard in ``plan/workflow_state.py`` stops the plan FSM from getting
+    *ahead* of the kernel. This closes the other direction: when the kernel advances
+    (e.g. an approval makes ``mission_loop.phase`` EXECUTE_QUEUE), a plan phase left
+    behind at HUMAN_PENDING would be drift. Together the two make drift unreachable,
+    which is what retires ``runtime/orchestration_reconcile.py``.
+    """
+    from agent_lab.core.plan_phase_contract import canonical_plan_phase, plan_phase_consistent
+    from agent_lab.plan.workflow_state import plan_phase_projection_enforced
+
+    if not plan_phase_projection_enforced():
+        return run
+
+    workflow = run.get("plan_workflow")
+    if not isinstance(workflow, dict) or not workflow.get("enabled"):
+        return run
+
+    mission_loop = run.get("mission_loop")
+    mission_loop = mission_loop if isinstance(mission_loop, dict) else {}
+    if not mission_loop.get("enabled"):
+        return run
+
+    mission_phase = mission_loop.get("phase")
+    if plan_phase_consistent(mission_phase, workflow.get("phase")):
+        return run
+    canonical = canonical_plan_phase(mission_phase)
+    if canonical is None:
+        return run
+
+    from agent_lab.plan.workflow_state import apply_plan_substate_patch
+
+    return apply_plan_substate_patch(run, phase=canonical)  # type: ignore[return-value]

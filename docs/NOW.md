@@ -72,12 +72,12 @@ dogfood 시나리오). 둘 다 mock-only, dogfood 무관.
 
 ### 지금 — 라이브 dogfood 트랙 (`scripts/dogfood_track.py`, `make dogfood-track` 재확인)
 
-**2026-07-25 기준 5/6 닫힘** (`make dogfood-track` 재실행 결과; 아래 표는 이 스냅샷으로 갱신 — 문서가 낡으면 `make dogfood-track` 실측이 맞다):
+**2026-07-25 기준 6/6 닫힘** (`make dogfood-track` 재실행 결과; 아래 표는 이 스냅샷으로 갱신 — 문서가 낡으면 `make dogfood-track` 실측이 맞다):
 
 | 게이트 | 소스 ID | 상태 | 다음 |
 |--------|---------|------|------|
 | **P0-5** S1 lift + explore | WORKFLOW **P0-5** · NORTH-STAR **N1** | ✅ 닫힘 (live ledger) | — |
-| **F7** repo_map/compaction ON/OFF | NORTH-STAR **F7** | 열림 — **7일 시계 마감(2026-07-16) 경과, 미결정.** `make f7-dogfood-report` 실측: `repo_map_coverage_70` FAIL(17.9%/70%), `budget_median_under_90` PASS. Human 결정 필요(재시작 vs OFF 확정) | `make f7-dogfood-report` 결과를 Human에게 제시 → `make dogfood-track-f7-decision DECISION=ON\|OFF` 또는 `make dogfood-track-f7-start`로 시계 재시작 |
+| **F7** repo_map/compaction ON/OFF | NORTH-STAR **F7** | ✅ **닫힘 (ON, 2026-07-25)** — n=32 · coverage 100% · median budget 18.9. 프로필 `small`/`balanced`/`thorough`/`autonomous`에 flags ON. **거의 최종:** Human usefulness 체크리스트는 얇음 → non-lift 실사용 누적 후 한 번 재검토 ([F7 doc](./F7-REPO-MAP-COMPACTION-DOGFOOD.md) Revisit) | 재검토만 (limbo 아님) |
 | **N4-D3** escalation_rate_by_level n≥10/level | NORTH-STAR **§1.4.1** | ✅ 닫힘 (2026-07-25) — L0/L1/L2/L3 = 3063/318/**10**/308. 루트픽스: turn-end `run_meta`가 `autonomy`/`trust_budget` 보존 (`SESSION_META_KEYS`). 증거: [phase-c1-n4-d3-2026-07-25.md](./redesign-2026-07/evidence/phase-c1-n4-d3-2026-07-25.md) | Phase C C1–C3 ✅ (M6 hard-delete 여전히 동결) |
 | **CATALOG** dogfood-v1 suite coverage | — | ✅ 닫힘 | — |
 | **HS-M5** addressable + Human harness_patch merge 1건 | — | ✅ 닫힘 (2026-07-25) — `pc-2026-07-24-fc0b8932` (`fp:weak_taste:deep`) → merge `755c38d9`. 증거: [phase-c3-hs-m5-2026-07-25.md](./redesign-2026-07/evidence/phase-c3-hs-m5-2026-07-25.md) | HS6 재개 여부는 Human 재논의 (자동 착수 금지) |
@@ -123,7 +123,7 @@ make ci                       # HS0 닫힘 기준 (큐 1)
 make feedback-report JSON=1   # harness_attribution 확인 (큐 1) · S1 lift(P0-5)는 닫힘, N4-D3/N1-30 진행용
 python scripts/propose_harness.py --mode list   # HS-M5 닫힘 후 추가 후보 관측; HS6은 Human 확인 전 착수 금지
 make eval-surface-local       # T0/T1 supersample (evals/results/latest.json)
-make f7-dogfood-report        # F7 7일 시계(마감 2026-07-16) 경과 후
+make f7-dogfood-report        # F7 closed ON — optional revisit metrics
 make dogfood-progress         # suite-log 진행도
 make dogfood-progress-auto ONLY=X1,X2   # mission + execute→Oracle mock
 make dogfood-track            # 게이트 현황 (live ledger)

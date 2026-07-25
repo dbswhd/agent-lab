@@ -281,6 +281,9 @@ _PROFILE_CONFIGS: dict[str, RunProfileConfig] = {
             "AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY": "1",
             "AGENT_LAB_MISSION_AUTHORITY": "1",
             "AGENT_LAB_MISSION_AUTHORITY_SESSIONS": "*",
+            # F7 ON (2026-07-25) — revisit after more non-lift live sessions
+            "AGENT_LAB_REPO_MAP": "1",
+            "AGENT_LAB_COMPACT_TOOL_OUTPUT": "1",
         },
         owns=_FAST_OWNS,
     ),
@@ -301,6 +304,9 @@ _PROFILE_CONFIGS: dict[str, RunProfileConfig] = {
             "AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY": "1",
             "AGENT_LAB_MISSION_AUTHORITY": "1",
             "AGENT_LAB_MISSION_AUTHORITY_SESSIONS": "*",
+            # F7 ON (2026-07-25) — revisit after more non-lift live sessions
+            "AGENT_LAB_REPO_MAP": "1",
+            "AGENT_LAB_COMPACT_TOOL_OUTPUT": "1",
         },
         owns=_BALANCED_OWNS,
     ),
@@ -318,6 +324,9 @@ _PROFILE_CONFIGS: dict[str, RunProfileConfig] = {
             "AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY": "1",
             "AGENT_LAB_MISSION_AUTHORITY": "1",
             "AGENT_LAB_MISSION_AUTHORITY_SESSIONS": "*",
+            # F7 ON (2026-07-25) — revisit after more non-lift live sessions
+            "AGENT_LAB_REPO_MAP": "1",
+            "AGENT_LAB_COMPACT_TOOL_OUTPUT": "1",
         },
         owns=_THOROUGH_OWNS,
     ),
@@ -338,6 +347,9 @@ _PROFILE_CONFIGS: dict[str, RunProfileConfig] = {
             "AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY": "1",
             "AGENT_LAB_MISSION_AUTHORITY": "1",
             "AGENT_LAB_MISSION_AUTHORITY_SESSIONS": "*",
+            # F7 ON (2026-07-25) — revisit after more non-lift live sessions
+            "AGENT_LAB_REPO_MAP": "1",
+            "AGENT_LAB_COMPACT_TOOL_OUTPUT": "1",
         },
         owns=_AUTONOMOUS_OWNS,
     ),

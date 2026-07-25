@@ -1,6 +1,7 @@
 # F7 — repo_map / compaction 7-day dogfood protocol
 
-> Status: **running** · started 2026-07-05 · decision due 2026-07-12 (ON or OFF — no limbo)
+> Status: **closed (ON)** · decided 2026-07-25 · dogfood-track F7 ✅  
+> **Almost-final:** sample gates PASS; Human usefulness checklist still thin — **revisit once more non-lift live sessions accumulate** (do not leave limbo; this ON is the close, revisit is a later review).  
 > NORTH-STAR F7
 
 ## Goal
@@ -9,26 +10,18 @@ Decide whether `AGENT_LAB_REPO_MAP` and `AGENT_LAB_COMPACT_TOOL_OUTPUT` stay **d
 
 ## Flags
 
-| Flag | Default | Dogfood week |
-|------|---------|--------------|
-| `AGENT_LAB_REPO_MAP` | OFF | **ON** (`=1`) |
-| `AGENT_LAB_REPO_MAP_TOKENS` | `1024` | keep or `1536` if maps feel thin |
-| `AGENT_LAB_COMPACT_TOOL_OUTPUT` | OFF | **ON** (`=1`) |
-| `AGENT_LAB_COMPACT_TOOL_CHARS` | `2000` | keep |
+| Flag | Default (pre-decision) | After ON (2026-07-25) |
+|------|------------------------|------------------------|
+| `AGENT_LAB_REPO_MAP` | OFF | **ON** via profile `flags` on `small` / `balanced` / `thorough` / `autonomous` |
+| `AGENT_LAB_REPO_MAP_TOKENS` | `1024` | unchanged |
+| `AGENT_LAB_COMPACT_TOOL_OUTPUT` | OFF | **ON** (same profiles) |
+| `AGENT_LAB_COMPACT_TOOL_CHARS` | `2000` | unchanged |
 
-Enable for the API process (and any child agents inherit via server env):
+`fast` stays lean (does not apply these as defaults). Explicit env still overrides profiles.
 
-```bash
-# shell before `make dev` / API start
-export AGENT_LAB_REPO_MAP=1
-export AGENT_LAB_COMPACT_TOOL_OUTPUT=1
-make dev
-```
-
-Or one-shot:
+Enable for ad-hoc API process without a profile:
 
 ```bash
-make f7-dogfood-env   # prints export lines
 eval "$(make f7-dogfood-env)"
 make dev
 ```
@@ -39,7 +32,7 @@ Use **supervisor** preset for real work (same as S1 dogfood).
 
 | Gate | Threshold |
 |------|-----------|
-| Calendar | **7 days** from start date (record below) |
+| Calendar | **7 days** from start date |
 | Sessions | **≥ 10** sessions with at least one agent turn and `last_context_bundle` |
 | Repo-map coverage | **≥ 70%** of those sessions have `repo_layer == "repo_map"` |
 | Budget health | median `budget_pct` **&lt; 90** (not stuck in critical) |
@@ -68,27 +61,33 @@ make f7-dogfood-report JSON=1
 
 Reads `sessions/*/run.json` → `last_context_bundle` / `context_quality_log` (stamped when agents build context).
 
-## Decision (end of day 7)
-
-Fill and commit (or paste into NORTH-STAR §3.1 note):
+## Decision (closed 2026-07-25)
 
 | Field | Value |
 |-------|--------|
-| Start date | YYYY-MM-DD |
-| End date | YYYY-MM-DD |
-| Sessions (n) | |
-| repo_map coverage % | |
-| median budget_pct | |
-| Compaction Human pass (x/5+) | |
-| **Decision** | **ON** / **OFF** |
-| Rationale (1–2 sentences) | |
+| Start date | 2026-07-09 |
+| End date | 2026-07-25 |
+| Sessions (n) | 32 instrumented (`make f7-dogfood-report`) |
+| repo_map coverage % | 100.0 |
+| median budget_pct | 18.9 |
+| Compaction Human pass (x/5+) | **deferred** — no written ≥5 checklist; revisit with live non-lift sessions |
+| **Decision** | **ON** |
+| Rationale | Sample gates PASS. Enable as profile defaults on small/balanced/thorough/autonomous. **Revisit later** when more non-lift live data accumulates (Human usefulness still thin; many of the 32 were lift repeats). |
 
-### If ON
+Recorded in `.agent-lab/dogfood-track.json` via `make dogfood-track-f7-decision DECISION=ON`.
 
-- Keep env defaults or set profile `owns`/`flags` so `thorough` (and optionally `balanced`) enable both flags.
-- Update NORTH-STAR gauge: context quality D2→D3.
+### Revisit (explicit — not limbo)
 
-### If OFF
+- **When:** after a stretch of normal supervisor work (not X2-lift fill), or if agents feel lost / garbled from compaction.
+- **How:** `make f7-dogfood-report` + Human checklist lines → keep ON, narrow profiles, or flip OFF with rationale.
+- **Not:** “maybe later” without this ON close. Gate is closed; revisit is a scheduled second look.
+
+### If ON (done)
+
+- Profile `flags` set for `small` / `balanced` / `thorough` / `autonomous`.
+- NORTH-STAR gauge: context quality → D3 (with revisit note).
+
+### If OFF (not chosen)
 
 - Leave flags default OFF; document why in this file’s Decision table.
 - Do **not** leave “maybe later” without a date — F7 forbids limbo.
@@ -107,3 +106,4 @@ Fill and commit (or paste into NORTH-STAR §3.1 note):
 | Compaction | `src/agent_lab/room/context/message_trim.py` |
 | Metrics stamp | `context/bundle.py` → `last_context_bundle`, `context_quality_log` |
 | Report | `scripts/f7_dogfood_report.py` |
+| Profile defaults | `src/agent_lab/run/profile.py` |

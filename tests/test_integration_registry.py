@@ -317,7 +317,13 @@ def test_fast_bucket_collection_budget():
     # test_run_profile.py gained a dedicated inbox-stays-retired test
     # alongside the flipped-back plan-authority-on assertion.
     # 2026-07-25: raised 3633 -> 3640 for Phase C C1 tests + autonomy preserve.
-    assert count <= 3640, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-25: raised 3640 -> 3655 for the P0 plan↔kernel projection invariant
+    # (test_plan_kernel_projection.py) — contract completeness, drift-detector
+    # agreement, write-seam no-drift, and the "coercion never manufactures approval"
+    # moat test. Combination sweeps loop internally instead of parametrizing so the
+    # 132-pair coverage costs 18 collected tests, not 270. Includes the reverse
+    # direction (kernel advances -> plan_workflow follows) in mission/projection.py.
+    assert count <= 3658, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

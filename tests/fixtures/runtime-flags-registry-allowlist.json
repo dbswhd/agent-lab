@@ -1,7 +1,7 @@
 {
   "version": 2,
-  "scanned_count": 245,
-  "registry_count": 247,
+  "scanned_count": 246,
+  "registry_count": 248,
   "code_not_registry_allowlist": [],
   "trading_lane_internal": [
     "AGENT_LAB_ALLOW_BACKTEST_RUN",
@@ -28,7 +28,7 @@
   "notes": {
     "scanned_count": "Unique AGENT_LAB_* tokens in src/agent_lab/**/*.py (F10 measured set).",
     "registry_count": "FLAG_REGISTRY rows in src/agent_lab/runtime_flags.py.",
-    "code_not_registry_allowlist": "Must be empty — register flags or document in trading_lane_internal.",
-    "trading_lane_internal": "F5 extension lane — category internal in FLAG_REGISTRY; see docs/F5-TRADING-ISOLATION.md §F10."
+    "code_not_registry_allowlist": "Must be empty \u2014 register flags or document in trading_lane_internal.",
+    "trading_lane_internal": "F5 extension lane \u2014 category internal in FLAG_REGISTRY; see docs/F5-TRADING-ISOLATION.md \u00a7F10."
   }
 }

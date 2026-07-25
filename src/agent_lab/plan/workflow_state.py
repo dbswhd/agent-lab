@@ -9,6 +9,7 @@ from typing import Any, Literal
 from agent_lab.plan.actions import parse_plan_actions
 from agent_lab.run.meta import patch_run_meta, read_run_meta
 from agent_lab.run.state import RunState, RunStateLike
+from agent_lab.time_utils import utc_now_iso as _utc_now_iso
 from agent_lab.verified_loop import DEFAULT_COMPLETION_PROMISE
 
 PlanWorkflowPhase = Literal[
@@ -311,6 +312,52 @@ def _mirror_verified_loop_status(run: RunStateLike, pw: dict[str, Any]) -> None:
     run["verified_loop"] = loop
 
 
+def plan_phase_projection_enforced() -> bool:
+    """P0: kernel is the authority for plan gate boundaries (``AGENT_LAB_PLAN_PHASE_PROJECTION``).
+
+    When on, a requested ``plan_workflow.phase`` that contradicts the kernel-projected
+    ``mission_loop.phase`` is coerced to the kernel's canonical phase instead of being
+    persisted — making drift unreachable rather than repairable.
+    """
+    return os.getenv("AGENT_LAB_PLAN_PHASE_PROJECTION", "1").strip().lower() not in {
+        "0",
+        "false",
+        "no",
+        "off",
+    }
+
+
+def _project_phase_onto_kernel(
+    run: RunStateLike,
+    pw: dict[str, Any],
+    requested: str,
+) -> str:
+    """Coerce ``requested`` to what the mission kernel allows; record contradictions."""
+    from agent_lab.core.mission_loop import get_mission_loop
+    from agent_lab.core.plan_phase_contract import coerce_plan_phase
+
+    mission = get_mission_loop(run)
+    if not mission.get("enabled"):
+        return requested
+
+    phase, coerced_from = coerce_plan_phase(
+        mission.get("phase"),
+        requested,
+        current=pw.get("phase"),
+    )
+    if coerced_from is None:
+        return phase
+
+    pw["phase_coercions"] = int(pw.get("phase_coercions") or 0) + 1
+    pw["last_phase_coercion"] = {
+        "requested": coerced_from,
+        "applied": phase,
+        "mission_phase": str(mission.get("phase") or ""),
+        "at": _utc_now_iso(),
+    }
+    return phase
+
+
 def apply_plan_substate_patch(
     run: dict[str, Any],
     *,
@@ -320,12 +367,18 @@ def apply_plan_substate_patch(
     pop_fields: tuple[str, ...] = (),
     **pw_fields: Any,
 ) -> dict[str, Any]:
-    """Single write path for plan_workflow substate (Slice C SSOT)."""
+    """Single write path for plan_workflow substate (Slice C SSOT).
+
+    P0: when ``plan_phase_projection_enforced()``, the kernel-projected
+    ``mission_loop.phase`` wins over a contradicting ``phase`` request.
+    """
     from agent_lab.runtime.orchestration import stamp_orchestration_state
 
     pw = get_plan_workflow(run)
     pw["enabled"] = True
     if phase is not None:
+        if plan_phase_projection_enforced():
+            phase = _project_phase_onto_kernel(run, pw, phase)
         pw["phase"] = phase
     for key, value in pw_fields.items():
         if value is not None:

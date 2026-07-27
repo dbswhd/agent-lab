@@ -128,6 +128,15 @@ def sync_mission_phase_from_run(run: dict[str, Any]) -> dict[str, Any]:
     return ml
 
 
+def _executable_actions_for_gate(plan_md: str, session_folder: Path | None) -> list[PlanAction]:
+    """Executable actions for the execute gate — typed artifact when a folder is known."""
+    if session_folder is not None:
+        from agent_lab.plan.artifact import plan_actions_for
+
+        return [PlanAction.from_dict(row) for row in plan_actions_for(session_folder, plan_md or "")]
+    return [a for a in parse_plan_actions(plan_md or "") if a.executable]
+
+
 def evaluate_plan_gate(
     plan_md: str,
     *,
@@ -137,7 +146,7 @@ def evaluate_plan_gate(
     """Momus-lite: mechanical plan gate before execute enqueue."""
     from agent_lab.context.layers import plan_gate_mcp_warnings
 
-    actions = [a for a in parse_plan_actions(plan_md or "") if a.executable]
+    actions = _executable_actions_for_gate(plan_md, session_folder)
     failures: list[dict[str, Any]] = []
     for action in actions:
         issues = _action_gate_issues(action)
@@ -237,7 +246,12 @@ def _action_gate_issues(action: PlanAction) -> list[str]:
     return issues
 
 
-def _action_indices_from_plan(plan_md: str) -> list[int]:
+def _action_indices_from_plan(plan_md: str, folder: Path | None = None) -> list[int]:
+    """Execute-queue indices. Reads the typed artifact when a session folder is known."""
+    if folder is not None:
+        from agent_lab.plan.artifact import plan_action_indices_for
+
+        return plan_action_indices_for(folder, plan_md or "")
     return [a.index for a in parse_plan_actions(plan_md or "") if a.executable]
 
 
@@ -458,7 +472,7 @@ def run_plan_gate(folder: Path, plan_md: str) -> dict[str, Any]:
             g["status"] = "ok"
             g["last_reject_reason"] = None
             g["failures"] = []
-            indices = _action_indices_from_plan(plan_md)
+            indices = _action_indices_from_plan(plan_md, folder)
             m["plan_gate"] = g
             m["phase"] = "EXECUTE_QUEUE"
             m["pending_action_indices"] = indices

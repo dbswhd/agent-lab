@@ -40,13 +40,15 @@ def drift_audit_interval() -> int:
 def snapshot_drift_baseline(folder: Path, plan_md: str, human_turn: int) -> None:
     """Freeze the current plan.md action list as the drift-audit baseline (fail-open)."""
     try:
-        from agent_lab.plan.actions import parse_plan_actions
+        from agent_lab.plan.artifact import plan_actions_for
         from agent_lab.run.meta import patch_run_meta
 
-        actions = parse_plan_actions(plan_md or "")
+        actions = plan_actions_for(folder, plan_md or "", executable_only=False)
         baseline = {
             "human_turn": human_turn,
-            "actions": [{"index": a.index, "what": a.what, "kind": a.kind} for a in actions],
+            "actions": [
+                {"index": a.get("index"), "what": a.get("what"), "kind": a.get("kind")} for a in actions
+            ],
         }
 
         def _patch(run: dict[str, Any]) -> dict[str, Any]:

@@ -103,6 +103,10 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 | MCP-INBOX | Human Inbox MCP-first (harvest off, lead/single-flight, source badge) | ✅ | [MCP-FIRST-INBOX.md](MCP-FIRST-INBOX.md), `inbox_mcp_policy.py`, `HumanInboxPanel.tsx`, `tests/test_mcp_first_inbox.py` | Phase A–E; legacy `AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST=1` |
 | UX-WAVE-B | Room UX | Composer Decision Queue + current workspace tab browser acceptance | ✅ | [wave-b-browser-acceptance-2026-07-24.md](redesign-2026-07/evidence/wave-b-browser-acceptance-2026-07-24.md), `web/e2e/wave-b-live-journey.spec.ts`, `scripts/run_wave_b_live_acceptance.sh`, `web/e2e/wave-b-journey.spec.ts` | Live uvicorn+Vite 4/4 PASS (2026-07-24). Mock suite remains CI regression. Oracle live asserts CTA→reverify wiring (pending seed may 409); full worktree repair E2E out of scope. |
 | MC-TT | Mission Control Phase B | Time-to-trust (decision latency · evidence strip · Needs input age · F8 cost chip) | ✅ | [phase-b-small-mission-dogfood-2026-07-24.md](redesign-2026-07/evidence/phase-b-small-mission-dogfood-2026-07-24.md), `decision_latency.py`, `executeEvidenceStrip.ts`, `sessionStatusLine.ts`, `NeedsInputBadge.tsx`, `scripts/run_phase_b_small_mission_dogfood.sh` | B1–B4 shipped; Small Mission live dogfood PASS (2026-07-24). |
+| N4-D3 | NORTH-STAR §1.4.1 | Autonomy Ladder dogfood sample sizes (n≥10 / L0–L3) | ✅ | [phase-c1-n4-d3-2026-07-25.md](redesign-2026-07/evidence/phase-c1-n4-d3-2026-07-25.md), `session/guidance.py` (`autonomy`/`trust_budget` preserve), `sessions/_benchmark/reports/l2-sample-fill-20260724T183849Z.json` | Phase C **C1** closed 2026-07-25. Root fix: turn-end run_meta no longer drops autonomy ceiling. |
+| MC-AUTH | Mission Control Phase C2 | Mission Inbox authority full traffic (`*` sentinel) | ✅ | [phase-c2-mission-authority-2026-07-25.md](redesign-2026-07/evidence/phase-c2-mission-authority-2026-07-25.md), `mission/inbox_application.py`, `run/profile.py` | Profile defaults small/balanced/thorough/autonomous; empty allowlist still fail-closed; M6 hard-delete not included. |
+| MC-AUT | Mission Control Phase C | Controlled autonomy (N4 D3 · mission authority cutover · HS-M5) | ✅ | [phase-c1-n4-d3-2026-07-25.md](redesign-2026-07/evidence/phase-c1-n4-d3-2026-07-25.md) · [phase-c2-mission-authority-2026-07-25.md](redesign-2026-07/evidence/phase-c2-mission-authority-2026-07-25.md) · [phase-c3-hs-m5-2026-07-25.md](redesign-2026-07/evidence/phase-c3-hs-m5-2026-07-25.md), `755c38d9` | **C1–C3** closed 2026-07-25. HS-M5: `pc-2026-07-24-fc0b8932` / `fp:weak_taste:deep`. M6 hard-delete still frozen; HS6 not auto-started. |
+| F7 | NORTH-STAR F7 | repo_map + compact_tool_output default ON (profile flags) | ✅ | [F7-REPO-MAP-COMPACTION-DOGFOOD.md](F7-REPO-MAP-COMPACTION-DOGFOOD.md), `run/profile.py`, `.agent-lab/dogfood-track.json` | **Almost-final close** 2026-07-25: ON + dogfood-track 6/6. Revisit after more non-lift live sessions (Human checklist deferred). |
 
 **Planning canonical:** [MISSION-BOARD-ADOPTION.md](MISSION-BOARD-ADOPTION.md) (P1–P4 shipped).
 
@@ -112,7 +116,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 
 | ID | Source | Item | Status | Evidence | Notes |
 |----|--------|------|--------|----------|-------|
-| _(none)_ | | | | | |
+| _(none — MC-AUT moved to Shipped 2026-07-25)_ | | | | | |
 
 ---
 

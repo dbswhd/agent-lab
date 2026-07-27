@@ -1,9 +1,17 @@
 {
   "schema": 1,
   "f7": {
-    "start_date": "2026-07-09"
+    "start_date": "2026-07-09",
+    "decision": "ON",
+    "decided_at": "2026-07-25T08:56:06.020888+00:00",
+    "rationale": "Sample gates PASS (n=32, coverage 100%, median budget 18.9). Enable as profile defaults; revisit once more non-lift live sessions accumulate (Human usefulness checklist still thin).",
+    "end_date": "2026-07-25"
   },
-  "hs_m5": {},
+  "hs_m5": {
+    "merged_at": "2026-07-24T21:06:17.355221+00:00",
+    "candidate_id": "pc-2026-07-24-fc0b8932",
+    "notes": "Phase C C3: merged fp:weak_taste:deep via merge_harness (755c38d9)"
+  },
   "notes": [],
-  "updated_at": "2026-07-09T09:24:33.784806+00:00"
+  "updated_at": "2026-07-25T08:56:06.021205+00:00"
 }

@@ -40,7 +40,7 @@ def resolve_mypy() -> str:
 
 def run_plan_mypy() -> tuple[int, dict[str, int]]:
     proc = subprocess.run(
-        [resolve_mypy(), str(PLAN_SRC.relative_to(ROOT))],
+        [resolve_mypy(), "--config-file", "pyproject.toml", "--follow-imports=silent", str(PLAN_SRC.relative_to(ROOT))],
         cwd=ROOT,
         capture_output=True,
         text=True,

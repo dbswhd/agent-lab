@@ -258,9 +258,11 @@ def _flag_human_attention(run_in: RunState, *, action_index: int, current: dict[
     source = "topology_router_plateau"
     ref = str(action_index)
     for item in inbox_items(run_in):
-        if item.get("status") == "pending" and str(item.get("source") or "") == source and item.get(
-            "action_ref"
-        ) == ref:
+        if (
+            item.get("status") == "pending"
+            and str(item.get("source") or "") == source
+            and item.get("action_ref") == ref
+        ):
             return
     item = new_inbox_item(
         kind="question",
@@ -358,7 +360,9 @@ def reroute_mission_topology_after_verify(
         cur_kind = str(current.get("kind") or "")
         cur_max_raw = current.get("max_agents")
         cur_max = cur_max_raw if isinstance(cur_max_raw, int) else 1
-        escalated = candidate_dict != current and (cur_kind == str(TopologyKind.SINGLE) or candidate.max_agents > cur_max)
+        escalated = candidate_dict != current and (
+            cur_kind == str(TopologyKind.SINGLE) or candidate.max_agents > cur_max
+        )
         if not escalated:
             _handle_plateau(run_in, ml, action_index=action_index, count=count, max_rep=max_rep, current=current)
             return run_in
@@ -461,8 +465,7 @@ def deescalate_mission_topology_after_pass(folder: Path, *, action_index: int) -
         cur_max_raw = current.get("max_agents")
         cur_max = cur_max_raw if isinstance(cur_max_raw, int) else 1
         smaller = candidate.max_agents < cur_max or (
-            candidate_dict.get("kind") == str(TopologyKind.SINGLE)
-            and current.get("kind") != str(TopologyKind.SINGLE)
+            candidate_dict.get("kind") == str(TopologyKind.SINGLE) and current.get("kind") != str(TopologyKind.SINGLE)
         )
         if not smaller:
             return run_in

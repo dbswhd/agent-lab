@@ -126,6 +126,11 @@ def write_session_plan_md(
             return path, rel
     path.write_text(normalized, encoding="utf-8")
     session_plan_path(folder).write_text(normalized, encoding="utf-8")
+    # P1: parse once here, at the write seam, instead of lazily at every read site —
+    # so a plan that cannot drive execution is detected when it is written.
+    from agent_lab.plan.artifact import refresh_plan_artifact
+
+    refresh_plan_artifact(folder, normalized, source_relpath=rel)
     return path, rel
 
 

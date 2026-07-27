@@ -117,6 +117,24 @@ class MissionApplication:
         self._project_plan(mission)
         return mission
 
+    def reopen_plan(self) -> Mission:
+        """Plan content changed after approval — return the mission to the plan gate.
+
+        The kernel owns the gate boundary, so an approval that is no longer valid has to
+        be revoked *there*; patching ``plan_workflow`` alone is what used to produce
+        ``plan_approved_vs_mission_*`` drift (P0).
+        """
+        plan = self._read_plan()
+        plan_hash = plan_content_hash(plan)
+        current = self.load()
+        if current.state is MissionState.AWAITING_PLAN_DECISION and current.current_plan_hash == plan_hash:
+            return current
+        return self.repository.dispatch(
+            OpenPlan(plan_hash),
+            expected_version=current.version,
+            idempotency_key=f"plan-open:{plan_hash}:{current.plan_revision + 1}",
+        )
+
     def reject_plan(self, note: str, *, target_phase: str = "CLARIFY") -> Mission:
         plan = self._read_plan()
         plan_hash = plan_content_hash(plan)

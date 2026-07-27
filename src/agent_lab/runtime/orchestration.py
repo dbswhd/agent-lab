@@ -8,10 +8,14 @@ from pathlib import Path
 
 from agent_lab.run.state import RunStateLike
 
-_PLAN_CLARIFY = frozenset({"INTAKE", "CLARIFY"})
-_PLAN_DISCUSS = frozenset({"DRAFT", "PEER_REVIEW", "REFINE"})
-_PLAN_GATE = frozenset({"HUMAN_PENDING"})
-_PLAN_DONE = frozenset({"APPROVED"})
+# P0: the plan↔kernel contract lives in exactly one place — agent_lab.core.
+from agent_lab.core.plan_phase_contract import (
+    PLAN_CLARIFY as _PLAN_CLARIFY,
+    PLAN_DISCUSS as _PLAN_DISCUSS,
+    PLAN_DONE as _PLAN_DONE,
+    PLAN_GATE as _PLAN_GATE,
+    plan_phase_consistent,
+)
 
 _EXECUTE_MISSION_PHASES = frozenset(
     {
@@ -24,22 +28,6 @@ _EXECUTE_MISSION_PHASES = frozenset(
         "MISSION_PAUSED",
     }
 )
-
-# When mission is enabled, plan_workflow.phase should fall in this bucket per mission phase.
-_MISSION_PLAN_BUCKETS: dict[str, frozenset[str]] = {
-    "MISSION_DEFINE": _PLAN_CLARIFY,
-    "CLARIFY": _PLAN_CLARIFY,
-    "DISCUSS": _PLAN_DISCUSS | _PLAN_GATE,
-    "PLAN_GATE": _PLAN_GATE | _PLAN_DISCUSS,
-    "PLAN_REJECT": _PLAN_DISCUSS | _PLAN_GATE,
-    "EXECUTE_QUEUE": _PLAN_DONE,
-    "DRY_RUN": _PLAN_DONE,
-    "MERGE_REVIEW": _PLAN_DONE,
-    "VERIFY": _PLAN_DONE,
-    "REPAIR": _PLAN_DONE,
-    "MISSION_DONE": _PLAN_DONE,
-    "MISSION_PAUSED": _PLAN_DONE | _PLAN_GATE | _PLAN_DISCUSS | _PLAN_CLARIFY,
-}
 
 
 class OrchestrationState(TypedDict):
@@ -81,17 +69,12 @@ def detect_phase_drift(run: RunStateLike) -> str | None:
 
     mission_phase = str(mission.get("phase") or "MISSION_DEFINE").upper()
 
+    # Single source of truth: agent_lab.core.plan_phase_contract.
+    if plan_phase_consistent(mission_phase, plan_phase):
+        return None
     if plan_phase == "APPROVED":
-        if mission_phase in {"MISSION_DEFINE", "CLARIFY", "DISCUSS", "PLAN_GATE", "PLAN_REJECT"}:
-            return f"plan_approved_vs_mission_{mission_phase.lower()}"
-        return None
-
-    allowed = _MISSION_PLAN_BUCKETS.get(mission_phase)
-    if allowed is None:
-        return None
-    if plan_phase not in allowed:
-        return f"plan_substate_{plan_phase.lower()}_vs_mission_{mission_phase.lower()}"
-    return None
+        return f"plan_approved_vs_mission_{mission_phase.lower()}"
+    return f"plan_substate_{plan_phase.lower()}_vs_mission_{mission_phase.lower()}"
 
 
 def reconcile_hint_for_drift(

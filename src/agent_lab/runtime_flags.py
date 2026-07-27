@@ -564,6 +564,18 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         "P3: plan FSM phase/clarity via MCP first; server tick hold + cap fallback",
         default="1",
     ),
+    FlagDef(
+        "AGENT_LAB_PLAN_SCRIBE_REPAIR",
+        "feature",
+        "P1: retry the scribe with diagnostics when the plan has no executable action",
+        default="1",
+    ),
+    FlagDef(
+        "AGENT_LAB_PLAN_PHASE_PROJECTION",
+        "feature",
+        "P0: mission kernel is authority for plan gate; contradicting plan phase is coerced",
+        default="1",
+    ),
     FlagDef("AGENT_LAB_SCRIBE_RECENT_TURNS", "feature", "Scribe numbered thread trim", default="12"),
     FlagDef("AGENT_LAB_SCRIBE_MAX_CHARS", "feature", "Scribe thread char cap", default="120000"),
     FlagDef("AGENT_LAB_SCRIBE_FULL", "feature", "Full chat.jsonl for scribe"),

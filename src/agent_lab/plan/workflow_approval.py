@@ -6,7 +6,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from agent_lab.run.state import RunState
+from agent_lab.run.state import RunState, RunStateLike
 
 from agent_lab.plan.pending import plan_content_hash
 from agent_lab.plan.workflow_state import (
@@ -23,6 +23,27 @@ from agent_lab.turn_modes import approval_starts_execute_loop
 from agent_lab.verified_loop import DEFAULT_COMPLETION_PROMISE
 
 
+def _reopen_plan_in_kernel(folder: Path, run: RunStateLike) -> None:
+    """Best-effort kernel revocation for an invalidated approval.
+
+    Only for sessions that actually run a mission loop — plan-only sessions have no
+    journal and no gate boundary to keep in sync.
+    """
+    from agent_lab.core.mission_loop import get_mission_loop
+
+    if not get_mission_loop(run).get("enabled"):
+        return
+    try:
+        from agent_lab.mission.application import MissionApplication
+
+        goal = str(run.get("goal") or run.get("topic") or folder.name)
+        MissionApplication(folder, goal).reopen_plan()
+    except Exception:
+        # Never block invalidation on journal trouble — the caller still raises
+        # PlanWorkflowNotApproved, so execute stays gated either way.
+        pass
+
+
 def ensure_plan_workflow_approved(folder: Path) -> None:
     run = read_run_meta(folder)
     if not is_plan_workflow_active(run):
@@ -36,6 +57,11 @@ def ensure_plan_workflow_approved(folder: Path) -> None:
     approved_hash = str(workflow.get("plan_hash_at_approval") or "")
     if approved_hash and approved_hash == plan_content_hash(plan_md):
         return
+
+    # P0: revoke the approval in the kernel first — it owns the gate boundary. Patching
+    # plan_workflow alone would be coerced straight back to APPROVED by the projection
+    # guard (and used to show up as plan_approved_vs_mission_* drift).
+    _reopen_plan_in_kernel(folder, run)
 
     def _invalidate(current: dict[str, Any]) -> dict[str, Any]:
         return apply_plan_substate_patch(

@@ -29,7 +29,7 @@ def structured_envelope_system_addon(*, compact: bool = False) -> str:
             "Line 2+: human-readable body (markdown OK). Fence optional.\n"
             "Acts: PROPOSE | AMEND | ENDORSE | NOTE | CHALLENGE | PASS | BLOCK | MESSAGE — "
             "NOTE = agree + non-blocking observation (does not reopen the round; "
-            'don\'t write "NOTE" as prose under ENDORSE, use act:NOTE).'
+            "don't write \"NOTE\" as prose under ENDORSE, use act:NOTE)."
         )
     return (
         "[Structured envelope — machine layer first]\n"

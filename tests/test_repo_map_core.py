@@ -99,7 +99,10 @@ def test_rank_files_nested_def_ranked_alongside_top_level(tmp_path: Path) -> Non
     root = tmp_path / "ws"
     root.mkdir()
     (root / "mod.py").write_text(
-        "def public_api():\n    def _private_nested_helper():\n        return 1\n    return _private_nested_helper()\n",
+        "def public_api():\n"
+        "    def _private_nested_helper():\n"
+        "        return 1\n"
+        "    return _private_nested_helper()\n",
         encoding="utf-8",
     )
     files = iter_python_files(root)

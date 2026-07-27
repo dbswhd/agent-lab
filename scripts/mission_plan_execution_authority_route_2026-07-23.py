@@ -46,7 +46,9 @@ def _seed_session(sessions_root: Path, session_id: str, *, phase: str = "HUMAN_P
     folder = sessions_root / session_id
     folder.mkdir(parents=True, exist_ok=True)
     (folder / "plan.md").write_text("# Plan\n\n- ship widget\n", encoding="utf-8")
-    (folder / "run.json").write_text(json.dumps({"plan_workflow": {"enabled": True, "phase": phase}}), encoding="utf-8")
+    (folder / "run.json").write_text(
+        json.dumps({"plan_workflow": {"enabled": True, "phase": phase}}), encoding="utf-8"
+    )
     return folder
 
 
@@ -70,9 +72,7 @@ def run(sessions_root: Path) -> dict[str, Any]:
         "plan_workflow_phase": body.get("plan_workflow", {}).get("phase"),
         "mission_dual_write_mirrored": body.get("mission_dual_write", {}).get("mirrored"),
         "journal_created": journal.is_file(),
-        "journal_has_plan_approved": "PlanApproved" in journal.read_text(encoding="utf-8")
-        if journal.is_file()
-        else False,
+        "journal_has_plan_approved": "PlanApproved" in journal.read_text(encoding="utf-8") if journal.is_file() else False,
     }
 
     # 2. Reject -> REFINE via authority path.

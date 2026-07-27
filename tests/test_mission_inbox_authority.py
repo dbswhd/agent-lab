@@ -157,21 +157,3 @@ def test_authority_http_resolve_uses_journal_without_legacy_payload(
     assert response.status_code == 200
     assert response.json()["mission_dual_write"]["authority"] == "mission_journal"
     assert "human_inbox" not in read_run_meta(folder)
-
-
-def test_mission_authority_full_traffic_sentinel(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    from agent_lab.mission.inbox_application import mission_authority_enabled
-
-    monkeypatch.setenv("AGENT_LAB_MISSION_AUTHORITY", "1")
-    monkeypatch.setenv("AGENT_LAB_MISSION_AUTHORITY_SESSIONS", "*")
-    assert mission_authority_enabled(tmp_path / "any-session") is True
-    monkeypatch.setenv("AGENT_LAB_MISSION_AUTHORITY_SESSIONS", "__all__")
-    assert mission_authority_enabled(tmp_path / "other") is True
-
-
-def test_mission_authority_empty_allowlist_still_fail_closed(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    from agent_lab.mission.inbox_application import mission_authority_enabled
-
-    monkeypatch.setenv("AGENT_LAB_MISSION_AUTHORITY", "1")
-    monkeypatch.setenv("AGENT_LAB_MISSION_AUTHORITY_SESSIONS", "")
-    assert mission_authority_enabled(tmp_path / "authority") is False

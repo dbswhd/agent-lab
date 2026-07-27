@@ -123,7 +123,8 @@ def test_loop_discuss_build_confirmation_keeps_loop_profile(monkeypatch: pytest.
     dogfood gap: real file writes shouldn't happen without the consensus gate."""
     monkeypatch.setenv("AGENT_LAB_TURN_POLICY", "1")
     topic = (
-        "제안한 기본값 그대로 진행해줘 — 거래일 기준 N일, 매월 마지막 거래일 리밸런싱. 바로 구현 + pytest까지 진행해줘."
+        "제안한 기본값 그대로 진행해줘 — 거래일 기준 N일, 매월 마지막 거래일 리밸런싱. "
+        "바로 구현 + pytest까지 진행해줘."
     )
     contract = resolve_mode_contract(
         mode="discuss",

@@ -68,9 +68,7 @@ class TestRetryOnceAfterTransientFailure:
         assert agents_out["claude"].role == "agent"  # untouched peer reply preserved
         assert agents_out["codex"].retry_of_turn == 0
 
-    def test_retry_that_fails_again_still_reports_system_error(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_retry_that_fails_again_still_reports_system_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
             "agent_lab.room.consensus_rounds.run_parallel_round",
             lambda *a, **k: [_err("codex", "still broken")],
@@ -113,10 +111,11 @@ def test_round1_transient_error_does_not_void_whole_turn(monkeypatch: pytest.Mon
 
     assert call_log[0] == ["codex", "claude"]
     assert call_log[1] == ["codex"]  # retry happened before falling through to later rounds
-    assert not (
-        isinstance(result, dict) and result.get("status") == "failed" and result.get("rounds") == 1
-    )
-    assert ("consensus_retry", {"round": 1, "agents": ["codex"], "message": "codex 호출 실패 — 해당 에이전트만 1회 재시도합니다."}) in events
+    assert not (isinstance(result, dict) and result.get("status") == "failed" and result.get("rounds") == 1)
+    assert (
+        "consensus_retry",
+        {"round": 1, "agents": ["codex"], "message": "codex 호출 실패 — 해당 에이전트만 1회 재시도합니다."},
+    ) in events
 
 
 def test_debate_loop_round_transient_error_does_not_void_whole_turn(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -156,9 +155,7 @@ def test_debate_loop_round_transient_error_does_not_void_whole_turn(monkeypatch:
 
     assert (["codex", "claude"], 2) in call_log
     assert (["codex"], 2) in call_log  # retry happened for round 2, not just round 1
-    assert not (
-        isinstance(result, dict) and result.get("status") == "failed" and result.get("rounds") == 2
-    )
+    assert not (isinstance(result, dict) and result.get("status") == "failed" and result.get("rounds") == 2)
     assert (
         "consensus_retry",
         {"round": 2, "agents": ["codex"], "message": "codex 호출 실패 — 해당 에이전트만 1회 재시도합니다."},

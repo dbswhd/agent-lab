@@ -356,17 +356,13 @@ def _write_session_run(
     )
 
 
-def test_stuck_discuss_sessions_empty_when_no_sessions_dir(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_stuck_discuss_sessions_empty_when_no_sessions_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("agent_lab.outcome_harvester.outcomes_path", lambda root=None: tmp_path / "missing.jsonl")
     rep = build_feedback_report(tmp_path)
     assert rep["stuck_discuss_sessions"] == []
 
 
-def test_stuck_discuss_sessions_excludes_enabled_and_executed(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_stuck_discuss_sessions_excludes_enabled_and_executed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("agent_lab.outcome_harvester.outcomes_path", lambda root=None: tmp_path / "missing.jsonl")
     sessions_dir = tmp_path / "sessions"
     _write_session_run(sessions_dir, "enabled-session", enabled=True, phase="DISCUSS", rounds=9)
@@ -377,9 +373,7 @@ def test_stuck_discuss_sessions_excludes_enabled_and_executed(
     assert rep["stuck_discuss_sessions"] == []
 
 
-def test_stuck_discuss_sessions_ranked_by_rounds_descending(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_stuck_discuss_sessions_ranked_by_rounds_descending(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("agent_lab.outcome_harvester.outcomes_path", lambda root=None: tmp_path / "missing.jsonl")
     sessions_dir = tmp_path / "sessions"
     _write_session_run(sessions_dir, "low-rounds", enabled=False, phase="DISCUSS", rounds=2, topic="a")

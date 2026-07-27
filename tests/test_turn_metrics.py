@@ -94,9 +94,7 @@ def test_challenge_precision_tallies_note_from_turn_acts() -> None:
         {"agent": "claude", "act": "NOTE"},
         {"agent": "cursor", "act": "ENDORSE"},  # not NOTE → ignored
     ]
-    metrics = build_turn_metrics(
-        _TURN, objections=[], executions=[], human_turn=1, turn_acts=turn_acts
-    )
+    metrics = build_turn_metrics(_TURN, objections=[], executions=[], human_turn=1, turn_acts=turn_acts)
     cp = metrics["challenge_precision"]
     assert cp["claude"]["note_total"] == 2
     assert "cursor" not in cp  # ENDORSE alone doesn't create a row
@@ -256,9 +254,7 @@ def test_record_turn_outcome_reads_turn_acts_only_when_flag_enabled(tmp_path, mo
             "envelope": {"act": "NOTE", "refs": []},
         },
     ]
-    (folder / "chat.jsonl").write_text(
-        "\n".join(json.dumps(line) for line in chat_lines) + "\n", encoding="utf-8"
-    )
+    (folder / "chat.jsonl").write_text("\n".join(json.dumps(line) for line in chat_lines) + "\n", encoding="utf-8")
 
     monkeypatch.setenv("AGENT_LAB_TURN_METRICS", "1")
     monkeypatch.delenv("AGENT_LAB_CHALLENGE_PRECISION", raising=False)

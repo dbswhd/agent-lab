@@ -12,9 +12,7 @@ from agent_lab.room.context import is_pass_response, is_pure_no_objection
 ActType = Literal["PROPOSE", "AMEND", "ENDORSE", "CHALLENGE", "PASS", "BLOCK", "MESSAGE", "NOTE"]
 ConsensusVerdict = Literal["endorse", "pass", "substantive", "neutral"]
 
-VALID_ACTS: frozenset[str] = frozenset(
-    {"PROPOSE", "AMEND", "ENDORSE", "CHALLENGE", "PASS", "BLOCK", "MESSAGE", "NOTE"}
-)
+VALID_ACTS: frozenset[str] = frozenset({"PROPOSE", "AMEND", "ENDORSE", "CHALLENGE", "PASS", "BLOCK", "MESSAGE", "NOTE"})
 
 # Acts where the human-readable body should stay very short (token efficiency).
 COMPACT_ACTS: frozenset[str] = frozenset({"ENDORSE", "PASS"})

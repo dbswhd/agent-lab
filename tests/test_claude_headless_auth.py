@@ -123,9 +123,7 @@ def test_probe_auth_caches_genuine_auth_failure_with_long_ttl(monkeypatch: pytes
 
     def _fake_run(cmd, **kwargs):
         calls["n"] += 1
-        return subprocess.CompletedProcess(
-            cmd, 1, stdout="", stderr="ERROR: 401 Invalid authentication credentials"
-        )
+        return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="ERROR: 401 Invalid authentication credentials")
 
     monkeypatch.setattr(subprocess, "run", _fake_run)
 

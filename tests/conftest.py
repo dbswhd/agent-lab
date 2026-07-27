@@ -28,7 +28,30 @@ if str(_TESTS) not in sys.path:
 # `app.server.main`, so no test run ever touches the real one; the tmp dir
 # is unique per pytest invocation (per xdist worker) and left for the OS to
 # reap, same as pytest's own tmp_path base.
-os.environ.setdefault("AGENT_LAB_LOG_DIR", tempfile.mkdtemp(prefix="agent-lab-test-logs-"))
+# NOTE: a plain `setdefault` here is *not* per-worker. The master process sets the
+# variable first and xdist workers inherit its environment, so `setdefault` is a no-op
+# in every worker and they all share one directory. For real per-worker isolation the
+# base is shared (set once, inherited) and each worker appends its own worker id.
+if not os.environ.get("AGENT_LAB_TEST_TMP_BASE"):
+    os.environ["AGENT_LAB_TEST_TMP_BASE"] = tempfile.mkdtemp(prefix="agent-lab-test-")
+_WORKER_ID = os.environ.get("PYTEST_XDIST_WORKER", "master")
+_WORKER_TMP = Path(os.environ["AGENT_LAB_TEST_TMP_BASE"]) / _WORKER_ID
+
+
+def _worker_scoped_dir(name: str) -> str:
+    path = _WORKER_TMP / name
+    path.mkdir(parents=True, exist_ok=True)
+    return str(path)
+
+
+os.environ["AGENT_LAB_LOG_DIR"] = _worker_scoped_dir("logs")
+
+# The config dir needs the same treatment for a sharper reason: `run/control.py` takes
+# a machine-wide single-flight lock at `config_dir()/run.lock` (fcntl.flock). xdist
+# workers are separate *processes*, so a shared config dir means any two execute-path
+# tests that overlap make one of them fail with "a run is already in progress" —
+# load-dependent, which is why it surfaced on CI runners and not locally.
+os.environ["AGENT_LAB_CONFIG_DIR"] = _worker_scoped_dir("config")
 
 for _qat_src in (
     Path.home() / "Projects" / "quant-agentic-trading" / "src",

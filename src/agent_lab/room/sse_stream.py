@@ -104,7 +104,6 @@ class CumulativeTextStreamer:
         self._buffer = ""
 
 
-
 # Below this, a matching tail block is treated as coincidental short-phrase
 # repetition rather than a genuinely re-emitted answer.
 _TAIL_DUPE_MIN_CHARS = 150

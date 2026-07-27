@@ -579,9 +579,7 @@ async def _stream_synthesize_only(
                     ):
                         yield sse(payload)
                     return
-                new_pause_events, inbox_pause_cursor = _new_cross_process_inbox_pause_events(
-                    folder, inbox_pause_cursor
-                )
+                new_pause_events, inbox_pause_cursor = _new_cross_process_inbox_pause_events(folder, inbox_pause_cursor)
                 for pause_ev in new_pause_events:
                     yield sse(pause_ev)
                 try:
@@ -1102,9 +1100,7 @@ async def create_room_run(
                 return
             await worker
             if folder is not None:
-                new_pause_events, inbox_pause_cursor = _new_cross_process_inbox_pause_events(
-                    folder, inbox_pause_cursor
-                )
+                new_pause_events, inbox_pause_cursor = _new_cross_process_inbox_pause_events(folder, inbox_pause_cursor)
                 for pause_ev in new_pause_events:
                     yield sse(pause_ev)
             for payload in _room_run_terminal_events(

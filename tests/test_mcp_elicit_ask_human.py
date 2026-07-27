@@ -141,17 +141,13 @@ def test_ask_human_falls_back_when_elicit_unavailable(folder: Path, monkeypatch:
     )
 
     ctx = _StubContext(supports=False)
-    result = _run(
-        mcp_server.ask_human(question="Scope?", options=_options(), multiSelect=False, ctx=ctx)
-    )
+    result = _run(mcp_server.ask_human(question="Scope?", options=_options(), multiSelect=False, ctx=ctx))
 
     assert result["selected"] == ["a"]
     assert called["question"] == "Scope?"
 
 
-def test_ask_human_uses_elicit_and_skips_fallback_when_accepted(
-    folder: Path, monkeypatch: pytest.MonkeyPatch
-):
+def test_ask_human_uses_elicit_and_skips_fallback_when_accepted(folder: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("AGENT_LAB_SESSION_FOLDER", str(folder))
 
     def fail_if_called(_folder, **_kwargs):
@@ -163,16 +159,12 @@ def test_ask_human_uses_elicit_and_skips_fallback_when_accepted(
     )
 
     ctx = _StubContext(supports=True, elicit_result=_accepted("b"))
-    result = _run(
-        mcp_server.ask_human(question="Scope?", options=_options(), multiSelect=False, ctx=ctx)
-    )
+    result = _run(mcp_server.ask_human(question="Scope?", options=_options(), multiSelect=False, ctx=ctx))
 
     assert result["selected"] == ["b"]
 
 
-def test_ask_human_policy_check_runs_regardless_of_elicit_path(
-    folder: Path, monkeypatch: pytest.MonkeyPatch
-):
+def test_ask_human_policy_check_runs_regardless_of_elicit_path(folder: Path, monkeypatch: pytest.MonkeyPatch):
     """Regression guard: a pending question must still block a second
     ask_human call even when an elicitation-capable client is attached —
     the policy check must never be bypassed by the elicit shortcut."""
@@ -192,11 +184,7 @@ def test_ask_human_policy_check_runs_regardless_of_elicit_path(
 
     ctx = _StubContext(supports=True, elicit_result=_accepted("a"))
     with pytest.raises(ValueError, match="pending Human Inbox question"):
-        _run(
-            mcp_server.ask_human(
-                question="Another?", options=_options(), multiSelect=False, ctx=ctx
-            )
-        )
+        _run(mcp_server.ask_human(question="Another?", options=_options(), multiSelect=False, ctx=ctx))
 
 
 def test_ask_human_multiselect_skips_elicit_by_design(folder: Path, monkeypatch: pytest.MonkeyPatch):
@@ -217,9 +205,7 @@ def test_ask_human_multiselect_skips_elicit_by_design(folder: Path, monkeypatch:
     )
 
     ctx = _StubContext(supports=True, elicit_result=_accepted("a"))
-    result = _run(
-        mcp_server.ask_human(question="Scope?", options=_options(), multiSelect=True, ctx=ctx)
-    )
+    result = _run(mcp_server.ask_human(question="Scope?", options=_options(), multiSelect=True, ctx=ctx))
 
     assert called["hit"] is True
     assert result["selected"] == ["a", "b"]

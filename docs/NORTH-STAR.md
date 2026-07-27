@@ -344,7 +344,7 @@ Mission OS 3-pane IA 유지 위에서:
 | Trust-gated 자율성 (L1~L3) | **75%** | D2 | 코드·mock ✅. **D3:** §1.4.1 `escalation_rate_by_level` n≥10/level (dogfood 누적) |
 | S2 episode 힌트 | **5%** | D0 | **동결** — 전역 bandit 목표 제외. S1.5 explore·episode lift 관측만 |
 | S3 외부 능력 통합 | **15%** | D0~D1 | plugin_discovery·mcp_tool_contract·skill_drafts 부품 존재, 루프 없음. 인터페이스 설계만 선행(N7) |
-| 컨텍스트 품질 (repo_map·compaction) | **70%** | D3 | F7 **ON** (2026-07-25) — profile defaults on small/balanced/thorough/autonomous. **거의 최종:** Human checklist thin · non-lift 누적 후 재검토 ([F7](./F7-REPO-MAP-COMPACTION-DOGFOOD.md)) |
+| 컨텍스트 품질 (repo_map·compaction) | **55%** | D2 | 구현+self-eval+F7 프로토콜/계측 완료. **실세션 7일 dogfood 실행·ON/OFF 결정**만 남음 |
 | 관측·평가 (eval harness·bench·KPI) | **70%** | D3 | 도구 풍부(emergence bench, feedback report, dogfood suite). 남은 것: 지표→의사결정 연결의 정례화 |
 | Frontend Mission OS | **75%** | D3 | Phase D ✅ (hooks + client split) · **N4 v2** dial/picker · synthesize_only path · §3.2.1 light discuss |
 | OpenAI-compat API (N9) | **65%** | D2 | verify + chat audit headers · [VERIFY-API.md](./VERIFY-API.md) · `n9_verify_consumer.py`. **잔여:** live 외부 dogfood |
@@ -358,7 +358,7 @@ Mission OS 3-pane IA 유지 위에서:
 - **F4. run_meta 이중 상태 함정:** ✅ 규칙+CI — CLAUDE.md / AGENTS.md · turn-end replay · `stamp_run_meta()` · `tests/test_run_meta_write_discipline.py`. **allowlist empty** (in-memory `run_meta[` writers eliminated).
 - **F5. 인프라/도메인 혼재:** ✅ 결정 — [F5-TRADING-ISOLATION.md](./F5-TRADING-ISOLATION.md). `trading_mission/`·`quant/` extension lane; 코어 PR trading delta 0; 경계 `extensions/quant_trading.py`. 물리 이동은 defer.
 - **F6. 프론트 상태 부채:** ✅ Phase D — RoomChat hooks (`useRoomComposerPrefs` · `useRoomSlashCommands` · `useRoomRunWatchdog` · `useRoomRecoveryLifecycle`) + `api/client` domain split (`http` · `workspaceClient` · `missionGatewayClient` · `wsClient`). N4 dial은 그 위에 탑재됨.
-- **F7. 품질 평가의 mock 편중:** ✅ **closed ON (2026-07-25)** — [F7-REPO-MAP-COMPACTION-DOGFOOD.md](./F7-REPO-MAP-COMPACTION-DOGFOOD.md) · profile `flags` for repo_map + compact on small/balanced/thorough/autonomous. **Revisit** after more non-lift live sessions (usefulness checklist deferred; not limbo).
+- **F7. 품질 평가의 mock 편중:** repo_map·compaction이 "실세션 평가 불가"로 OFF에 갇힘. → **처방 준비 ✅:** [F7-REPO-MAP-COMPACTION-DOGFOOD.md](./F7-REPO-MAP-COMPACTION-DOGFOOD.md) · `make f7-dogfood-env` / `make f7-dogfood-report` · `last_context_bundle`/`context_quality_log` 계측. **실행:** 7일 supervisor dogfood → ON/OFF (방치 금지).
 - **F8. 비용·크레딧 가시성 부재:** 세션 `cost_ledger`는 존재. → **처방 준비 ✅:** [F8-COST-VISIBILITY.md](./F8-COST-VISIBILITY.md) · `.agent-lab/cost_ledger_quarter.json` · `AGENT_LAB_QUARTER_BUDGET_USD` · 초과 시 autonomy **L0 demotion** · `make f8-cost-report` · runtime `cost_quarter`.
 - **F9. Hot-path 갓 모듈·갓 컴포넌트:** 실측(2026-07-04) — `plan/execute.py` 1691 · `plan/workflow.py` 1281 · `room/turn_flow.py` 1084 · `web/RoomChat.tsx` 3497. → **상환 ✅ (2026-07-06 baseline 실측):** §3.5.1 P1(plan authority) 확정 후 분해 완료 — `execute.py` **88** · `workflow.py` **114** · `turn_flow.py` **21**(파사드; `turn_flow_run.py` 169 · `turn_flow_continue.py` 215) · `RoomChat.tsx` **9**(파사드; `RoomChatView.tsx` 222 + `useRoomChat*` hooks 분리). ratchet 가드는 유지 — `structure_metrics.py` `hot_path_py_files`/`hot_path_ts_files` + `large_tsx_files`, `make structure-metrics-check`. **잔여(후보):** `large_tsx_files` 상위 잔존(HumanInboxPanel 1011 · ChatComposer 799 등)은 별도 부채로 관찰. **모트:** Oracle·worktree 불변.
 - **F10. 플래그·레지스트리 드리프트:** 실측 `AGENT_LAB_*` **215개**(본문 "212개" 표기와 불일치), `runtime_flags` 레지스트리 157개 → **~58개가 레지스트리 밖**. 단일 참조 플래그(`EMERGENCE_BENCH_LIVE`·`SKIP_LIVE` 등) 잔존. F2는 "프로필 소속"만 강제하고 "레지스트리 등재"는 미강제 → 문서 하드코딩 수치가 굳어 **F3 재발 씨앗**. → **처방 (구현 지점):** ① 문서의 플래그 개수 하드코딩 제거 → "`make list-flags` 참조"로 치환 (본문 ✅ 2026-07-04) ② **✅ 가드 shipped (2026-07-05):** `tests/test_runtime_flags_registry.py` — grep 실측(`grep -rhoE "AGENT_LAB_[A-Z0-9_]+" src/agent_lab | sort -u`)과 레지스트리 등재분의 차집합 0 가드, 기존 예외는 명시 allowlist로 소진 추적. **모트 중립.**
@@ -381,7 +381,7 @@ Mission OS 3-pane IA 유지 위에서:
 | 시기 | [선행] | 할 일 (실행 수준) | 닫힘 / 관측 |
 |---|---|---|---|
 | **지금** | **2026-07 code wave ✅** (아래) | S1 dogfood — §1 **S1 관측 절차** 1~4를 supervisor 실미션마다 반복 | `by_source.history.n`·`advisor_lift.history_vs_default` 기록 축적 (formal closure 없음) |
-| **~1달** | F7 protocol ✅ · **closed ON 2026-07-25** (dogfood start 2026-07-09) | Decision table + profile flags | **거의 최종** — non-lift 누적 후 재검토 |
+| **~1달** | F7 protocol ✅ · **dogfood 재시작 2026-07-09** (07-05 시작분은 보류로 중단, 시계 재시작 — `docs/NOW.md` §1) | 7일 경과(2026-07-16) 후 `make f7-dogfood-report` | Decision table 기준으로 두 플래그 ON/OFF 확정 커밋 |
 | **분기** | S1 data · F8 instrumented ✅ | ① env `AGENT_LAB_QUARTER_BUDGET_USD` 실값 설정 → `make f8-cost-report` 정례화 ② §2.5 매트릭스 재검토 ③ §1.4 KPI 리뷰 ④ N5/S2 재평가 ⑤ dogfood-first 만료 검토 (`by_source.history.n` ≥ 30) | §3.1 D 단계 갱신 (판정 근거 병기) |
 | **동결** | — | N5 전역 bandit · N6~N7 · Gateway · trading core | explicit Human OK 없이 착수 금지 |
 
@@ -431,7 +431,7 @@ Mission OS 3-pane IA 유지 위에서:
 | **N6 HS4 REGRESS** (2026-07-09, D2) | `regression_gate.py`(신규) — worktree apply+pytest 결정론적 assertion 게이트, held-in(태그별 dogfood topic + `resolved_patterns.jsonl` 누적 셋), held-out(test-fast+dogfood excl.), `smoke_room.py` 38 baseline 재사용, negative-result 보존(HS4-5), eval 표면 동시 확장 검사(HS4-6). Offline CLI `scripts/regress_harness.py`. `AGENT_LAB_REGRESSION_GATE` default 0(`autonomous.owns`) |
 | **N6 HS5 MERGE** (2026-07-09, D2) | `merge_gate.py`(신규) — HSIL에서 실제 git 트리에 쓰는 유일한 지점. Inbox `harness_patch` 카드(propose+resolve dispatch) → 6단 게이트(회귀 통과·STOP guard·Tier B는 L2 경량 승인 무조건 거부/Tier A는 autonomy L2+ 확인(HS5-3, `autonomy_promotion.py` 연동)·working tree clean·diff freshness·Tier B eval-surface 삭제 감사) → `git apply`+commit. 롤백 시 `git revert` + `harness_rev` provenance로 playbook bullet quarantine(HS5-6/7). `predictions.jsonl` + `accept_rate`/`prediction_accuracy` KPI(HS5-4/5). Offline CLI `scripts/merge_harness.py`(propose/merge/rollback, "명령 실행이 곧 human 승인"). `AGENT_LAB_HARNESS_INBOX` default 0. **HS-M5 게이트("Human을 통한 실제 self-patch 1건") 미충족** — 실사용 outcome 236건 전수 확인 결과 `primary_tag` 태깅 행 0건(HS1-1 실패 신호 3종 중 실발생 없음), HS6 착수는 이 게이트 충족 전까지 보류(NOW.md §1) |
 
-**남은 것 (코드 외):** 분기 KPI · 동결 항목 · F7 **재검토**(non-lift 누적 후; 게이트 자체는 ON 닫힘). HS6은 Human 재논의 후.
+**남은 것 (코드 외):** supervisor/F7 **실사용** · 분기 KPI · 동결 항목. HS6(DGM-lite)은 HS-M5 게이트 충족 전까지 보류.
 
 ### 3.4 코드 감사 — 3축 피드백 (2026-07-04)
 
@@ -454,7 +454,7 @@ Mission OS 3-pane IA 유지 위에서:
 | P | 액션 | 결함/이니셔티브 | 닫힘 기준 |
 |---|------|------------------|-----------|
 | **P0** | `make feedback-report` 정기 실행 → S1 lift 관측 시작 | F1 · N1 | `by_source.history.n`·`clean_pass_delta` 기록 |
-| **P0** | F7 **closed ON** — profile defaults; revisit after non-lift live data | F7 | [F7 doc](./F7-REPO-MAP-COMPACTION-DOGFOOD.md) Decision |
+| **P0** | `eval "$(make f7-dogfood-env)"`로 7일 dogfood 시계 시작(시작일 SSOT 기록) | F7 | Decision table ON/OFF |
 | **P1** | ~~hot-path LOC ratchet(`structure-metrics-check`)~~ ✅ — `hot_path_py_files` 3종 + RoomChat `large_tsx_files` | **F9** | 가드 green (`test_structure_metrics_check_passes`) |
 | **P1** | ~~문서 플래그 하드코딩 치환~~ ✅ → 잔여: 레지스트리 가드 `tests/test_runtime_flags_registry.py` | **F10** · F3 | 가드 green (예외 allowlist 소진 추적) |
 | **P2** | ~~15분 mock 미션 QUICKSTART + `fork_time_minutes` 계측~~ ✅ | N8 · Layer 3 | [QUICKSTART.md](./QUICKSTART.md) |

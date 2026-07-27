@@ -35,7 +35,7 @@ def resolve_mypy() -> str:
 
 def run_room_mypy() -> tuple[int, dict[str, int]]:
     proc = subprocess.run(
-        [resolve_mypy(), "--config-file", "pyproject.toml", "--follow-imports=silent", str(ROOM_SRC.relative_to(ROOT))],
+        [resolve_mypy(), str(ROOM_SRC.relative_to(ROOT))],
         cwd=ROOT,
         capture_output=True,
         text=True,

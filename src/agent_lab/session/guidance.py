@@ -89,13 +89,6 @@ SESSION_META_KEYS = (
     "turn_kind",
     "hook_runs",
     "agent_hooks_manifest",
-    # N4 — ceiling + trust budget must survive turn-end run_meta rebuild
-    # (`_write_session_files` starts from a fresh dict + preserve_*). Without
-    # these, PATCH /autonomy is wiped on the next room turn and L2 dogfood
-    # never tags outcomes (N4-D3 / Phase C1 blocker).
-    "autonomy",
-    "trust_budget",
-    "risk_pin",
 )
 
 LAYOUT_FROZEN_GUIDANCE = """\

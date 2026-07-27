@@ -64,12 +64,12 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
     FlagDef(
         "AGENT_LAB_MISSION_AUTHORITY",
         "feature",
-        "Journal-owned Mission Inbox authority (small/balanced/thorough/autonomous apply 1 + SESSIONS=*; empty allowlist still disables; M6 hard-delete separate)",
+        "Journal-owned Mission Inbox authority for the selected bounded cohort (default off)",
     ),
     FlagDef(
         "AGENT_LAB_MISSION_AUTHORITY_SESSIONS",
         "feature",
-        "Session allowlist for Mission Inbox authority: comma IDs, or * / __all__ for full traffic; empty disables",
+        "Comma-separated session IDs allowed to use journal-owned Mission Inbox authority (empty disables it)",
     ),
     FlagDef(
         "AGENT_LAB_MISSION_UI_READ_MODEL",

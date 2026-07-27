@@ -99,7 +99,9 @@ def _ledger_topology_events(folder: Path) -> list[dict[str, Any]]:
     return [e for e in ledger if e.get("event") == "mission_topology"]
 
 
-def test_ensure_mission_topology_stamps_once(session_folder: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_ensure_mission_topology_stamps_once(
+    session_folder: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setenv("AGENT_LAB_MISSION_TOPOLOGY", "1")
     patch_run_meta(session_folder, lambda run: {**run, "topic": "fix typo"})
     record = ensure_mission_topology(session_folder)
@@ -125,7 +127,9 @@ def test_ensure_mission_topology_flag_off_is_noop(session_folder: Path) -> None:
     assert not _ledger_topology_events(session_folder)
 
 
-def test_enable_mission_loop_arms_topology(session_folder: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_enable_mission_loop_arms_topology(
+    session_folder: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setenv("AGENT_LAB_MISSION_TOPOLOGY", "1")
     enable_mission_loop(session_folder)
     stored = read_run_meta(session_folder).get("mission_topology")
@@ -188,7 +192,9 @@ def _seed_peer_review_phase(folder: Path, *, verdict: str = "iterate") -> None:
     patch_run_meta(folder, _peer)
 
 
-def test_tick_single_topology_routes_to_human_pending(session_folder: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_tick_single_topology_routes_to_human_pending(
+    session_folder: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setenv("AGENT_LAB_MISSION_TOPOLOGY", "1")
     patch_run_meta(session_folder, lambda run: {**run, "mission_topology": _record("single", 1)})
     _seed_peer_review_phase(session_folder)
@@ -265,7 +271,9 @@ def test_build_need_risk_floor_raises_and_signals(monkeypatch: pytest.MonkeyPatc
 
 
 def test_build_need_risk_floor_never_lowers() -> None:
-    need, _ = build_coordination_need({"topic": "production security migration"}, risk_floor=RiskLevel.MEDIUM)
+    need, _ = build_coordination_need(
+        {"topic": "production security migration"}, risk_floor=RiskLevel.MEDIUM
+    )
     assert need.risk == RiskLevel.HIGH
 
 
@@ -274,7 +282,9 @@ def _ledger_reroute_events(folder: Path) -> list[dict[str, Any]]:
     return [e for e in ledger if e.get("event") == "mission_topology_reroute"]
 
 
-def test_reroute_fail_escalates_single_to_quorum(session_folder: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_reroute_fail_escalates_single_to_quorum(
+    session_folder: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setenv("AGENT_LAB_MISSION_TOPOLOGY", "1")
     patch_run_meta(
         session_folder,
@@ -285,7 +295,9 @@ def test_reroute_fail_escalates_single_to_quorum(session_folder: Path, monkeypat
             "mission_topology": _record("single", 1),
         },
     )
-    result = reroute_mission_topology_after_verify(session_folder, verdict="fail", reason="tests red", action_index=1)
+    result = reroute_mission_topology_after_verify(
+        session_folder, verdict="fail", reason="tests red", action_index=1
+    )
     assert result is not None
     assert result["kind"] == str(TopologyKind.PEER_QUORUM)
     stored = read_run_meta(session_folder)["mission_topology"]
@@ -320,7 +332,9 @@ def test_reroute_structural_fail_noop(session_folder: Path, monkeypatch: pytest.
     assert not _ledger_reroute_events(session_folder)
 
 
-def test_reroute_pass_flag_off_missing_record_noop(session_folder: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_reroute_pass_flag_off_missing_record_noop(
+    session_folder: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setenv("AGENT_LAB_MISSION_TOPOLOGY", "1")
     patch_run_meta(
         session_folder,
@@ -345,7 +359,9 @@ def test_reroute_never_downgrades(session_folder: Path, monkeypatch: pytest.Monk
         session_folder,
         lambda run: {**run, "topic": "fix typo", "mission_topology": original},
     )
-    result = reroute_mission_topology_after_verify(session_folder, verdict="fail", reason="tests red", action_index=1)
+    result = reroute_mission_topology_after_verify(
+        session_folder, verdict="fail", reason="tests red", action_index=1
+    )
     assert result is None
     stored = read_run_meta(session_folder)["mission_topology"]
     assert stored["decision"] == original["decision"]
@@ -367,7 +383,9 @@ def test_reroute_repair_cap_floors_high(session_folder: Path, monkeypatch: pytes
             },
         },
     )
-    result = reroute_mission_topology_after_verify(session_folder, verdict="fail", reason="tests red", action_index=1)
+    result = reroute_mission_topology_after_verify(
+        session_folder, verdict="fail", reason="tests red", action_index=1
+    )
     assert result is not None
     stored = read_run_meta(session_folder)["mission_topology"]
     assert stored["need"]["risk"] == "high"
@@ -378,7 +396,8 @@ def test_reroute_history_capped(session_folder: Path, monkeypatch: pytest.Monkey
     monkeypatch.setenv("AGENT_LAB_MISSION_TOPOLOGY", "1")
     record = _record("single", 1)
     record["history"] = [
-        {"decision": _record("single", 1)["decision"], "at": "t", "revision": 1, "trigger": None} for _ in range(10)
+        {"decision": _record("single", 1)["decision"], "at": "t", "revision": 1, "trigger": None}
+        for _ in range(10)
     ]
     patch_run_meta(
         session_folder,
@@ -389,7 +408,9 @@ def test_reroute_history_capped(session_folder: Path, monkeypatch: pytest.Monkey
             "mission_topology": record,
         },
     )
-    result = reroute_mission_topology_after_verify(session_folder, verdict="fail", reason="tests red", action_index=1)
+    result = reroute_mission_topology_after_verify(
+        session_folder, verdict="fail", reason="tests red", action_index=1
+    )
     assert result is not None
     stored = read_run_meta(session_folder)["mission_topology"]
     assert len(stored["history"]) == 10
@@ -425,7 +446,9 @@ def test_on_verify_result_fail_triggers_reroute_phase_unchanged(
     assert stored["decision"]["kind"] == str(TopologyKind.PEER_QUORUM)
 
 
-def test_consumers_see_escalated_decision(session_folder: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_consumers_see_escalated_decision(
+    session_folder: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setenv("AGENT_LAB_MISSION_TOPOLOGY", "1")
     patch_run_meta(
         session_folder,
@@ -473,13 +496,17 @@ def test_plateau_second_fail_writes_early_replan_override(
 ) -> None:
     monkeypatch.setenv("AGENT_LAB_MISSION_TOPOLOGY", "1")
     _seed_escalated(session_folder, action_repair_counts={"1": 1}, max_repair_per_action=3)
-    result = reroute_mission_topology_after_verify(session_folder, verdict="fail", reason="tests red", action_index=1)
+    result = reroute_mission_topology_after_verify(
+        session_folder, verdict="fail", reason="tests red", action_index=1
+    )
     assert result is None  # plateau -- no escalation happened
     ml = read_run_meta(session_folder)["mission_loop"]
     assert ml["action_repair_cap_override"]["1"] == 2
 
 
-def test_plateau_first_fail_writes_no_override(session_folder: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_plateau_first_fail_writes_no_override(
+    session_folder: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setenv("AGENT_LAB_MISSION_TOPOLOGY", "1")
     _seed_escalated(session_folder, action_repair_counts={}, max_repair_per_action=3)
     reroute_mission_topology_after_verify(session_folder, verdict="fail", reason="tests red", action_index=1)
@@ -487,7 +514,9 @@ def test_plateau_first_fail_writes_no_override(session_folder: Path, monkeypatch
     assert not ml.get("action_repair_cap_override")
 
 
-def test_on_verify_fail_honors_early_replan_override(session_folder: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_on_verify_fail_honors_early_replan_override(
+    session_folder: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setenv("AGENT_LAB_MISSION_TOPOLOGY", "1")
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
     enable_mission_loop(session_folder)
@@ -507,7 +536,9 @@ def test_on_verify_fail_honors_early_replan_override(session_folder: Path, monke
     assert ml["action_repair_cap_override"]["1"] == 2
 
 
-def test_plateau_at_cap_flags_human_not_override(session_folder: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_plateau_at_cap_flags_human_not_override(
+    session_folder: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setenv("AGENT_LAB_MISSION_TOPOLOGY", "1")
     _seed_escalated(session_folder, action_repair_counts={"1": 1}, max_repair_per_action=2)
     reroute_mission_topology_after_verify(session_folder, verdict="fail", reason="tests red", action_index=1)
@@ -553,7 +584,9 @@ def _seed_deescalate_candidate(
     )
 
 
-def test_deescalate_after_streak_downgrades_to_baseline(session_folder: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_deescalate_after_streak_downgrades_to_baseline(
+    session_folder: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setenv("AGENT_LAB_MISSION_TOPOLOGY", "1")
     _seed_deescalate_candidate(session_folder, topic="fix typo", agents=["cursor"], streak=3)
     result = deescalate_mission_topology_after_pass(session_folder, action_index=1)
@@ -565,16 +598,14 @@ def test_deescalate_after_streak_downgrades_to_baseline(session_folder: Path, mo
     assert len(stored["history"]) == 1
     assert stored["history"][0]["decision"]["kind"] == "peer_quorum"
     assert read_run_meta(session_folder)["mission_loop"]["consecutive_verify_passes"] == 0
-    events = [
-        e
-        for e in (read_run_meta(session_folder).get("goal_ledger") or [])
-        if e.get("event") == "mission_topology_deescalate"
-    ]
+    events = [e for e in (read_run_meta(session_folder).get("goal_ledger") or []) if e.get("event") == "mission_topology_deescalate"]
     assert len(events) == 1
     assert events[0]["payload"]["to"]["kind"] == str(TopologyKind.SINGLE)
 
 
-def test_deescalate_below_streak_threshold_noop(session_folder: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_deescalate_below_streak_threshold_noop(
+    session_folder: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setenv("AGENT_LAB_MISSION_TOPOLOGY", "1")
     _seed_deescalate_candidate(session_folder, topic="fix typo", agents=["cursor"], streak=2)
     assert deescalate_mission_topology_after_pass(session_folder, action_index=1) is None
@@ -596,7 +627,9 @@ def test_deescalate_already_single_noop(session_folder: Path, monkeypatch: pytes
     assert deescalate_mission_topology_after_pass(session_folder, action_index=1) is None
 
 
-def test_deescalate_noop_when_baseline_still_large(session_folder: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_deescalate_noop_when_baseline_still_large(
+    session_folder: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setenv("AGENT_LAB_MISSION_TOPOLOGY", "1")
     _seed_deescalate_candidate(
         session_folder,
@@ -614,7 +647,9 @@ def test_deescalate_flag_off_noop(session_folder: Path) -> None:
     assert deescalate_mission_topology_after_pass(session_folder, action_index=1) is None
 
 
-def test_fail_resets_consecutive_pass_streak(session_folder: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_fail_resets_consecutive_pass_streak(
+    session_folder: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setenv("AGENT_LAB_MISSION_TOPOLOGY", "1")
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
     enable_mission_loop(session_folder)

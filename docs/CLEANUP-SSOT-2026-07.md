@@ -29,7 +29,7 @@
 | Structure waves | — | [STRUCTURE-REFACTOR-WAVE.md](./STRUCTURE-REFACTOR-WAVE.md) | Wave B ✅ · Phase D (1c) ✅ |
 | Autonomy Ladder | `autonomy_ladder.py`, `autonomy_inbox.py`, `useAutonomySession.ts` | NORTH-STAR N4 v1/v2 | PATCH ceiling · demotion inbox T-A0 ✅ |
 | Run profiles (N2/F2) | `run/profile.py` (`flags`+`owns`) | NORTH-STAR N2 · F2 | feature 전수 소속 · `list-flags --profile` ✅ |
-| F7 context quality | `repo_map.py` · `message_trim.py` | [F7-REPO-MAP-COMPACTION-DOGFOOD.md](./F7-REPO-MAP-COMPACTION-DOGFOOD.md) | **closed ON** (2026-07-25) · profile flags · revisit after non-lift data |
+| F7 context quality | `repo_map.py` · `message_trim.py` | [F7-REPO-MAP-COMPACTION-DOGFOOD.md](./F7-REPO-MAP-COMPACTION-DOGFOOD.md) | protocol + report ready · decision pending |
 | F8 cost visibility | `cost_ledger.py` · `cost_ledger_quarter.py` | [F8-COST-VISIBILITY.md](./F8-COST-VISIBILITY.md) | quarter rollup + L0 demote · `make f8-cost-report` ✅ |
 | run_meta writes (F4) | `run/meta.py` (`stamp_run_meta`) · `test_run_meta_write_discipline.py` | CLAUDE.md · AGENTS.md | allowlist **empty** ✅ |
 | Trading lane (F5) | `extensions/quant_trading.py` | [F5-TRADING-ISOLATION.md](./F5-TRADING-ISOLATION.md) | core PR trading delta 0 ✅ |
@@ -42,7 +42,7 @@
 ```text
 ✅ 1a–1c · Phase 2 · N2/N4 · F2/F4/F5/F6 · §3.2.1 · synthesize_only · F7/F8 prep
 Now     S1 supervisor dogfood (optional) · `make feedback-report`
-1mo     F7 **closed ON** (2026-07-25) · revisit after non-lift live sessions
+1mo     F7 **run** 7d · `make f7-dogfood-report` · ON/OFF decision
 Q       §2.5 · KPI · F8 `QUARTER_BUDGET_USD` ops · N5/S2 re-eval (n≥30)
 Freeze  N5–N7 · Gateway · trading core
 ```

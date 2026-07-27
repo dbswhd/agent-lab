@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "agent_lab_root_py_files": 137,
+  "agent_lab_root_py_files": 136,
   "agent_lab_subpackages": [
     "agent",
     "agents",
@@ -50,10 +50,6 @@
   "makefile_targets": 115,
   "large_tsx_files": [
     {
-      "path": "web/src/components/HumanInboxPanel.tsx",
-      "lines": 969
-    },
-    {
       "path": "web/src/components/ChatComposer.tsx",
       "lines": 830
     },
@@ -62,16 +58,16 @@
       "lines": 829
     },
     {
+      "path": "web/src/components/HumanInboxPanel.tsx",
+      "lines": 967
+    },
+    {
       "path": "web/src/components/WorkspaceFilesPanel.tsx",
       "lines": 750
     },
     {
       "path": "web/src/components/RoomTaskBar.tsx",
       "lines": 703
-    },
-    {
-      "path": "web/src/components/ComposerEventStack.tsx",
-      "lines": 571
     }
   ],
   "hot_path_py_files": [
@@ -103,7 +99,7 @@
     },
     {
       "path": "web/src/components/RoomChatView.tsx",
-      "lines": 304
+      "lines": 292
     },
     {
       "path": "web/src/hooks/useRoomChat.ts",
@@ -115,20 +111,20 @@
     },
     {
       "path": "web/src/hooks/useRoomChatInteractions.ts",
-      "lines": 741
+      "lines": 732
     },
     {
       "path": "web/src/hooks/useRoomChatPresentation.ts",
       "lines": 418
     }
   ],
+  "f11_run_meta_dict_signatures": 0,
+  "f11_run_dict_signatures": 159,
   "notes": {
     "pycache": "tracked_pycache_files counts git-tracked __pycache__/*.pyc only; local __pycache__ dirs are ignored by .gitignore and are not repo debt.",
     "makefile_targets": "Counted as Makefile lines matching ^target:",
     "hot_path_py_files": "F9 ratchet: execute/workflow/turn_flow* LOC caps; --check fails on any drift from baseline (growth or shrink without update).",
     "hot_path_ts_files": "F9 ratchet: RoomChat shell LOC caps after view/orchestrator split.",
     "f11_run_meta_dict_signatures": "F11 ratchet: grep count of run_meta: dict[str, Any] in src/agent_lab; must not grow without baseline update (Stage 1 migration lowers over time)."
-  },
-  "f11_run_meta_dict_signatures": 0,
-  "f11_run_dict_signatures": 162
+  }
 }

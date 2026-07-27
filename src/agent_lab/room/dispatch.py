@@ -78,7 +78,9 @@ def _parse_agent_list(raw: str) -> list[str]:
     return seen
 
 
-def parse_dispatch_from_message(text: str, run_meta: RunStateLike | None = None) -> DispatchRequest | None:
+def parse_dispatch_from_message(
+    text: str, run_meta: RunStateLike | None = None
+) -> DispatchRequest | None:
     """Precedence: DELEGATE (single) then DISPATCH parallel."""
     single = parse_delegate_from_message(text)
     if single:

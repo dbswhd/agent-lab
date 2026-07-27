@@ -30,7 +30,9 @@ def test_append_goal_event_payload_is_optional_and_additive(tmp_path: Path) -> N
 
     _write(tmp_path, {})
     goal_ledger.append_goal_event(tmp_path, "mode_route", mode="CONSENSUS")
-    goal_ledger.append_goal_event(tmp_path, "policy_decision", payload={"decision": {"kind": "single"}, "revision": 1})
+    goal_ledger.append_goal_event(
+        tmp_path, "policy_decision", payload={"decision": {"kind": "single"}, "revision": 1}
+    )
     led = read_run_meta(tmp_path).get("goal_ledger", [])
     assert "payload" not in led[0]
     assert led[1]["payload"] == {"decision": {"kind": "single"}, "revision": 1}

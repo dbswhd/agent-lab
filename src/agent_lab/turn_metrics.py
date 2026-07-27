@@ -139,7 +139,9 @@ def _challenge_precision_summary(
     summary: dict[str, dict[str, int]] = {}
 
     def _row(agent: str) -> dict[str, int]:
-        return summary.setdefault(agent, {"challenge_total": 0, "challenge_adopted": 0, "note_total": 0})
+        return summary.setdefault(
+            agent, {"challenge_total": 0, "challenge_adopted": 0, "note_total": 0}
+        )
 
     for obj in objections:
         if not isinstance(obj, dict):
@@ -234,7 +236,9 @@ def build_turn_metrics(
         objection_resolution=objection_resolution,
         executions=executions,
     )
-    challenge_precision = _challenge_precision_summary(objections, turn_acts or [], human_turn=human_turn)
+    challenge_precision = _challenge_precision_summary(
+        objections, turn_acts or [], human_turn=human_turn
+    )
 
     metrics: dict[str, Any] = {
         "schema_version": TURN_METRICS_SCHEMA_VERSION,

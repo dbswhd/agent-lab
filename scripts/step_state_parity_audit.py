@@ -147,7 +147,9 @@ def main() -> int:
 
     if args.check:
         baseline = json.loads(BASELINE_PATH.read_text(encoding="utf-8")) if BASELINE_PATH.is_file() else {}
-        new_findings = {key: [row for row in rows if row not in baseline.get(key, [])] for key, rows in report.items()}
+        new_findings = {
+            key: [row for row in rows if row not in baseline.get(key, [])] for key, rows in report.items()
+        }
         total_new = sum(len(rows) for rows in new_findings.values())
         if total_new:
             print(f"step-state parity ratchet FAILED: {total_new} new finding(s) not in baseline")

@@ -112,14 +112,14 @@ def handle_gateway_command(
         pw = get_plan_workflow(run)
         inbox = public_inbox_payload(run)
         gates = public_gate_scope_payload(run)
-        pending = pending_inbox_items(run)
+        pending_items = pending_inbox_items(run)
         lines = [
             f"session: {session_id}",
             f"gate_profile: {gates.get('gate_profile')}",
             f"plan_workflow: {pw.get('phase') or 'off'}",
             f"inbox_pending: {inbox.get('pending_count', 0)}",
         ]
-        for item in pending[:5]:
+        for item in pending_items[:5]:
             lines.append(f"  - {item.get('id')}: {item.get('kind')} {str(item.get('prompt') or '')[:80]}")
         lines.append("Commands: /status | /approve plan | /approve merge | /approve auto | /approve skill")
         return {"ok": True, "reply": "\n".join(lines)}
@@ -137,12 +137,12 @@ def handle_gateway_command(
         from agent_lab.runtime.snapshot import pending_execution
 
         run = read_run_meta(folder)
-        pending = pending_execution(run)
-        if not pending or not pending.get("id"):
+        pending_exec = pending_execution(run)
+        if not pending_exec or not pending_exec.get("id"):
             return {"ok": False, "reply": "no pending execution to merge"}
-        execution_id = str(pending.get("id"))
-        status = str(pending.get("status") or "")
-        merge_status = str((pending.get("merge") or {}).get("status") or "")
+        execution_id = str(pending_exec.get("id"))
+        status = str(pending_exec.get("status") or "")
+        merge_status = str((pending_exec.get("merge") or {}).get("status") or "")
         try:
             if status == "merge_conflict" or merge_status == "conflict":
                 result = confirm_merge_execution(folder, execution_id=execution_id)
@@ -167,10 +167,10 @@ def handle_gateway_command(
         from agent_lab.runtime.snapshot import pending_execution
 
         run = read_run_meta(folder)
-        pending = pending_execution(run)
-        if not pending or not pending.get("id"):
+        pending_exec = pending_execution(run)
+        if not pending_exec or not pending_exec.get("id"):
             return {"ok": False, "reply": "no pending execution to auto-merge"}
-        execution_id = str(pending.get("id"))
+        execution_id = str(pending_exec.get("id"))
         elig = evaluate_auto_merge_eligibility(folder, execution_id=execution_id)
         if not elig.get("eligible"):
             reason = elig.get("reason") or "not eligible"
@@ -197,15 +197,15 @@ def handle_gateway_command(
         pending_skills = [item for item in pending_inbox_items(run) if item.get("kind") == "skill_draft"]
         if not pending_skills:
             return {"ok": False, "reply": "no pending skill draft to promote"}
-        item = pending_skills[-1]
-        refs = list(item.get("refs") or [])
+        skill_item = pending_skills[-1]
+        refs = list(skill_item.get("refs") or [])
         draft_id = refs[0] if refs else None
         if not draft_id:
             return {"ok": False, "reply": "skill draft missing id"}
         try:
             resolve_inbox_item(
                 folder,
-                str(item.get("id")),
+                str(skill_item.get("id")),
                 status="resolved",
                 selected=["approve"],
                 append_chat=False,
@@ -227,10 +227,10 @@ def handle_gateway_command(
         item_id = parts[1].strip()
         answer = parts[2].strip()
         run = read_run_meta(folder)
-        item = find_inbox_item(run, item_id)
-        if item is None:
+        inbox_item = find_inbox_item(run, item_id)
+        if inbox_item is None:
             return {"ok": False, "reply": f"inbox item not found: {item_id}"}
-        kind = item.get("kind")
+        kind = inbox_item.get("kind")
         try:
             if kind == "build":
                 decision = answer.lower()
@@ -255,9 +255,9 @@ def handle_gateway_command(
             "reply": "plan awaiting approval — send `/approve plan`",
         }
 
-    pending = pending_inbox_items(read_run_meta(folder))
-    if pending:
-        head = pending[0]
+    pending_items = pending_inbox_items(read_run_meta(folder))
+    if pending_items:
+        head = pending_items[0]
         return {
             "ok": False,
             "reply": (f"pending inbox {head.get('id')} ({head.get('kind')}) — `/resolve {head.get('id')} <answer>`"),
@@ -325,9 +325,8 @@ def notify_merge_ready(payload: dict[str, Any]) -> dict[str, Any]:
     session_id = str(payload.get("session_id") or "")
     exec_id = str(payload.get("execution_id") or "")
     profile = str(payload.get("gate_profile") or "")
-    eligibility = (
-        payload.get("auto_merge_eligibility") if isinstance(payload.get("auto_merge_eligibility"), dict) else {}
-    )
+    raw_eligibility = payload.get("auto_merge_eligibility")
+    eligibility = raw_eligibility if isinstance(raw_eligibility, dict) else {}
     auto_hint = ""
     if eligibility.get("eligible"):
         auto_hint = "\n`/approve auto` or `/approve merge`"

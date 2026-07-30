@@ -108,7 +108,8 @@ class DiscordGatewayAdapter:
             return {"ok": True, "skipped": True, "reason": "no_webhook_url"}
         session_id = str(payload.get("session_id") or "")
         if event == "inbox_pending":
-            item = payload.get("item") if isinstance(payload.get("item"), dict) else {}
+            raw_item = payload.get("item")
+            item = raw_item if isinstance(raw_item, dict) else {}
             prompt = str(item.get("prompt") or item.get("summary") or item.get("id") or "Inbox")
             kind = str(item.get("kind") or "item")
             item_id = str(item.get("id") or "")

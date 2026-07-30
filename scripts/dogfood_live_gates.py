@@ -231,38 +231,33 @@ def _read_pending_execution(session_id: str) -> dict[str, Any] | None:
     return None
 
 
-def _maybe_unblock_artifact(session_id: str, exec_id: str) -> bool:
-    """Same dogfood-only artifact ack as x2_lift_dogfood_live_repeat."""
+def _assert_artifact_gate_clear(session_id: str, exec_id: str) -> None:
+    """Refuse to approve while the artifact review gate is still pending.
+
+    This driver used to fabricate ``verification_artifacts.ok`` here, which
+    defeated the very gate the dogfood run was meant to exercise. Consistent
+    with this script's "unknown kinds pause instead of guessing" policy, a
+    pending artifact gate now stops the run instead of being papered over.
+    """
     sys.path.insert(0, str(ROOT / "src"))
-    from agent_lab.run.meta import patch_run_meta, read_run_meta
+    from agent_lab.run.meta import read_run_meta
 
     folder = ROOT / "sessions" / session_id
     run = read_run_meta(folder)
     target = next((e for e in (run.get("executions") or []) if e.get("id") == exec_id), None)
     if not target or not target.get("needs_artifact_review"):
-        return False
-    arts = target.get("verification_artifacts") or {}
-    if arts.get("ok"):
-        return False
-
-    def patch(run: dict[str, Any]) -> dict[str, Any]:
-        for ex in run.get("executions") or []:
-            if ex.get("id") != exec_id:
-                continue
-            ex["verification_artifacts"] = {
-                "ok": True,
-                "pdf_path": "dogfood",
-                "pdf_page_count": 1,
-                "break_report": {"note": "dogfood_live_gates artifact ack"},
-            }
-        return run
-
-    patch_run_meta(folder, patch)
-    return True
+        return
+    if (target.get("verification_artifacts") or {}).get("ok"):
+        return
+    raise RuntimeError(
+        f"artifact review gate is pending for execution {exec_id} "
+        f"(session {session_id}); a human must review the verification "
+        "artifacts before this execution can be approved"
+    )
 
 
 def _resolve_execution(session_id: str, exec_id: str) -> dict[str, Any]:
-    _maybe_unblock_artifact(session_id, exec_id)
+    _assert_artifact_gate_clear(session_id, exec_id)
     payload = _json_request(
         "POST",
         _session_path(session_id, "/execute/resolve"),

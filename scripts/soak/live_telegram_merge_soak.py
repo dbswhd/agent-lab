@@ -21,7 +21,7 @@ from .live_execute_spike import (
     format_report_lines,
 )
 from agent_lab.plan.execute import run_dry_run
-from agent_lab.run.meta import patch_run_meta, read_run_meta
+from agent_lab.run.meta import read_run_meta
 
 SOAK_TELEGRAM_CHAT_ID = 900_001
 
@@ -85,30 +85,22 @@ def _patch_sessions_root(parent: Path) -> None:
     deps_mod.SESSIONS_DIR = parent
 
 
-def _prepare_soak_merge_gate(folder: Path, execution_id: str) -> bool:
-    """Tier D tests Telegram ingress — clear artifact gate on disposable soak sessions."""
-    changed = False
+def _artifact_gate_pending(folder: Path, execution_id: str) -> bool:
+    """Report — read-only — whether the artifact review gate still blocks merge.
 
-    def _patch(run: dict[str, Any]) -> dict[str, Any]:
-        nonlocal changed
-        for row in run.get("executions") or []:
-            if not isinstance(row, dict) or str(row.get("id") or "") != execution_id:
-                continue
-            if not row.get("needs_artifact_review"):
-                continue
-            changed = True
-            row["needs_artifact_review"] = False
-            row["verification_artifacts"] = {
-                "ok": True,
-                "soak_bypass": True,
-                "pdf_path": "soak/disposable.pdf",
-                "pdf_page_count": 1,
-                "break_report": {"baselinePdfPageCount": 1, "appliedBreaks": 0},
-            }
-        return run
-
-    patch_run_meta(folder, _patch)
-    return changed
+    This used to clear the gate by writing a fabricated ``verification_artifacts``
+    block ("soak_bypass"). Disposable session or not, a soak that defeats a gate
+    before measuring it cannot tell you how the gate behaves. Observe it instead;
+    the Telegram ingress result below is then a real reading.
+    """
+    run = read_run_meta(folder)
+    for row in run.get("executions") or []:
+        if not isinstance(row, dict) or str(row.get("id") or "") != execution_id:
+            continue
+        if not row.get("needs_artifact_review"):
+            return False
+        return not (row.get("verification_artifacts") or {}).get("ok")
+    return False
 
 
 def _post_telegram_merge_webhook(*, chat_id: int, session_id: str) -> dict[str, Any]:
@@ -256,7 +248,7 @@ def run_live_telegram_merge_ingress_soak(
         checks["pending_execution_present"] = bool(pending_before and pending_before.get("id"))
 
         exec_id = str(execution.get("id") or "")
-        checks["artifact_gate_bypassed"] = _prepare_soak_merge_gate(session, exec_id)
+        checks["artifact_gate_pending"] = _artifact_gate_pending(session, exec_id)
 
         tg = _post_telegram_merge_webhook(
             chat_id=SOAK_TELEGRAM_CHAT_ID,

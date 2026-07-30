@@ -74,6 +74,8 @@ class StructureMetrics:
     large_tsx_files: list[dict[str, int | str]]
     hot_path_py_files: list[dict[str, int | str]]
     hot_path_ts_files: list[dict[str, int | str]]
+    f11_run_meta_dict_signatures: int
+    f11_run_dict_signatures: int
     notes: dict[str, str]
 
 
@@ -99,6 +101,15 @@ def _makefile_targets() -> tuple[int, int]:
 
 def _count_lines(path: Path) -> int:
     return sum(1 for _ in path.open(encoding="utf-8"))
+
+
+def _annotation_count(annotation: str) -> int:
+    """Count ``<name>: dict[str, Any]`` parameter/field annotations under src/agent_lab."""
+    needle = f"{annotation}: dict[str, Any]"
+    total = 0
+    for path in AGENT_LAB.rglob("*.py"):
+        total += path.read_text(encoding="utf-8", errors="ignore").count(needle)
+    return total
 
 
 def _hot_path_py_files() -> list[dict[str, int | str]]:
@@ -163,6 +174,8 @@ def collect_metrics() -> StructureMetrics:
         large_tsx_files=_large_tsx_files(),
         hot_path_py_files=_hot_path_py_files(),
         hot_path_ts_files=_hot_path_ts_files(),
+        f11_run_meta_dict_signatures=_annotation_count("run_meta"),
+        f11_run_dict_signatures=_annotation_count("run"),
         notes={
             "pycache": (
                 "tracked_pycache_files counts git-tracked __pycache__/*.pyc only; "
@@ -175,8 +188,12 @@ def collect_metrics() -> StructureMetrics:
             ),
             "hot_path_ts_files": ("F9 ratchet: RoomChat shell LOC caps after view/orchestrator split."),
             "f11_run_meta_dict_signatures": (
-                "F11 ratchet: grep count of run_meta: dict[str, Any] in src/agent_lab; "
-                "must not grow without baseline update (Stage 1 migration lowers over time)."
+                "F11 ratchet: count of 'run_meta: dict[str, Any]' annotations in src/agent_lab; "
+                "--check fails on growth, and on shrink without a baseline update so the "
+                "ratchet tightens as the Stage 1 migration progresses instead of going stale."
+            ),
+            "f11_run_dict_signatures": (
+                "F11 ratchet: same rule for 'run: dict[str, Any]' annotations in src/agent_lab."
             ),
         },
     )
@@ -201,6 +218,9 @@ def _print_human(metrics: StructureMetrics) -> None:
     print("  F9 hot-path TypeScript:")
     for row in metrics.hot_path_ts_files:
         print(f"    {row['lines']:>5}  {row['path']}")
+    print("  F11 dict[str, Any] signatures:")
+    print(f"    {metrics.f11_run_meta_dict_signatures:>5}  run_meta")
+    print(f"    {metrics.f11_run_dict_signatures:>5}  run")
 
 
 def _load_baseline() -> dict:
@@ -256,6 +276,21 @@ def _check_against_baseline(metrics: StructureMetrics) -> list[str]:
     for path in HOT_PATH_TS_FILES:
         if path not in baseline_ts_hot:
             failures.append(f"hot_path_ts_files missing F9 path {path!r}")
+
+    # F11 ratchet. These keys sat in the baseline for months while nothing computed
+    # or compared them, so the ratchet never actually guarded anything — and
+    # regenerating the baseline silently dropped them. Enforce both directions:
+    # growth is a violation, shrink means the baseline owes an update.
+    for key in ("f11_run_meta_dict_signatures", "f11_run_dict_signatures"):
+        if key not in baseline:
+            failures.append(f"{key} missing from baseline — F11 ratchet would be unenforced")
+            continue
+        expected = baseline[key]
+        actual = getattr(metrics, key)
+        if actual > expected:
+            failures.append(f"{key}: F11 ratchet exceeded — expected <= {expected}, got {actual}")
+        elif actual < expected:
+            failures.append(f"{key}: improved to {actual} (baseline {expected}) — lower the baseline")
 
     return failures
 

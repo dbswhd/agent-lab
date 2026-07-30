@@ -4,7 +4,7 @@
 > **상태:** **Historical evidence / retired (2026-07-14; non-runtime).** The Slice 1 authority function is now disabled/fail-closed and its environment variable is ignored. M6 hard retire remains separately gated.
 > **현재 런타임:** The dual-write bridge requires a non-empty session allowlist; an empty allowlist disables it. This document's enable commands and profile-default claims are retained for audit only.
 > **선행:** Controlled cohort v3d GO · Full traffic soak PASS (≥15 turns) · pre-enable dogfood checks PASS.  
-> **관련:** [ADR-001](../decisions/ADR-001-production-dual-write-cutover.md) · [M4](./01-mission-kernel.md) · [full-traffic runbook](./dual-write-full-traffic-bounded-cutover-2026-07-14.md)
+> **관련:** [ADR-001](../../decisions/ADR-001-production-dual-write-cutover.md) · [M4](../01-mission-kernel.md) · [full-traffic runbook](./dual-write-full-traffic-bounded-cutover-2026-07-14.md)
 
 ## Historical slice definition (non-runtime evidence)
 

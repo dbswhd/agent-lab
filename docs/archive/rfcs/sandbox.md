@@ -22,8 +22,8 @@ Execute lane uses git worktree + host subprocess. Network, dependency installs, 
 
 ## Prerequisites (Claude AMEND)
 
-1. **eval_harness wired** — pytest JUnit → `result_map` → `score_instance` ([`eval_harness_ingest.py`](../src/agent_lab/eval_harness_ingest.py))
-2. **Task corpus** — [`benchmarks/task_corpus.v1.json`](../benchmarks/task_corpus.v1.json) (not `sessions/_benchmark/` FSM fixtures)
+1. **eval_harness wired** — pytest JUnit → `result_map` → `score_instance` ([`eval_harness_ingest.py`](../../../src/agent_lab/eval_harness_ingest.py))
+2. **Task corpus** — [`benchmarks/task_corpus.v1.json`](../../../benchmarks/task_corpus.v1.json) (not `sessions/_benchmark/` FSM fixtures)
 
 ## Proposed shape
 

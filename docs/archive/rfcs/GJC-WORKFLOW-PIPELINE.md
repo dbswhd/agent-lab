@@ -55,12 +55,12 @@ flowchart TB
 
 | GJC stage | GJC behavior | agent-lab module | Doc / ID |
 |-----------|--------------|------------------|----------|
-| Requirements interview | Socratic Q&A, ambiguity score, topology | `session_clarifier.py`, `GET/POST …/clarifier-interview*` | MB-7, [MISSION-BOARD-ADOPTION.md](./MISSION-BOARD-ADOPTION.md) §8.2 |
+| Requirements interview | Socratic Q&A, ambiguity score, topology | `session_clarifier.py`, `GET/POST …/clarifier-interview*` | MB-7, [MISSION-BOARD-ADOPTION.md](../../MISSION-BOARD-ADOPTION.md) §8.2 |
 | Consensus plan | Planner / Architect / Critic, ADR | `plan_workflow.py`, Room `room_consensus.py`, `PlanApprovalPanel.tsx` | PW-1, L2, ML-P2 |
 | Pending approval | Plan frozen until human OK | Plan-First FSM, merge checks gate | PW-1, MB-5 |
 | Multi-goal execution | `goals.json`, `ledger.jsonl`, checkpoints | `mission_loop.py`, `evidence_ledger.py`, `goal_loop.py` | ML-C, MB-4, LC-L5 |
 | Quality gate on complete | architect + executor QA JSON | `evidence_gates.py`, `oracle_core.py`, `adversarial_gate.py` | MB-3, LC-oracle, LC-L4 |
-| Parallel workers | tmux team | `room_dispatch.py`, `CMD-fanout` | [ROOM-DISPATCH-PROTOCOL.md](./ROOM-DISPATCH-PROTOCOL.md) |
+| Parallel workers | tmux team | `room_dispatch.py`, `CMD-fanout` | [ROOM-DISPATCH-PROTOCOL.md](../../ROOM-DISPATCH-PROTOCOL.md) |
 | External harness | `gjc` subprocess + handoff JSON | `runtime/external_runner.py`, `external_handoff.py` | MB-8, RT-H7 |
 
 ### Handoff protocol (MB-8)
@@ -109,7 +109,7 @@ Tracked in Learn AI `notes/05-agent-lab/backlog.md`:
 |----------|----------|
 | GJC skill text | `gjc skills read <name>` |
 | GJC embedded docs | `gjc://codebase-overview.md` |
-| agent-lab architecture | [ARCHITECTURE.md](./ARCHITECTURE.md) |
-| Shipped evidence | [EXTERNAL-REFS-TRACEABILITY.md](./EXTERNAL-REFS-TRACEABILITY.md) |
+| agent-lab architecture | [ARCHITECTURE.md](../../ARCHITECTURE.md) |
+| Shipped evidence | [EXTERNAL-REFS-TRACEABILITY.md](../../EXTERNAL-REFS-TRACEABILITY.md) |
 | Plan FSM | [PLAN-WORKFLOW.md](./PLAN-WORKFLOW.md) |
-| Runtime / external lane | [RUNTIME-HARNESS-PLAN.md](./RUNTIME-HARNESS-PLAN.md) |
+| Runtime / external lane | [RUNTIME-HARNESS-PLAN.md](../../RUNTIME-HARNESS-PLAN.md) |

@@ -38,7 +38,7 @@ Legacy slash files: `.claude/commands/` (optional; same role as skills in older 
 
 ### Pass-through flags (`claude -p`)
 
-Relevant for Phase B ([claude_cli.py](../src/agent_lab/claude_cli.py) does **not** use these today):
+Relevant for Phase B ([claude_cli.py](../src/agent_lab/claude/cli.py) does **not** use these today):
 
 | Flag | Purpose |
 |------|---------|
@@ -61,7 +61,7 @@ Room `cwd` = `discuss_primary_workspace()` (often quant-pipeline, not agent-lab)
 
 - **`discover_claude()`** — parse `claude mcp list` stdout + scan `.claude/skills` under workspace roots.
 - **Room invoke** — append `--mcp-config` from session allowlist; inject skill body on `/command` agent_invoke.
-- Remove unconditional anti-MCP lines in [agent_permissions.py](../src/agent_lab/agent_permissions.py) when allowlist non-empty.
+- Remove unconditional anti-MCP lines in [agent_permissions.py](../src/agent_lab/agent/permissions.py) when allowlist non-empty.
 
 ---
 
@@ -80,7 +80,7 @@ Example plugin rows (local machine): `browser@openai-bundled`, `documents@openai
 
 ### Pass-through
 
-`codex exec` loads user config from `~/.codex/config.toml` and `CODEX_HOME`. Agent Lab does not pass `-c` overrides for MCP today ([codex_cli.py](../src/agent_lab/codex_cli.py)).
+`codex exec` loads user config from `~/.codex/config.toml` and `CODEX_HOME`. Agent Lab does not pass `-c` overrides for MCP today ([codex_cli.py](../src/agent_lab/codex/cli.py)).
 
 Room turns use read-only sandbox + command cap unless `CODEX_ROOM_WORKSPACE_WRITE=1`.
 
@@ -96,11 +96,11 @@ Room turns use read-only sandbox + command cap unless `CODEX_ROOM_WORKSPACE_WRIT
 
 ### Discovery
 
-**No stable list API** in [cursor_agent.py](../src/agent_lab/agents/cursor_agent.py) / [cursor_bridge.py](../src/agent_lab/cursor_bridge.py).
+**No stable list API** in [cursor_agent.py](../src/agent_lab/agents/cursor_agent.py) / [cursor_bridge.py](../src/agent_lab/cursor/bridge.py).
 
 Indirect signals:
 
-- Activity callbacks may label tool keys containing `mcp` ([cursor_activity.py](../src/agent_lab/cursor_activity.py)).
+- Activity callbacks may label tool keys containing `mcp` ([cursor_activity.py](../src/agent_lab/cursor/activity.py)).
 - MCP/plugins come from **Cursor IDE** project/user config — same as interactive Cursor agent.
 
 ### Pass-through

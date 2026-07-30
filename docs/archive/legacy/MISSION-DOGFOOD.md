@@ -83,4 +83,4 @@ make smoke          # 32 baselines incl. mission_loop_*
 make test -k mission_loop
 ```
 
-SSOT: [MISSION-LOOP-C-OMO.md](./MISSION-LOOP-C-OMO.md) · Oracle: [LIVE-ORACLE.md](./LIVE-ORACLE.md)
+SSOT: [MISSION-LOOP-C-OMO.md](../../MISSION-LOOP-C-OMO.md) · Oracle: [LIVE-ORACLE.md](../../LIVE-ORACLE.md)

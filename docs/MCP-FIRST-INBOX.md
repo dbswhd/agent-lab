@@ -25,7 +25,7 @@ Inbox API·MCP 계약·트리거 ID는 [HUMAN-INBOX.md](./HUMAN-INBOX.md)가 can
 |------|------|----------------|-----------|
 | 선다형 질문 | harvest T-Q* + `ask_human` MCP | `ask_human` only | harvest: **off by default** · discuss MCP **on** (team lead; Fast 포함) |
 | build GO 예고 | harvest T-B1 + `propose_build` MCP | `propose_build` only | harvest: **off by default** · legacy flag `AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST=1` |
-| `plan.md` | Scribe ([`room_plan_scribe.py`](../src/agent_lab/room_plan_scribe.py)) | 유지 | **shipped** |
+| `plan.md` | Scribe ([`room_plan_scribe.py`](../src/agent_lab/room/plan_scribe.py)) | 유지 | **shipped** |
 | Facilitator | FORK→options (optional Claude 1-call) | 축소·lead가 options 작성 | **partial** |
 
 ---
@@ -76,7 +76,7 @@ flowchart TB
 | **2. Inbox MCP** | peer invoke 중 `ask_human`(선다형 **최소 2 options**) / `propose_build` | `source=mcp_*` |
 | **3. Scribe** | peer가 아닌 별도 invoke — 3명 발화를 한 번에 합성 | `plan.md` only |
 
-**코드 SSOT:** harvest [`inbox_harvest.py`](../src/agent_lab/inbox_harvest.py) · MCP [`inbox_mcp_server.py`](../src/agent_lab/inbox_mcp_server.py) · Scribe enrichment [`room_scribe_enrichment.py`](../src/agent_lab/room_scribe_enrichment.py)
+**코드 SSOT:** harvest [`inbox_harvest.py`](../src/agent_lab/inbox/harvest.py) · MCP [`inbox_mcp_server.py`](../src/agent_lab/inbox/mcp_server.py) · Scribe enrichment [`room_scribe_enrichment.py`](../src/agent_lab/room/scribe_enrichment.py)
 
 ### Q: 3명이 전부 MCP로 올리면 plan은?
 
@@ -91,7 +91,7 @@ flowchart TB
 Fast(`room_preset=fast` 또는 `user_mode=quick` + `plan_intent=none`)는 discuss lane에서 **orchestrator harvest**·plan CLARIFY inbox만 **스킵**한다.  
 Team lead의 ``ask_human`` / ``propose_build`` MCP는 **유지**. Execute lane inbox MCP(GO)도 **유지**.
 
-**판별 SSOT:** [`room_preset.is_fast_room_session`](../src/agent_lab/room_preset.py)
+**판별 SSOT:** [`room_preset.is_fast_room_session`](../src/agent_lab/room/preset.py)
 
 **트리거별 표·코드 경로:** [05-room-agent-roles.md §Fast preset — orchestrator Inbox skip](./05-room-agent-roles.md) (중복 서술 없이 여기서 위임)
 
@@ -112,7 +112,7 @@ Team lead의 ``ask_human`` / ``propose_build`` MCP는 **유지**. Execute lane i
 
 **런타임 규칙 (shipped):**
 
-- `has_pending_question` → 두 번째 `ask_human` 거부 — [`inbox_mcp_policy.enforce_mcp_ask_human_policy`](../src/agent_lab/inbox_mcp_policy.py)
+- `has_pending_question` → 두 번째 `ask_human` 거부 — [`inbox_mcp_policy.enforce_mcp_ask_human_policy`](../src/agent_lab/inbox/mcp_policy.py)
 - `inbox_gate_owner` — team lead가 `cursor`이면 `codex` → `claude` → `kimi_work` 폴백
 - discuss MCP는 gate owner만 (`discuss_inbox_mcp_enabled(..., agent_id=)`)
 

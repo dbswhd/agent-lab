@@ -1,7 +1,7 @@
 # Room Dispatch Protocol (RDP)
 
 > **Status:** Shipped (CMD-RDP)  
-> **Related:** [HOOK-COMMUNICATE-REFORM.md](./HOOK-COMMUNICATE-REFORM.md) · [ROOM-REINFORCEMENT.md](./ROOM-REINFORCEMENT.md) §G3 · [EXTERNAL-REFS-TRACEABILITY.md](./EXTERNAL-REFS-TRACEABILITY.md)  
+> **Related:** [HOOK-COMMUNICATE-REFORM.md](./HOOK-COMMUNICATE-REFORM.md) · [ROOM-REINFORCEMENT.md](archive/rfcs/ROOM-REINFORCEMENT.md) §G3 · [EXTERNAL-REFS-TRACEABILITY.md](./EXTERNAL-REFS-TRACEABILITY.md)  
 > **Fable reference:** sessions `807dbb0a` (Agent Explore×N + Plan), `143dad52` (emergence P3–P5)
 
 ---

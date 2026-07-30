@@ -132,10 +132,10 @@ flowchart LR
 |------|------|
 | [`web/src-tauri/src/lib.rs`](../web/src-tauri/src/lib.rs) | spawn, health, supervisor, prod navigation |
 | [`web/scripts/ensure-dev-api.mjs`](../web/scripts/ensure-dev-api.mjs) | dev watchdog, port reclaim, reload grace |
-| [`web/vite.config.ts`](../web/vite.config.ts) | `await ensureDevApi()`, `/api` proxy |
-| [`web/scripts/tauri-dev.sh`](../web/scripts/tauri-dev.sh) | stale :8765 cleanup, `SKIP_TAURI_API` |
-| [`scripts/prepare_bundled_runtime.sh`](../scripts/prepare_bundled_runtime.sh) | `.app` bundled venv |
-| [`app/server/main.py`](../app/server/main.py) | StaticFiles + routers |
+| [`web/vite.config.ts`](../../../web/vite.config.ts) | `await ensureDevApi()`, `/api` proxy |
+| [`web/scripts/tauri-dev.sh`](../../../web/scripts/tauri-dev.sh) | stale :8765 cleanup, `SKIP_TAURI_API` |
+| [`scripts/prepare_bundled_runtime.sh`](../../../scripts/prepare_bundled_runtime.sh) | `.app` bundled venv |
+| [`app/server/main.py`](../../../app/server/main.py) | StaticFiles + routers |
 | [`docs/APP.md`](../../APP.md) | Desktop install / config paths |
 
 ### Env / 플래그 (packaging)
@@ -173,7 +173,7 @@ Rollout plan: **[HYBRID-RUST-PYTHON-ADR.md](../../HYBRID-RUST-PYTHON-ADR.md)** �
 ### Track 1 — shipped (Phase 1.2–1.3)
 
 - Tauri `invoke`: **`api_restart`**, **`api_shell_status`** (incl. `sessions_dir_mismatch`)
-- [`ApiDiagnosticsBar.tsx`](../web/src/components/ApiDiagnosticsBar.tsx) — **API 재시작**, mismatch hint
+- [`ApiDiagnosticsBar.tsx`](../../../web/src/components/ApiDiagnosticsBar.tsx) — **API 재시작**, mismatch hint
 - Release API spawn failure — native dialog
 - Cross-platform port reclaim — [`port_reclaim.rs`](../web/src-tauri/src/port_reclaim.rs)
 - `make tauri-check-windows` — Windows compile check
@@ -190,7 +190,7 @@ Native rejected; Python `repo_map_core` seed-bounding is the durable win. See [H
 
 ### Already shipped (baseline — do not redo)
 
-- [`ApiDiagnosticsBar.tsx`](../web/src/components/ApiDiagnosticsBar.tsx) HTTP diagnostics + **Tauri API 재시작** (release)
+- [`ApiDiagnosticsBar.tsx`](../../../web/src/components/ApiDiagnosticsBar.tsx) HTTP diagnostics + **Tauri API 재시작** (release)
 - `lib.rs` `api_restart` / `api_shell_status` invoke
 - `lib.rs` `api_health_sessions_dir()` mismatch **log**
 - Dev API supervisor [`ensure-dev-api.mjs`](../web/scripts/ensure-dev-api.mjs)

@@ -4,7 +4,7 @@
 > **Baseline:** `tests/fixtures/communicate-baseline-benchmark.json` · `make measure-communicate-baseline`  
 > **근거:** Room transcript 합의, Hook/Communicate 구현, `STABILITY.md` shipped baseline.  
 > **Canonical shipped evidence:** [EXTERNAL-REFS-TRACEABILITY.md](./EXTERNAL-REFS-TRACEABILITY.md)  
-> **관련:** [HUMAN-INBOX.md](./HUMAN-INBOX.md) · [ROOM-REINFORCEMENT.md](./ROOM-REINFORCEMENT.md) · [EXECUTE-WORKTREE-REFORM.md](./EXECUTE-WORKTREE-REFORM.md)
+> **관련:** [HUMAN-INBOX.md](./HUMAN-INBOX.md) · [ROOM-REINFORCEMENT.md](archive/rfcs/ROOM-REINFORCEMENT.md) · [EXECUTE-WORKTREE-REFORM.md](archive/rfcs/EXECUTE-WORKTREE-REFORM.md)
 
 ---
 

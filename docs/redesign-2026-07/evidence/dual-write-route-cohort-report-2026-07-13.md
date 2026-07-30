@@ -6,7 +6,7 @@
 
 **exit code: `0`** — `cohort_parity_pass=true`, `rollback_pass=true`.
 
-이전 [dual-write evidence cohort](dual-write-evidence-report-2026-07-13.md)는 kernel을 직접 호출하는 격리된 `/tmp` harness였다. 이번 실행은 그 문서가 명시한 다음 단계(prod route + 실제 sessions 디렉터리)를 채웠다. [ADR-001](../decisions/ADR-001-production-dual-write-cutover.md) 재심사에 이 결과를 근거로 사용할 수 있다.
+이전 [dual-write evidence cohort](dual-write-evidence-report-2026-07-13.md)는 kernel을 직접 호출하는 격리된 `/tmp` harness였다. 이번 실행은 그 문서가 명시한 다음 단계(prod route + 실제 sessions 디렉터리)를 채웠다. [ADR-001](../../decisions/ADR-001-production-dual-write-cutover.md) 재심사에 이 결과를 근거로 사용할 수 있다.
 
 ## 실행
 

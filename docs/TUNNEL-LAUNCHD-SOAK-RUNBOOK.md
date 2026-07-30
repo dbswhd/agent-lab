@@ -154,6 +154,6 @@ pytest tests/test_live_tunnel_launchd_soak.py::test_tunnel_launchd_soak_integrat
 
 ## Related
 
-- [MISSION-OS-OPS.md](MISSION-OS-OPS.md)
+- [MISSION-OS-OPS.md](archive/legacy/MISSION-OS-OPS.md)
 - [OPS-RUNBOOK.md](OPS-RUNBOOK.md) — Tier A–E matrix
 - [HYBRID-RELAY-WORKER.md](HYBRID-RELAY-WORKER.md)

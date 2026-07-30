@@ -3,7 +3,7 @@
 > **작성:** 2026-07-14  
 > **상태:** Wave A shipping (read-model composites). Wave B / M6 **별도 Human gate**.  
 > **선행:** Soft slices 1–3 · [m6-precheck](./m6-precheck-retire-scope-2026-07-14.md)  
-> **관련:** [ADR-001](../decisions/ADR-001-production-dual-write-cutover.md) · [`mission/read_model.py`](../../src/agent_lab/mission/read_model.py)
+> **관련:** [ADR-001](../../decisions/ADR-001-production-dual-write-cutover.md) · [`mission/read_model.py`](../../../src/agent_lab/mission/read_model.py)
 
 ## Decision lock
 

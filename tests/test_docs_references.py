@@ -125,3 +125,47 @@ def test_readme_counts_match_reality() -> None:
             wrong.append(f"{key}: README says {claimed}, actual {actual[key]}")
 
     assert not wrong, "README counts drifted from the code:\n  " + "\n  ".join(wrong)
+
+
+# Links that point outside the repo on purpose. `.omo/` is an agent scratch dir,
+# not tracked content — an evidence packet may cite it, but CI cannot resolve it.
+ALLOWED_BROKEN_LINKS = {
+    (
+        "docs/redesign-2026-07/evidence/dual-write-ui-read-model-bounded-cutover-evidence-2026-07-14.md",
+        "../../.omo/evidence/wave-b-m6-retire/task-7.json",
+    ),
+}
+
+_LINKISH = re.compile(r"\.(md|py|ts|tsx|json|toml|yml|yaml|sh|css)$", re.I)
+
+
+def _live_markdown() -> list[Path]:
+    """Docs that are still maintained. `docs/archive/**` is a frozen record —
+    enforcing links inside it would be churn with no reader on the other end."""
+    docs = [p for p in (ROOT / "docs").rglob("*.md") if "archive" not in p.relative_to(ROOT).parts]
+    docs += [ROOT / n for n in ("README.md", "CLAUDE.md", "AGENTS.md", "PRODUCT.md", "SHARED_CONTEXT.md")]
+    return [p for p in docs if p.is_file()]
+
+
+def test_live_docs_have_no_broken_relative_links() -> None:
+    """Moving a doc must take its inbound links with it.
+
+    Package refactors and archive moves left 148 dead relative links across 56
+    files before this guard — the same rot as the traceability matrix, one level
+    down. External URLs and anchors are out of scope; only file links are checked.
+    """
+    broken: list[str] = []
+    for doc in _live_markdown():
+        rel_doc = str(doc.relative_to(ROOT))
+        for link in re.findall(r"\]\(([^)\s]+)\)", doc.read_text(encoding="utf-8", errors="ignore")):
+            if link.startswith(("http://", "https://", "mailto:", "#")):
+                continue
+            path_part = link.split("#", 1)[0]
+            if not path_part or not _LINKISH.search(path_part):
+                continue
+            if (rel_doc, link) in ALLOWED_BROKEN_LINKS:
+                continue
+            if not (doc.parent / path_part).resolve().exists():
+                broken.append(f"{rel_doc} -> {link}")
+
+    assert not broken, "docs link at files that do not exist:\n  " + "\n  ".join(broken)

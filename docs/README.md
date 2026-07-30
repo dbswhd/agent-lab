@@ -16,7 +16,7 @@
 | **episode · 표본 · trace · grader · T0~T2 판정** | [EVAL-CONTRACT.md](./EVAL-CONTRACT.md) |
 | **중장기 방향 · 완성도 · 동결 해제 조건** | [NORTH-STAR.md](./NORTH-STAR.md) |
 | **새 작업 시작용 착수 템플릿** | [WORK-TASK-KICKOFF-TEMPLATE.md](./WORK-TASK-KICKOFF-TEMPLATE.md) |
-| **M4/L1 discuss-only trace 기준선 결정** | [M4-L1-DISCUSS-ONLY-TRACE-DECISION.md](./M4-L1-DISCUSS-ONLY-TRACE-DECISION.md) |
+| **M4/L1 discuss-only trace 기준선 결정** | [M4-L1-DISCUSS-ONLY-TRACE-DECISION.md](./decisions/M4-L1-DISCUSS-ONLY-TRACE-DECISION.md) |
 | 시스템 전체 모듈·레이어 지도 | [ARCHITECTURE.md](./ARCHITECTURE.md) |
 | Desktop packaging baseline · hybrid 전 복귀점 | [PACKAGING-BASELINE.md](./archive/legacy/PACKAGING-BASELINE.md) |
 | Hybrid Rust + Python ADR (Track 1 proceed / Track 2 conditional) | [HYBRID-RUST-PYTHON-ADR.md](./HYBRID-RUST-PYTHON-ADR.md) |
@@ -73,7 +73,7 @@
 | Doc | 용도 |
 |-----|------|
 | [WORK-TASK-KICKOFF-TEMPLATE.md](./WORK-TASK-KICKOFF-TEMPLATE.md) | **작업 착수 템플릿** — Core 5 기준으로 범위·검증·닫힘 정의 |
-| [M4-L1-DISCUSS-ONLY-TRACE-DECISION.md](./M4-L1-DISCUSS-ONLY-TRACE-DECISION.md) | **설계 결정** — discuss-only fixture completeness를 올리지 않고 semantics를 유지하는 이유와 후속 옵션 |
+| [M4-L1-DISCUSS-ONLY-TRACE-DECISION.md](./decisions/M4-L1-DISCUSS-ONLY-TRACE-DECISION.md) | **설계 결정** — discuss-only fixture completeness를 올리지 않고 semantics를 유지하는 이유와 후속 옵션 |
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | **시스템 지도** — 백엔드 라우터, 코어 모듈, 프론트 컴포넌트, UX 플로우, 전략 포지션 §0 |
 | [USER-GUIDE.md](./USER-GUIDE.md) | 제품 동작, env 플래그, Room · execute · UI 상세 |
 | [EXTERNAL-REFS-TRACEABILITY.md](./EXTERNAL-REFS-TRACEABILITY.md) | **shipped 여부** — 증거 경로, partial/future 큐 |

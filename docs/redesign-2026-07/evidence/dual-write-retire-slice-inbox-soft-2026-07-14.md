@@ -4,7 +4,7 @@
 > **상태:** **Historical evidence / retired (2026-07-14; non-runtime).** The Slice 2 authority function is now disabled/fail-closed and its environment variable is ignored. Supersede gate close + harvest OpenExecutionGate evidence remains below for audit.
 > **현재 런타임:** The dual-write bridge requires a non-empty session allowlist; an empty allowlist disables it. This document's enable commands are historical only.
 > **선행:** Slice 1 plan soft authority enable GO · Full traffic soak PASS.  
-> **관련:** [Slice 1 plan](./dual-write-retire-slice-plan-soft-2026-07-14.md) · [ADR-001](../decisions/ADR-001-production-dual-write-cutover.md) · [execution-gate design](./execution-gate-design-draft-2026-07-13.md)
+> **관련:** [Slice 1 plan](./dual-write-retire-slice-plan-soft-2026-07-14.md) · [ADR-001](../../decisions/ADR-001-production-dual-write-cutover.md) · [execution-gate design](./execution-gate-design-draft-2026-07-13.md)
 
 ## Historical slice definition (non-runtime evidence)
 

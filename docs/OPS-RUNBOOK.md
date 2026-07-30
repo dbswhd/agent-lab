@@ -122,7 +122,7 @@ AGENT_LAB_RUN_LIVE=1 make verify-ops-live-telegram-merge
 
 Report: `sessions/_reports/live-telegram-merge-YYYY-MM-DD.json`
 
-See [MISSION-OS-OPS.md](MISSION-OS-OPS.md) §Tier D.
+See [MISSION-OS-OPS.md](archive/legacy/MISSION-OS-OPS.md) §Tier D.
 
 ## Tier E — tunnel + launchd soak
 

@@ -1,6 +1,6 @@
 # Dual-write cutover follow-up — Room dogfood + fail/repair + crash + merge parity — 2026-07-13
 
-ADR-001의 "다음 단계" 3개 항목([Decision §4](../decisions/ADR-001-production-dual-write-cutover.md))을 순서대로 처리한 결과다. 전부 실제 운영 `sessions/` 디렉터리를 대상으로 실행했고, 증거 수집 후 합성 세션 폴더는 정리했다.
+ADR-001의 "다음 단계" 3개 항목([Decision §4](../../decisions/ADR-001-production-dual-write-cutover.md))을 순서대로 처리한 결과다. 전부 실제 운영 `sessions/` 디렉터리를 대상으로 실행했고, 증거 수집 후 합성 세션 폴더는 정리했다.
 
 ## 1) `execute/resolve` merge event parity
 

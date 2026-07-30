@@ -29,7 +29,7 @@
 
 **v3d 수정:** absolute sessions/repos path · merge-confirm orphan gate close · traffic route quotas · journal duplicate audit.
 
-**GO 범위:** controlled cohort evidence만. **다음 Human gate = Full traffic (bounded cutover + soak)** — [full-traffic runbook](./dual-write-full-traffic-bounded-cutover-2026-07-14.md). Legacy writer retire는 soak 이후 **별도** 승인 전 금지 ([ADR-001](../decisions/ADR-001-production-dual-write-cutover.md)).
+**GO 범위:** controlled cohort evidence만. **다음 Human gate = Full traffic (bounded cutover + soak)** — [full-traffic runbook](./dual-write-full-traffic-bounded-cutover-2026-07-14.md). Legacy writer retire는 soak 이후 **별도** 승인 전 금지 ([ADR-001](../../decisions/ADR-001-production-dual-write-cutover.md)).
 
 ---
 
@@ -125,4 +125,4 @@
 
 - [cutover scope limitations](./dual-write-cutover-scope-limitations-2026-07-13.md)
 - [controlled cohort runbook](./dual-write-controlled-cohort-runbook-2026-07-13.md)
-- [ADR-001](../decisions/ADR-001-production-dual-write-cutover.md)
+- [ADR-001](../../decisions/ADR-001-production-dual-write-cutover.md)

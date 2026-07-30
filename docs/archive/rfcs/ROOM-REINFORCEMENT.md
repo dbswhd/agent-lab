@@ -1,7 +1,7 @@
 # Room 실효성 보강 계획
 
-> **Status (2026-06):** Room **implementation queue is empty**. Phase E–H + Phase I + H-P1–P4 + R-P0/P1 + UX-P2 + ops-P0/P2 **shipped**. Evidence: [`EXTERNAL-REFS-TRACEABILITY.md`](EXTERNAL-REFS-TRACEABILITY.md), [`STABILITY.md`](STABILITY.md), `scripts/smoke_room.py` (**32** regression baselines).  
-> **Phase I:** M0–M4 — [`EXECUTE-WORKTREE-REFORM.md`](EXECUTE-WORKTREE-REFORM.md). Live: [`LIVE-CURSOR-WORKTREE-DRY-RUN.md`](LIVE-CURSOR-WORKTREE-DRY-RUN.md), `make live-worktree-dry-run`.  
+> **Status (2026-06):** Room **implementation queue is empty**. Phase E–H + Phase I + H-P1–P4 + R-P0/P1 + UX-P2 + ops-P0/P2 **shipped**. Evidence: [`EXTERNAL-REFS-TRACEABILITY.md`](../../EXTERNAL-REFS-TRACEABILITY.md), [`STABILITY.md`](../../STABILITY.md), `scripts/smoke_room.py` (**32** regression baselines).  
+> **Phase I:** M0–M4 — [`EXECUTE-WORKTREE-REFORM.md`](EXECUTE-WORKTREE-REFORM.md). Live: [`LIVE-CURSOR-WORKTREE-DRY-RUN.md`](../../LIVE-CURSOR-WORKTREE-DRY-RUN.md), `make live-worktree-dry-run`.  
 > 아래 Phase E–H 본문은 **설계·배경**; shipped 여부는 위 추적 문서가 canonical.
 
 > 목표: "3명이 같은 문서 보고 말만 더 하는 구조"에서 → 분업·게이트·검증 가능한 산출로 이동,
@@ -398,6 +398,6 @@ CI: `pytest tests/ -q` + `scripts/smoke_room.py` (32 baselines) + `check_worktre
 | **E2-analyze** | analyze + synthesize + open objections 시 plan/scribe 정책 | discuss E2b와 동일 처리할지 결정 + 회귀 1건 |
 | **CC-compare** | vs CC/subagent·Conductor 포지션 비교 1페이지 | 문서만; 제품 변경 없음 |
 
-**다음 후보 (운영·워크스페이스, 코드 티켓 없음):** 주기적 `make verify-ops-live` / Tier C; opt-in live env 스모크; `make score-weekly`로 M4 실사용 KPI; 워크스페이스 MD는 [`MD-SYSTEM-DESIGN.md`](MD-SYSTEM-DESIGN.md) §워크스페이스 연동; 제품·UX는 TRACEABILITY 외 로드맵.
+**다음 후보 (운영·워크스페이스, 코드 티켓 없음):** 주기적 `make verify-ops-live` / Tier C; opt-in live env 스모크; `make score-weekly`로 M4 실사용 KPI; 워크스페이스 MD는 [`MD-SYSTEM-DESIGN.md`](../legacy/MD-SYSTEM-DESIGN.md) §워크스페이스 연동; 제품·UX는 TRACEABILITY 외 로드맵.
 
 ~~**Room P0**~~ · ~~**F2 R-P1**~~ · ~~**H-P1/H-P2/H-P3/H-P4**~~ · ~~**H2**~~ · ~~**E-smoke (20)**~~ · ~~**ops lifespan/router**~~ · ~~**UX-P2**~~ · ~~**Phase I M1–M4**~~ — 완료.

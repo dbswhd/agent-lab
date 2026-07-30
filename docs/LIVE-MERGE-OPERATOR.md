@@ -109,4 +109,4 @@ Exit codes are shared with Tier B:
 
 - [Agent Lab Ops Runbook](OPS-RUNBOOK.md)
 - [Live Cursor worktree dry-run](LIVE-CURSOR-WORKTREE-DRY-RUN.md)
-- [Execute worktree reform](EXECUTE-WORKTREE-REFORM.md)
+- [Execute worktree reform](archive/rfcs/EXECUTE-WORKTREE-REFORM.md)

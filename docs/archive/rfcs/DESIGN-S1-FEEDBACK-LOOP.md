@@ -2,7 +2,7 @@
 
 > **상태**: Phase A~D 구현 완료 + S1.5(검증·탐색) 구현 완료 (2026-06-26)
 > **기준일**: 2026-06-26
-> **북극성 근거**: [`docs/STRATEGIC-DIRECTION-2026.md`](STRATEGIC-DIRECTION-2026.md) "북극성" 섹션 — S1(내부 루프 폐쇄) → S2(팀 자기조정) → S3(외부 통합)
+> **북극성 근거**: [`docs/STRATEGIC-DIRECTION-2026.md`](../../STRATEGIC-DIRECTION-2026.md) "북극성" 섹션 — S1(내부 루프 폐쇄) → S2(팀 자기조정) → S3(외부 통합)
 > **범위**: P0(Dynamic Room · Model Policy · Code-memory MCP) + Session-to-session learning를 **단일 내부 피드백 회로(S1)** 로 통합
 
 ---

@@ -1,6 +1,6 @@
 # Agent Lab — UI/UX 방향 & 외주 가이드
 
-> **Legacy / deprecated (Tier 4)** — messenger RFP. **Current UI:** [developer-agent-console.md](./developer-agent-console.md) · [README.md](./README.md)
+> **Legacy / deprecated (Tier 4)** — messenger RFP. **Current UI:** [developer-agent-console.md](../../developer-agent-console.md) · [README.md](./README.md)
 > 아래 iMessage/Instagram DM/Telegram 매핑은 역사 참고용입니다.
 
 > **레거시 구현 메모:** [Figma macOS 26 UI Kit](https://www.figma.com/community/file/1543337041090580818/macos-26). Glass는 chrome만.
@@ -144,4 +144,4 @@
 - pipeline 트레이딩·차트 UI  
 - API/SSE 계약 변경 (백엔드 팀 합의 없이)
 
-관련: [docs/03-workflow.md](./03-workflow.md) · [docs/APP.md](./APP.md)
+관련: [docs/03-workflow.md](./03-workflow.md) · [docs/APP.md](../../APP.md)

@@ -211,8 +211,8 @@ subprocess env는 `subprocess_env.subprocess_env()` allowlist만 — **`.env` �
 | [docs/EXTERNAL-REFS-TRACEABILITY.md](docs/EXTERNAL-REFS-TRACEABILITY.md) | **Shipped 기능** 증거 매트릭스 |
 | [docs/STABILITY.md](docs/STABILITY.md) | CI · smoke · config · release |
 | [docs/OPS-RUNBOOK.md](docs/OPS-RUNBOOK.md) | live worktree · merge operator |
-| [docs/PLAN-WORKFLOW.md](docs/PLAN-WORKFLOW.md) | Plan-First FSM |
-| [docs/GOAL-LOOP.md](docs/GOAL-LOOP.md) | Goal loop · verified loop |
+| [docs/PLAN-WORKFLOW.md](docs/archive/rfcs/PLAN-WORKFLOW.md) | Plan-First FSM |
+| [docs/GOAL-LOOP.md](docs/archive/rfcs/GOAL-LOOP.md) | Goal loop · verified loop |
 | [docs/APP.md](docs/APP.md) | Tauri 패키징 · API 개요 |
 
 **규칙:** shipped 상태는 TRACEABILITY + 코드 + 테스트가 SSOT. `docs/00`–`05` 번호 문서는 교육용 레거시입니다.

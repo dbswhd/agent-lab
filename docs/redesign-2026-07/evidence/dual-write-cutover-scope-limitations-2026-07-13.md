@@ -4,7 +4,7 @@
 
 ## 우선순위
 
-모델을 더 넓히기 전에 **cutover 검증을 끝낸다.** 지금 할 일은 cohort 증거 수집과 rollback 안전성 확인이며, legacy writer retire는 Human 승인 전까지 금지([ADR-001](../decisions/ADR-001-production-dual-write-cutover.md)).
+모델을 더 넓히기 전에 **cutover 검증을 끝낸다.** 지금 할 일은 cohort 증거 수집과 rollback 안전성 확인이며, legacy writer retire는 Human 승인 전까지 금지([ADR-001](../../decisions/ADR-001-production-dual-write-cutover.md)).
 
 ## Cutover in-scope (반드시 mirror·parity)
 

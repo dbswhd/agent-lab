@@ -102,7 +102,7 @@ If any agent is not ready, the API returns **400** with `detail.agents[]` (`id`,
 
 Cursor bridge failures must include degraded fallback shape: `degraded`, `failure_code`, `fallback`, and `remediation`. CI fixture: `sessions/_regression/bridge_degraded_health/`. Governance fixtures: `objection_blocks_execute/`, `challenge_revises_metric/` (E-smoke).
 
-**Phase I execute (worktree):** design and checklist in [`docs/EXECUTE-WORKTREE-REFORM.md`](EXECUTE-WORKTREE-REFORM.md) §11 — M0–M4 shipped; CI uses regression fixtures only (no live merge in Actions).
+**Phase I execute (worktree):** design and checklist in [`docs/EXECUTE-WORKTREE-REFORM.md`](archive/rfcs/EXECUTE-WORKTREE-REFORM.md) §11 — M0–M4 shipped; CI uses regression fixtures only (no live merge in Actions).
 
 **LC-L3 execute verify loop:** worktree merge responses record `verify_after_merge` + `oracle` evidence. On Oracle FAIL, `POST /api/sessions/{id}/execute/reverify` opens a fresh Cursor/Codex repair worktree, re-merges, and re-verifies with a hard `MAX_VERIFY_RETRIES=2`; `repair_history[]`, `verify_retries`, and the Oracle badge expose the result.
 
@@ -165,7 +165,7 @@ Lead orchestration and pre-round assignment on top of Phase 1:
 
 ### Sprint D (turn lead UI, discuss task scope, provenance, receipts)
 
-See **[SPRINT-D-CHECKLIST.md](./SPRINT-D-CHECKLIST.md)** for the full checkbox list.
+See **[SPRINT-D-CHECKLIST.md](archive/legacy/SPRINT-D-CHECKLIST.md)** for the full checkbox list.
 
 | Piece | Behavior |
 |-------|----------|

@@ -48,7 +48,7 @@ Settings UI: **Settings → Mission OS → Daemon status**
 
 When daemon is offline, `fan_out_gateway_notify` POSTs to `gateway.toml` `[hybrid].relay_url`.
 
-Deploy: [HYBRID-RELAY-WORKER.md](HYBRID-RELAY-WORKER.md)
+Deploy: [HYBRID-RELAY-WORKER.md](../../HYBRID-RELAY-WORKER.md)
 
 ## Trading launchd vs Mission OS
 
@@ -85,7 +85,7 @@ AGENT_LAB_RUN_LIVE=1 make verify-ops-live-tunnel-launchd
 
 Report: `sessions/_reports/live-tunnel-launchd-YYYY-MM-DD.json`
 
-Runbook: [TUNNEL-LAUNCHD-SOAK-RUNBOOK.md](TUNNEL-LAUNCHD-SOAK-RUNBOOK.md)
+Runbook: [TUNNEL-LAUNCHD-SOAK-RUNBOOK.md](../../TUNNEL-LAUNCHD-SOAK-RUNBOOK.md)
 
 ## Troubleshooting
 

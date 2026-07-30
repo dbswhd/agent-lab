@@ -4,7 +4,7 @@
 > **상태:** **Historical evidence / retired (2026-07-14; non-runtime).** The Slice 3 authority function is now disabled/fail-closed and its environment variable is ignored. The recorded legacy-first/fail-closed behavior remains below for audit.
 > **현재 런타임:** The dual-write bridge requires a non-empty session allowlist; an empty allowlist disables it. This document's enable commands and profile-default claims are historical only.
 > **선행:** Slice 1–2 soft authority · Full traffic soak PASS.  
-> **관련:** [Slice 1](./dual-write-retire-slice-plan-soft-2026-07-14.md) · [Slice 2](./dual-write-retire-slice-inbox-soft-2026-07-14.md) · [ADR-001](../decisions/ADR-001-production-dual-write-cutover.md)
+> **관련:** [Slice 1](./dual-write-retire-slice-plan-soft-2026-07-14.md) · [Slice 2](./dual-write-retire-slice-inbox-soft-2026-07-14.md) · [ADR-001](../../decisions/ADR-001-production-dual-write-cutover.md)
 
 ## Historical slice definition (non-runtime evidence)
 

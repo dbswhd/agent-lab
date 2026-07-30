@@ -1,6 +1,6 @@
 # Agent Lab — 기초 교육 가이드
 
-> **Legacy doc (Tier 4)** — early sandbox tutorial (Week 1–2 history). **Canonical:** [USER-GUIDE.md](./USER-GUIDE.md) · [README.md](../README.md)
+> **Legacy doc (Tier 4)** — early sandbox tutorial (Week 1–2 history). **Canonical:** [USER-GUIDE.md](../../USER-GUIDE.md) · [README.md](../README.md)
 
 > **이 문서는 독립 프로젝트용입니다.**  
 > `quant-pipeline` repo와 **별도 GitHub repo·별도 작업 폴더**에서 시작하세요.  
@@ -11,7 +11,7 @@
 ## 1. 이게 뭔가요?
 
 **Agent Lab** = 주제 한 줄만 주면, 여러 LLM 역할이 **짧은 대화(또는 순차 메시지)** 로 기획안을 만드는 **초기 교육 튜토리얼 관점**의 설명입니다.  
-**현재 제품**은 AI 개발 작업을 계획·승인·격리 실행·검증하는 **Human-in-the-loop 에이전트 개발 콘솔**입니다 — [USER-GUIDE §1](./USER-GUIDE.md#1-개요) 참고.
+**현재 제품**은 AI 개발 작업을 계획·승인·격리 실행·검증하는 **Human-in-the-loop 에이전트 개발 콘솔**입니다 — [USER-GUIDE §1](../../USER-GUIDE.md#1-개요) 참고.
 
 | quant-pipeline | Agent Lab (이 프로젝트) |
 |----------------|-------------------------|

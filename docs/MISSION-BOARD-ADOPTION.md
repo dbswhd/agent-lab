@@ -2,7 +2,7 @@
 
 > **Status (2026-06-09):** **P1–P4 shipped** (MB-9…MB-11) · backlog complete. 원칙·백로그는 이 문서 한 곳.  
 > **Canonical for:** 아키텍처 원칙 P1–P9, 외부 레퍼런스 흡수, MB-* 구현 큐, AC-MB-* 수용 기준.  
-> **Shipped context (읽기만):** [MISSION-LOOP-C-OMO.md](./MISSION-LOOP-C-OMO.md) · [RUNTIME-HARNESS-PLAN.md](./RUNTIME-HARNESS-PLAN.md) · [EXECUTE-WORKTREE-REFORM.md](./EXECUTE-WORKTREE-REFORM.md)  
+> **Shipped context (읽기만):** [MISSION-LOOP-C-OMO.md](./MISSION-LOOP-C-OMO.md) · [RUNTIME-HARNESS-PLAN.md](./RUNTIME-HARNESS-PLAN.md) · [EXECUTE-WORKTREE-REFORM.md](archive/rfcs/EXECUTE-WORKTREE-REFORM.md)  
 > **인덱스/README·TRACEABILITY 반영:** MB-* 항목이 ✅ shipped 될 때 한꺼번에 갱신.
 
 ---
@@ -24,7 +24,7 @@
 |----|------|-----------|
 | **P1** | **Discuss는 read-only** | Room discuss/plan 턴 중 main working tree **쓰기 금지**; 구현은 execute lane(worktree)만 |
 | **P2** | **Room quorum = 고정 3역할** | discuss/consensus 턴의 active agents ⊆ `{cursor, codex, claude}`; 역할 라벨·리드 순서만 가변 |
-| **P3** | **Mutation = worktree** | plan action dry-run/merge는 git worktree; non-git action은 `apply` 경로 분리 ([EXECUTE-WORKTREE-REFORM](./EXECUTE-WORKTREE-REFORM.md)) |
+| **P3** | **Mutation = worktree** | plan action dry-run/merge는 git worktree; non-git action은 `apply` 경로 분리 ([EXECUTE-WORKTREE-REFORM](archive/rfcs/EXECUTE-WORKTREE-REFORM.md)) |
 | **P4** | **Mission 완료 = Oracle PASS** | `MISSION_DONE`은 mock/live Oracle + open BLOCK 없음; 에이전트 “끝났습니다”만으로 전이 금지 |
 | **P5** | **비가역 = Human gate** | merge approve, mission goal 승인, circuit_breaker clear, execute BLOCK override |
 | **P6** | **Orchestration = AgentLabRuntime** | cross-lane 전이는 `runtime/` 경유; `room.py`↔`plan_execute` 직접 import 신규 금지 ([RUNTIME-HARNESS-PLAN](./RUNTIME-HARNESS-PLAN.md)) |
@@ -337,4 +337,4 @@ Mission Board가 `executions[].external_handoff`에 attach.
 
 - Mission FSM: [MISSION-LOOP-C-OMO.md](./MISSION-LOOP-C-OMO.md)
 - Runtime harness: [RUNTIME-HARNESS-PLAN.md](./RUNTIME-HARNESS-PLAN.md)
-- Worktree execute: [EXECUTE-WORKTREE-REFORM.md](./EXECUTE-WORKTREE-REFORM.md)
+- Worktree execute: [EXECUTE-WORKTREE-REFORM.md](archive/rfcs/EXECUTE-WORKTREE-REFORM.md)

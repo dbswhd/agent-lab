@@ -29,4 +29,4 @@ paths:
 - 라우트를 `main.py`에 직접 추가 (`app/server/routers/` 사용)
 
 ## 참고
-- Room: `room.py` · Execute: `plan_execute*.py` · Meta: `run_meta.py`
+- Room: `src/agent_lab/room/` · Execute: `src/agent_lab/plan/` · Meta: `src/agent_lab/run/meta.py`

@@ -1,4 +1,4 @@
-import { expect, test, type Page, type Request } from "playwright/test";
+import { expect, test, type Page } from "playwright/test";
 
 /**
  * Wave B live browser acceptance — real API (no /api route mocks).

@@ -28,7 +28,10 @@ export function buildExecuteEvidenceStrip(
   if (Array.isArray(checks) && checks.length > 0) {
     const pass = checks.filter((row) => row.ok).length;
     checksLabel = `Checks ${pass}/${checks.length}`;
-  } else if (Array.isArray(pending.evidence_gates) && pending.evidence_gates.length > 0) {
+  } else if (
+    Array.isArray(pending.evidence_gates) &&
+    pending.evidence_gates.length > 0
+  ) {
     const gates = pending.evidence_gates;
     const pass = gates.filter((row) => row.status === "pass").length;
     checksLabel = `Gates ${pass}/${gates.length}`;

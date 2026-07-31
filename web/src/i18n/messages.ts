@@ -44,7 +44,8 @@ const EN = {
   transcriptEmptyHint:
     "Mission Control: agents plan → you approve → worktree execute → Oracle verify. For a quick solo edit, open the workspace in Cursor.",
   openInCursor: "Open in Cursor",
-  openInCursorHint: "Handoff for quick solo edits — Agent Lab keeps Human gates.",
+  openInCursorHint:
+    "Handoff for quick solo edits — Agent Lab keeps Human gates.",
   humanInbox: "Human Inbox",
   inboxEmpty: "Inbox is empty",
   ctxTitle: "Context",
@@ -339,7 +340,8 @@ const KO = {
   transcriptEmptyHint:
     "Mission Control: 에이전트가 plan → Human 승인 → worktree 실행 → Oracle 검증. 빠른 단독 수정은 Cursor에서 여세요.",
   openInCursor: "Cursor에서 열기",
-  openInCursorHint: "단독 빠른 수정용 핸드오프 — Agent Lab은 Human gate를 유지합니다.",
+  openInCursorHint:
+    "단독 빠른 수정용 핸드오프 — Agent Lab은 Human gate를 유지합니다.",
   humanInbox: "수신함",
   inboxEmpty: "수신함이 비어 있습니다",
   ctxTitle: "컨텍스트",

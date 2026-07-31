@@ -122,7 +122,6 @@ async function mockWaveBJourneyApi(
   let rejected = false;
   let resolved = false;
   let reverifyCalled = false;
-  let executeResolved = false;
   const executionId = "execution-1";
 
   await page.route(/^http:\/\/127\.0\.0\.1:4173\/api\//, async (route) => {
@@ -441,7 +440,6 @@ async function mockWaveBJourneyApi(
       request.method() === "POST"
     ) {
       requests.push(key);
-      executeResolved = true;
       await route.fulfill({
         json: {
           ok: true,

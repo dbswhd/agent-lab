@@ -20,7 +20,9 @@ export function buildHumanDecisionLanes(
   // resolving it would otherwise leave this tab's banner stuck forever.
   const discussGateOpen = gates?.discuss?.open;
   const discussBlocked =
-    discussGateOpen === true ? false : discussPaused || discussGateOpen === false;
+    discussGateOpen === true
+      ? false
+      : discussPaused || discussGateOpen === false;
   return [
     {
       id: "discuss",

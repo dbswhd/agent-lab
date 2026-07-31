@@ -306,7 +306,11 @@ export function usePlanExecute({ sessionId, run, onUpdated }: Options) {
       setBusy(true);
       setError(null);
       try {
-        await reverifyPlanExecution(sessionId, executionId, fullAgentPermissions());
+        await reverifyPlanExecution(
+          sessionId,
+          executionId,
+          fullAgentPermissions(),
+        );
         onUpdated?.();
         await refreshActions();
         return true;

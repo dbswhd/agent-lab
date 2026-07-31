@@ -96,7 +96,11 @@ export function classifySendFailure(message: string): {
   }
   const unreadyAgentIds = extractUnreadyAgentIds(detail);
   if (unreadyAgentIds) {
-    return { source: "run", kind: "agents_not_ready", affectedAgentIds: unreadyAgentIds };
+    return {
+      source: "run",
+      kind: "agents_not_ready",
+      affectedAgentIds: unreadyAgentIds,
+    };
   }
   if (
     lower.includes("loop requires plan") ||

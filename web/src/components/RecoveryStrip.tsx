@@ -43,6 +43,10 @@ function actionBusyLabel(actionId: RecoveryActionId): string {
       return "해제 중...";
     case "retry_failed_agents":
       return "재시도 중...";
+    case "continue_partial":
+      return "이어가는 중...";
+    case "reverify_oracle":
+      return "재검증 중...";
     case "run_discuss_recovery":
       return "실행 중...";
     case "refresh_health":

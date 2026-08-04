@@ -414,5 +414,9 @@ export function useRoomChatPresentation(ctx: Ctx) {
     onOpenSettings,
     sidebarOpen,
     onToggleSidebar,
+    // RoomChatView gates its "Open in Cursor" action on this. The bootstrap hook
+    // has computed it all along (useRoomWorkspace); the F9 hook split just never
+    // passed it through, so the action referenced a field that did not exist.
+    workspacePath: ctx.workspacePath,
   };
 }

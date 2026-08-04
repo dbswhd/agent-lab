@@ -115,11 +115,11 @@
     },
     {
       "path": "web/src/hooks/useRoomChatInteractions.ts",
-      "lines": 741
+      "lines": 738
     },
     {
       "path": "web/src/hooks/useRoomChatPresentation.ts",
-      "lines": 418
+      "lines": 422
     }
   ],
   "f11_run_meta_dict_signatures": 0,

@@ -48,8 +48,11 @@ def test_f9_hot_path_ts_caps_in_baseline() -> None:
         "web/src/components/RoomChatView.tsx": 304,
         "web/src/hooks/useRoomChat.ts": 12,
         "web/src/hooks/useRoomChatBootstrap.ts": 484,
-        "web/src/hooks/useRoomChatInteractions.ts": 741,
-        "web/src/hooks/useRoomChatPresentation.ts": 418,
+        # 2026-07-30: 741 -> 738 (prettier reflow) · 418 -> 422 (workspacePath
+        # pass-through restoring the Open in Cursor action). No new logic in the
+        # shell — both moves are mechanical.
+        "web/src/hooks/useRoomChatInteractions.ts": 738,
+        "web/src/hooks/useRoomChatPresentation.ts": 422,
     }
 
 

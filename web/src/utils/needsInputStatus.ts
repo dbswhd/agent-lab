@@ -45,8 +45,7 @@ export function buildNeedsInputStatus(
   input: NeedsInputBuildInput,
 ): NeedsInputStatus {
   const ko = input.locale === "ko";
-  const waitingSince =
-    input.runtime?.status_line?.human_gate_opened_at ?? null;
+  const waitingSince = input.runtime?.status_line?.human_gate_opened_at ?? null;
   const withWait = (status: NeedsInputStatus): NeedsInputStatus =>
     status.active ? { ...status, waitingSince } : status;
 

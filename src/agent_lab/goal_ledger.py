@@ -1,4 +1,4 @@
-"""Goal-progress ledger embedded in run.json (AGENT_LAB_PIPELINE).
+"""Goal-progress ledger embedded in run.json (staged pipeline).
 
 Optional, additive ``run.json["goal_ledger"]``: a capped list of
 ``{at, event, mode, phase, note, payload}`` entries tracking pipeline goal progress. ``payload``

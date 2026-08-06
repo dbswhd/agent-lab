@@ -1,4 +1,4 @@
-"""Consensus gate for AGENT_LAB_PIPELINE (CONSENSUS mode).
+"""Consensus gate for the staged pipeline (CONSENSUS mode).
 
 Reuses the existing ConsensusPolicy plus the Room's consensus signal to decide whether the Room
 reached consensus before plan.md may be finalized (DISCUSS -> PLAN_GATE). This module is read-only

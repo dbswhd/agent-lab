@@ -455,11 +455,6 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         "Plan workflow Human Inbox bridge for clarifier / build prompts",
     ),
     FlagDef(
-        "AGENT_LAB_PIPELINE",
-        "feature",
-        "Slash /pipeline handler for mission lifecycle phases",
-    ),
-    FlagDef(
         "AGENT_LAB_DYNAMIC_ROOM",
         "feature",
         "Dynamic agent roster + provider substitution",
@@ -742,11 +737,6 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         "feature",
         "Skip startup OAuth/API-key sync (Codex/Claude/Cursor)",
     ),
-    FlagDef(
-        "AGENT_LAB_CLAUDE_HEADLESS_PROBE",
-        "feature",
-        "Run claude -p auth probe in preflight (slower; default off)",
-    ),
     # --- test / dev ---
     FlagDef("AGENT_LAB_MOCK_AGENTS", "test", "Mock agents, plugins, and CLI subprocesses"),
     FlagDef("AGENT_LAB_KIMI_WORK_MODEL", "feature", "Kimi Work model id override for health label"),
@@ -817,7 +807,6 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
     FlagDef("AGENT_LAB_EMERGENCE_BENCH_LIVE", "test", "Allow live emergence bench (CI 금지)"),
     FlagDef("AGENT_LAB_SKIP_LIVE", "test", "Skip live execute spike paths"),
     FlagDef("AGENT_LAB_TAURI_UI_SMOKE_LAUNCH_ONLY", "test", "Tauri UI smoke: launch-only mode"),
-    FlagDef("AGENT_LAB_INBOX_POLICY_LANE", "feature", "Inbox policy lane override for harvest routing"),
     # --- F10 burn-down: mission scheduler / offline lane ---
     FlagDef("AGENT_LAB_MISSION_SCHEDULER", "feature", "Background mission scheduler thread (CLI --scheduler)"),
     FlagDef(

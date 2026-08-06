@@ -1,4 +1,4 @@
-"""Clarity gate for the CLARIFY phase (AGENT_LAB_PIPELINE) — gjc deep-interview analog.
+"""Clarity gate for the staged pipeline CLARIFY phase — gjc deep-interview analog.
 
 Elevated from a single-agent float scorer to a multi-agent *lateral clarification panel*:
 

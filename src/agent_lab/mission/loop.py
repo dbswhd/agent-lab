@@ -74,7 +74,8 @@ def mission_loop_env_enabled() -> bool:
 def pipeline_enabled() -> bool:
     """Staged CLARIFY→CONSENSUS→EXECUTE orchestration (always on).
 
-    ``AGENT_LAB_PIPELINE=0`` is deprecated and ignored; kept for call-site compatibility.
+    Unconditional since the pipeline cutover; kept as a function for call-site
+    compatibility. The former env gate was removed — there is no way to turn this off.
     """
     return True
 

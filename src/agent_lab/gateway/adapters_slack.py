@@ -157,7 +157,8 @@ class SlackGatewayAdapter:
         cfg = load_gateway_config()
         session_id = str(payload.get("session_id") or "")
         if event == "inbox_pending":
-            item = payload.get("item") if isinstance(payload.get("item"), dict) else {}
+            raw_item = payload.get("item")
+            item = raw_item if isinstance(raw_item, dict) else {}
             prompt = str(item.get("prompt") or item.get("summary") or item.get("id") or "Inbox")
             kind = str(item.get("kind") or "item")
             text = f"*[{session_id}]* inbox `{kind}`\n{prompt[:500]}"

@@ -14,7 +14,10 @@ dependencies = [
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.32.0",
     "python-multipart>=0.0.9",
-    "mcp>=1.0.0",
+    # <2: mcp 2.0.0 dropped `mcp.server.fastmcp`, which every MCP server here
+    # imports (inbox/, research/, code_memory). Unpinned, CI resolved 2.0.0 and
+    # went red on 2026-07-24 while local venvs kept a working 1.x.
+    "mcp>=1.0.0,<2",
     "websockets>=13.0",
     "typing_extensions>=4.12.0",
 ]

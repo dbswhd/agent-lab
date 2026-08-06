@@ -4,10 +4,10 @@
 > **Productization SSOT:** [CONSOLE-PRODUCTIZATION.md](CONSOLE-PRODUCTIZATION.md). This file owns detailed UI migration gaps; phase numbering for the broader program lives in Console Productization.
 
 > **기준 시점:** 2026-06-14 — Workbench IA (Overview/Tasks/Inbox/Tools), `.taskbar` / `.taskbar-dock` canonical (M6)  
-> **Shipped since 2026-06-07:** Inspector **Overview / Tasks / Inbox**, `ContextOverviewPanel`, `GET/PATCH …/context-layers` (see [UI-MIGRATION-GAPS.md](UI-MIGRATION-GAPS.md) §1).
+> **Shipped since 2026-06-07:** Inspector **Overview / Tasks / Inbox**, `ContextOverviewPanel`, `GET/PATCH …/context-layers` (see [UI-MIGRATION-GAPS.md](archive/legacy/UI-MIGRATION-GAPS.md) §1).
 > **디자인 SSOT:** `~/Downloads/agent-lab/project/Agent Lab.html`  
 > **행동 SSOT:** `project/uploads/03-BEHAVIOR-CONTRACT.md`, `docs/USER-GUIDE.md`  
-> **관련:** [UI-MIGRATION-GAPS.md](UI-MIGRATION-GAPS.md) (갭 상세)
+> **관련:** [UI-MIGRATION-GAPS.md](archive/legacy/UI-MIGRATION-GAPS.md) (갭 상세)
 
 ---
 
@@ -44,7 +44,7 @@
 | `ChatToolbar.tsx` | 단일 `MacTitlebar` + `TitlebarSlotsContext`로 대체. **RunPanel·SessionViewer만** 아직 사용 | classic 모드 폐기 또는 titlebar 슬롯으로 이전 후 삭제 |
 | `App.tsx` `mode: "classic"` 분기 | Room 워크플로가 기본·유일 목표 | `RunPanel` / `SessionViewer` 흡수 또는 Settings Legacy로 격리 후 `mode` state 삭제 |
 | Rail footer **「…」 classic 토글** (`icon-btn` 세 번째) | 프로토타입에 없음, IA 분기 증가 | classic 제거와 동시 |
-| ~~Dual-class bridge (`taskbar` + `room-task-bar`, `legacy-bridge.css`)~~ **✅ M6** | canonical `.taskbar` / `.taskbar__*` only; `legacy-bridge.css` merged into `layout.css` | [UI-MIGRATION-GAPS.md](UI-MIGRATION-GAPS.md) §1 Taskbar |
+| ~~Dual-class bridge (`taskbar` + `room-task-bar`, `legacy-bridge.css`)~~ **✅ M6** | canonical `.taskbar` / `.taskbar__*` only; `legacy-bridge.css` merged into `layout.css` | [UI-MIGRATION-GAPS.md](archive/legacy/UI-MIGRATION-GAPS.md) §1 Taskbar |
 | ~~`layout-extensions.css`~~ | `layout.css`에 병합 완료 |
 | ~~`satellites.css`~~ | 위성 규칙 `layout.css` / `overlays.css`로 이전 완료 |
 
@@ -239,4 +239,4 @@
 | Work decision surface | `web/src/components/WorkDecisionPanel.tsx` |
 | Plan execute | `web/src/components/PlanExecutePanel.tsx` |
 | CSS canonical | `web/src/styles/{tokens,base,layout,surfaces,plan-execute}.css` |
-| 갭 추적 | [UI-MIGRATION-GAPS.md](UI-MIGRATION-GAPS.md) |
+| 갭 추적 | [UI-MIGRATION-GAPS.md](archive/legacy/UI-MIGRATION-GAPS.md) |

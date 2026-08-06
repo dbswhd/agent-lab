@@ -92,4 +92,4 @@ Rollback은 legacy writer를 제거하지 않으며, Mission journal을 삭제�
 - flag OFF rollback이 실제 운영 경로에서 재현된다.
 - rollback window, legacy writer retire 시점, irreversible cleanup 범위를 Human이 명시적으로 승인한다.
 
-이 문서는 legacy writer retire 승인으로 해석하지 않는다. 현재 권위는 [ADR-001](../decisions/ADR-001-production-dual-write-cutover.md)과 [NOW](../NOW.md)다.
+이 문서는 legacy writer retire 승인으로 해석하지 않는다. 현재 권위는 [ADR-001](../../decisions/ADR-001-production-dual-write-cutover.md)과 [NOW](../../NOW.md)다.

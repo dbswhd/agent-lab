@@ -1,12 +1,12 @@
 # Agent Lab MD 체계 설계
 
-> **Tier 5 — file map / history.** **Authoring canonical:** [MD-WRITING-PLAN.md](MD-WRITING-PLAN.md) · **Shipped:** [EXTERNAL-REFS-TRACEABILITY.md](EXTERNAL-REFS-TRACEABILITY.md) · [README.md](README.md)
+> **Tier 5 — file map / history.** **Authoring canonical:** [MD-WRITING-PLAN.md](../../MD-WRITING-PLAN.md) · **Shipped:** [EXTERNAL-REFS-TRACEABILITY.md](../../EXTERNAL-REFS-TRACEABILITY.md) · [README.md](README.md)
 
 > 작성: 2026-06-03  
 > 목적: 주요 AI 도구의 MD 파일 체계 분석 → Agent Lab에 최적화된 MD 아키텍처 설계
 
-> **Status (2026-06):** Agent Lab **repo** MD stack (CC-*, MD-PLATFORM/PROJECT/P3) **shipped** — [EXTERNAL-REFS-TRACEABILITY.md §Dev-tool](EXTERNAL-REFS-TRACEABILITY.md).  
-> **How to write:** [MD-WRITING-PLAN.md](MD-WRITING-PLAN.md) is canonical when this map and that guide conflict.  
+> **Status (2026-06):** Agent Lab **repo** MD stack (CC-*, MD-PLATFORM/PROJECT/P3) **shipped** — [EXTERNAL-REFS-TRACEABILITY.md §Dev-tool](../../EXTERNAL-REFS-TRACEABILITY.md).  
+> **How to write:** [MD-WRITING-PLAN.md](../../MD-WRITING-PLAN.md) is canonical when this map and that guide conflict.  
 > **Remaining:** workspace-side two-channel sync (`SHARED_CONTEXT` + per-tool files) and Claude auto memory — outside this repo; see §Part 4.
 
 ---

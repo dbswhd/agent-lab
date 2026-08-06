@@ -77,5 +77,5 @@ Legacy `POST /verified-loop/approve|reject` delegate to `plan/*` when `plan_work
 ## Related
 
 - [GOAL-LOOP.md](./GOAL-LOOP.md) — Layer 5 legacy discuss goal Oracle
-- [MISSION-LOOP-C-OMO.md](./MISSION-LOOP-C-OMO.md) — execute FSM after plan approve
-- [HUMAN-INBOX.md](./HUMAN-INBOX.md) — `ask_human` surface
+- [MISSION-LOOP-C-OMO.md](../../MISSION-LOOP-C-OMO.md) — execute FSM after plan approve
+- [HUMAN-INBOX.md](../../HUMAN-INBOX.md) — `ask_human` surface

@@ -332,22 +332,19 @@ export function useRoomChatInteractions(bootstrap: Bootstrap) {
 
   const { model: missionReadModel } = useMissionReadModel(sessionId);
 
-  const discussRecovery = useMemo(
-    () => {
-      if (
-        missionReadModel?.state === "REPAIRING" ||
-        missionReadModel?.state === "REPAIR"
-      ) {
-        return {
-          pending: true,
-          reason: missionReadModel.next_action,
-          action_index: null,
-        };
-      }
-      return discussRecoveryFromMissionLoop(session?.run?.mission_loop);
-    },
-    [missionReadModel, session?.run?.mission_loop],
-  );
+  const discussRecovery = useMemo(() => {
+    if (
+      missionReadModel?.state === "REPAIRING" ||
+      missionReadModel?.state === "REPAIR"
+    ) {
+      return {
+        pending: true,
+        reason: missionReadModel.next_action,
+        action_index: null,
+      };
+    }
+    return discussRecoveryFromMissionLoop(session?.run?.mission_loop);
+  }, [missionReadModel, session?.run?.mission_loop]);
 
   const {
     setRecoveryFailure,

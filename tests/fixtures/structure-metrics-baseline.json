@@ -46,8 +46,8 @@
     "claude_": 0
   },
   "tracked_pycache_files": 0,
-  "makefile_lines": 553,
-  "makefile_targets": 115,
+  "makefile_lines": 547,
+  "makefile_targets": 113,
   "large_tsx_files": [
     {
       "path": "web/src/components/HumanInboxPanel.tsx",
@@ -115,20 +115,21 @@
     },
     {
       "path": "web/src/hooks/useRoomChatInteractions.ts",
-      "lines": 741
+      "lines": 738
     },
     {
       "path": "web/src/hooks/useRoomChatPresentation.ts",
-      "lines": 418
+      "lines": 422
     }
   ],
+  "f11_run_meta_dict_signatures": 0,
+  "f11_run_dict_signatures": 162,
   "notes": {
     "pycache": "tracked_pycache_files counts git-tracked __pycache__/*.pyc only; local __pycache__ dirs are ignored by .gitignore and are not repo debt.",
     "makefile_targets": "Counted as Makefile lines matching ^target:",
     "hot_path_py_files": "F9 ratchet: execute/workflow/turn_flow* LOC caps; --check fails on any drift from baseline (growth or shrink without update).",
     "hot_path_ts_files": "F9 ratchet: RoomChat shell LOC caps after view/orchestrator split.",
-    "f11_run_meta_dict_signatures": "F11 ratchet: grep count of run_meta: dict[str, Any] in src/agent_lab; must not grow without baseline update (Stage 1 migration lowers over time)."
-  },
-  "f11_run_meta_dict_signatures": 0,
-  "f11_run_dict_signatures": 162
+    "f11_run_meta_dict_signatures": "F11 ratchet: count of 'run_meta: dict[str, Any]' annotations in src/agent_lab; --check fails on growth, and on shrink without a baseline update so the ratchet tightens as the Stage 1 migration progresses instead of going stale.",
+    "f11_run_dict_signatures": "F11 ratchet: same rule for 'run: dict[str, Any]' annotations in src/agent_lab."
+  }
 }

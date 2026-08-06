@@ -48,8 +48,11 @@ def test_f9_hot_path_ts_caps_in_baseline() -> None:
         "web/src/components/RoomChatView.tsx": 304,
         "web/src/hooks/useRoomChat.ts": 12,
         "web/src/hooks/useRoomChatBootstrap.ts": 484,
-        "web/src/hooks/useRoomChatInteractions.ts": 741,
-        "web/src/hooks/useRoomChatPresentation.ts": 418,
+        # 2026-07-30: 741 -> 738 (prettier reflow) · 418 -> 422 (workspacePath
+        # pass-through restoring the Open in Cursor action). No new logic in the
+        # shell — both moves are mechanical.
+        "web/src/hooks/useRoomChatInteractions.ts": 738,
+        "web/src/hooks/useRoomChatPresentation.ts": 422,
     }
 
 
@@ -91,6 +94,55 @@ def test_f11_run_dict_signature_baseline() -> None:
     total = _count_pattern_in_tree(ROOT / "src/agent_lab", r"run: dict\[str, Any\]")
     baseline = json.loads((ROOT / "tests/fixtures/structure-metrics-baseline.json").read_text())
     assert total <= baseline["f11_run_dict_signatures"]
+
+
+def _load_structure_metrics_module(name: str):
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(name, ROOT / "scripts" / "structure_metrics.py")
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_write_baseline_keeps_f11_keys(tmp_path: Path) -> None:
+    """Regenerating the baseline must not drop the F11 ratchet.
+
+    collect_metrics() used to omit these keys entirely, so `--write-baseline`
+    silently deleted them — and the two F11 tests above then died with KeyError
+    on the next run. The generator is now the source of the keys.
+    """
+    sm = _load_structure_metrics_module("structure_metrics_f11_write_test")
+    fake_baseline = tmp_path / "structure-metrics-baseline.json"
+    sm.BASELINE_PATH = fake_baseline
+
+    from dataclasses import asdict
+
+    fake_baseline.write_text(json.dumps(asdict(sm.collect_metrics()), indent=2) + "\n", encoding="utf-8")
+    written = json.loads(fake_baseline.read_text(encoding="utf-8"))
+
+    for key in ("f11_run_meta_dict_signatures", "f11_run_dict_signatures"):
+        assert key in written, f"{key} lost on baseline regeneration"
+        assert isinstance(written[key], int)
+
+
+def test_f11_growth_fails_check(tmp_path: Path) -> None:
+    """Simulated growth in run: dict[str, Any] signatures must fail --check."""
+    sm = _load_structure_metrics_module("structure_metrics_f11_growth_test")
+
+    metrics = sm.collect_metrics()
+    baseline = json.loads((ROOT / "tests/fixtures/structure-metrics-baseline.json").read_text())
+    mutated = json.loads(json.dumps(baseline))
+    mutated["f11_run_dict_signatures"] = metrics.f11_run_dict_signatures - 1
+
+    fake_baseline = tmp_path / "structure-metrics-baseline.json"
+    fake_baseline.write_text(json.dumps(mutated, indent=2) + "\n", encoding="utf-8")
+    sm.BASELINE_PATH = fake_baseline
+
+    failures = sm._check_against_baseline(metrics)
+    assert any("f11_run_dict_signatures" in f and "exceeded" in f for f in failures)
 
 
 def test_room_facade_no_underscore_exports() -> None:

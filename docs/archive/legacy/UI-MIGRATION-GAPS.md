@@ -39,7 +39,7 @@
 | Files tree git badge | `workspace_files.git_status` + `files-row__git` | **shipped** (workspace roots only) |
 | Composer `@file` | `ComposerMentionMenu` | **shipped** (workspace path picker stub) |
 | Artifacts mock `artifact-card` | `workspace-artifacts-list` | **동작함**. 카드 레이아웃 다름 |
-| Activity 피드 | `NotificationCenter` (Inbox 탭·별 surface) | 프로토타입 Inbox 단일 피드와 **배치·라우팅** 다름 — [NOTIFICATION-TAXONOMY.md](./NOTIFICATION-TAXONOMY.md) |
+| Activity 피드 | `NotificationCenter` (Inbox 탭·별 surface) | 프로토타입 Inbox 단일 피드와 **배치·라우팅** 다름 — [NOTIFICATION-TAXONOMY.md](../../NOTIFICATION-TAXONOMY.md) |
 
 **Shipped (2026-06-10):** Context sidebar **Overview / Tasks / Inbox** (`workspaceTabs.ts`, `ContextOverviewPanel`); context layer on/off (`context_layers.py`, Overview toggle). Evidence: `tests/test_workspace_ui_contract.py`.
 
@@ -119,7 +119,7 @@ make dev   # http://localhost:5173 + API 8765
 ## 5. 후속 작업 (선택, cosmetic)
 
 1. ~~`RoomTaskBar` / `PlanExecutePanel` / `RoomChat` / `ChatBubble` 내부 legacy class~~ — **M6 complete** (2026-06-14)
-2. Activity → Inbox 단일 피드 vs 별 surface — [NOTIFICATION-TAXONOMY.md](./NOTIFICATION-TAXONOMY.md) 라우팅 정리
+2. Activity → Inbox 단일 피드 vs 별 surface — [NOTIFICATION-TAXONOMY.md](../../NOTIFICATION-TAXONOMY.md) 라우팅 정리
 3. `SessionList`에 agent Avatar strip + dir/branch (prototype `session-item__sub`)
 4. `NewSessionDialog` vs inline setup — IA 통일
 5. ~~Classic / RunPanel / SessionViewer~~ — **removed** (2026-06-10); dual-class TSX rename remains

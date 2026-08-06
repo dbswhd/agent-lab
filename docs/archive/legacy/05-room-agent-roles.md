@@ -1,10 +1,10 @@
 # 3자 룸 — 에이전트 역할 분담
 
-> **Legacy doc (Tier 4)** — planning detail. **Runtime prompts (canonical):** [`agents/prompts.py`](../src/agent_lab/agents/prompts.py) · [USER-GUIDE.md](./USER-GUIDE.md)
+> **Legacy doc (Tier 4)** — planning detail. **Runtime prompts (canonical):** [`agents/prompts.py`](../../../src/agent_lab/agents/prompts.py) · [USER-GUIDE.md](../../USER-GUIDE.md)
 
 > **적용 범위:** `room.parallel` (Cursor · Codex · Claude 병렬)  
-> **다른 모드:** 클래식 워크플로의 Planner / Critic / Scribe는 [`roles.py`](../src/agent_lab/roles.py)에 정의된 **별도 역할**이다. 이름이 비슷해도 3자 룸 에이전트와 1:1로 대응하지 않는다.  
-> **런타임 프롬프트:** 요약본은 [`agents/prompts.py`](../src/agent_lab/agents/prompts.py). 이 문서는 사람·기획용 상세 계약이며, 코드와 충돌하면 **프롬프트 파일이 실행 시 기준**이다.
+> **다른 모드:** 클래식 워크플로의 Planner / Critic / Scribe는 [`roles.py`](../../../src/agent_lab/roles.py)에 정의된 **별도 역할**이다. 이름이 비슷해도 3자 룸 에이전트와 1:1로 대응하지 않는다.  
+> **런타임 프롬프트:** 요약본은 [`agents/prompts.py`](../../../src/agent_lab/agents/prompts.py). 이 문서는 사람·기획용 상세 계약이며, 코드와 충돌하면 **프롬프트 파일이 실행 시 기준**이다.
 
 ---
 
@@ -181,9 +181,9 @@ Human 체감과 코드 상태는 **끊긴 구간이 두 개**라서 겹쳐 보�
 | 항목 | 경로 |
 |------|------|
 | 룸 사용법 | [04-multi-agent-room.md](./04-multi-agent-room.md) |
-| 워크플로 계약 | [`workflows/room.parallel.yaml`](../workflows/room.parallel.yaml) |
-| 오케스트레이션 | [`src/agent_lab/room.py`](../src/agent_lab/room.py) |
-| 룸 프롬프트·API→CLI 인수인계 | [`src/agent_lab/agents/prompts.py`](../src/agent_lab/agents/prompts.py) |
+| 워크플로 계약 | [`workflows/room.parallel.yaml`](../../../workflows/room.parallel.yaml) |
+| 오케스트레이션 | [`src/agent_lab/room.py`](../../../app/server/routers/room.py) |
+| 룸 프롬프트·API→CLI 인수인계 | [`src/agent_lab/agents/prompts.py`](../../../src/agent_lab/agents/prompts.py) |
 | 통제 워크플로 원칙 | [01-CONTROLLED-WORKFLOW-SYSTEM.md](./01-CONTROLLED-WORKFLOW-SYSTEM.md) |
 
 *마지막 정리: 2026-05-27 — 역할 분담 + 대화 끊김 구간( follow-up vs 2라운드 vs UX ) 정리.*

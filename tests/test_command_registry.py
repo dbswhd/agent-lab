@@ -105,11 +105,18 @@ def test_logout_command_returns_auth_run(tmp_path: Path, monkeypatch: pytest.Mon
 
     run = get_auth_run(auth_run["id"])
     assert run is not None
-    deadline = time.monotonic() + 2.0
-    while run.status == "running" and time.monotonic() < deadline:
+    # Wait on the thing actually asserted — the chat line — not on run.status.
+    # The status flip and the chat.jsonl write are separate steps, so a runner
+    # slow enough to interleave them made this fail with 0 lines on CI while
+    # passing locally.
+    deadline = time.monotonic() + 10.0
+    lines: list[str] = []
+    while time.monotonic() < deadline:
+        lines = chat.read_text(encoding="utf-8").strip().splitlines()
+        if lines:
+            break
         time.sleep(0.01)
-    lines = chat.read_text(encoding="utf-8").strip().splitlines()
-    assert len(lines) == 1
+    assert len(lines) == 1, f"auth run did not append exactly one chat line: {lines!r}"
     payload = json.loads(lines[0])
     assert "/logout codex:" in payload["content"]
     assert "시작" not in payload["content"]

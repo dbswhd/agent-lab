@@ -53,7 +53,8 @@ def notify_gate_blocked(
     source: str | None = None,
 ) -> dict[str, Any]:
     """Policy gate blocked — Human action required."""
-    gates = snapshot.get("gates") if isinstance(snapshot.get("gates"), dict) else {}
+    raw_gates = snapshot.get("gates")
+    gates = raw_gates if isinstance(raw_gates, dict) else {}
     gate_profile = gates.get("gate_profile")
     if gate_profile is None:
         gate_profile = get_gate_profile(read_run_meta(folder))
@@ -86,7 +87,8 @@ def notify_auto_merge_blocked(
     execution_id = str(execution.get("id") or "").strip()
     if dedupe and execution_id:
         run = read_run_meta(folder)
-        schedule_meta = run.get("mission_schedule") if isinstance(run.get("mission_schedule"), dict) else {}
+        raw_schedule = run.get("mission_schedule")
+        schedule_meta = raw_schedule if isinstance(raw_schedule, dict) else {}
         seen = {str(row) for row in (schedule_meta.get("auto_merge_blocked_executions") or []) if str(row).strip()}
         if execution_id in seen:
             return {"ok": True, "skipped": True, "reason": "already_notified", "event": "auto_merge_blocked"}

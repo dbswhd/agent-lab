@@ -1,7 +1,7 @@
 # Mission OS Direction — SSOT
 
 > **Status (2026-06-14):** OS layer roadmap. Workbench UI shell **shipped** (`4d9c5fd`); Web changes are Settings wiring + badges only.  
-> **Related:** [PLAN-WORKFLOW.md](./PLAN-WORKFLOW.md) · [HUMAN-INBOX.md](./HUMAN-INBOX.md) · [CONSOLE-PRODUCTIZATION.md](./CONSOLE-PRODUCTIZATION.md) · [NOTIFICATION-TAXONOMY.md](./NOTIFICATION-TAXONOMY.md)
+> **Related:** [PLAN-WORKFLOW.md](archive/rfcs/PLAN-WORKFLOW.md) · [HUMAN-INBOX.md](./HUMAN-INBOX.md) · [CONSOLE-PRODUCTIZATION.md](./CONSOLE-PRODUCTIZATION.md) · [NOTIFICATION-TAXONOMY.md](./NOTIFICATION-TAXONOMY.md)
 
 Agent Lab stays a **Mission OS** (Room consensus · worktree isolation · Oracle verified). Hermes-style **Agent OS** patterns (Gateway, scheduler, skills memory) are absorbed **selectively** without breaking 4C (Merge Verified).
 
@@ -39,7 +39,7 @@ Gateway `routes.toml` and schedule entries use `gate_profile` — not Mission Bo
 
 ## 3. 4C reference (Merge Verified)
 
-See [PLAN-WORKFLOW.md](./PLAN-WORKFLOW.md). Shipped FSM in `plan_workflow.py` — **do not break**.
+See [PLAN-WORKFLOW.md](archive/rfcs/PLAN-WORKFLOW.md). Shipped FSM in `plan_workflow.py` — **do not break**.
 
 | 4C step | Human gate | Code anchor |
 |---------|------------|-------------|

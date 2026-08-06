@@ -104,7 +104,7 @@ Soak ledger가 깨끗하면 **별도** Human 승인으로:
 - Mission 단일 write authority 승격
 - irreversible cleanup 범위
 
-권위: [ADR-001](../decisions/ADR-001-production-dual-write-cutover.md) · [NOW](../NOW.md).
+권위: [ADR-001](../../decisions/ADR-001-production-dual-write-cutover.md) · [NOW](../../NOW.md).
 
 ## 관련 증거
 

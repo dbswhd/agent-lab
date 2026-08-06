@@ -72,6 +72,24 @@ def _mock_goal_oracle_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture(autouse=True)
+def _legacy_inbox_authority_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep the run.json Inbox contract as the test baseline.
+
+    The 2026-07-25 full-traffic cutover (`c5a5dd67`) put
+    ``AGENT_LAB_MISSION_AUTHORITY=1`` with a ``*`` allowlist into the small /
+    balanced / thorough / autonomous profiles, so every test session started
+    routing Inbox writes into the Mission journal instead of ``run.json``. The
+    legacy writer is still shipped (M6 hard delete is frozen, and read-model
+    falls back for unmigrated sessions), so both contracts are live — but a
+    test must choose one deliberately rather than inherit the profile default.
+
+    Tests that exercise journal authority set these vars themselves.
+    """
+    monkeypatch.delenv("AGENT_LAB_MISSION_AUTHORITY", raising=False)
+    monkeypatch.delenv("AGENT_LAB_MISSION_AUTHORITY_SESSIONS", raising=False)
+
+
+@pytest.fixture(autouse=True)
 def _skip_claude_headless_probe_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
     """Most unit tests mock Claude subprocess; skip slow real OAuth probe."""
     monkeypatch.setenv("AGENT_LAB_CLAUDE_SKIP_HEADLESS_PROBE", "1")

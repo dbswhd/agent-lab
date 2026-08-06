@@ -97,6 +97,6 @@ Exercise된 route: `plan/approve`, `plan/reject`, `inbox/resolve`, `execute/reso
 
 ## 참고
 
-- 판정 SSOT: [ADR-001](../decisions/ADR-001-production-dual-write-cutover.md)
+- 판정 SSOT: [ADR-001](../../decisions/ADR-001-production-dual-write-cutover.md)
 - 운영 절차: [controlled cohort runbook](./dual-write-controlled-cohort-runbook-2026-07-13.md)
 - 이전 route cohort 증거: [dual-write-route-cohort-report](./dual-write-route-cohort-report-2026-07-13.md)

@@ -54,6 +54,6 @@ Golden execute verify: `sessions/_regression/execute_verify_loop/`.
 
 ## Related
 
-- [GOAL-LOOP.md](./GOAL-LOOP.md) — session goal Oracle
-- [MISSION-DOGFOOD.md](./MISSION-DOGFOOD.md) — mission KPI checklist
+- [GOAL-LOOP.md](archive/rfcs/GOAL-LOOP.md) — session goal Oracle
+- [MISSION-DOGFOOD.md](archive/legacy/MISSION-DOGFOOD.md) — mission KPI checklist
 - `src/agent_lab/oracle_core.py` — prompts + parsing SSOT

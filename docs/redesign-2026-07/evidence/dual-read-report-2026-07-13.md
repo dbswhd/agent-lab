@@ -2,7 +2,7 @@
 
 > **판정:** `cutover_ready=false`
 > **실행:** `python scripts/mission_dual_read.py`
-> **범위:** [mission-baseline.json](../../tests/fixtures/mission-baseline.json)의 대표 5개 regression fixture
+> **범위:** [mission-baseline.json](../../../tests/fixtures/mission-baseline.json)의 대표 5개 regression fixture
 
 ## 1. 결과
 

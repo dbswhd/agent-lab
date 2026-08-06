@@ -93,8 +93,8 @@ This document is packaging/API guidance. Product positioning lives in [CONSOLE-P
 
 Legacy visual handoff references remain available for history:
 
-→ **[docs/02-ui-ux-handoff.md](./02-ui-ux-handoff.md)** (iMessage / IG DM / Telegram 레퍼런스, 외주)  
-→ **[docs/03-workflow.md](./03-workflow.md)** (단계별 사용 워크플로)
+→ **[docs/02-ui-ux-handoff.md](archive/legacy/02-ui-ux-handoff.md)** (iMessage / IG DM / Telegram 레퍼런스, 외주)  
+→ **[docs/03-workflow.md](archive/legacy/03-workflow.md)** (단계별 사용 워크플로)
 
 Quick map:
 

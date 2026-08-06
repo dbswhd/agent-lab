@@ -133,18 +133,17 @@ Legacy classic graph는 `topic.txt`, `transcript.md`, `meta.json`을 추가로 �
 ```text
 agent-lab/
 ├── src/agent_lab/          # Room · execute · mission · oracle 코어
-│   ├── room.py             # 멀티에이전트 Room 오케스트레이션
-│   ├── plan_execute*.py    # worktree execute · merge · verify
-│   ├── plan_workflow.py    # Plan-First FSM
-│   ├── mission_loop.py     # Mission Loop Layer 6
+│   ├── room/               # 멀티에이전트 Room 오케스트레이션
+│   ├── plan/               # Plan-First FSM · worktree execute · merge · verify
+│   ├── mission/            # Mission Loop Layer 6
 │   └── runtime/            # Runtime harness (discuss/execute lane)
 ├── app/server/             # FastAPI (routers/* — main.py는 조립만)
 ├── web/                    # React 18 + Vite UI
 │   └── src-tauri/          # Tauri 2 데스크톱 셸
-├── tests/                  # pytest (~870 mock-fast, integration 별도)
+├── tests/                  # pytest (수치는 `make test-fast` 출력 기준, integration 별도)
 ├── scripts/                # smoke · score · ops · dogfood
 ├── sessions/
-│   └── _regression/        # 36 regression baselines (git tracked)
+│   └── _regression/        # 42 regression baselines (git tracked)
 └── docs/                   # 제품·운영·RFC 문서
 ```
 
@@ -168,9 +167,9 @@ make test             # full non-live pytest suite
 make ci               # PR gate: lint + format-check + typecheck-ratchet + test-fast + smoke
 make ci-full          # release gate: lint/typecheck + fast + integration + bridge + smoke + score
 
-python scripts/smoke_room.py     # 36 regression baselines
+python scripts/smoke_room.py     # 42 regression baselines
 make verify-hooks                # Hook · Communicate suite
-make list-flags                  # AGENT_LAB_* 레지스트리 (79 entries)
+make list-flags                  # AGENT_LAB_* 레지스트리 (250 entries)
 make dogfood-suite-mock          # Eval Program v1 mock topics
 ```
 
@@ -212,8 +211,8 @@ subprocess env는 `subprocess_env.subprocess_env()` allowlist만 — **`.env` �
 | [docs/EXTERNAL-REFS-TRACEABILITY.md](docs/EXTERNAL-REFS-TRACEABILITY.md) | **Shipped 기능** 증거 매트릭스 |
 | [docs/STABILITY.md](docs/STABILITY.md) | CI · smoke · config · release |
 | [docs/OPS-RUNBOOK.md](docs/OPS-RUNBOOK.md) | live worktree · merge operator |
-| [docs/PLAN-WORKFLOW.md](docs/PLAN-WORKFLOW.md) | Plan-First FSM |
-| [docs/GOAL-LOOP.md](docs/GOAL-LOOP.md) | Goal loop · verified loop |
+| [docs/PLAN-WORKFLOW.md](docs/archive/rfcs/PLAN-WORKFLOW.md) | Plan-First FSM |
+| [docs/GOAL-LOOP.md](docs/archive/rfcs/GOAL-LOOP.md) | Goal loop · verified loop |
 | [docs/APP.md](docs/APP.md) | Tauri 패키징 · API 개요 |
 
 **규칙:** shipped 상태는 TRACEABILITY + 코드 + 테스트가 SSOT. `docs/00`–`05` 번호 문서는 교육용 레거시입니다.
@@ -230,7 +229,7 @@ subprocess env는 `subprocess_env.subprocess_env()` allowlist만 — **`.env` �
 | POST | `/api/sessions/{id}/execute` | Execute gate |
 | GET | `/api/runtime` | Runtime harness snapshot |
 
-**전체 API·라우터:** [USER-GUIDE §21](./docs/USER-GUIDE.md#21-rest-api-개요) · `app/server/routers/` (22 modules)
+**전체 API·라우터:** [USER-GUIDE §21](./docs/USER-GUIDE.md#21-rest-api-개요) · `app/server/routers/` (30 modules)
 
 ---
 

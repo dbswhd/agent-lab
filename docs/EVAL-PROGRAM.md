@@ -368,7 +368,7 @@ Topic 실행 → score_session → M4/관찰 KPI → 실패 trace 리뷰
 
 ## 관련 문서
 
-- [STABILITY.md](./STABILITY.md) · [MISSION-DOGFOOD.md](./MISSION-DOGFOOD.md)
+- [STABILITY.md](./STABILITY.md) · [MISSION-DOGFOOD.md](archive/legacy/MISSION-DOGFOOD.md)
 - [sessions/_benchmark/README.md](../sessions/_benchmark/README.md)
 - [EVAL-CONTRACT.md](./EVAL-CONTRACT.md) — S1.5 outcome 정의 + trace/grader + T0/T1/T2 판정
 - `/smoke-and-score` skill (Cursor/Claude Code)

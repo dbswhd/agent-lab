@@ -83,7 +83,7 @@ dogfood 시나리오). 둘 다 mock-only, dogfood 무관.
 | **HS-M5** addressable + Human harness_patch merge 1건 | — | ✅ 닫힘 (2026-07-25) — `pc-2026-07-24-fc0b8932` (`fp:weak_taste:deep`) → merge `755c38d9`. 증거: [phase-c3-hs-m5-2026-07-25.md](./redesign-2026-07/evidence/phase-c3-hs-m5-2026-07-25.md) | HS6 재개 여부는 Human 재논의 (자동 착수 금지) |
 | **N1-30** dogfood-first 만료 검토 (history.n≥30) | — | ✅ 닫힘 (live ledger `eligible=812`, `by_source.history.n=236`) | — |
 
-**N4-D3 L2 인프라 블로커 (닫힘 이력):** `scripts/l2_escalation_dogfood_live_repeat.py` / X2-lift 픽스처 경로에서 관측된 이슈:
+**N4-D3 L2 인프라 블로커 (닫힘 이력):** `scripts/l2_escalation_dogfood_live_repeat.py` / X2-lift 픽스처 경로에서 관측된 이슈 (해당 스크립트들은 2026-07-30에 삭제됨 — 아래는 이력 보존용):
 
 - **(1) ask_human 배선 충돌 — 수정 완료** (`1ae16030`, `AGENT_LAB_PLAN_INBOX=1`).
 - **(2) 재시도 메시지 / scratch plan scrub — harness 보강** (`_retry_topic`, `_scrub_scratch_plans`).

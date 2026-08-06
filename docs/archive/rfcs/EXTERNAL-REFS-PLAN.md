@@ -4,8 +4,8 @@
 > 분석 대상: Conductor · Centaur · LazyCodex · Claude Code  
 > 목적: 각 시스템의 강점을 Agent Lab에 이식하되, 합의·게이트·provenance 핵심 구조는 유지한다.
 
-> **Status (2026-06):** External-ref **implementation queue is empty**. Layers 1–5, CON-diff, PI-executed, CENT-env/durable, MD-PROJECT/PLATFORM/P3, CC-*, **HOOK-COMM** **shipped**. Live opt-in: [LC-L4-ADVERSARIAL-LIVE.md](LC-L4-ADVERSARIAL-LIVE.md), [GOAL-LOOP.md](GOAL-LOOP.md).  
-> **Plan vs code:** [EXTERNAL-REFS-TRACEABILITY.md](EXTERNAL-REFS-TRACEABILITY.md) · **Doc index:** [README.md](README.md)
+> **Status (2026-06):** External-ref **implementation queue is empty**. Layers 1–5, CON-diff, PI-executed, CENT-env/durable, MD-PROJECT/PLATFORM/P3, CC-*, **HOOK-COMM** **shipped**. Live opt-in: [LC-L4-ADVERSARIAL-LIVE.md](../../LC-L4-ADVERSARIAL-LIVE.md), [GOAL-LOOP.md](GOAL-LOOP.md).  
+> **Plan vs code:** [EXTERNAL-REFS-TRACEABILITY.md](../../EXTERNAL-REFS-TRACEABILITY.md) · **Doc index:** [README.md](README.md)
 
 ---
 
@@ -14,7 +14,7 @@
 | 시스템 | 핵심 철학 | Agent Lab에 없는 것 |
 |--------|-----------|---------------------|
 | **Conductor** | workspace = 격리 단위, PR = 통합 단위 | — (CON-diff ✅, PI-executed ✅) |
-| **Centaur** | 팀 공유 에이전트, Slack-native, K8s 격리 | Durable step (재시작 복구) — credential 분리 ✅ [CENT-env](EXTERNAL-REFS-TRACEABILITY.md) |
+| **Centaur** | 팀 공유 에이전트, Slack-native, K8s 격리 | Durable step (재시작 복구) — credential 분리 ✅ [CENT-env](../../EXTERNAL-REFS-TRACEABILITY.md) |
 | **LazyCodex** | 완료를 주장하지 말고 Loop → 검증될 때까지 | **Loop 엔진** (Oracle verified completion) |
 | **Claude Code** | 개발자 도구 생태계 완성 | auto-memory (CC-CLAUDE/hooks/rules/skills ✅) |
 
@@ -143,7 +143,7 @@ Human이 approve 화면에서 diff + adversarial 결과를 같이 봅니다. "LG
 
 ### 1.6 Oracle Verified Completion (Layer 3 심화)
 
-> **✅ Shipped:** [LC-oracle](EXTERNAL-REFS-TRACEABILITY.md) + [LC-L3](EXTERNAL-REFS-TRACEABILITY.md) — `oracle_verify()` in `plan_execute_merge.py`; mock-first; live `AGENT_LAB_ORACLE_LIVE=1` in `.env.example`. Below is design context (pre-ship problem → now addressed).
+> **✅ Shipped:** [LC-oracle](../../EXTERNAL-REFS-TRACEABILITY.md) + [LC-L3](../../EXTERNAL-REFS-TRACEABILITY.md) — `oracle_verify()` in `plan_execute_merge.py`; mock-first; live `AGENT_LAB_ORACLE_LIVE=1` in `.env.example`. Below is design context (pre-ship problem → now addressed).
 
 #### 왜 별도 섹션인가
 
@@ -481,7 +481,7 @@ plan.md provenance와 함께 "왜 이 코드가 이렇게 됐는가" 추적.
 
 ### 3.1 현황
 `cli_retry.py` 이미 구현됨 (429, timeout, overloaded 패턴 처리).  
-subprocess credential 분리 **✅ shipped** — [CENT-env](EXTERNAL-REFS-TRACEABILITY.md), `subprocess_env.py`.
+subprocess credential 분리 **✅ shipped** — [CENT-env](../../EXTERNAL-REFS-TRACEABILITY.md), `subprocess_env.py`.
 
 ### 3.2 Subprocess Credential 분리 (✅ shipped — CENT-env)
 

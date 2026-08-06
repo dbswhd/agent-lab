@@ -1,6 +1,6 @@
 # Agent Lab — 사용 워크플로 (메신저 UI)
 
-> **Legacy doc (Tier 4)** — early messenger metaphor. **Canonical:** [USER-GUIDE.md](./USER-GUIDE.md) · [README.md](./README.md)
+> **Legacy doc (Tier 4)** — early messenger metaphor. **Canonical:** [USER-GUIDE.md](../../USER-GUIDE.md) · [README.md](./README.md)
 
 > UI 레퍼런스: **iMessage** (말풍선·전송), **Instagram DM** (대화 목록·프리뷰), **Telegram** (그룹 발신자 라벨·고정 메시지)
 
@@ -157,4 +157,4 @@ sessions/2026-05-26-c45-overlay/
 - **실시간 스트리밍** — 실행 중 Planner 본문이 말풍선에 조금씩 채워지기 (API 확장)  
 - **TASK export** — plan.md → `TASK-draft.md` 버튼
 
-관련: [docs/APP.md](./APP.md) · [README.md](../README.md)
+관련: [docs/APP.md](../../APP.md) · [README.md](../README.md)

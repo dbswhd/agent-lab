@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run one AGENT_LAB_PIPELINE mission (live or mock Room + mission_loop advance)."""
+"""Run one staged-pipeline mission (live or mock Room + mission_loop advance)."""
 
 from __future__ import annotations
 
@@ -66,7 +66,6 @@ def run_mission(
     session_id: str | None = None,
     live: bool = True,
 ) -> dict[str, Any]:
-    os.environ["AGENT_LAB_PIPELINE"] = "1"
     os.environ["AGENT_LAB_MISSION_LOOP"] = "1"
     os.environ["AGENT_LAB_MOCK_AGENTS"] = "0" if live else "1"
     if not live:
@@ -94,7 +93,7 @@ def run_mission(
     def record(name: str, ok: bool, detail: str) -> None:
         result["checks"].append({"name": name, "ok": ok, "detail": detail})
 
-    record("pipeline_flag", pipeline_enabled(), "AGENT_LAB_PIPELINE=1")
+    record("pipeline_enabled", pipeline_enabled(), "staged pipeline is unconditional")
 
     folder, _messages, _plan = room.run_room(
         spec.topic,

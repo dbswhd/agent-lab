@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mock pipeline dogfood: AGENT_LAB_PIPELINE=1 CLARIFY→DISCUSS→consensus→PLAN_GATE."""
+"""Mock pipeline dogfood: CLARIFY→DISCUSS→consensus→PLAN_GATE (pipeline is always on)."""
 
 from __future__ import annotations
 
@@ -15,7 +15,6 @@ sys.path.insert(0, str(ROOT / "src"))
 
 os.environ.setdefault("AGENT_LAB_MOCK_AGENTS", "1")
 os.environ.setdefault("AGENT_LAB_MISSION_LOOP", "1")
-os.environ.setdefault("AGENT_LAB_PIPELINE", "1")
 
 
 def _utc_slug() -> str:
@@ -69,7 +68,7 @@ def run_pipeline_dogfood(*, sessions_root: Path, session_id: str | None = None) 
         if not ok:
             raise RuntimeError(f"{name}: {detail}")
 
-    record("pipeline_flag", pipeline_enabled(), "AGENT_LAB_PIPELINE must be enabled")
+    record("pipeline_enabled", pipeline_enabled(), "staged pipeline is unconditional")
 
     _install_consensus_mock()
     from agent_lab import room

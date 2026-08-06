@@ -66,7 +66,7 @@ On every API process start (FastAPI lifespan), `agent_auth_bootstrap.bootstrap_r
 |-------|----------------|
 | **Cursor** | If `CURSOR_API_KEY` is in env but missing from `~/.agent-lab/credentials.toml`, persist to credentials + `~/.agent-lab/.env`. Also writes absolute `CODEX_BIN` / `CLAUDE_BIN` / `CURSOR_SDK_BRIDGE_BIN` when discoverable. |
 | **Codex** | Applies captured OAuth **primary** profile to live `~/.codex/auth.json` when stale or logged out; clears duplicate **fallback** profile when it differs from primary. |
-| **Claude** | Clears auth status cache and runs `claude auth status` only (no headless `-p` probe unless `AGENT_LAB_CLAUDE_HEADLESS_PROBE=1`). |
+| **Claude** | Clears auth status cache and runs the headless `claude -p` auth probe; set `AGENT_LAB_CLAUDE_SKIP_HEADLESS_PROBE=1` (or `CLAUDE_SKIP_AUTH_PROBE=1`) to skip it — `src/agent_lab/claude/cli.py::_skip_headless_probe`. |
 
 Disable with `AGENT_LAB_SKIP_AUTH_BOOTSTRAP=1`. Boot summary: `~/Library/Logs/Agent Lab/agent-lab-boot.log` (`auth bootstrap: …`).
 

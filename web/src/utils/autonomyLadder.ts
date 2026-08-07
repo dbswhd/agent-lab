@@ -27,8 +27,23 @@ export type AutonomySessionView = {
   autoApproveEnabled: boolean;
   missionLoopEnabled: boolean;
   autonomousSegmentActive: boolean;
+  /** True while the next step needs a human OK (display level L0). */
+  needsYou: boolean;
+  /** Short pill text: "승인 필요" / "알아서 진행". */
+  statusLabel: string;
+  /** One sentence under the pill explaining the current level. */
+  statusDetail: string;
+  /** Plain-language reason the ladder was demoted, when one applies. */
+  whyStopped: string | null;
   summary: string;
   transitions: AutonomyTransition[];
+};
+
+/** One rung of the ladder, phrased for a human rather than for the ledger. */
+export type AutonomyLevelCard = {
+  level: AutonomyLevel;
+  title: string;
+  hint: string;
 };
 
 type AutonomyPayload = NonNullable<RuntimeSnapshot["autonomy"]>;
@@ -52,6 +67,113 @@ export function autonomyLevelLabel(
   }
 }
 
+/** The ladder as a person reads it — what each rung lets the agents do alone. */
+export function autonomyLevelCards(locale: "en" | "ko"): AutonomyLevelCard[] {
+  const ko = locale === "ko";
+  return [
+    {
+      level: "L0",
+      title: ko ? "매번 물어보기" : "Ask me each time",
+      hint: ko
+        ? "계획·실행 전에 항상 승인이 필요합니다."
+        : "Plan and execute always wait for your OK.",
+    },
+    {
+      level: "L1",
+      title: ko ? "안전한 것만 알아서" : "OK low-risk alone",
+      hint: ko
+        ? "낮은 위험은 시간 지나면 자동 승인할 수 있습니다."
+        : "Low-risk steps may auto-approve after a short wait.",
+    },
+    {
+      level: "L2",
+      title: ko ? "횟수 한도 안에서" : "OK within a budget",
+      hint: ko
+        ? "정해 둔 횟수만큼 자동으로 이어가고, 다 쓰면 다시 묻습니다."
+        : "Continues alone for a set number of merges, then asks again.",
+    },
+    {
+      level: "L3",
+      title: ko ? "미션까지 알아서" : "Run the mission",
+      hint: ko
+        ? "미션 루프가 돌고, 막히거나 위험이 클 때만 묻습니다."
+        : "Mission loop runs; asks only on blocks or high risk.",
+    },
+  ];
+}
+
+/**
+ * Turn a demotion `reason` code into one sentence a human can act on.
+ *
+ * The ledger reasons (`trust_budget_consumed`, `oracle_fail_consecutive`, …)
+ * answer "which rule fired"; this answers "why did it stop", which is what the
+ * dial is asked at a glance. Unknown reasons fall through with level tokens
+ * stripped rather than being hidden.
+ */
+export function autonomyWhyStopped(
+  reason: string | null | undefined,
+  locale: "en" | "ko",
+): string {
+  const ko = locale === "ko";
+  const raw = (reason || "").trim();
+  if (!raw) return ko ? "자동 진행이 꺼졌습니다." : "Auto-run was turned down.";
+  const key = raw.toLowerCase();
+  if (key.includes("trust_budget") || key.includes("budget_consumed")) {
+    return ko
+      ? "자동으로 이어갈 횟수를 다 썼습니다."
+      : "The auto-continue budget ran out.";
+  }
+  if (
+    key.includes("oracle") &&
+    (key.includes("fail") || key.includes("consecutive"))
+  ) {
+    return ko
+      ? "검증(Oracle)이 연속으로 실패했습니다."
+      : "Verification (Oracle) failed repeatedly.";
+  }
+  if (
+    key.includes("diff_risk") ||
+    key.includes("high_risk") ||
+    key === "high"
+  ) {
+    return ko
+      ? "변경 위험이 높게 분류되었습니다."
+      : "The change was classified as high risk.";
+  }
+  if (
+    key.includes("quarter") ||
+    key.includes("cost_ledger") ||
+    key.includes("budget_usd")
+  ) {
+    return ko
+      ? "분기 비용 한도에 닿았습니다."
+      : "The quarterly spend limit was hit.";
+  }
+  if (key.includes("risk_pin") || key.includes("trading")) {
+    return ko
+      ? "위험 카테고리(예: 트레이딩)라서 더 보수적으로 멈췄습니다."
+      : "A risk category (e.g. trading) pinned a more careful mode.";
+  }
+  if (key.includes("inbox_restore")) {
+    return ko ? "이전 설정을 다시 켰습니다." : "Previous setting was restored.";
+  }
+  return raw
+    .replace(/\bL[0-3]\b/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+/** Most recent demotion, which is the one worth explaining. */
+function latestDemotion(
+  transitions: AutonomyTransition[],
+): AutonomyTransition | null {
+  for (let i = transitions.length - 1; i >= 0; i -= 1) {
+    const row = transitions[i];
+    if (row?.trigger === "demotion") return row;
+  }
+  return null;
+}
+
 export function buildAutonomySessionView(
   autonomy: AutonomyPayload | null | undefined,
   locale: "en" | "ko",
@@ -61,14 +183,46 @@ export function buildAutonomySessionView(
   const remaining = autonomy.trust_budget.auto_merge_remaining;
   const total = autonomy.trust_budget.auto_merge_total;
   const ko = locale === "ko";
-  let summary = autonomyLevelLabel(displayLevel, locale);
-  if (total > 0) {
-    summary += ko
-      ? ` · trust ${remaining}/${total}`
-      : ` · trust ${remaining}/${total}`;
-  } else if (autonomy.signals.auto_approve_enabled && displayLevel === "L1") {
-    summary += ko ? " · auto-approve" : " · auto-approve";
+  const transitions = (autonomy.transitions ?? []).slice(-5);
+  const demotion = latestDemotion(transitions);
+  const needsYou = displayLevel === "L0";
+  const whyStopped = demotion
+    ? autonomyWhyStopped(demotion.reason, locale)
+    : null;
+
+  const statusLabel = needsYou
+    ? ko
+      ? "승인 필요"
+      : "Needs your OK"
+    : ko
+      ? "알아서 진행"
+      : "Can go alone";
+
+  let statusDetail: string;
+  if (needsYou && whyStopped) {
+    statusDetail = whyStopped;
+  } else if (needsYou) {
+    statusDetail = ko
+      ? "다음 단계는 승인이 있어야 진행됩니다."
+      : "The next step waits for your approval.";
+  } else if (displayLevel === "L2" && total > 0) {
+    statusDetail = ko
+      ? `자동 진행 남은 횟수 ${remaining}/${total}`
+      : `${remaining}/${total} auto-continues left`;
+  } else if (displayLevel === "L3") {
+    statusDetail = ko
+      ? "미션이 막히거나 위험이 클 때만 묻습니다."
+      : "Asks only when blocked or high risk.";
+  } else {
+    statusDetail = ko
+      ? "낮은 위험은 자동으로 넘어갈 수 있습니다."
+      : "Low-risk steps can continue without you.";
   }
+
+  const summary = whyStopped
+    ? `${statusLabel} — ${whyStopped}`
+    : `${statusLabel}. ${statusDetail}`;
+
   return {
     level: autonomy.level,
     effectiveLevel: autonomy.effective_level,
@@ -79,8 +233,12 @@ export function buildAutonomySessionView(
     autoApproveEnabled: autonomy.signals.auto_approve_enabled,
     missionLoopEnabled: autonomy.signals.mission_loop_enabled,
     autonomousSegmentActive: autonomy.signals.autonomous_segment_active,
+    needsYou,
+    statusLabel,
+    statusDetail,
+    whyStopped,
     summary,
-    transitions: (autonomy.transitions ?? []).slice(-5),
+    transitions,
   };
 }
 

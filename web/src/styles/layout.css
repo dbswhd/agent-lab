@@ -752,18 +752,21 @@
   opacity: 0.85;
 }
 
-.workspace-chrome__pill--autonomy .autonomy-dial__level {
+.workspace-chrome__pill--autonomy .autonomy-dial__status {
   font-weight: var(--weight-semibold);
-  font-variant-numeric: tabular-nums;
 }
 
-.workspace-chrome__pill--autonomy .autonomy-dial__label {
-  color: var(--label-secondary);
+/* Needs-you vs runs-alone reads from the border, not colour alone. */
+.workspace-chrome__pill--autonomy-needs {
+  border-color: color-mix(
+    in srgb,
+    var(--accent-warn, #c47b2c) 45%,
+    transparent
+  );
 }
 
-.workspace-chrome__pill--autonomy .autonomy-dial__budget {
-  font-variant-numeric: tabular-nums;
-  color: var(--label-tertiary);
+.workspace-chrome__pill--autonomy-alone {
+  border-color: color-mix(in srgb, var(--accent-ok, #3d8b6e) 35%, transparent);
 }
 
 .autonomy-dial {
@@ -799,6 +802,21 @@
   color: var(--label-tertiary);
 }
 
+.autonomy-dial__why,
+.autonomy-dial__detail {
+  margin: 0 0 var(--space-8);
+  font-size: var(--text-xs);
+  color: var(--label-secondary);
+  line-height: 1.35;
+}
+
+.autonomy-dial__why-label {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-weight: var(--weight-semibold);
+  color: var(--label-primary);
+}
+
 .autonomy-dial__levels {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -827,33 +845,32 @@
   background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
-.autonomy-dial__level-btn-id {
-  font-weight: var(--weight-semibold);
-  font-variant-numeric: tabular-nums;
-}
-
 .autonomy-dial__level-btn-label {
   font-size: var(--text-xs);
   color: var(--label-secondary);
 }
 
-.autonomy-dial__transitions {
-  margin: var(--space-8) 0 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
+.autonomy-dial__level-btn-hint {
+  font-size: var(--text-xs);
+  color: var(--label-secondary);
+  line-height: 1.35;
 }
 
-.autonomy-dial__transition {
+/* Ledger detail (ceiling vs display, trust budget) — opt-in, not the headline. */
+.autonomy-dial__advanced {
+  margin-top: var(--space-8);
   font-size: var(--text-xs);
   color: var(--label-tertiary);
-  font-variant-numeric: tabular-nums;
 }
 
-.autonomy-dial__transition--demotion {
-  color: var(--status-warning, var(--label-secondary));
+.autonomy-dial__advanced summary {
+  cursor: pointer;
+}
+
+.autonomy-dial__advanced-body {
+  margin: var(--space-4) 0 0;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.35;
 }
 
 .workspace-chrome__pill--l3 {

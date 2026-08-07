@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { autonomyLevelLabel, buildAutonomySessionView } from "./autonomyLadder";
+import {
+  autonomyLevelCards,
+  autonomyLevelLabel,
+  autonomyWhyStopped,
+  buildAutonomySessionView,
+} from "./autonomyLadder";
 
 describe("autonomyLadder", () => {
   it("labels levels in ko and en", () => {
@@ -23,7 +28,11 @@ describe("autonomyLadder", () => {
       },
       "en",
     );
-    expect(view?.summary).toContain("trust 2/5");
+    // The summary is a sentence a human reads, not a ledger line.
+    expect(view?.needsYou).toBe(false);
+    expect(view?.statusLabel).toBe("Can go alone");
+    expect(view?.statusDetail).toBe("2/5 auto-continues left");
+    expect(view?.summary).toBe("Can go alone. 2/5 auto-continues left");
   });
 
   it("includes recent transitions for demotion UI", () => {
@@ -53,5 +62,49 @@ describe("autonomyLadder", () => {
     );
     expect(view?.transitions).toHaveLength(1);
     expect(view?.transitions[0]?.trigger).toBe("demotion");
+    // …and the demotion is explained rather than shown as a reason code.
+    expect(view?.needsYou).toBe(true);
+    expect(view?.whyStopped).toBe("The auto-continue budget ran out.");
+    expect(view?.summary).toContain("The auto-continue budget ran out.");
+    expect(view?.summary).not.toContain("trust_budget_consumed");
+  });
+
+  it("explains each demotion reason in plain language", () => {
+    expect(autonomyWhyStopped("trust_budget_consumed", "en")).toBe(
+      "The auto-continue budget ran out.",
+    );
+    expect(autonomyWhyStopped("oracle_fail_consecutive", "en")).toBe(
+      "Verification (Oracle) failed repeatedly.",
+    );
+    expect(autonomyWhyStopped("diff_risk_high", "en")).toBe(
+      "The change was classified as high risk.",
+    );
+    expect(autonomyWhyStopped("quarter_budget_usd", "en")).toBe(
+      "The quarterly spend limit was hit.",
+    );
+    expect(autonomyWhyStopped("risk_pin_trading", "ko")).toContain("트레이딩");
+    expect(autonomyWhyStopped("inbox_restore_ceiling", "ko")).toBe(
+      "이전 설정을 다시 켰습니다.",
+    );
+  });
+
+  it("falls through unknown reasons without leaking level tokens", () => {
+    expect(autonomyWhyStopped("L2 something odd L0", "en")).toBe(
+      "something odd",
+    );
+    expect(autonomyWhyStopped("", "en")).toBe("Auto-run was turned down.");
+    expect(autonomyWhyStopped(null, "ko")).toBe("자동 진행이 꺼졌습니다.");
+  });
+
+  it("describes every rung by what it lets the agents do", () => {
+    const cards = autonomyLevelCards("en");
+    expect(cards.map((c) => c.level)).toEqual(["L0", "L1", "L2", "L3"]);
+    expect(cards[0]?.title).toBe("Ask me each time");
+    expect(cards[3]?.title).toBe("Run the mission");
+    // no rung is described by its code name alone
+    for (const card of cards) {
+      expect(card.title).not.toMatch(/^L[0-3]$/);
+      expect(card.hint.length).toBeGreaterThan(10);
+    }
   });
 });

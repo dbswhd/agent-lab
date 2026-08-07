@@ -90,8 +90,12 @@ def maybe_apply_risk_pin(folder: Path, human_turn: int) -> dict[str, Any] | None
         from agent_lab.autonomy_inbox import maybe_create_autonomy_demotion_inbox
         from agent_lab.autonomy_ladder import record_autonomy_transition
 
+        # Keep the ``risk_pin`` token in the reason: the dial matches on it to
+        # explain the pause in plain language (web/src/utils/autonomyLadder.ts
+        # :: autonomyWhyStopped). Without it only the "trading" category matched.
         reason = (
-            f"risk category '{category}' detected — autonomy ceiling pinned to {RISK_PIN_CEILING} (C3 risk-inverse pin)"
+            f"risk_pin: risk category '{category}' detected — autonomy ceiling "
+            f"pinned to {RISK_PIN_CEILING} (C3 risk-inverse pin)"
         )
         record_autonomy_transition(
             folder,

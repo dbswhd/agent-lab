@@ -66,15 +66,18 @@ def maybe_create_autonomy_demotion_inbox(
             return None
 
     detail = human_demotion_reason(reason)
+    # Lead with why, keep the levels: `effective` is whatever the demotion landed
+    # on (risk pin stops at L1, not L0), so the row must not claim the agents now
+    # wait for approval — that is only true at L0.
     return create_inbox_item(
         folder,
         kind="autonomy",
         source="autonomy_demotion",
-        prompt=f"{detail} Agents now stop for your OK before the next step.",
-        summary=detail,
+        prompt=f"{detail} Autonomy dropped {prev} → {effective}.",
+        summary=f"{detail} ({prev} → {effective})",
         options=[
-            {"id": "accept", "label": "Keep asking me"},
-            {"id": f"restore:{prev}", "label": f"Go back to running alone ({prev})"},
+            {"id": "accept", "label": f"Keep {effective}"},
+            {"id": f"restore:{prev}", "label": f"Restore {prev}"},
         ],
         trigger="T-A0",
         refs=[key],

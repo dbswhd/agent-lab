@@ -100,7 +100,7 @@ export function buildNeedsInputStatus(
     return withWait({
       active: true,
       label: ko ? "입력 필요" : "Needs input",
-      detail: ko ? "Autonomy 확인" : "Autonomy confirmation",
+      detail: ko ? "왜 멈췄는지 확인" : "Why it paused",
       count: autonomy,
       primaryReason: "inbox_autonomy",
       focus: "inbox",

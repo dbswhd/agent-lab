@@ -82,6 +82,36 @@ def test_autonomy_v2_human_picker_and_patch() -> None:
     assert ".autonomy-dial__popover" in layout
 
 
+def test_autonomy_dial_speaks_plain_language() -> None:
+    """The dial answers "do you need me?", not "what is the ceiling?".
+
+    Ledger vocabulary (ceiling / display level / trust budget) belongs in the
+    advanced disclosure; the pill and popover headline must stay human.
+    """
+    dial = _read("web", "src", "components", "AutonomyDial.tsx")
+    ladder = _read("web", "src", "utils", "autonomyLadder.ts")
+    layout = _read("web", "src", "styles", "layout.css")
+
+    # pill states whether a human is needed, and says so in words
+    assert "autonomy-dial__status" in dial
+    assert "workspace-chrome__pill--autonomy-needs" in dial
+    assert "workspace-chrome__pill--autonomy-alone" in dial
+    assert "needsYou" in ladder and "statusLabel" in ladder
+
+    # demotions are explained, not shown as reason codes
+    assert "autonomyWhyStopped" in ladder
+    assert "autonomy-dial__why" in dial
+    assert "trust_budget" in ladder and "risk_pin" in ladder
+
+    # each rung is described by what it lets the agents do
+    assert "autonomyLevelCards" in ladder
+    assert "autonomy-dial__level-btn-hint" in dial
+
+    # raw ledger numbers stay behind the disclosure
+    assert "autonomy-dial__advanced" in dial
+    assert ".autonomy-dial__advanced" in layout
+
+
 def test_autonomy_inbox_linked_transitions() -> None:
     inbox_mod = _read("src", "agent_lab", "autonomy_inbox.py")
     human_inbox = _read("src", "agent_lab", "human_inbox.py")

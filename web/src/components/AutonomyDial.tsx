@@ -3,7 +3,10 @@ import type {
   AutonomyLevel,
   AutonomySessionView,
 } from "../utils/autonomyLadder";
-import { AUTONOMY_LEVELS, autonomyLevelLabel } from "../utils/autonomyLadder";
+import {
+  autonomyLevelCards,
+  autonomyLevelLabel,
+} from "../utils/autonomyLadder";
 import { useLocale } from "../i18n/useLocale";
 
 type Props = {
@@ -14,30 +17,13 @@ type Props = {
   readonly onLevelChange?: (level: AutonomyLevel) => void | Promise<void>;
 };
 
-function transitionLabel(
-  row: AutonomySessionView["transitions"][number],
-  locale: "en" | "ko",
-): string {
-  const from = row.from ?? "?";
-  const to = row.to ?? "?";
-  const trigger = row.trigger ?? "auto";
-  const ko = locale === "ko";
-  const triggerLabel =
-    trigger === "demotion"
-      ? ko
-        ? "강등"
-        : "demotion"
-      : trigger === "human"
-        ? ko
-          ? "Human"
-          : "human"
-        : ko
-          ? "자동"
-          : "auto";
-  return `${from}→${to} · ${triggerLabel}`;
-}
-
-/** N4 v2: session header autonomy dial + Human level picker. */
+/**
+ * N4 v2: session header autonomy dial + Human level picker.
+ *
+ * The pill answers "do you need me right now?" rather than showing the raw
+ * ceiling; ledger detail (ceiling vs display level, trust budget) moves into an
+ * `advanced` disclosure so the common case stays one glance.
+ */
 export function AutonomyDial({
   view,
   loading,
@@ -48,6 +34,8 @@ export function AutonomyDial({
   const { locale } = useLocale();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const cards = autonomyLevelCards(locale);
+  const ko = locale === "ko";
 
   useEffect(() => {
     if (!open) return;
@@ -63,8 +51,9 @@ export function AutonomyDial({
   if (!view && !loading) return null;
 
   const level = view?.displayLevel ?? "L0";
-  const label = autonomyLevelLabel(level, locale);
-  const title = view?.summary ?? (loading ? "…" : label);
+  const needsYou = view?.needsYou ?? level === "L0";
+  const statusLabel = view?.statusLabel ?? (ko ? "승인 필요" : "Needs your OK");
+  const title = view?.summary ?? (loading ? "…" : statusLabel);
   const interactive = Boolean(onLevelChange) && !disabled;
 
   return (
@@ -74,6 +63,9 @@ export function AutonomyDial({
         className={[
           "workspace-chrome__pill",
           "workspace-chrome__pill--autonomy",
+          needsYou
+            ? "workspace-chrome__pill--autonomy-needs"
+            : "workspace-chrome__pill--autonomy-alone",
           `workspace-chrome__pill--${level.toLowerCase()}`,
           interactive ? "autonomy-dial__trigger" : "",
         ]
@@ -82,35 +74,40 @@ export function AutonomyDial({
         title={title}
         aria-haspopup={interactive ? "menu" : undefined}
         aria-expanded={interactive ? open : undefined}
+        aria-label={title}
         disabled={disabled || changing || loading}
         onClick={() => {
           if (!interactive) return;
           setOpen((value) => !value);
         }}
       >
-        <span className="autonomy-dial__level">{level}</span>
-        <span className="autonomy-dial__label">{label}</span>
-        {view && view.trustBudgetTotal > 0 ? (
-          <span className="autonomy-dial__budget">
-            {view.trustBudgetRemaining}/{view.trustBudgetTotal}
-          </span>
-        ) : null}
+        <span className="autonomy-dial__status">{statusLabel}</span>
       </button>
       {open && view ? (
         <div className="autonomy-dial__popover" role="menu">
           <p className="autonomy-dial__popover-title">
-            {locale === "ko" ? "자율도 ceiling" : "Autonomy ceiling"}
+            {ko ? "언제 알아서 진행할까요?" : "When can it continue alone?"}
           </p>
+          {view.whyStopped ? (
+            <p className="autonomy-dial__why" role="status">
+              <span className="autonomy-dial__why-label">
+                {ko ? "왜 멈췄나" : "Why it paused"}
+              </span>
+              {view.whyStopped}
+            </p>
+          ) : (
+            <p className="autonomy-dial__detail">{view.statusDetail}</p>
+          )}
           <div className="autonomy-dial__levels">
-            {AUTONOMY_LEVELS.map((candidate) => {
+            {cards.map((card) => {
               const active =
-                candidate === view.level || candidate === view.displayLevel;
+                card.level === view.level || card.level === view.displayLevel;
               return (
                 <button
-                  key={candidate}
+                  key={card.level}
                   type="button"
                   role="menuitemradio"
-                  aria-checked={view.level === candidate}
+                  aria-checked={view.level === card.level}
                   className={[
                     "autonomy-dial__level-btn",
                     active ? "autonomy-dial__level-btn--active" : "",
@@ -119,42 +116,31 @@ export function AutonomyDial({
                     .join(" ")}
                   disabled={changing}
                   onClick={() => {
-                    void onLevelChange?.(candidate);
+                    void onLevelChange?.(card.level);
                     setOpen(false);
                   }}
                 >
-                  <span className="autonomy-dial__level-btn-id">
-                    {candidate}
-                  </span>
                   <span className="autonomy-dial__level-btn-label">
-                    {autonomyLevelLabel(candidate, locale)}
+                    {card.title}
+                  </span>
+                  <span className="autonomy-dial__level-btn-hint">
+                    {card.hint}
                   </span>
                 </button>
               );
             })}
           </div>
-          {view.transitions.length > 0 ? (
-            <ul className="autonomy-dial__transitions">
-              {view.transitions
-                .slice()
-                .reverse()
-                .map((row, index) => (
-                  <li
-                    key={`${row.at ?? index}-${row.from}-${row.to}`}
-                    className={[
-                      "autonomy-dial__transition",
-                      row.trigger === "demotion"
-                        ? "autonomy-dial__transition--demotion"
-                        : "",
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
-                  >
-                    {transitionLabel(row, locale)}
-                  </li>
-                ))}
-            </ul>
-          ) : null}
+          <details className="autonomy-dial__advanced">
+            <summary>{ko ? "세부 (개발자)" : "Details (advanced)"}</summary>
+            <p className="autonomy-dial__advanced-body">
+              {ko ? "상한" : "Ceiling"} {view.level} · {ko ? "표시" : "display"}{" "}
+              {view.displayLevel} (
+              {autonomyLevelLabel(view.displayLevel, locale)})
+              {view.trustBudgetTotal > 0
+                ? ` · budget ${view.trustBudgetRemaining}/${view.trustBudgetTotal}`
+                : ""}
+            </p>
+          </details>
         </div>
       ) : null}
     </div>

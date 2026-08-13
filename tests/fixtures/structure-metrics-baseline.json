@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "agent_lab_root_py_files": 137,
+  "agent_lab_root_py_files": 136,
   "agent_lab_subpackages": [
     "agent",
     "agents",
@@ -81,7 +81,7 @@
     },
     {
       "path": "src/agent_lab/plan/workflow.py",
-      "lines": 120
+      "lines": 116
     },
     {
       "path": "src/agent_lab/room/turn_flow.py",

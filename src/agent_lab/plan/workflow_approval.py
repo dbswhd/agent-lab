@@ -98,42 +98,6 @@ def approve_plan(
     )
 
 
-def approve_plan_with_mission_authority(
-    session_folder: Path,
-    *,
-    goal: str | None = None,
-    completion_promise: str | None = None,
-    criteria: str | None = None,
-    plan_md: str | None = None,
-) -> dict[str, Any]:
-    from agent_lab.mission.dual_write import commit_plan_approval, plan_write_authority_enabled
-
-    if not plan_write_authority_enabled(session_folder):
-        raise ValueError("plan write authority is not enabled")
-
-    run = read_run_meta(session_folder)
-    pw = get_plan_workflow(run)
-    if not pw.get("enabled"):
-        raise ValueError("plan workflow is not enabled")
-    if str(pw.get("phase") or "") != "HUMAN_PENDING":
-        raise ValueError("plan is not awaiting Human approval")
-
-    bridge = commit_plan_approval(session_folder, goal=goal)
-    if bridge.get("mirrored") is not True:
-        raise ValueError(f"mission plan commit failed: {bridge.get('reason') or 'unknown'}")
-
-    result = _finalize_plan_approval(
-        session_folder,
-        goal=goal,
-        completion_promise=completion_promise,
-        criteria=criteria,
-        plan_md=plan_md,
-        approved_by="human",
-        skip_phase_write=True,
-    )
-    return {**result, "mission_dual_write": bridge}
-
-
 def approve_plan_bypass(
     session_folder: Path,
     *,
@@ -306,35 +270,3 @@ def reject_plan(
 
     patch_run_meta(session_folder, _reject)
     return get_plan_workflow(read_run_meta(session_folder))
-
-
-def reject_plan_with_mission_authority(
-    session_folder: Path,
-    *,
-    note: str = "",
-    target_phase: PlanWorkflowPhase = "CLARIFY",
-    goal: str | None = None,
-) -> dict[str, Any]:
-    """Soft-retire Slice 1 reject: Mission owns phase (incl. REFINE/DRAFT), then side effects."""
-    from agent_lab.mission.dual_write import commit_plan_rejection, plan_write_authority_enabled
-
-    if not plan_write_authority_enabled(session_folder):
-        raise ValueError("plan write authority is not enabled")
-
-    allowed = {"CLARIFY", "REFINE", "DRAFT"}
-    phase = target_phase if target_phase in allowed else "CLARIFY"
-    bridge = commit_plan_rejection(session_folder, note=note, goal=goal, target_phase=phase)
-    if bridge.get("mirrored") is not True:
-        raise ValueError(f"mission plan reject commit failed: {bridge.get('reason') or 'unknown'}")
-
-    def _side_effects(run: RunState) -> RunState:
-        loop = dict(run.get("verified_loop") or {})
-        loop["status"] = "proposing"
-        run["verified_loop"] = loop
-        from agent_lab.runtime.orchestration import stamp_orchestration_state
-
-        return stamp_orchestration_state(run)  # type: ignore[return-value]
-
-    patch_run_meta(session_folder, _side_effects)
-    pw = get_plan_workflow(read_run_meta(session_folder))
-    return {"plan_workflow": pw, "mission_dual_write": bridge}

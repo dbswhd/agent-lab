@@ -8,12 +8,6 @@ from fastapi.testclient import TestClient
 
 from agent_lab.human_inbox import create_inbox_item, resolve_inbox_item
 from agent_lab.mission.application import MissionApplication
-from agent_lab.mission.dual_write import mirror_inbox_resolution
-from agent_lab.mission.dual_write_observability import (
-    dual_write_counters_snapshot,
-    record_dual_write_event,
-    reset_dual_write_counters,
-)
 from agent_lab.mission.kernel import (
     ApproveDiff,
     MarkDiffReady,
@@ -112,9 +106,9 @@ def test_live_api_mid_execution_question_answer_resume_and_circuit_shape(
     monkeypatch,
 ) -> None:
     monkeypatch.setattr(session_paths, "SESSIONS_DIR", tmp_path)
-    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
+    monkeypatch.setenv("AGENT_LAB_MISSION_AUTHORITY", "1")
+    monkeypatch.setenv("AGENT_LAB_MISSION_AUTHORITY_SESSIONS", "*")
     folder = _session(tmp_path, "human-gate")
-    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS", folder.name)
     application = MissionApplication(folder, "ship")
     application.approve_plan()
     application.repository.dispatch(StartExecution())
@@ -138,7 +132,6 @@ def test_live_api_mid_execution_question_answer_resume_and_circuit_shape(
     ]
 
     resolve_inbox_item(folder, item["id"], selected=["safe"], append_chat=False)
-    assert mirror_inbox_resolution(folder, item_id=item["id"], answer="safe")["mirrored"] is True
     resumed = _read(client, "human-gate")
     assert resumed["state"] == "EXECUTING"
     assert resumed["operational_status"] == "RUNNING"
@@ -156,21 +149,3 @@ def test_live_api_mid_execution_question_answer_resume_and_circuit_shape(
     patch_run_meta(folder, mark_paused)
     paused = _read(client, "human-gate")
     assert paused["mission_overview"]["circuit_breaker"] is True
-
-
-def test_expected_mid_execution_boundary_is_not_a_parity_failure(tmp_path: Path) -> None:
-    reset_dual_write_counters()
-    folder = _session(tmp_path, "boundary")
-    record_dual_write_event(
-        folder,
-        {
-            "enabled": True,
-            "operation": "inbox_create",
-            "mirrored": False,
-            "reason": "mission_not_ready_to_execute",
-        },
-    )
-    counters = dual_write_counters_snapshot()
-    assert counters["operations"]["inbox_create"]["expected_boundary"] == 1
-    assert counters["operations"]["inbox_create"]["error"] == 0
-    reset_dual_write_counters()

@@ -54,7 +54,7 @@ def inbox_items(run: RunStateLike) -> list[dict[str, Any]]:
 def inbox_items_for_folder(folder: Path) -> list[dict[str, Any]]:
     run = read_run_meta(folder)
     raw_items = inbox_items(run) if isinstance(run.get("human_inbox"), list) else []
-    from agent_lab.mission.dual_write import mission_authority_enabled
+    from agent_lab.mission.inbox_application import mission_authority_enabled
 
     if not mission_authority_enabled(folder):
         return raw_items
@@ -175,7 +175,7 @@ def public_inbox_payload(run: dict[str, Any]) -> dict[str, Any]:
 
 def public_inbox_payload_for_folder(folder: Path) -> dict[str, Any]:
     run = read_run_meta(folder)
-    from agent_lab.mission.dual_write import mission_authority_enabled
+    from agent_lab.mission.inbox_application import mission_authority_enabled
 
     if not mission_authority_enabled(folder):
         return public_inbox_payload(run)
@@ -240,7 +240,7 @@ def build_inbox_summary(
             continue
         if not isinstance(run, dict):
             continue
-        from agent_lab.mission.dual_write import mission_authority_enabled
+        from agent_lab.mission.inbox_application import mission_authority_enabled
 
         payload = (
             public_inbox_payload_for_folder(folder) if mission_authority_enabled(folder) else public_inbox_payload(run)
@@ -337,7 +337,7 @@ def append_inbox_item(run: dict[str, Any], item: dict[str, Any]) -> dict[str, An
     folder_raw = run.get("_session_folder")
     if folder_raw:
         folder = Path(str(folder_raw))
-        from agent_lab.mission.dual_write import mission_authority_enabled
+        from agent_lab.mission.inbox_application import mission_authority_enabled
 
         if mission_authority_enabled(folder):
             from agent_lab.mission.application import MissionApplication, MissionApplicationError
@@ -384,7 +384,7 @@ def create_inbox_item(
     if kind == "build":
         run = read_run_meta(folder)
         pending_question = has_pending_question(run)
-        from agent_lab.mission.dual_write import mission_authority_enabled
+        from agent_lab.mission.inbox_application import mission_authority_enabled
 
         if not pending_question and mission_authority_enabled(folder):
             from agent_lab.mission.application import MissionApplication
@@ -416,12 +416,7 @@ def create_inbox_item(
         caller_agent=caller_agent,
     )
 
-    from agent_lab.mission.dual_write import (
-        commit_inbox_creation,
-        inbox_write_authority_enabled,
-        mission_authority_enabled,
-        mirror_inbox_creation,
-    )
+    from agent_lab.mission.inbox_application import mission_authority_enabled
 
     authority = mission_authority_enabled(folder)
     if authority:
@@ -433,15 +428,6 @@ def create_inbox_item(
             MissionApplication(folder, goal).open_inbox_item(item)
         except (MissionApplicationError, OSError, ValueError) as exc:
             raise ValueError(f"mission inbox open failed: {exc}") from exc
-    elif inbox_write_authority_enabled(folder):
-        bridge = commit_inbox_creation(
-            folder,
-            item_id=item["id"],
-            kind=kind,
-            reason=summary or prompt,
-        )
-        if bridge.get("mirrored") is not True:
-            raise ValueError(f"mission inbox commit failed: {bridge.get('reason') or 'unknown'}")
 
     def _append_and_open(run: dict[str, Any]) -> dict[str, Any]:
         from agent_lab.decision_latency import record_gate_opened
@@ -470,11 +456,6 @@ def create_inbox_item(
         )
     except Exception:
         pass
-    if not authority and not inbox_write_authority_enabled(folder):
-        try:
-            mirror_inbox_creation(folder, item_id=item["id"], kind=kind, reason=summary or prompt)
-        except Exception:
-            pass
     return item
 
 
@@ -492,7 +473,7 @@ def fan_out_inbox_item(session_id: str, item: dict[str, Any]) -> None:
 
 
 def supersede_pending_inbox(folder: Path, *, human_turn_id: int | None = None) -> int:
-    from agent_lab.mission.dual_write import mission_authority_enabled
+    from agent_lab.mission.inbox_application import mission_authority_enabled
 
     if mission_authority_enabled(folder):
         pending = [item for item in inbox_items_for_folder(folder) if item.get("status") == "pending"]
@@ -513,32 +494,21 @@ def supersede_pending_inbox(folder: Path, *, human_turn_id: int | None = None) -
 
     ts = _now_iso()
     count = 0
-    superseded_ids: list[str] = []
 
     def _supersede(run: dict[str, Any]) -> dict[str, Any]:
         nonlocal count
         for item in inbox_items(run):
             if item.get("status") != "pending":
                 continue
-            item_id = str(item.get("id") or "")
             item["status"] = "superseded"
             item["superseded_at"] = ts
             if human_turn_id is not None:
                 item["superseded_human_turn_id"] = human_turn_id
             count += 1
-            if item_id:
-                superseded_ids.append(item_id)
         run["human_inbox"] = inbox_items(run)
         return _sync_inbox_flag(run)
 
     patch_run_meta(folder, _supersede)
-    if superseded_ids:
-        try:
-            from agent_lab.mission.dual_write import close_gates_for_inbox_ids
-
-            close_gates_for_inbox_ids(folder, superseded_ids, answer="superseded")
-        except Exception:
-            pass
     return count
 
 
@@ -554,7 +524,7 @@ def resolve_inbox_item(
     expected_version: int | None = None,
     actor: str | None = None,
 ) -> dict[str, Any]:
-    from agent_lab.mission.dual_write import mission_authority_enabled
+    from agent_lab.mission.inbox_application import mission_authority_enabled
 
     if mission_authority_enabled(folder):
         from agent_lab.mission.application import MissionApplication, MissionApplicationError

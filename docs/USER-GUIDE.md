@@ -1185,8 +1185,10 @@ Path-like values are home-masked in API/CLI output. Undocumented `AGENT_LAB_*` v
 | `AGENT_LAB_DIFF_SAFETY` | pre-merge diff secret/danger scanner (default on) |
 | `AGENT_LAB_TRACE` | OTel-lite span tracer → `trace.jsonl` (default on) |
 | `AGENT_LAB_CRASH_RECOVERY` | boot-time reconcile of crashed in-flight merges, G3 (default on) |
-| `AGENT_LAB_MISSION_DUAL_WRITE` | opt-in legacy-route to Mission journal bridge; legacy writer remains first |
-| `AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS` | comma-separated session allowlist for controlled dual-write cohort; empty disables the bridge |
+<!-- Retired 2026-08-14: AGENT_LAB_MISSION_DUAL_WRITE / _SESSIONS / _PLAN_WRITE_AUTHORITY /
+     _EXECUTION_WRITE_AUTHORITY. The bridge never activated under any run profile; plan and
+     execution writes stay on run.json. Only the Inbox slice uses the journal, via
+     AGENT_LAB_MISSION_AUTHORITY below. -->
 | `AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY` | Slice 1 soft authority: Mission owns plan approve/reject phase (requires `DUAL_WRITE` + non-empty session allowlist; balanced/thorough/autonomous default on) |
 | `AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY` | Slice 3 soft authority: fail-closed Mission commit after execute/merge/reverify (requires `DUAL_WRITE` + non-empty session allowlist; balanced/thorough/autonomous default on) |
 | `AGENT_LAB_MISSION_AUTHORITY` | journal-owned Inbox authority for the selected bounded cohort; default off |

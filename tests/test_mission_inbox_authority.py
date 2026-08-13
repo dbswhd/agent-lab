@@ -126,6 +126,35 @@ def test_authority_direct_append_writer_routes_to_journal(tmp_path: Path) -> Non
     assert MissionApplication(folder, "ship").load().inbox_items == (item,)
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "Known gap in the half-finished journal migration. The harvest path in "
+        "room/session_persist.py appends inside patch_run_meta(), whose run dict "
+        "carries no '_session_folder', so append_inbox_item() takes the legacy "
+        "run.json branch instead of the journal one exercised by "
+        "::test_authority_direct_append_writer_routes_to_journal. Its compensating "
+        "call, mission.dual_write.sync_open_gates_for_inbox_items(), early-returns "
+        "on dual_write_enabled(), which no run profile turns on -- see "
+        "tests/test_m6_checkpoint_bridges_flags.py. Net effect: harvested items get "
+        "no Mission gate. They still reach the read model, which merges run.json, so "
+        "this is a journal/run.json split rather than a disappearing decision. "
+        "Remove this marker when the harvest path routes through MissionApplication."
+    ),
+)
+def test_authority_harvested_item_opens_a_journal_gate(tmp_path: Path) -> None:
+    folder = _session(tmp_path)
+    MissionApplication(folder, "ship").approve_plan()
+    item = new_inbox_item(kind="question", source="orchestrator", prompt="harvested?")
+
+    from agent_lab.run.meta import patch_run_meta
+
+    patch_run_meta(folder, lambda run: append_inbox_item(run, item))
+
+    mission = MissionApplication(folder, "ship").load()
+    assert [gate.gate_id for gate in mission.open_gates] == [item["id"]]
+
+
 def test_authority_circuit_breaker_writer_routes_to_journal(tmp_path: Path) -> None:
     folder = _session(tmp_path)
 

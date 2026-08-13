@@ -292,8 +292,6 @@ def test_inbox_api_rejects_terminal_orphan_without_mutating_any_store(
     session_folder: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
-    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS", session_folder.name)
     (session_folder / "plan.md").write_text("# Plan\n\n- ship", encoding="utf-8")
     application = MissionApplication(session_folder, "inbox test")
     application.approve_plan()
@@ -305,6 +303,10 @@ def test_inbox_api_rejects_terminal_orphan_without_mutating_any_store(
         prompt="Late?",
         options=[{"id": "yes", "label": "Yes"}, {"id": "no", "label": "No"}],
     )
+    # Legacy-mode inbox writes never open a journal gate on their own; the
+    # dual-write mirror that used to do it was retired 2026-08-14. Open it
+    # explicitly so the preflight sees the gate/row divergence it guards.
+    application.repository.dispatch(OpenExecutionGate(item["id"], "question", "Late?"))
     _make_terminal_mission(session_folder)
     before_run = (session_folder / "run.json").read_bytes()
     before_journal = (session_folder / ".agent-lab" / "mission-events.jsonl").read_bytes()
@@ -325,8 +327,6 @@ def test_inbox_api_rejects_missing_and_stale_rows_without_closing_gate(
     session_folder: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
-    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS", session_folder.name)
     (session_folder / "plan.md").write_text("# Plan\n\n- ship", encoding="utf-8")
     application = MissionApplication(session_folder, "inbox test")
     application.approve_plan()
@@ -351,6 +351,7 @@ def test_inbox_api_rejects_missing_and_stale_rows_without_closing_gate(
         prompt="Old?",
         options=[{"id": "yes", "label": "Yes"}, {"id": "no", "label": "No"}],
     )
+    application.repository.dispatch(OpenExecutionGate(item["id"], "question", "Old?"))
     from agent_lab.run.meta import patch_run_meta
 
     def mark_stale(run: dict[str, object]) -> dict[str, object]:

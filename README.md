@@ -169,7 +169,7 @@ make ci-full          # release gate: lint/typecheck + fast + integration + brid
 
 python scripts/smoke_room.py     # 42 regression baselines
 make verify-hooks                # Hook · Communicate suite
-make list-flags                  # AGENT_LAB_* 레지스트리 (247 entries)
+make list-flags                  # AGENT_LAB_* 레지스트리 (243 entries)
 make dogfood-suite-mock          # Eval Program v1 mock topics
 ```
 

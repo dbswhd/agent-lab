@@ -170,8 +170,6 @@ _BALANCED_OWNS: frozenset[str] = frozenset(
         "AGENT_LAB_STRUCTURED_ENVELOPE",
         "AGENT_LAB_TOPIC_ROUTER",
         "AGENT_LAB_PLAN_WORKFLOW",
-        "AGENT_LAB_MISSION_DUAL_WRITE",
-        "AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS",
         "AGENT_LAB_MISSION_AUTHORITY",
         "AGENT_LAB_MISSION_AUTHORITY_SESSIONS",
         "AGENT_LAB_MISSION_UI_READ_MODEL",
@@ -281,8 +279,6 @@ _PROFILE_CONFIGS: dict[str, RunProfileConfig] = {
             "AGENT_LAB_PLAN_PHASE_PROJECTION": "1",
             "AGENT_LAB_PLAN_SCRIBE_REPAIR": "1",
             "AGENT_LAB_CORRECTION_HARVESTER": "1",
-            "AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY": "1",
-            "AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY": "1",
             "AGENT_LAB_MISSION_AUTHORITY": "1",
             "AGENT_LAB_MISSION_AUTHORITY_SESSIONS": "*",
             # F7 ON (2026-07-25) — revisit after more non-lift live sessions
@@ -306,8 +302,6 @@ _PROFILE_CONFIGS: dict[str, RunProfileConfig] = {
             "AGENT_LAB_PLAN_PHASE_PROJECTION": "1",
             "AGENT_LAB_PLAN_SCRIBE_REPAIR": "1",
             "AGENT_LAB_CORRECTION_HARVESTER": "1",
-            "AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY": "1",
-            "AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY": "1",
             "AGENT_LAB_MISSION_AUTHORITY": "1",
             "AGENT_LAB_MISSION_AUTHORITY_SESSIONS": "*",
             # F7 ON (2026-07-25) — revisit after more non-lift live sessions
@@ -328,8 +322,6 @@ _PROFILE_CONFIGS: dict[str, RunProfileConfig] = {
             "AGENT_LAB_PLAN_PHASE_PROJECTION": "1",
             "AGENT_LAB_PLAN_SCRIBE_REPAIR": "1",
             "AGENT_LAB_MISSION_TOPOLOGY": "1",
-            "AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY": "1",
-            "AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY": "1",
             "AGENT_LAB_MISSION_AUTHORITY": "1",
             "AGENT_LAB_MISSION_AUTHORITY_SESSIONS": "*",
             # F7 ON (2026-07-25) — revisit after more non-lift live sessions
@@ -353,8 +345,6 @@ _PROFILE_CONFIGS: dict[str, RunProfileConfig] = {
             "AGENT_LAB_PLAN_PHASE_PROJECTION": "1",
             "AGENT_LAB_PLAN_SCRIBE_REPAIR": "1",
             "AGENT_LAB_MISSION_TOPOLOGY": "1",
-            "AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY": "1",
-            "AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY": "1",
             "AGENT_LAB_MISSION_AUTHORITY": "1",
             "AGENT_LAB_MISSION_AUTHORITY_SESSIONS": "*",
             # F7 ON (2026-07-25) — revisit after more non-lift live sessions

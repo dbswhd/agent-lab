@@ -135,17 +135,16 @@ def test_balanced_profile_has_s1_feedback_flags() -> None:
     assert cfg.flags.get("AGENT_LAB_FEEDBACK_ADVISOR") == "1"
 
 
-def test_supervisor_profiles_default_plan_write_authority_on() -> None:
-    """Slice 1/3 (re-enabled 2026-07-23): authority defaults on; still no-op without DUAL_WRITE."""
+def test_supervisor_profiles_carry_mission_inbox_authority() -> None:
+    """After the 2026-08-14 bridge retirement only the Inbox authority pair ships."""
     for name in ("small", "balanced", "thorough", "autonomous"):
         cfg = resolve_profile(name)
         assert cfg is not None
-        assert cfg.flags.get("AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY") == "1"
-        assert cfg.flags.get("AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY") == "1"
+        assert cfg.flags.get("AGENT_LAB_MISSION_AUTHORITY") == "1"
+        assert cfg.flags.get("AGENT_LAB_MISSION_AUTHORITY_SESSIONS") == "*"
     fast = resolve_profile("fast")
     assert fast is not None
-    assert "AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY" not in fast.flags
-    assert "AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY" not in fast.flags
+    assert "AGENT_LAB_MISSION_AUTHORITY" not in fast.flags
 
 
 def test_no_profile_registers_retired_inbox_write_authority_flag() -> None:

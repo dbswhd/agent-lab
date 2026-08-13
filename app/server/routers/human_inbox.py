@@ -107,21 +107,11 @@ def create_session_inbox_item(
         )
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
-    from agent_lab.mission.dual_write import inbox_write_authority_enabled
-
-    payload = {
+    return {
         "ok": True,
         "item": item,
         **public_inbox_payload_for_folder(folder),
     }
-    if inbox_write_authority_enabled(folder):
-        # Gate was committed inside create_inbox_item; surface a stable bridge shape.
-        payload["mission_dual_write"] = {
-            "enabled": True,
-            "operation": "inbox_create_commit",
-            "mirrored": True,
-        }
-    return payload
 
 
 @router.post("/sessions/{session_id}/inbox/{item_id}/resolve")
@@ -132,12 +122,7 @@ def resolve_session_inbox_item(
 ) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
     status = body.status or "resolved"
-    from agent_lab.mission.dual_write import (
-        commit_inbox_resolution,
-        inbox_write_authority_enabled,
-        mission_authority_enabled,
-        mirror_inbox_resolution,
-    )
+    from agent_lab.mission.inbox_application import mission_authority_enabled
 
     try:
         if mission_authority_enabled(folder):
@@ -189,36 +174,16 @@ def resolve_session_inbox_item(
                 )
             except MissionApplicationError as exc:
                 raise HTTPException(status_code=409, detail=f"stale answer: {exc}") from exc
-        if inbox_write_authority_enabled(folder):
-            bridge = commit_inbox_resolution(
-                folder,
-                item_id=item_id,
-                answer=body.decision or "",
-            )
-            if bridge.get("mirrored") is not True:
-                raise ValueError(f"mission inbox resolve commit failed: {bridge.get('reason') or 'unknown'}")
-            item = resolve_inbox_item(
-                folder,
-                item_id,
-                status=status,  # type: ignore[arg-type]
-                selected=body.selected,
-                decision=body.decision,
-                note=body.note,
-                append_chat=body.append_chat,
-                actor=body.actor,
-            )
-        else:
-            item = resolve_inbox_item(
-                folder,
-                item_id,
-                status=status,  # type: ignore[arg-type]
-                selected=body.selected,
-                decision=body.decision,
-                note=body.note,
-                append_chat=body.append_chat,
-                actor=body.actor,
-            )
-            bridge = mirror_inbox_resolution(folder, item_id=item_id, answer=body.decision or "")
+        item = resolve_inbox_item(
+            folder,
+            item_id,
+            status=status,  # type: ignore[arg-type]
+            selected=body.selected,
+            decision=body.decision,
+            note=body.note,
+            append_chat=body.append_chat,
+            actor=body.actor,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     from agent_lab.human_inbox import format_human_decision
@@ -227,7 +192,6 @@ def resolve_session_inbox_item(
         "ok": True,
         "item": item,
         "human_decision": format_human_decision(item),
-        "mission_dual_write": bridge,
         **public_inbox_payload_for_folder(folder),
     }
 

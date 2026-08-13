@@ -528,13 +528,12 @@ def _write_session_files(
     )
     if build_item:
         harvested.append(build_item)
-    if harvested:
-        try:
-            from agent_lab.mission.dual_write import sync_open_gates_for_inbox_items
-
-            sync_open_gates_for_inbox_items(folder, harvested, reason="harvest")
-        except Exception:
-            pass
+    # NOTE: harvested items are appended to run.json only -- they do not open a
+    # Mission journal gate. The former compensating call here
+    # (mission.dual_write.sync_open_gates_for_inbox_items) was inert because no run
+    # profile enables the dual-write bridge. Pinned by
+    # tests/test_mission_inbox_authority.py::test_authority_harvested_item_opens_a_journal_gate
+    # (xfail); routing this through MissionApplication would close the gap.
     from agent_lab.room.artifacts import harvest_artifacts_from_turn
 
     harvest_artifacts_from_turn(

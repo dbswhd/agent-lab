@@ -39,28 +39,10 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
     FlagDef("AGENT_LAB_BUNDLE_PYTHON", "infra", "Bundled .app Python path hint", mask_value=True),
     # --- feature: mission / execute ---
     FlagDef("AGENT_LAB_MISSION_LOOP", "feature", "Verified mission loop FSM"),
-    FlagDef(
-        "AGENT_LAB_MISSION_DUAL_WRITE",
-        "feature",
-        "Opt-in legacy route to Mission journal migration bridge (default off)",
-    ),
-    FlagDef(
-        "AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS",
-        "feature",
-        "Comma-separated session IDs allowed to use the dual-write bridge when enabled (empty disables the bridge)",
-    ),
-    FlagDef(
-        "AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY",
-        "feature",
-        "Soft retire Slice 1: Mission owns plan approve/reject phase (requires DUAL_WRITE + non-empty session allowlist; balanced/thorough/autonomous default on)",
-        default="1",
-    ),
-    FlagDef(
-        "AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY",
-        "feature",
-        "Soft retire Slice 3: fail-closed Mission commit after execute/merge/reverify (requires DUAL_WRITE + non-empty session allowlist; balanced/thorough/autonomous default on)",
-        default="1",
-    ),
+    # Retired 2026-08-14: the four Mission dual-write bridge flags. Plan and
+    # execution writes stay on run.json; only the Inbox slice cut over to the
+    # journal, via the MISSION_AUTHORITY pair below. Flag names and the absence
+    # guard live in tests/test_m6_checkpoint_bridges_flags.py.
     FlagDef(
         "AGENT_LAB_MISSION_AUTHORITY",
         "feature",

@@ -12,46 +12,48 @@ def _session(tmp_path: Path) -> Path:
     return folder
 
 
-def test_dual_write_empty_allowlist_fails_closed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    folder = _session(tmp_path)
-    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
-    monkeypatch.delenv("AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS", raising=False)
-
-    from agent_lab.mission.dual_write import dual_write_enabled, mirror_plan_approval
-
-    assert dual_write_enabled(folder) is False
-    result = mirror_plan_approval(folder, goal="ship")
-    assert result["mirrored"] is False
-    assert result["reason"] == "cohort_allowlist_empty"
-    assert not (folder / ".agent-lab" / "mission-events.jsonl").exists()
+RETIRED_BRIDGE_FLAGS = {
+    "AGENT_LAB_MISSION_DUAL_WRITE",
+    "AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS",
+    "AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY",
+    "AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY",
+    "AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY",
+}
 
 
-def test_retired_inbox_authority_env_and_profiles_cannot_reenable_it(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Slice 2 (inbox) stays retired -- superseded by AGENT_LAB_MISSION_AUTHORITY (Wave B).
+def test_dual_write_bridge_module_is_gone() -> None:
+    """The bridge never activated under any profile; retired 2026-08-14."""
+    import importlib
 
-    Slice 1 (plan) and Slice 3 (execution) were re-enabled 2026-07-23 -- see
-    tests/test_mission_dual_write.py::test_plan_write_authority_on_mission_first_then_side_effects
-    and ::test_execution_write_authority_commit_approve for their live behavior.
+    for name in ("agent_lab.mission.dual_write", "agent_lab.mission.dual_write_observability"):
+        with pytest.raises(ModuleNotFoundError):
+            importlib.import_module(name)
+
+
+def test_retired_bridge_flags_are_absent_from_registry_and_profiles() -> None:
+    """No env or profile can bring the retired dual-write slices back.
+
+    Slice 2 (inbox) was superseded by AGENT_LAB_MISSION_AUTHORITY in Wave B.
+    Slices 1 (plan) and 3 (execution) shipped as "1" in four profiles but always
+    resolved False because they gated on the never-enabled bridge, so they were
+    removed 2026-08-14 along with mission/dual_write.py. Plan and execution writes
+    remain on run.json.
     """
-    folder = _session(tmp_path)
-    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE", "1")
-    monkeypatch.setenv("AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS", folder.name)
-    monkeypatch.setenv("AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY", "1")
-
-    from agent_lab.mission.dual_write import inbox_write_authority_enabled
     from agent_lab.run.profile import list_profiles
     from agent_lab.runtime_flags import FLAG_REGISTRY
 
-    assert inbox_write_authority_enabled(folder) is False
-    assert all(
-        "AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY" not in cfg.flags
-        and "AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY" not in cfg.owns
-        for cfg in list_profiles()
-    )
     registered = {row.name for row in FLAG_REGISTRY}
-    assert "AGENT_LAB_MISSION_INBOX_WRITE_AUTHORITY" not in registered
-    assert {"AGENT_LAB_MISSION_PLAN_WRITE_AUTHORITY", "AGENT_LAB_MISSION_EXECUTION_WRITE_AUTHORITY"}.issubset(
-        registered
-    )
+    assert RETIRED_BRIDGE_FLAGS.isdisjoint(registered)
+    for cfg in list_profiles():
+        assert RETIRED_BRIDGE_FLAGS.isdisjoint(cfg.flags), cfg.profile
+        assert RETIRED_BRIDGE_FLAGS.isdisjoint(cfg.owns), cfg.profile
+
+
+def test_inbox_authority_is_the_only_journal_write_path() -> None:
+    """The surviving authority gate lives in inbox_application, not the bridge."""
+    from agent_lab.mission.inbox_application import mission_authority_enabled
+    from agent_lab.runtime_flags import FLAG_REGISTRY
+
+    registered = {row.name for row in FLAG_REGISTRY}
+    assert {"AGENT_LAB_MISSION_AUTHORITY", "AGENT_LAB_MISSION_AUTHORITY_SESSIONS"}.issubset(registered)
+    assert callable(mission_authority_enabled)

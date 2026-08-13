@@ -191,28 +191,6 @@ def _harness_attribution_stats(verdict_rows: list[dict[str, Any]]) -> dict[str, 
     return aggregate(scored)
 
 
-def _self_patch_stats(verdict_rows: list[dict[str, Any]]) -> dict[str, Any]:
-    """N6 — observation only: how often an execution stayed entirely inside the
-    self-patch allowlist (see self_patch.py). No autonomy behavior reads this
-    yet; it exists so a future decision has real data instead of a guess."""
-    total = len(verdict_rows)
-    if total == 0:
-        return {"n": 0, "eligible_n": 0, "self_patch_eligible_rate": None}
-    eligible = sum(1 for r in verdict_rows if (r.get("self_patch") or {}).get("eligible"))
-    return {"n": total, "eligible_n": eligible, "self_patch_eligible_rate": round(eligible / total, 4)}
-
-
-def _harness_patch_kpi(root: Path | None) -> dict[str, Any] | None:
-    """HS5-5 — accept_rate / prediction_accuracy over the harness_patch pipeline
-    (.agent-lab/harness/candidates + predictions.jsonl, not the outcome ledger).
-    None when AGENT_LAB_HARNESS_INBOX is off."""
-    from agent_lab.merge_gate import harness_inbox_enabled, harness_patch_stats
-
-    if not harness_inbox_enabled():
-        return None
-    return harness_patch_stats(root)
-
-
 def _harness_reproducibility_stats(root: Path | None) -> dict[str, Any] | None:
     """HS0-4 — latest scaffold (room preset fast/supervisor) reproducibility
     report from ``scripts/run_dogfood_suite.py --mode reproducibility``
@@ -340,9 +318,7 @@ def build_feedback_report(root: Path | None = None) -> dict[str, Any]:
         "escalation_rate_by_level": _escalation_rate_by_level(rows),
         "correction_patterns": correction_stats,
         "tool_cards": _tool_card_hit_stats(verdict_rows),
-        "self_patch": _self_patch_stats(verdict_rows),
         "harness_attribution": _harness_attribution_stats(verdict_rows),
-        "harness_patch": _harness_patch_kpi(root),
         "harness_reproducibility": _harness_reproducibility_stats(root),
         "stuck_discuss_sessions": _stuck_discuss_sessions(root),
     }
@@ -399,14 +375,6 @@ def render_feedback_report(report: dict[str, Any]) -> str:
         hit_label = f"{hit_rate:.2%}" if isinstance(hit_rate, float) else "—"
         lines.append("")
         lines.append(f"tool_cards (S3a-0) — {tool_cards['n']} suggested rows, hit_rate: {hit_label}")
-    self_patch = report.get("self_patch") or {}
-    if self_patch.get("n"):
-        rate = self_patch.get("self_patch_eligible_rate")
-        rate_label = f"{rate:.2%}" if isinstance(rate, float) else "—"
-        lines.append("")
-        lines.append(
-            f"self_patch (N6) — {self_patch['eligible_n']}/{self_patch['n']} executions allowlist-eligible, rate: {rate_label}"
-        )
     harness_attr = report.get("harness_attribution")
     if harness_attr and harness_attr.get("total"):
         lines.append("")
@@ -415,17 +383,6 @@ def render_feedback_report(report: dict[str, Any]) -> str:
             f"model_resolved_rate={harness_attr['model_resolved_rate']:.2%}, "
             f"harness_failure_rate={harness_attr['harness_failure_rate']:.2%} "
             f"({harness_attr['harness_failure_count']} harness failures)"
-        )
-    harness_patch = report.get("harness_patch")
-    if harness_patch and harness_patch.get("candidates_decided"):
-        accept = harness_patch.get("accept_rate")
-        accept_label = f"{accept:.2%}" if isinstance(accept, float) else "—"
-        acc = harness_patch.get("prediction_accuracy")
-        acc_label = f"{acc:.2%}" if isinstance(acc, float) else "— (no verified predictions yet)"
-        lines.append("")
-        lines.append(
-            f"harness_patch (HS5) — {harness_patch['candidates_merged']}/{harness_patch['candidates_decided']} "
-            f"accepted (rate={accept_label}), prediction_accuracy={acc_label}"
         )
     reproducibility = report.get("harness_reproducibility")
     if reproducibility and reproducibility.get("harness_reproducibility_pp") is not None:

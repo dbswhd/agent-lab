@@ -60,7 +60,7 @@ HS6/HS7은 design doc상 "동결 until HS-M5"(HS6) / "동결 until HS6 평가"(H
 execute에서 나오는데 태그는 턴 행에서만 도출 — turn 행 197개 중 195개 `final_verdict=null`) —
 **수정 완료**: `derive_execution_failure_tags` 공유 헬퍼로 execute 행에서도 태깅. 결론 불변: 인위
 생성은 기각, 실사용 누적 대기. **재검토 트리거**: `make feedback-report JSON=1` 확인 시마다
-`scripts/propose_harness.py --mode list`도 함께 확인 — addressable 패턴이 뜨면 HS-M5 착수 재논의.
+(HS 트랙은 2026-08-14 철회 — 아래 §1 참조.)
 
 **2026-07-09 추가 shipped**: HS0-4 `harness_reproducibility_pp`(preset A/B swap — `make dogfood-suite-reproducibility`,
 `feedback_report.py` 소비) · HS4-2 완료(`_TAG_TOPIC_MAP` 3개 태그 전부 근거 topic 확보 — 신규 X5/X6
@@ -74,7 +74,7 @@ dogfood 시나리오). 둘 다 mock-only, dogfood 무관.
 
 ### 지금 — 라이브 dogfood 트랙 (`scripts/dogfood_track.py`, `make dogfood-track` 재확인)
 
-**2026-07-25 기준 6/6 닫힘** (`make dogfood-track` 재실행 결과; 아래 표는 이 스냅샷으로 갱신 — 문서가 낡으면 `make dogfood-track` 실측이 맞다):
+**2026-07-25 기준 5/5 닫힘** (HS-M5는 2026-08-14 HS 트랙 철회와 함께 게이트에서 제거) (`make dogfood-track` 재실행 결과; 아래 표는 이 스냅샷으로 갱신 — 문서가 낡으면 `make dogfood-track` 실측이 맞다):
 
 | 게이트 | 소스 ID | 상태 | 다음 |
 |--------|---------|------|------|
@@ -82,7 +82,6 @@ dogfood 시나리오). 둘 다 mock-only, dogfood 무관.
 | **F7** repo_map/compaction ON/OFF | NORTH-STAR **F7** | ✅ **닫힘 (ON, 2026-07-25)** — n=32 · coverage 100% · median budget 18.9. 프로필 `small`/`balanced`/`thorough`/`autonomous`에 flags ON. **거의 최종:** Human usefulness 체크리스트는 얇음 → non-lift 실사용 누적 후 한 번 재검토 ([F7 doc](./F7-REPO-MAP-COMPACTION-DOGFOOD.md) Revisit) | 재검토만 (limbo 아님) |
 | **N4-D3** escalation_rate_by_level n≥10/level | NORTH-STAR **§1.4.1** | ✅ 닫힘 (2026-07-25) — L0/L1/L2/L3 = 3063/318/**10**/308. 루트픽스: turn-end `run_meta`가 `autonomy`/`trust_budget` 보존 (`SESSION_META_KEYS`). 증거: [phase-c1-n4-d3-2026-07-25.md](./redesign-2026-07/evidence/phase-c1-n4-d3-2026-07-25.md) | Phase C C1–C3 ✅ (M6 hard-delete 여전히 동결) |
 | **CATALOG** dogfood-v1 suite coverage | — | ✅ 닫힘 | — |
-| **HS-M5** addressable + Human harness_patch merge 1건 | — | ✅ 닫힘 (2026-07-25) — `pc-2026-07-24-fc0b8932` (`fp:weak_taste:deep`) → merge `755c38d9`. 증거: [phase-c3-hs-m5-2026-07-25.md](./redesign-2026-07/evidence/phase-c3-hs-m5-2026-07-25.md) | HS6 재개 여부는 Human 재논의 (자동 착수 금지) |
 | **N1-30** dogfood-first 만료 검토 (history.n≥30) | — | ✅ 닫힘 (live ledger `eligible=812`, `by_source.history.n=236`) | — |
 
 **N4-D3 L2 인프라 블로커 (닫힘 이력):** `scripts/l2_escalation_dogfood_live_repeat.py` / X2-lift 픽스처 경로에서 관측된 이슈 (해당 스크립트들은 2026-07-30에 삭제됨 — 아래는 이력 보존용):
@@ -99,9 +98,24 @@ Composer preset 제거(WORKFLOW §8.2 **P2**)는 archive roadmap item이다. 현
 
 ① `AGENT_LAB_QUARTER_BUDGET_USD` 실값 + `make f8-cost-report` 정례화 ② §2.5 흡수 매트릭스 재검토 — SSOT [ABSORB-CC-CODEX-2026-07.md](./ABSORB-CC-CODEX-2026-07.md) (CC/Codex 로컬+공식; Wave 0–2 + **ABS-P2-worktree-yaml** shipped; 잔여 **ABS-P2-skills** N7 동결 · **ABS-P2-hooks/workflows** 문서만) ③ §1.4 KPI 리뷰 ④ N5/S2 재평가 ⑤ dogfood-first 만료 검토 (`history.n` ≥ 30) ⑥ ADR rebuild 재평가 (§3.5).
 
+### 철회 — HS 자기개선 트랙 (2026-08-14)
+
+`self_patch` · `weakness_miner` · `harness_proposer` · `regression_gate` · `merge_gate` · `harness_hygiene`
+(1,690 LOC) + N10b `rule_sync`(258)를 제거했다. 근거: 실사용 원장 1,429 verdict-eligible 행에서
+`self_patch_eligible_rate = 0.0`, `harness_patch = null`, `correction_patterns.total = 1`.
+`AGENT_LAB_HARNESS_PROPOSER`/`_INBOX`/`_REGRESSION_GATE`/`_WEAKNESS_MINER`/`_RULE_SYNC`는 어떤
+프로필에서도 켜진 적이 없어 동작 변화 없는 제거다. Inbox kind `harness_patch`·`rule_sync`도 함께 삭제.
+
+**남긴 것:** HS0 ATTRIB(`eval_harness`)는 `feedback_report.harness_attribution`(model_resolved_rate
+0.81 · harness_failure_rate 0.027)을 계속 만들므로 유지. `wisdom/playbook.current_harness_rev`는
+`merge_gate`에서 이관.
+
+**되살리려면** 삭제 커밋을 revert하는 것이 아니라, 먼저 실사용 표본을 만들어 HS1 태깅이
+0이 아님을 보이는 것이 선행 조건이다.
+
 ### 동결 — explicit Human OK 없이 착수 금지
 
-N5 전역 bandit · N7/S3 구현(설계만 ✅) · HS6/HS7 · HSIL Tier D 전체 · Gateway · trading core 표면 · `fork_time_minutes` 자동화(N8 잔여, P3).
+N5 전역 bandit · N7/S3 구현(설계만 ✅) · HSIL Tier D 전체 · Gateway · trading core 표면 · `fork_time_minutes` 자동화(N8 잔여, P3).
 
 ---
 
@@ -123,7 +137,6 @@ N5 전역 bandit · N7/S3 구현(설계만 ✅) · HS6/HS7 · HSIL Tier D 전체
 make test-fast && python scripts/smoke_room.py   # 회귀 (코드 트랙 큐 1~4 — 매 변경)
 make ci                       # HS0 닫힘 기준 (큐 1)
 make feedback-report JSON=1   # harness_attribution 확인 (큐 1) · S1 lift(P0-5)는 닫힘, N4-D3/N1-30 진행용
-python scripts/propose_harness.py --mode list   # HS-M5 닫힘 후 추가 후보 관측; HS6은 Human 확인 전 착수 금지
 make eval-surface-local       # T0/T1 supersample (evals/results/latest.json)
 make f7-dogfood-report        # F7 closed ON — optional revisit metrics
 make dogfood-progress         # suite-log 진행도

@@ -43,26 +43,14 @@ def test_evaluate_gates_shape(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     (tmp_path / "suite-log.json").write_text("[]\n", encoding="utf-8")
     report = track.evaluate_gates(outcomes_root=tmp_path)
     ids = [g["id"] for g in report["gates"]]
-    assert ids == ["P0-5", "F7", "N4-D3", "CATALOG", "HS-M5", "N1-30"]
-    assert report["total"] == 6
-    assert report["met"] <= 6
+    assert ids == ["P0-5", "F7", "N4-D3", "CATALOG", "N1-30"]
+    assert report["total"] == 5
+    assert report["met"] <= 5
     # Empty ledger → live closes unmet
     assert report["all_met"] is False
     p05 = next(g for g in report["gates"] if g["id"] == "P0-5")
     assert p05["met"] is False
     assert "history.n≥3" in p05["metrics"]["need"]
-
-
-def test_record_f7_decision_and_hs_m5(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    track = _load_track()
-    monkeypatch.setattr(track, "STATE_PATH", tmp_path / "dogfood-track.json")
-    assert track.record_f7_decision("ON", rationale="unit") == 0
-    state = track._load_state()
-    assert state["f7"]["decision"] == "ON"
-    assert track.record_hs_m5_merge(candidate_id="c1") == 0
-    state = track._load_state()
-    assert state["hs_m5"]["merged_at"]
-    assert state["hs_m5"]["candidate_id"] == "c1"
 
 
 def test_x3_x4_catalog_scenarios() -> None:

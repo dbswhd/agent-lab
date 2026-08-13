@@ -260,12 +260,6 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         default="1",
     ),
     FlagDef(
-        "AGENT_LAB_RULE_SYNC",
-        "feature",
-        "N10b: propose exporting approved correction rules to .claude/rules, .cursor/rules, ~/.codex/AGENTS.md (default OFF — external blast radius)",
-        default="0",
-    ),
-    FlagDef(
         "AGENT_LAB_CODEX_HOME",
         "infra",
         "Override for the Codex home dir N10b Rule Sync writes AGENTS.md into (default ~/.codex; tests must set this)",
@@ -631,12 +625,6 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         "(docs/S1-CHALLENGE-PRECISION.md, default off)",
     ),
     FlagDef(
-        "AGENT_LAB_WEAKNESS_MINER",
-        "feature",
-        "HSIL HS1 MINE: per-turn traces (.agent-lab/traces/) + failure_tags memory_store preservation "
-        "+ weakness-pattern recurrence mining (default off)",
-    ),
-    FlagDef(
         "AGENT_LAB_PLAYBOOK",
         "feature",
         "HSIL HS2 PLAYBOOK: incremental knowledge bullets from approved correction rules, "
@@ -646,27 +634,6 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         "AGENT_LAB_PLAYBOOK_PATH",
         "feature",
         "Override path to playbook.jsonl (default .agent-lab/wisdom/playbook.jsonl)",
-    ),
-    FlagDef(
-        "AGENT_LAB_HARNESS_PROPOSER",
-        "feature",
-        "HSIL HS3 PROPOSE: bounded PatchCandidate validation (STOP guard/tier/axis/eval-surface gates) "
-        "against .agent-lab/harness/manifest.json — offline CLI (scripts/propose_harness.py), no LLM call "
-        "(default off)",
-    ),
-    FlagDef(
-        "AGENT_LAB_REGRESSION_GATE",
-        "feature",
-        "HSIL HS4 REGRESS: worktree apply + declared assertions (HS4-1) + held-out test-fast (HS4-3) + "
-        "smoke signal (HS4-4) — offline CLI (scripts/regress_harness.py), verdict decided by assertions "
-        "not pass-rate (default off)",
-    ),
-    FlagDef(
-        "AGENT_LAB_HARNESS_INBOX",
-        "feature",
-        "HSIL HS5 MERGE: harness_patch Human Inbox card -> real git apply+commit for a passing "
-        "regression candidate, with rollback+playbook-quarantine (HS5-7) — offline CLI "
-        "(scripts/merge_harness.py) (default off)",
     ),
     FlagDef(
         "AGENT_LAB_FEEDBACK_ADVISOR",

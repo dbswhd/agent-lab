@@ -287,17 +287,13 @@ def promote_correction_rule(pattern_key: str, *, root: Path | None = None, sessi
 
 def _try_add_playbook_bullet(rule_text: str, *, pattern_key: str, root: Path | None) -> None:
     try:
-        from agent_lab.merge_gate import current_harness_rev
-        from agent_lab.wisdom.playbook import add_bullet, playbook_enabled
+        from agent_lab.wisdom.playbook import add_bullet, current_harness_rev, playbook_enabled
 
         if not playbook_enabled():
             return
         path = None
         if root is not None:
             path = Path(root) / ".agent-lab" / "wisdom" / "playbook.jsonl"
-        # HS5-6: stamp the harness revision active right now — if a later
-        # harness_patch merge is rolled back, this bullet becomes quarantine-
-        # eligible (merge_gate.rollback_harness_patch).
         add_bullet(
             rule_text,
             f"fp:user_correction:{pattern_key}",
@@ -353,9 +349,6 @@ def handle_correction_rule_inbox_resolve(
         state[pattern_key] = entry
         _save_state(root, state)
 
-        from agent_lab.rule_sync import maybe_propose_rule_sync
-
-        maybe_propose_rule_sync(folder, root=root)
     elif choice == "reject":
         entry["status"] = "rejected"
         state[pattern_key] = entry

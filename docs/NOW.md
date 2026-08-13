@@ -113,6 +113,33 @@ Composer preset 제거(WORKFLOW §8.2 **P2**)는 archive roadmap item이다. 현
 **되살리려면** 삭제 커밋을 revert하는 것이 아니라, 먼저 실사용 표본을 만들어 HS1 태깅이
 0이 아님을 보이는 것이 선행 조건이다.
 
+### 판정 — 창발 KPI 13개 모듈: **유지** (2026-08-14, 근거 없이 재론 금지)
+
+HS 트랙 철회와 같은 검토에서 "창발 KPI 2,661 LOC가 측정만 하고 회상에 안 쓰인다"는
+가설(NORTH-STAR §2.3 원칙 2 위반 의심)을 세우고 실측했다. **가설은 기각됐다.**
+"S1 파이프라인을 참조하지 않는다"를 "측정 전용 사장 코드"로 읽은 범주 오류였다.
+
+| 분류 | 모듈 | LOC | 근거 |
+|------|------|----:|------|
+| 런타임 게이트 (KPI 아님) | `clarity` · `debate_convergence` · `drift_audit` · `clarifier_engine` · `adversarial_gate` · `divergence` | 1,218 | `context/bundle` · `mode_router` · `consensus_policy` · `consensus_rounds` · `turn_flow_support` · `evidence_gates` · `execute_dry_run`에 연결 — 동작을 바꾼다 |
+| 루프 닫힘 | `emergence_kpis` | 311 | `feedback_advisor._score_outcome`이 `pure_challenge_yield`를 RECALL 입력으로 읽음 |
+| 실소비처 있음 | `decision_latency` · `communicate_kpis` · `readiness` · `loop_probe_eval` | 573 | `readiness`는 web `recoveryItems.ts`가 소비 |
+| 다른 레인 | `proposal_critic` | 321 | trading `ingest_bridge` · research `mcp_server` |
+| 프로필에서 ON | `quality_judge` | 238 | `thorough`가 `AGENT_LAB_JUDGE_LIVE=1` |
+
+`score_session`도 사장되지 않았다 — `session/metrics_mcp_server`(에이전트가 턴 중 자기 지표를
+읽는 read-only MCP)와 `run_dogfood_suite --mode aggregate`가 소비한다.
+
+**측정:** 실세션 25개 채점 → 41개 지표 중 **33개가 값을 낸다**. 항상 null인 8개
+(`dispatch_fanout_rate` · `quick_call_savings` · `recombination_validity_rate` ·
+`legacy_endorse_rate` · `asymmetric_capability_cwd` · `capability_cwd_agent_count` ·
+`merge_first_success_rate` · `specialist_context_recorded`)는 전부 `if denominator else None`
+패턴으로, **버그가 아니라 해당 동작이 표본에서 일어나지 않은 것**이다.
+
+**재론 조건:** 이 판정을 뒤집으려면 "S1 참조 여부"가 아니라 **소비처 부재**를 보여야 한다.
+모듈 단위로 (1) 런타임 분기에 안 쓰이고 (2) `score_session`/web/MCP 어느 소비처에도 안 닿고
+(3) 어떤 프로필도 켜지 않는다 — 셋을 동시에 만족해야 한다.
+
 ### 동결 — explicit Human OK 없이 착수 금지
 
 N5 전역 bandit · N7/S3 구현(설계만 ✅) · HSIL Tier D 전체 · Gateway · trading core 표면 · `fork_time_minutes` 자동화(N8 잔여, P3).

@@ -411,10 +411,9 @@ def _build_execute_outcome_record(
 
     record["autonomy_level"] = infer_effective_autonomy_level(run)
     record["human_inbox_escalation"] = bool(pending_inbox_items(run))
-    from agent_lab.self_patch import classify_self_patch
-
-    touched = list(execution.get("source_touched_paths") or execution.get("touched_paths") or [])
-    record["self_patch"] = classify_self_patch(touched)
+    # ``self_patch`` classification dropped with the HS track (2026-08-14): over
+    # 1429 verdict-eligible rows it produced eligible_n=0, and every downstream
+    # consumer (propose/regress/merge) was flag-off in all shipped profiles.
     return record
 
 

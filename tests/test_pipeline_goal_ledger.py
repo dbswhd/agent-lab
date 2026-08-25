@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from agent_lab import goal_ledger
-from agent_lab.run.schema import RuntimeValidationError, validate_run
+from agent_lab.run.state import RuntimeValidationError, validate_run_data
 
 
 def _write(folder: Path, run: dict) -> None:
@@ -59,12 +59,12 @@ def test_append_goal_event_capped(tmp_path: Path) -> None:
 
 
 def test_validate_run_goal_ledger() -> None:
-    validate_run({"goal_ledger": [{"event": "x"}]})  # ok
-    validate_run({"goal_ledger": []})  # ok
+    validate_run_data({"goal_ledger": [{"event": "x"}]})  # ok
+    validate_run_data({"goal_ledger": []})  # ok
     with pytest.raises(RuntimeValidationError):
-        validate_run({"goal_ledger": "nope"})
+        validate_run_data({"goal_ledger": "nope"})
     with pytest.raises(RuntimeValidationError):
-        validate_run({"goal_ledger": ["nope"]})
+        validate_run_data({"goal_ledger": ["nope"]})
 
 
 def test_crash_recovery_roundtrip_compat(tmp_path: Path) -> None:

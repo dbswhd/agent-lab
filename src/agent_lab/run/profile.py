@@ -62,7 +62,6 @@ _THOROUGH_OWNS: frozenset[str] = frozenset(
         "AGENT_LAB_PLAN_COLD_CRITIC",
         "AGENT_LAB_SYNTAX_GATE",
         "AGENT_LAB_EVAL_HARNESS",
-        "AGENT_LAB_WEAKNESS_MINER",
         "AGENT_LAB_PLAYBOOK",
         "AGENT_LAB_PLAYBOOK_PATH",
         "AGENT_LAB_EVENT_VALIDATE",
@@ -99,9 +98,6 @@ _THOROUGH_OWNS: frozenset[str] = frozenset(
 # Mission loop / auto-advance / budgets.
 _AUTONOMOUS_OWNS: frozenset[str] = frozenset(
     {
-        "AGENT_LAB_HARNESS_PROPOSER",
-        "AGENT_LAB_REGRESSION_GATE",
-        "AGENT_LAB_HARNESS_INBOX",
         "AGENT_LAB_MISSION_AUTORUN",
         "AGENT_LAB_MISSION_BUDGET_USD",
         "AGENT_LAB_BUDGET_WARN_PCT",
@@ -220,7 +216,6 @@ _BALANCED_OWNS: frozenset[str] = frozenset(
         "AGENT_LAB_QUARTER_BUDGET_WARN_PCT",
         "AGENT_LAB_QUARTER_BUDGET_DEMOTE",
         "AGENT_LAB_RISK_PIN",
-        "AGENT_LAB_RULE_SYNC",
         "AGENT_LAB_MISSION_SCHEDULER",
         "AGENT_LAB_MISSION_SCHEDULER_INTERVAL_S",
         "AGENT_LAB_ACTIVITY_QUEUE_RECOVERY",

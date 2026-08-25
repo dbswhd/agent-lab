@@ -109,6 +109,26 @@ def load_bullets(*, status: str | None = None, path: Path | None = None) -> list
     return bullets
 
 
+def current_harness_rev(root: Path | None = None) -> str:
+    """Git SHA of HEAD — the harness revision playbook bullets are stamped with.
+
+    Moved here from the retired ``merge_gate`` (HS track, 2026-08-14). Fail-open:
+    returns HARNESS_REV_UNSET when git is unavailable, never blocks the caller.
+    """
+    try:
+        from agent_lab.plan.execute_git import _run_git, detect_git_root
+
+        start = Path(root) if root is not None else Path.cwd()
+        git_root = detect_git_root(start)
+        if git_root is None:
+            return HARNESS_REV_UNSET
+        proc = _run_git(git_root, "rev-parse", "HEAD", check=False)
+        sha = (proc.stdout or "").strip()
+        return f"manifest@sha:{sha}" if sha else HARNESS_REV_UNSET
+    except Exception:
+        return HARNESS_REV_UNSET
+
+
 def quarantine_bullets_by_harness_rev(
     harness_rev: str, *, path: Path | None = None, root: Path | None = None
 ) -> list[str]:

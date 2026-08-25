@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from agent_lab.room.delegate import parse_delegate_from_message
+from agent_lab.room.dispatch import parse_delegate_from_message
 
 
 def test_parse_delegate_quoted():

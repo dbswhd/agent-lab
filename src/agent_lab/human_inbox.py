@@ -21,8 +21,6 @@ InboxKind = Literal[
     "correction_rule",
     "retry_diagnosis",
     "drift_audit",
-    "rule_sync",
-    "harness_patch",
 ]
 InboxStatus = Literal["pending", "resolved", "deferred", "superseded", "rejected", "timeout"]
 
@@ -667,35 +665,8 @@ def resolve_inbox_item(
 
             logging.getLogger(__name__).warning("drift_audit inbox resolve failed", exc_info=True)
 
-    if updated.get("kind") == "rule_sync" and status in ("resolved", "rejected", "superseded"):
-        try:
-            from agent_lab.rule_sync import handle_rule_sync_inbox_resolve
-
-            handle_rule_sync_inbox_resolve(
-                folder,
-                updated,
-                selected=selected,
-                status=status,
-            )
-        except Exception:  # fail-open: external file sync must never block inbox resolve
-            import logging
-
-            logging.getLogger(__name__).warning("rule_sync inbox resolve failed", exc_info=True)
-
-    if updated.get("kind") == "harness_patch" and status in ("resolved", "rejected", "superseded"):
-        try:
-            from agent_lab.merge_gate import handle_harness_patch_resolve
-
-            handle_harness_patch_resolve(
-                folder,
-                updated,
-                selected=selected,
-                status=status,
-            )
-        except Exception:  # fail-open: merge failure must never corrupt inbox state
-            import logging
-
-            logging.getLogger(__name__).warning("harness_patch inbox resolve failed", exc_info=True)
+    # ``rule_sync`` and ``harness_patch`` inbox kinds were retired 2026-08-14 with
+    # the HS track and rule sync; neither flag was on in any shipped profile.
 
     if updated.get("kind") == "autonomy" and status == "resolved":
         try:

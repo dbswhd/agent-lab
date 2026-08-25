@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "agent_lab_root_py_files": 136,
+  "agent_lab_root_py_files": 129,
   "agent_lab_subpackages": [
     "agent",
     "agents",
@@ -46,8 +46,8 @@
     "claude_": 0
   },
   "tracked_pycache_files": 0,
-  "makefile_lines": 547,
-  "makefile_targets": 113,
+  "makefile_lines": 543,
+  "makefile_targets": 112,
   "large_tsx_files": [
     {
       "path": "web/src/components/HumanInboxPanel.tsx",

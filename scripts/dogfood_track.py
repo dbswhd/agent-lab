@@ -10,7 +10,6 @@ opt-in only (``--mode run-mock`` / ``make dogfood-track-run-mock``).
 | F7 | 7d ON/OFF | F7 flags ON → 7d use → Human decision |
 | N4-D3 | escalation n≥10/level | autonomy-tagged live outcomes |
 | CATALOG | suite-log coverage | live topics + ``dogfood-progress-record`` |
-| HS-M5 | addressable + Human merge 1 | propose → Inbox approve |
 | N1-30 | history.n≥30 | keep running live |
 
 Modes:
@@ -114,26 +113,6 @@ def _f7_report(*, days: int = 7) -> dict[str, Any]:
     return mod.build_report(rows)
 
 
-def _addressable() -> list[dict[str, Any]]:
-    from agent_lab.harness_proposer import addressable_patterns, ensure_manifest
-
-    ensure_manifest(None)
-    return addressable_patterns(root=None)
-
-
-def _harness_patch_merged(state: dict[str, Any]) -> bool:
-    """HS-M5 live close: Human-recorded merge OR merge_gate stats show ≥1 merge."""
-    if state.get("hs_m5", {}).get("merged_at"):
-        return True
-    try:
-        from agent_lab.merge_gate import harness_patch_stats
-
-        stats = harness_patch_stats(None)
-        return int(stats.get("candidates_merged") or 0) >= 1
-    except Exception:  # noqa: BLE001
-        return False
-
-
 def evaluate_gates(*, outcomes_root: Path | None = None) -> dict[str, Any]:
     """Evaluate every track gate. ``met`` = closure satisfied."""
     state = _load_state()
@@ -163,10 +142,6 @@ def evaluate_gates(*, outcomes_root: Path | None = None) -> dict[str, Any]:
     catalog_manual_ok = manual_left <= set(CATALOG_MANUAL_IDS) or len(manual_left) == 0
     # Still require X3/X4 in done if they are automatable now
     catalog_met = catalog_auto_done and (not manual_left or manual_left <= set(CATALOG_MANUAL_IDS))
-
-    patterns = _addressable()
-    hs_merged = _harness_patch_merged(state)
-    hs_m5_met = bool(patterns) and hs_merged
 
     gates: list[dict[str, Any]] = [
         {
@@ -228,20 +203,6 @@ def evaluate_gates(*, outcomes_root: Path | None = None) -> dict[str, Any]:
             },
             "live_cmd": "make dogfood-suite-checklist · live Room · make dogfood-progress-record ID=… SESSION=sessions/…",
             "optional_mock": "make dogfood-progress-auto  # offline catalog only",
-        },
-        {
-            "id": "HS-M5",
-            "title": "addressable pattern + Human harness_patch merge ≥1",
-            "source": "HSIL · NOW §1",
-            "met": hs_m5_met,
-            "metrics": {
-                "addressable_count": len(patterns),
-                "addressable_ids": [p.get("pattern_id") for p in patterns[:8]],
-                "merged": hs_merged,
-                "need": "addressable≥1 AND live Human merge of harness_patch",
-            },
-            "live_cmd": "python scripts/propose_harness.py --mode list → propose → Inbox approve → make dogfood-track-hs-m5-merge",
-            "optional_mock": None,
         },
         {
             "id": "N1-30",
@@ -359,7 +320,7 @@ def run_mock_early(*, only: set[str] | None = None) -> int:
     """Optional mock arms (offline/CI). Not the default dogfood path."""
     print("NOTE: mock path is optional — default dogfood track is LIVE.\n")
     rc = 0
-    want = only or {"P0-5", "CATALOG", "HS-M5", "F7"}
+    want = only or {"P0-5", "CATALOG", "F7"}
 
     if "P0-5" in want:
         print("\n=== P0-5 optional mock: dogfood-feedback-mock ===")
@@ -397,15 +358,6 @@ def run_mock_early(*, only: set[str] | None = None) -> int:
             skip_done=True,
             dry_run=False,
         )
-
-    if "HS-M5" in want:
-        print("\n=== HS-M5: propose_harness --mode list ===")
-        proc = subprocess.run(
-            [sys.executable, str(SCRIPTS / "propose_harness.py"), "--mode", "list"],
-            cwd=ROOT,
-            check=False,
-        )
-        rc |= proc.returncode
 
     if "F7" in want:
         print("\n=== F7: f7-dogfood-report (read-only) ===")
@@ -451,17 +403,6 @@ def record_f7_decision(decision: str, *, rationale: str = "") -> int:
     return 0
 
 
-def record_hs_m5_merge(*, candidate_id: str = "", notes: str = "") -> int:
-    state = _load_state()
-    hs = state.setdefault("hs_m5", {})
-    hs["merged_at"] = _utc_now()
-    hs["candidate_id"] = candidate_id
-    hs["notes"] = notes
-    _save_state(state)
-    print("HS-M5 Human merge recorded in dogfood-track state.")
-    return 0
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument(
@@ -480,7 +421,7 @@ def main() -> int:
         help="default status; use 'run' for live bootstrap (not run-mock)",
     )
     parser.add_argument("--json", action="store_true")
-    parser.add_argument("--only", help="run-mock only: comma gate ids (P0-5,CATALOG,HS-M5,F7)")
+    parser.add_argument("--only", help="run-mock only: comma gate ids (P0-5,CATALOG,F7)")
     parser.add_argument("--decision", help="record-f7-decision: ON|OFF")
     parser.add_argument("--rationale", default="")
     parser.add_argument("--candidate-id", default="")
@@ -500,8 +441,6 @@ def main() -> int:
             print("--decision ON|OFF required", file=sys.stderr)
             return 2
         return record_f7_decision(args.decision, rationale=args.rationale)
-    if args.mode == "record-hs-m5-merge":
-        return record_hs_m5_merge(candidate_id=args.candidate_id, notes=args.notes)
     if args.mode == "run-mock":
         only = {x.strip().upper() for x in args.only.split(",")} if args.only else None
         return run_mock_early(only=only)

@@ -151,19 +151,24 @@ def _reset_run_control_cancel() -> None:
     terminate_active_children()
 
 
+_ORCHESTRATOR_HARVEST_MODULES = frozenset(
+    {
+        "test_inbox_harvest",
+        "test_inbox_build",
+        "test_inbox_facilitator",
+        "test_inbox_pause",
+        "test_session_clarifier",
+    }
+)
+
+
 @pytest.fixture(autouse=True)
 def _legacy_orchestrator_harvest_for_harvest_tests(
     monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest
 ) -> None:
     """Harvest unit tests target legacy orchestrator path (flag default is off)."""
     module = request.module.__name__.rsplit(".", 1)[-1]
-    if module in {
-        "test_inbox_harvest",
-        "test_inbox_build",
-        "test_inbox_facilitator",
-        "test_inbox_pause",
-        "test_session_clarifier",
-    }:
+    if module in _ORCHESTRATOR_HARVEST_MODULES:
         monkeypatch.setenv("AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST", "1")
 
 
@@ -210,7 +215,7 @@ _INTEGRATION_MODULES = frozenset(
         "test_room_mode_contract_api",
         "test_smoke_room_governance",
         # Stabilization suites (policy/schema/stream helpers; keep PR fast bucket lean)
-        "test_run_schema",
+        "test_run_state_validation",
         "test_verify_repair_policy",
         "test_room_sse_stream",
         "test_claude_cli_stream",

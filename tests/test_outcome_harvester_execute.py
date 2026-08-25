@@ -193,11 +193,11 @@ def test_outcomes_root_env_isolates_turn_and_execute_ledgers(tmp_path, monkeypat
     record_turn_outcome(folder, 1)
     record_execute_outcome(folder, {"id": "exec-isolated", "oracle": {"verdict": "pass"}})
 
-    ledger = isolated_root / ".agent-lab" / "outcomes.jsonl"
+    ledger = outcomes_path(isolated_root)
     rows = [json.loads(line) for line in ledger.read_text(encoding="utf-8").splitlines() if line.strip()]
     assert outcomes_path() == ledger
     assert [row["phase"] for row in rows] == ["turn", "execute"]
-    assert not (tmp_path / ".agent-lab" / "outcomes.jsonl").exists()
+    assert not outcomes_path(tmp_path).exists()
 
 
 def test_execute_after_turn_close_no_longer_loses_the_verdict(tmp_path, monkeypatch) -> None:

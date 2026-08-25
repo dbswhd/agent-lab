@@ -13,6 +13,8 @@ web/src-tauri/bundled-runtime/
 .agent-lab/loop_probe_cache.json
 # S1 cross-session outcome ledger (runtime data, not source)
 .agent-lab/outcomes.jsonl
+.agent-lab/outcomes-mock.jsonl
+.agent-lab/archive/
 # F8 quarterly cost ledger (runtime data, not source)
 .agent-lab/cost_ledger_quarter.json
 # Stray outcome ledgers written from the wrong CWD (see 24f2bd2a fix)

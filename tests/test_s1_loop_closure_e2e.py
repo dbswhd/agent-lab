@@ -8,6 +8,8 @@ from pathlib import Path
 
 import pytest
 
+from agent_lab.outcome_harvester import outcomes_path
+
 from agent_mocks import patch_call_agent_reply
 
 
@@ -57,8 +59,8 @@ def test_turn_writes_metrics_and_ledger(monkeypatch: pytest.MonkeyPatch, tmp_pat
     assert "oracle_rollup" in metrics
 
     # (2) one outcome row appended to the cross-session ledger
-    ledger = root / ".agent-lab" / "outcomes.jsonl"
-    assert ledger.is_file(), "outcomes.jsonl not written"
+    ledger = outcomes_path(root)
+    assert ledger.is_file(), f"{ledger.name} not written"
     rows = [json.loads(line) for line in ledger.read_text(encoding="utf-8").splitlines() if line.strip()]
     assert len(rows) == 1
     assert rows[0]["session_id"] == folder.name
@@ -100,7 +102,7 @@ def test_roles_survive_plan_workflow_reload(monkeypatch: pytest.MonkeyPatch, tmp
     assert any(t.get("roles") for t in deep_turns), "roles dropped by plan-workflow reload"
 
     # Ground truth: the outcome ledger (what the advisor reads) carries roles.
-    ledger = root / ".agent-lab" / "outcomes.jsonl"
+    ledger = outcomes_path(root)
     rows = [json.loads(line) for line in ledger.read_text(encoding="utf-8").splitlines() if line.strip()]
     assert any(r.get("category") == "deep" and r.get("roles") for r in rows), (
         "no outcome row with deep category + roles — APPLY→MEASURE→RECORD bridge broken"
@@ -128,4 +130,4 @@ def test_flags_off_is_inert(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> 
 
     run = json.loads((folder / "run.json").read_text(encoding="utf-8"))
     assert "turn_metrics" not in run["turns"][0]
-    assert not (root / ".agent-lab" / "outcomes.jsonl").exists()
+    assert not outcomes_path(root).exists()

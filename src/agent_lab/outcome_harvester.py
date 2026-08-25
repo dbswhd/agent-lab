@@ -31,6 +31,7 @@ log = logging.getLogger(__name__)
 
 OUTCOME_LEDGER_SCHEMA_VERSION = 1
 _OUTCOMES_RELPATH = Path(".agent-lab") / "outcomes.jsonl"
+_OUTCOMES_MOCK_RELPATH = Path(".agent-lab") / "outcomes-mock.jsonl"
 
 _LOCK_GUARD = threading.Lock()
 _PATH_LOCKS: WeakValueDictionary[str, threading.Lock] = WeakValueDictionary()
@@ -66,15 +67,33 @@ def _default_outcomes_root() -> Path:
     return root
 
 
+def outcomes_relpath() -> Path:
+    """Ledger file for the current lane — mock turns never touch the live ledger.
+
+    The live ledger is the evidence base for D3 promotion gates
+    (``dogfood_track``, ``feedback_report``). ``make ci-full`` runs the mock
+    dogfood suite, so a shared file means every CI run inflates the very
+    numbers those gates are judged on. A 2026-08-25 audit of the 6,606-row
+    ledger found only 4.5% of rows came from real sessions; the rest were the
+    repeating mock suite and fixture generators.
+
+    Lane is derived from ``AGENT_LAB_MOCK_AGENTS`` (already set by every mock
+    target) so no new flag is introduced.
+    """
+    return _OUTCOMES_MOCK_RELPATH if env_bool("AGENT_LAB_MOCK_AGENTS") else _OUTCOMES_RELPATH
+
+
 def outcomes_path(root: Path | None = None) -> Path:
-    """Resolve ``.agent-lab/outcomes.jsonl`` under the project root.
+    """Resolve the lane's outcome ledger under the project root.
 
     Resolution order: explicit ``root`` arg → ``AGENT_LAB_OUTCOMES_ROOT`` env
-    (S1.5 dogfood isolation) → repo root (not ``src/``).
+    (S1.5 dogfood isolation) → repo root (not ``src/``). The basename is
+    ``outcomes.jsonl`` for live turns and ``outcomes-mock.jsonl`` under
+    ``AGENT_LAB_MOCK_AGENTS`` — see :func:`outcomes_relpath`.
     """
     if root is None:
         root = _default_outcomes_root()
-    return Path(root) / _OUTCOMES_RELPATH
+    return Path(root) / outcomes_relpath()
 
 
 def agent_lab_project_root(root: Path | None = None) -> Path:

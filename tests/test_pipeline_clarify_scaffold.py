@@ -28,7 +28,7 @@ def test_pipeline_always_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_clarify_in_phase_vocab() -> None:
-    from agent_lab.run.schema import _VALID_MISSION_PHASES
+    from agent_lab.run.state import _VALID_MISSION_PHASES
     from agent_lab.runtime.phases import MISSION_PHASES
 
     assert "CLARIFY" in MISSION_PHASES

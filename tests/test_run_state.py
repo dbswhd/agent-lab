@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from agent_lab.run.meta import patch_run_meta, read_run_meta, stamp_run_meta, write_run_meta
-from agent_lab.run.schema import RuntimeValidationError, validate_run
+from agent_lab.run.state import RuntimeValidationError, validate_run_data
 from agent_lab.run.state import RunState
 
 
@@ -25,7 +25,7 @@ def test_run_state_from_raw_accepts_empty() -> None:
 
 def test_validate_run_delegates_to_run_state() -> None:
     with pytest.raises(RuntimeValidationError, match="invalid execution status"):
-        validate_run({"executions": [{"status": "bogus"}]})
+        validate_run_data({"executions": [{"status": "bogus"}]})
 
 
 def test_read_run_meta_returns_run_state(tmp_path: Path) -> None:

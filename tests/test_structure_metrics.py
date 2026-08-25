@@ -574,8 +574,9 @@ def test_room_import_graph_collects_modules() -> None:
     payload = json.loads(proc.stdout)
     # 2026-07-11: 41 -> 45 for turn_intent.py + turn_policy_models.py (TurnIntent
     # observer extraction shared by turn_contract.py/turn_policy.py).
-    assert payload["room_module_count"] == 45
-    assert "room.delegate" in payload["modules"]
+    # 2026-08-25: 45 -> 44, room/delegate.py (dispatch.py re-export shim) retired.
+    assert payload["room_module_count"] == 44
+    assert "room.dispatch" in payload["modules"]
     hub_modules = {row["module"] for row in payload["hub_modules"]}
     assert "room.session_persist" in hub_modules
     assert "room.turn_flow" in payload["modules"]

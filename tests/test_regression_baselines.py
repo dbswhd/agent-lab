@@ -32,12 +32,12 @@ def test_regression_run_meta_write_import():
 
 
 def test_regression_run_schema_validation():
-    mod = importlib.import_module("agent_lab.run.schema")
-    assert hasattr(mod, "validate_run")
+    mod = importlib.import_module("agent_lab.run.state")
+    assert hasattr(mod, "validate_run_data")
     bad = {"phase": "BAD", "executions": [{"status": "BAD"}], "pending_action_indices": "not-a-list"}
     raised = False
     try:
-        mod.validate_run(bad)
+        mod.validate_run_data(bad)
     except Exception as exc:
         raised = True
         msg = str(exc)

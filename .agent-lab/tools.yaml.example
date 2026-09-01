@@ -1,5 +1,8 @@
 # Copy to ~/.agent-lab/tools.yaml and enable: export AGENT_LAB_EXTERNAL_TOOLS=1
 # Session allowlist: PATCH /api/sessions/{id}/external-tools {"enabled":["external:echo"]}
+#
+# Placeholders: {session_id} {args} {worktree_path}
+# cwd modes: session | workspace | worktree (open execution worktree_path)
 tools:
   - id: external:echo
     slash: /echo-test
@@ -11,3 +14,28 @@ tools:
       - /bin/sh
       - -c
       - 'echo "session={session_id} args={args}"'
+
+  # Delegate spike — configure real binaries on your machine (CODEX_BIN / CLAUDE_BIN).
+  # Requires an open execution with worktree_path (dry-run pending_approval).
+  - id: external:codex-delegate
+    slash: /codex-delegate
+    label: Codex worktree delegate
+    description: Run codex exec in session worktree; emit handoff JSON on stdout
+    human_approve: true
+    cwd: worktree
+    command:
+      - codex
+      - exec
+      - --full-auto
+      - "{args}"
+
+  - id: external:claude-delegate
+    slash: /claude-delegate
+    label: Claude worktree delegate
+    description: Run claude -p in session worktree; emit handoff JSON on stdout
+    human_approve: true
+    cwd: worktree
+    command:
+      - claude
+      - -p
+      - "{args}"

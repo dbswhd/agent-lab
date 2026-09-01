@@ -13,6 +13,58 @@ from agent_lab.subprocess_env import subprocess_env
 
 _AGENT_LAB_ROOT = Path(__file__).resolve().parents[2]
 
+
+def resolve_external_tool_cwd(
+    *,
+    cwd_mode: str,
+    session_folder: Path,
+    workspace: Path | None = None,
+    run: dict[str, Any] | None = None,
+) -> tuple[Path | None, str | None]:
+    """Resolve external tool working directory.
+
+    Modes:
+      session   — session folder (default)
+      workspace — explicit workspace override, else session folder
+      worktree  — open execution's worktree_path (delegate spike)
+    """
+    mode = str(cwd_mode or "session").strip().lower()
+    if mode == "session":
+        return session_folder, None
+    if mode == "workspace":
+        return workspace or session_folder, None
+    if mode == "worktree":
+        from agent_lab.core.execution_status_scopes import find_open_merge_pending_execution
+        from agent_lab.run.meta import read_run_meta
+
+        meta = run if run is not None else read_run_meta(session_folder)
+        pending = find_open_merge_pending_execution(meta)
+        if not pending:
+            return None, "no open execution for worktree cwd"
+        wt_path = pending.get("worktree_path")
+        if not wt_path:
+            return None, "open execution has no worktree_path"
+        path = Path(str(wt_path))
+        if not path.is_dir():
+            return None, f"worktree path not found: {path}"
+        return path, None
+    return workspace or session_folder, None
+
+
+def _expand_command_placeholders(
+    parts: list[str],
+    *,
+    session_folder: Path,
+    args: str,
+    worktree_path: Path | None,
+) -> list[str]:
+    worktree = str(worktree_path) if worktree_path is not None else ""
+    return [
+        part.replace("{session_id}", session_folder.name).replace("{args}", args).replace("{worktree_path}", worktree)
+        for part in parts
+    ]
+
+
 _DEFAULT_TOOLS: list[dict[str, Any]] = [
     {
         "id": "external:gjc-ralplan",
@@ -52,6 +104,28 @@ _DEFAULT_TOOLS: list[dict[str, Any]] = [
         "slash": "/ulw-plan",
         "label": "LazyCodex ulw-plan (stub)",
         "description": "Plan-only hook; configure command in ~/.agent-lab/tools.yaml",
+        "scope": "external",
+        "kind": "external",
+        "agent": None,
+        "requires_human_confirm": True,
+        "status": "stub",
+    },
+    {
+        "id": "external:codex-delegate",
+        "slash": "/codex-delegate",
+        "label": "Codex worktree delegate",
+        "description": "Run codex exec in session worktree; stdout handoff JSON attaches to execution",
+        "scope": "external",
+        "kind": "external",
+        "agent": None,
+        "requires_human_confirm": True,
+        "status": "stub",
+    },
+    {
+        "id": "external:claude-delegate",
+        "slash": "/claude-delegate",
+        "label": "Claude worktree delegate",
+        "description": "Run claude -p in session worktree; stdout handoff JSON attaches to execution",
         "scope": "external",
         "kind": "external",
         "agent": None,
@@ -210,9 +284,24 @@ def run_external_tool(
             cmd_list = shlex.split(cmd)
         else:
             cmd_list = [str(part) for part in cmd]
-        cmd_list = [part.replace("{session_id}", session_folder.name).replace("{args}", args) for part in cmd_list]
         cwd_mode = str(row.get("cwd") or "session")
-        cwd = session_folder if cwd_mode == "session" else (workspace or session_folder)
+        cwd, cwd_err = resolve_external_tool_cwd(
+            cwd_mode=cwd_mode,
+            session_folder=session_folder,
+            workspace=workspace,
+        )
+        if cwd_err or cwd is None:
+            return {
+                "ok": False,
+                "status": "worktree_cwd_unavailable",
+                "detail": cwd_err or "worktree cwd unavailable",
+            }
+        cmd_list = _expand_command_placeholders(
+            cmd_list,
+            session_folder=session_folder,
+            args=args,
+            worktree_path=cwd if cwd_mode == "worktree" else None,
+        )
         proc = subprocess.run(
             cmd_list,
             cwd=str(cwd),

@@ -1,6 +1,6 @@
 # NOW — 지금 무엇을 해야 하는가 (종합 상태 표면)
 
-> **작성:** 2026-07-08 · **갱신:** 2026-07-23 (Composer Decision Queue rebaseline) · **역할:** "오늘/이번 주/다음/동결"을 한 곳에서 판정한다.
+> **작성:** 2026-07-08 · **갱신:** 2026-09-01 (재개 Phase 0 완료 → Phase 1 delegate) · **역할:** "오늘/이번 주/다음/동결"을 한 곳에서 판정한다.
 > **이 문서가 아닌 것:** 방향·구조·턴·평가 계약의 SSOT가 아니다. 이 문서는 **상태 포인터**만 갖는다.
 > **Browser acceptance:** Wave B/browser evidence is **accepted** (2026-07-24). Live proof: [wave-b-browser-acceptance-2026-07-24.md](redesign-2026-07/evidence/wave-b-browser-acceptance-2026-07-24.md). Mock/API suites remain regression, not a substitute for that live packet.
 > **ID 규칙:** 소스 namespace를 보존한다 (`N*`, `F*`, `HS*`, `TC-*`, `ABS-P2-*`). bare `P1/P2` 신규 사용 금지.
@@ -24,7 +24,21 @@
 
 ## 1. 실행 큐 (정렬 = 실행 순서)
 
-### 지금 — Mission redesign continuation (Human 지시 2026-07-12)
+### 지금 — 재개 Phase 1: delegate spike (2026-09-01)
+
+| ID | 작업 | 상태 | 다음 |
+|----|------|------|------|
+| **A0** | Phase 0 재가동 (`make ci` green) | ✅ 2026-09-01 | — |
+| **C0–C3** | worktree cwd + tools.yaml + mock e2e | ✅ shipped | [DELEGATE-SPIKE.md](./DELEGATE-SPIKE.md) |
+| **C4** | UI handoff strip / external tool wire | pending | `PlanExecutePanel` external_handoff 재사용 |
+| **C5** | live dry-run (codex-delegate 1건) | pending | execute dry-run → `/codex-delegate` |
+| **B1–B2** | 플래그 3-tier 분류 · core 15개 | pending | `FLAG-TIERS-DRAFT.md` |
+
+**dogfood env:** `AGENT_LAB_RUN_PROFILE=balanced` · provider bins in `~/.agent-lab/.env` · mock smoke = `make dogfood-suite-mock ONLY=S1` + `smoke_room.py`.
+
+**포지션 (Human 2026-09):** Cursor/CC/Codex **위의** verification-first mission console — Room=합의·plan, execute=외부 delegate + Oracle gate.
+
+### 기록 — Mission redesign + dogfood (2026-07~08, closed)
 
 | 단계 | 상태 | 다음 |
 | --- | --- | --- |

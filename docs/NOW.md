@@ -28,13 +28,16 @@
 
 | ID | 작업 | 상태 | 다음 |
 |----|------|------|------|
-| **A0** | Phase 0 재가동 (`make ci` green) | ✅ 2026-09-01 | — |
+| **A1** | 브랜치 정리 · `make ci` on `main` | ✅ 2026-09-01 (3458 passed) | `git push`는 Human |
+| **A2** | `PROJECT.md` · `NOW.md` 갱신 | ✅ 2026-09-01 | — |
+| **A3** | dogfood env (`balanced` + provider paths) | ✅ 2026-09-01 | `~/.agent-lab/.env` SSOT |
+| **A4** | mock quickstart (`fork_time_minutes`) | ✅ 2026-09-01 · **1분** | `python scripts/verify_quickstart.py` |
 | **C0–C3** | worktree cwd + tools.yaml + mock e2e | ✅ shipped | [DELEGATE-SPIKE.md](./DELEGATE-SPIKE.md) |
-| **C4** | UI handoff strip / external tool wire | pending | `PlanExecutePanel` external_handoff 재사용 |
-| **C5** | live dry-run (codex-delegate 1건) | pending | execute dry-run → `/codex-delegate` |
+| **C4** | UI handoff strip / external tool wire | ✅ 2026-09-01 | `DelegateExecuteBar` · source-aware handoff badges |
+| **C5** | live dry-run (codex-delegate 1건) | ✅ mock GO · live Codex blocked (model) | [evidence](redesign-2026-07/evidence/delegate-spike-live-2026-09-01.md) |
 | **B1–B2** | 플래그 3-tier 분류 · core 15개 | pending | `FLAG-TIERS-DRAFT.md` |
 
-**dogfood env:** `AGENT_LAB_RUN_PROFILE=balanced` · provider bins in `~/.agent-lab/.env` · mock smoke = `make dogfood-suite-mock ONLY=S1` + `smoke_room.py`.
+**dogfood env:** `AGENT_LAB_RUN_PROFILE=balanced` · `CODEX_BIN` / `CLAUDE_BIN` / `CURSOR_SDK_BRIDGE_BIN` in `~/.agent-lab/.env` · mock smoke = `python scripts/verify_quickstart.py` or `make dogfood-suite-mock ONLY=S1` + `smoke_room.py`.
 
 **포지션 (Human 2026-09):** Cursor/CC/Codex **위의** verification-first mission console — Room=합의·plan, execute=외부 delegate + Oracle gate.
 
@@ -176,7 +179,8 @@ N5 전역 bandit · N7/S3 구현(설계만 ✅) · HSIL Tier D 전체 · Gateway
 
 ```bash
 make test-fast && python scripts/smoke_room.py   # 회귀 (코드 트랙 큐 1~4 — 매 변경)
-make ci                       # HS0 닫힘 기준 (큐 1)
+make ci                       # Phase 0/A1 gate (pytest + smoke + emergence bench)
+python scripts/verify_quickstart.py   # A4 mock mission + smoke + fork_time_minutes
 make feedback-report JSON=1   # harness_attribution 확인 (큐 1) · S1 lift(P0-5)는 닫힘, N4-D3/N1-30 진행용
 make eval-surface-local       # T0/T1 supersample (evals/results/latest.json)
 make f7-dogfood-report        # F7 closed ON — optional revisit metrics

@@ -1072,6 +1072,12 @@
   color: var(--label-secondary);
 }
 
+.gjc-handoff-strip__checks {
+  margin-left: var(--space-6);
+  font-size: var(--text-micro);
+  color: var(--label-tertiary);
+}
+
 .gjc-handoff-strip__summary {
   margin: var(--space-4) 0 0;
   font-size: var(--text-caption);
@@ -2419,10 +2425,53 @@
   color: var(--label-secondary);
 }
 
+.work-exec-handoff__checks {
+  margin-left: var(--space-6);
+  font-size: var(--text-micro);
+  color: var(--label-tertiary);
+}
+
 .work-exec-handoff__summary,
 .work-exec-handoff__files {
   margin: var(--space-4) 0 0;
+  color: var(--label-primary);
+  line-height: 1.45;
+}
+
+.delegate-exec-bar {
+  margin: var(--space-8) 0;
+  padding: var(--space-10) var(--space-12);
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--border-subtle);
+  background: var(--surface-secondary);
+}
+
+.delegate-exec-bar__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-semibold);
+  color: var(--label-secondary);
+}
+
+.delegate-exec-bar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+  margin-top: var(--space-8);
+}
+
+.delegate-exec-bar__hint,
+.delegate-exec-bar__error {
+  margin: var(--space-6) 0 0;
+  font-size: var(--text-footnote);
   color: var(--label-tertiary);
+  line-height: 1.45;
+}
+
+.delegate-exec-bar__error {
+  color: var(--danger);
 }
 
 .wisdom-search {

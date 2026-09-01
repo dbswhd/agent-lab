@@ -70,10 +70,27 @@ stopped_cleanly, changed_files, checks, evidence_summary, risks.
 | `pending_human` | `human_approve: true` without `confirm=true` |
 | `no_pending_execution` (handoff) | Handoff valid but no `pending_approval` execution |
 
+## C5 live dry-run (2026-09-01)
+
+```bash
+# Mock path (CI / default)
+AGENT_LAB_EXTERNAL_TOOLS=1 python scripts/live_delegate_dry_run.py
+
+# Live Codex (requires supported model in ~/.codex/config.toml)
+AGENT_LAB_EXTERNAL_TOOLS=1 AGENT_LAB_RUN_LIVE=1 make live-delegate-dry-run
+```
+
+Evidence: [delegate-spike-live-2026-09-01.md](redesign-2026-07/evidence/delegate-spike-live-2026-09-01.md)
+
+- **Mock:** GO — worktree cwd, delegate subprocess, handoff attach, main-repo isolation
+- **Live Codex:** blocked on ChatGPT account model (`gpt-5.6-sol` unsupported); fix Codex auth/model and re-run
+
+`tools.yaml` uses `codex exec --sandbox workspace-write` (replaces deprecated `--full-auto`).
+
 ## Tests
 
 ```bash
-pytest tests/test_delegate_spike.py tests/test_external_handoff.py -q
+pytest tests/test_delegate_spike.py tests/test_external_handoff.py tests/test_live_delegate_spike.py -q
 ```
 
 ## Out of scope (Phase 1)
@@ -81,3 +98,9 @@ pytest tests/test_delegate_spike.py tests/test_external_handoff.py -q
 - Claude as native execute-lane agent (`EXECUTE_AGENT_IDS` still cursor\|codex)
 - Streaming event ingest from codex JSONL
 - Auto-merge without Human diff review
+
+## C4 UI (shipped 2026-09)
+
+- `DelegateExecuteBar` on pending worktree executions — runs `/codex-delegate` · `/claude-delegate` via `POST …/commands/run` (`confirm: true`)
+- `GjcExternalHandoffStrip` + `ExternalHandoffBadge` show source-aware labels (`Codex delegate` / `Claude delegate` / `GJC handoff`)
+- Enable: `AGENT_LAB_EXTERNAL_TOOLS=1` + session allowlist in Tools → Plugins → External

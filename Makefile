@@ -339,6 +339,14 @@ live-worktree-dry-run:
 	@test "$$AGENT_LAB_RUN_LIVE" = "1" || (echo "Set AGENT_LAB_RUN_LIVE=1 before live Cursor spike" && exit 1)
 	.venv/bin/python scripts/live_cursor_worktree_dry_run.py
 
+live-delegate-dry-run:
+	@test "$$AGENT_LAB_EXTERNAL_TOOLS" = "1" || (echo "Set AGENT_LAB_EXTERNAL_TOOLS=1 before delegate spike" && exit 1)
+	@test "$$AGENT_LAB_RUN_LIVE" = "1" || (echo "Set AGENT_LAB_RUN_LIVE=1 before live Codex delegate spike" && exit 1)
+	.venv/bin/python scripts/live_delegate_dry_run.py
+
+delegate-dry-run-mock:
+	AGENT_LAB_EXTERNAL_TOOLS=1 .venv/bin/python scripts/live_delegate_dry_run.py
+
 score-regression-fixtures:
 	.venv/bin/python scripts/score_session.py --json sessions/_regression/worktree_merge_ok
 	.venv/bin/python scripts/score_session.py --json sessions/_regression/objection_blocks_execute

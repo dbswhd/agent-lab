@@ -4,6 +4,7 @@ import type {
   PlanExecutionRecord,
   RoomTask,
 } from "../api/client";
+import { DelegateExecuteBar } from "./DelegateExecuteBar";
 import {
   AdversarialBadge,
   ApplyIsolationBanner,
@@ -76,6 +77,8 @@ type Props = {
   onMergeAbort: () => void;
   onReverify: (executionId: string) => void;
   onIsolationOverride: (executionId: string) => void;
+  externalRunnerEnabled?: boolean;
+  externalAllowlist?: string[];
 };
 
 export function PlanExecutePendingCard({
@@ -111,6 +114,8 @@ export function PlanExecutePendingCard({
   onMergeAbort,
   onReverify,
   onIsolationOverride,
+  externalRunnerEnabled = false,
+  externalAllowlist = [],
 }: Props) {
   return (
     <div
@@ -152,6 +157,18 @@ export function PlanExecutePendingCard({
           </p>
         ) : null}
         <AdversarialBadge row={activePending} />
+        <DelegateExecuteBar
+          sessionId={sessionId}
+          execution={activePending}
+          actionWhat={pendingAction?.what}
+          actionWhere={pendingAction?.where}
+          actionVerify={pendingAction?.verify}
+          runnerEnabled={externalRunnerEnabled}
+          allowlist={externalAllowlist}
+          disabled={disabled}
+          busy={busy}
+          onUpdated={onUpdated}
+        />
         <ExternalHandoffBadge row={activePending} />
         <MergeChecksPanel checks={mergeChecks} />
         <TrustAutoMergeBar

@@ -423,6 +423,8 @@ export function WorkToolPanel({
             ? session.run.active_plan_relpath
             : "plan.md"
         }
+        externalRunnerEnabled={externalRunnerEnabled}
+        externalAllowlist={runtime?.external?.allowlist ?? []}
       />
     </div>
   );

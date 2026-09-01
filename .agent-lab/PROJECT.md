@@ -9,9 +9,9 @@ AI 개발 작업을 계획·승인·격리 실행·검증하는 Human-in-the-loo
 
 ## 현재 작업 맥락
 
-- **2026-09-01 재개:** Phase 0 완료 (`make ci` green · 3458 tests). Phase 1 delegate spike C0–C3 shipped — [DELEGATE-SPIKE.md](../docs/DELEGATE-SPIKE.md). 다음: C4 UI wire · C5 live dry-run.
-- **dogfood:** `AGENT_LAB_RUN_PROFILE=balanced` · mock quickstart `make dogfood-suite-mock ONLY=S1`.
-- **브랜치:** `main` ← HS 철거 + delegate (2026-08~09 merge).
+- **2026-09-01 A1–A4 ✅:** `main` CI green · `balanced` profile · quickstart `fork_time_minutes=1`.
+- **Phase 1:** C0–C4 shipped — [DELEGATE-SPIKE.md](../docs/DELEGATE-SPIKE.md). 다음: **C5** live dry-run.
+- **브랜치:** `main` (origin 대비 unpushed 8 commits — push는 Human 결정).
 
 ## Room (2026-07)
 - **Composer:** topic-only — preset·Plan picker는 숨김; dogfood 기본 `supervisor`

@@ -31,6 +31,8 @@ type Props = {
   onObjectionResolved?: () => void;
   variant?: "tool" | "composer";
   planFileLabel?: string;
+  externalRunnerEnabled?: boolean;
+  externalAllowlist?: string[];
 };
 
 export function PlanExecutePanel({
@@ -55,6 +57,8 @@ export function PlanExecutePanel({
   onObjectionResolved,
   variant = "tool",
   planFileLabel = "plan.md",
+  externalRunnerEnabled = false,
+  externalAllowlist = [],
 }: Props) {
   const { locale } = useLocale();
   const panel = usePlanExecutePanel({
@@ -196,6 +200,8 @@ export function PlanExecutePanel({
           onIsolationOverride={(executionId) =>
             void panel.handleIsolationOverride(executionId)
           }
+          externalRunnerEnabled={externalRunnerEnabled}
+          externalAllowlist={externalAllowlist}
         />
       ) : null}
 

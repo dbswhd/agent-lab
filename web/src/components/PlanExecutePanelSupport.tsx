@@ -6,6 +6,10 @@ import {
   type RoomObjection,
   type RoomTask,
 } from "../api/client";
+import {
+  externalHandoffBadgeLabel,
+  externalHandoffChecksSummary,
+} from "../utils/externalHandoff";
 import type { AgentPermissions } from "../utils/agentPermissions";
 import { fullAgentPermissions } from "../utils/agentPermissions";
 import { formatExecutionTime } from "../utils/planExecuteHistory";
@@ -141,17 +145,20 @@ export function oracleStatusLabel(status: string | null): string {
 
 export function ExternalHandoffBadge({ row }: { row: PlanExecutionRecord }) {
   const handoff = row.external_handoff;
-  if (!handoff?.evidence_summary) return null;
+  const label = externalHandoffBadgeLabel(handoff);
+  if (!label || !handoff?.evidence_summary) return null;
   const clean = handoff.stopped_cleanly !== false;
+  const checks = externalHandoffChecksSummary(handoff);
   return (
     <div
       className={`work-exec-handoff work-exec-handoff--${clean ? "ok" : "warn"}`}
       role="status"
       data-testid="external-handoff-badge"
     >
-      <span className="work-exec-handoff__badge">
-        {clean ? "External handoff" : "External handoff (unclean stop)"}
-      </span>
+      <span className="work-exec-handoff__badge">{label}</span>
+      {checks ? (
+        <span className="work-exec-handoff__checks">{checks}</span>
+      ) : null}
       <p className="work-exec-handoff__summary">{handoff.evidence_summary}</p>
       {handoff.changed_files?.length ? (
         <p className="work-exec-handoff__files">

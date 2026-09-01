@@ -16,7 +16,7 @@ describe("externalHandoffBadgeLabel", () => {
         risks: [],
         tool_id: "external:codex-delegate",
       }),
-    ).toBe("Codex delegate");
+    ).toBe("Codex 실행 결과");
   });
 
   it("labels legacy GJC handoffs", () => {
@@ -46,7 +46,7 @@ describe("externalHandoffChecksSummary", () => {
         evidence_summary: "x",
         risks: [],
       }),
-    ).toBe("Checks 1/2");
+    ).toBe("검증 1/2");
   });
 });
 

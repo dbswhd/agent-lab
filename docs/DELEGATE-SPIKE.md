@@ -103,4 +103,4 @@ pytest tests/test_delegate_spike.py tests/test_external_handoff.py tests/test_li
 
 - `DelegateExecuteBar` on pending worktree executions — runs `/codex-delegate` · `/claude-delegate` via `POST …/commands/run` (`confirm: true`)
 - `GjcExternalHandoffStrip` + `ExternalHandoffBadge` show source-aware labels (`Codex delegate` / `Claude delegate` / `GJC handoff`)
-- Enable: `AGENT_LAB_EXTERNAL_TOOLS=1` + session allowlist in Tools → Plugins → External
+  - Enable: `AGENT_LAB_EXTERNAL_TOOLS=1` + **Settings → 플러그인 → External** allowlist

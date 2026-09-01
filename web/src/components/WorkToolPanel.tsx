@@ -28,7 +28,6 @@ import {
 } from "./WorkPlanApprovalSection";
 import { WorkStatusBar } from "./WorkStatusBar";
 import { GjcPipelineBar } from "./GjcPipelineBar";
-import { GjcExternalHandoffStrip } from "./GjcExternalHandoffStrip";
 import {
   gjcPipelineMetaLine,
   resolveGjcPipelinePhase,
@@ -302,7 +301,6 @@ export function WorkToolPanel({
                 false
               }
             />
-            <GjcExternalHandoffStrip execution={readModelExecution} />
           </div>
         ) : null}
         {showPlanStalePanel ? (
@@ -343,7 +341,6 @@ export function WorkToolPanel({
               false
             }
           />
-          <GjcExternalHandoffStrip execution={readModelExecution} />
           <WorkDecisionPanel
             summary={decisionSummary}
             onAction={handleDecisionAction}

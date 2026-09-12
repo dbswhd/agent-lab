@@ -35,7 +35,7 @@
 | **C0–C3** | worktree cwd + tools.yaml + mock e2e | ✅ shipped | [DELEGATE-SPIKE.md](./DELEGATE-SPIKE.md) |
 | **C4** | UI handoff strip / external tool wire | ✅ 2026-09-01 | `DelegateExecuteBar` · source-aware handoff badges |
 | **C5** | live dry-run (codex-delegate 1건) | ✅ mock GO · live Codex blocked (model) | [evidence](redesign-2026-07/evidence/delegate-spike-live-2026-09-01.md) |
-| **B1–B2** | 플래그 3-tier 분류 · core 15개 | pending | `FLAG-TIERS-DRAFT.md` |
+| **B1–B2** | 플래그 3-tier 분류 · core 15개 | ✅ 2026-09-01 | [FLAG-TIERS-DRAFT.md](./FLAG-TIERS-DRAFT.md) |
 
 **dogfood env:** `AGENT_LAB_RUN_PROFILE=balanced` · `CODEX_BIN` / `CLAUDE_BIN` / `CURSOR_SDK_BRIDGE_BIN` in `~/.agent-lab/.env` · mock smoke = `python scripts/verify_quickstart.py` or `make dogfood-suite-mock ONLY=S1` + `smoke_room.py`.
 

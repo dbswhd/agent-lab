@@ -50,6 +50,7 @@ from agent_lab.reply_policy import (
     envelope_follow_up_block,
     resolve_reply_policy,
 )
+from agent_lab.ideation import ideation_stage
 from agent_lab.runtime.policy import PolicyEngine
 from agent_lab.env_flags import env_bool
 
@@ -256,6 +257,7 @@ def build_slim_consensus_bundle(
             consensus_mode=consensus_mode,
             turn_profile=str((run_meta or {}).get("turn_profile") or ""),
             efficiency_mode=efficiency_mode,
+            ideation_stage=ideation_stage(run_meta),
         ),
         run_meta,
     )
@@ -688,6 +690,7 @@ def build_context_bundle(
 
     connect_hint = AGENT_CONNECT_HINT.get(agent, "").strip()
     profile = str((run_meta or {}).get("turn_profile") or "").strip().lower()
+    stage = ideation_stage(run_meta)
     reply_policy = apply_inbox_fork_grace_policy(
         resolve_reply_policy(
             parallel_round=parallel_round,
@@ -695,6 +698,7 @@ def build_context_bundle(
             consensus_mode=consensus_mode,
             turn_profile=profile,
             efficiency_mode=efficiency_mode,
+            ideation_stage=stage,
         ),
         run_meta,
     )
@@ -708,6 +712,24 @@ def build_context_bundle(
         from agent_lab.agents.prompts import DIVERGENCE_INSTRUCTION
 
         guidance_parts.insert(0, DIVERGENCE_INSTRUCTION)
+    if stage is not None:
+        # RI-05 — stage-scoped guidance replaces the fixed persona for this lane.
+        # The seat perspective is keyed by position in the roster, not by
+        # provider name, so a single-model roster still gets a perspective and
+        # a three-model roster gets three different ones (§4.3).
+        from agent_lab.agents.prompts import (
+            IDEATION_EXPLORE_INSTRUCTION,
+            IDEATION_SHAPE_INSTRUCTION,
+            ideation_perspective_for_seat,
+        )
+        from agent_lab.ideation import STAGE_EXPLORE, STAGE_SHAPE
+
+        if stage == STAGE_EXPLORE:
+            seat = active_roster.index(agent) if agent in (active_roster or []) else 0
+            guidance_parts.insert(0, ideation_perspective_for_seat(seat))
+            guidance_parts.insert(0, IDEATION_EXPLORE_INSTRUCTION)
+        elif stage == STAGE_SHAPE:
+            guidance_parts.insert(0, IDEATION_SHAPE_INSTRUCTION)
     from agent_lab.room.dispatch_intents import build_dispatch_intent_block
 
     dispatch_block = build_dispatch_intent_block(run_meta, agent)

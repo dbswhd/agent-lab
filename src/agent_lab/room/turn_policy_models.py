@@ -23,6 +23,8 @@ _PLAN_NO_SCRIBE_PHASES = frozenset({"HUMAN_PENDING", "APPROVED"})
 _PLAN_FSM_TICK_PHASES = frozenset({"INTAKE", "CLARIFY", "DRAFT", "PEER_REVIEW", "REFINE"})
 _TASK_ASSIGN_PHASES = frozenset({"DRAFT", "REFINE", "PEER_REVIEW"})
 _SKILL_SCRIBE_INTENTS = frozenset({"plan", "plan_draft", "ralplan", "propose_build"})
+# RI-03 — idea lane stages that must not trigger plan side effects.
+_IDEATION_EXPLORATION_STAGES = frozenset({"explore", "shape"})
 
 
 def _normalize_skill_intent(raw: str | None) -> str | None:
@@ -104,6 +106,8 @@ class TurnSignals:
     clarity_short_circuit: bool = False
     plan_execute_intent: bool = False
     roster_size: int = 0
+    # RI-03 — idea lane. None for every existing session.
+    ideation_stage: str | None = None
     intent: TurnIntent | None = None
 
     @classmethod
@@ -123,6 +127,7 @@ class TurnSignals:
         roster_size: int | None = None,
     ) -> TurnSignals:
         from agent_lab.consensus_agreements import pending_consensus_agreements
+        from agent_lab.ideation import ideation_stage as _ideation_stage
         from agent_lab.plan.workflow import is_plan_workflow_active, plan_workflow_phase
 
         run = run_meta or {}
@@ -166,6 +171,7 @@ class TurnSignals:
             clarity_short_circuit=clarity_sc,
             plan_execute_intent=intent.execute_intent,
             roster_size=max(0, int(resolved_roster)),
+            ideation_stage=_ideation_stage(run),
             intent=intent,
         )
 
@@ -179,6 +185,7 @@ class TurnSignals:
             "fast_turn": _is_fast_turn(self),
             "supervisor_turn": _is_supervisor_turn(self),
             "roster_size": self.roster_size,
+            "ideation_stage": self.ideation_stage,
         }
 
 
@@ -234,11 +241,28 @@ class TurnPolicyEngine:
                 turn_kind="plan_side_effect" if signals.synthesize_only else "agent_turn",
             )
         if signals.synthesize_only:
+            exploring = signals.ideation_stage in _IDEATION_EXPLORATION_STAGES
             return TurnEffects(
                 run_agent_round=False,
-                run_scribe=True,
-                scribe_trigger="synthesize_only",
+                run_scribe=not exploring,
+                scribe_trigger="none" if exploring else "synthesize_only",
                 turn_kind="plan_side_effect",
+            )
+
+        if signals.ideation_stage in _IDEATION_EXPLORATION_STAGES:
+            # Exploring/shaping an idea: run the agents, produce candidates, and
+            # touch nothing else. The plan FSM, Scribe, and task claims wait for
+            # an explicit "make a plan" request, which is what reaching the
+            # `plan` stage means (§4.2). This suppresses side effects only — no
+            # approval boundary moves, and BLOCK -> execute 409 is untouched.
+            return TurnEffects(
+                run_agent_round=True,
+                run_scribe=False,
+                scribe_trigger="none",
+                advance_plan_workflow=False,
+                init_plan_workflow=False,
+                assign_task_owners=False,
+                turn_kind="agent_turn",
             )
 
         phase = (signals.plan_workflow_phase or "INTAKE").strip().upper()

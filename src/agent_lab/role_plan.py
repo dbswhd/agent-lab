@@ -217,12 +217,26 @@ def _force_role_plan(agents: list[str], hint: Any | None = None) -> dict[str, st
     return _apply_hint_overrides(result, agents, hint)
 
 
+def ideation_suppresses_fixed_roles(run_meta: RunStateLike | None) -> bool:
+    """RI-05 — exploration assigns perspectives by seat, not provider-pinned roles.
+
+    The proposer/critic plan (and the deep/critical overrides that pin `claude`
+    to synthesizer and `codex` to critic) fight divergence: a seat told to
+    critique will not produce a different approach. Shaping and planning keep
+    the existing roles — that is where feasibility criticism belongs (§4.3).
+    """
+    from agent_lab.ideation import STAGE_EXPLORE, ideation_stage
+
+    return ideation_stage(run_meta) == STAGE_EXPLORE
+
+
 def resolve_role_plan(
     *,
     route: CategoryRoute,
     agents: list[str],
     hint: Any | None = None,
     policy: RolePolicy | str = "auto",
+    run_meta: RunStateLike | None = None,
 ) -> dict[str, str]:
     """카테고리·에이전트 강점 기반 역할 배정.
 
@@ -238,6 +252,8 @@ def resolve_role_plan(
     """
     policy_norm = str(policy or "auto").strip().lower()
     if policy_norm == "off" or not _roles_enabled():
+        return {}
+    if ideation_suppresses_fixed_roles(run_meta):
         return {}
     if policy_norm == "force":
         return _force_role_plan(agents, hint=hint)

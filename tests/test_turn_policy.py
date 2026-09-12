@@ -526,6 +526,8 @@ def test_build_turn_policy_record_includes_routing_contract() -> None:
         "fast_turn": True,
         "supervisor_turn": False,
         "roster_size": 0,
+        # RI-03 — None for every non-ideation session
+        "ideation_stage": None,
     }
 
 

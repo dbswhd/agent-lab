@@ -5,6 +5,7 @@
 > **현재 상태:** [NOW.md](./NOW.md) · **현재 구조:** [FLOW.md](./FLOW.md) · **턴 계약:** [TURN-CONTRACT.md](./TURN-CONTRACT.md) · **평가 계약:** [EVAL-CONTRACT.md](./EVAL-CONTRACT.md)
 > **이력/근거:** [STRATEGIC-DIRECTION-2026.md](./STRATEGIC-DIRECTION-2026.md) · [EXTERNAL-REFS-TRACEABILITY.md](./EXTERNAL-REFS-TRACEABILITY.md)
 > **Supersedes:** `artifacts/plans/agent-lab-agi-direction.md`, `agent-lab-long-term-direction.md`, `agent-lab-longterm-direction.md` (3개 초안을 이 문서로 통합)
+> **Idea lane (2026-09, 계획·미구현):** 아이디어 구체화 Room은 이 로드맵과 별개 lane이며 [ROOM-IDEATION-PLAN-2026-09.md](./ROOM-IDEATION-PLAN-2026-09.md)가 그 범위를 소유한다. 해당 계획은 N/F 항목을 닫거나 해제하지 않고, 동결 항목을 해제하지도 않는다.
 
 ### 코드네임 범례 (fork 진입용)
 

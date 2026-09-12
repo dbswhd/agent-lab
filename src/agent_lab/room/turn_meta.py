@@ -601,6 +601,14 @@ def ensure_verified_plan_sync(folder: Path) -> bool:
 
 def ensure_session_plan_pipeline(folder: Path) -> bool:
     """Run pending consensus or verified plan auto-sync (best-effort)."""
+    from agent_lab.ideation import allows_scribe
+    from agent_lab.run.meta import read_run_meta
+
+    # RI-03 — session GET calls this. Reading or refreshing an idea-lane session
+    # must not synthesize a plan from agent consensus; the plan is written only
+    # when the user asks for one (stage `plan`).
+    if not allows_scribe(read_run_meta(folder)):
+        return False
     changed = ensure_consensus_plan_sync(folder)
     if ensure_verified_plan_sync(folder):
         changed = True

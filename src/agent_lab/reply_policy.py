@@ -63,6 +63,7 @@ class ReplyPolicy:
     inject_conversation: bool
     inject_coordination: bool
     inject_peer_decision: bool
+    ideation_exploring: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -73,6 +74,7 @@ class ReplyPolicy:
             "efficiency_mode": self.efficiency_mode,
             "envelope_strict": self.envelope_strict,
             "envelope_warn": self.envelope_warn,
+            "ideation_exploring": self.ideation_exploring,
         }
 
 
@@ -83,9 +85,18 @@ def resolve_reply_policy(
     consensus_mode: bool = False,
     turn_profile: str | None = None,
     efficiency_mode: bool = False,
+    ideation_stage: str | None = None,
 ) -> ReplyPolicy:
-    """Profile combination priority: consensus > review R2+ > analyze > base discuss."""
+    """Profile combination priority: consensus > review R2+ > analyze > base discuss.
+
+    RI-05 — while exploring, the consensus envelope (PROPOSE/CHALLENGE/ENDORSE/
+    BLOCK) and peer-coordination guidance are suppressed: a seat told to
+    converge on its peers will not produce a genuinely different approach.
+    Everything else about the turn is unchanged, and shaping/planning get the
+    normal policy back.
+    """
     profile = str(turn_profile or "").strip().lower()
+    exploring = str(ideation_stage or "").strip().lower() == "explore"
     strict_mode = envelope_strict_env()
     r2 = max(1, parallel_round) >= 2
 
@@ -131,6 +142,15 @@ def resolve_reply_policy(
         inject_peer = False
         inject_analysis = False
 
+    if exploring:
+        envelope_strict = False
+        envelope_warn = False
+        inject_envelope = False
+        inject_fork = False
+        inject_analysis = False
+        inject_coordination = False
+        inject_peer = False
+
     return ReplyPolicy(
         parallel_round=max(1, parallel_round),
         review_mode=review_mode,
@@ -146,6 +166,7 @@ def resolve_reply_policy(
         inject_conversation=inject_conversation,
         inject_coordination=inject_coordination,
         inject_peer_decision=inject_peer,
+        ideation_exploring=exploring,
     )
 
 
@@ -195,7 +216,15 @@ def build_guidance_parts(
 
         parts.append(VERIFIED_LOOP_GUIDANCE)
     if policy.inject_conversation:
-        parts.append(CONVERSATION_GUIDANCE)
+        # RI-05 — the default block tells a seat to react to its peers and not
+        # write "three parallel essays"; that is exactly what the first
+        # exploration batch needs it to do.
+        if policy.ideation_exploring:
+            from agent_lab.room.context.constraints import IDEATION_CONVERSATION_GUIDANCE
+
+            parts.append(IDEATION_CONVERSATION_GUIDANCE)
+        else:
+            parts.append(CONVERSATION_GUIDANCE)
     if policy.inject_coordination and roster:
         parts.append(build_multi_agent_coordination(roster))
     if policy.inject_peer_decision and roster:

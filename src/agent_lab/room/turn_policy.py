@@ -379,7 +379,12 @@ def prepare_turn_policy_before_agent_round(
     effects = TurnPolicyEngine.resolve(signals)
     persist_turn_policy_on_run_meta(run_meta, effects, signals=signals)
     mode = turn_contract_mode()
-    history = _contract_history_from_outcome_rows() if mode != "off" else []
+    # RI-03 — execution success is not an idea-quality signal (§3.1), so the
+    # idea lane routes without the execute outcome history.
+    from agent_lab.ideation import uses_execute_history_routing
+
+    use_history = mode != "off" and uses_execute_history_routing(run_meta)
+    history = _contract_history_from_outcome_rows() if use_history else []
     _stamp_turn_contract_on_run_meta(run_meta, topic=topic, history=history, intent=signals.intent)
     if folder.is_dir() and effects.init_plan_workflow and not is_plan_workflow_active(run_meta):
         init_plan_workflow_on_plan_send(folder)

@@ -67,7 +67,7 @@ def apply_turn_role_plan(
             run_meta=run_meta,
         )
     _role_policy = resolve_role_policy(run_meta)
-    route = enrich_route_with_role_plan(route, active, hint=hint, policy=_role_policy)
+    route = enrich_route_with_role_plan(route, active, hint=hint, policy=_role_policy, run_meta=run_meta)
     cat_dict = route.category_dict()
     if getattr(hint, "source", "") in ("history", "explore"):
         cat_dict["advisor_rationale"] = hint.rationale
@@ -89,6 +89,7 @@ def apply_turn_role_plan(
                 agents=active,
                 hint=hint,
                 policy=_role_policy,
+                run_meta=run_meta,
             ),
             active,
         ),

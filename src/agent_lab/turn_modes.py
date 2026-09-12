@@ -457,6 +457,11 @@ def approval_starts_execute_loop(run: dict[str, Any] | None) -> bool:
     """True when plan approval should enable mission/verified execute loops."""
     if not run:
         return True
+    from agent_lab.ideation import is_ideation_session
+
+    # RI-04 — the idea lane exports a plan; it never starts a loop in-Room (§4.2).
+    if is_ideation_session(run):
+        return False
     intent = str(run.get("plan_intent") or "").strip().lower()
     if not intent:
         # Legacy sessions predate mode contract — preserve loop-on-approve.

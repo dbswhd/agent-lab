@@ -147,10 +147,24 @@ def run_parallel_round(
 
     replies: list[ChatMessage] = []
     sequential = parallel_round >= 2 or bool(task_type and task_type in _SEQUENTIAL_TASK_TYPES)
+    from agent_lab.ideation import STAGE_EXPLORE, ideation_stage
     from agent_lab.room.team_orchestration import lead_last_r1_enabled, team_r1_split
 
+    # RI-05 — the first exploration batch gets the same fixed brief and never
+    # sees a peer's answer from the same batch: reading one candidate before
+    # writing yours collapses the approaches into one. Comparison happens after
+    # the batch, in the lead's turn (§4.3). Later rounds are unchanged.
+    independent_batch = parallel_round == 1 and ideation_stage(run_meta) == STAGE_EXPLORE
+    if independent_batch:
+        sequential = False
+
     want_lead_last = (
-        not sequential and parallel_round == 1 and not review_mode and bool(run_meta) and lead_last_r1_enabled(run_meta)
+        not sequential
+        and parallel_round == 1
+        and not review_mode
+        and not independent_batch
+        and bool(run_meta)
+        and lead_last_r1_enabled(run_meta)
     )
     parallel_batch, lead_tail = (
         team_r1_split([str(a) for a in ordered], run_meta) if want_lead_last else ([str(a) for a in ordered], [])

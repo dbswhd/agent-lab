@@ -467,12 +467,15 @@ def _call_one_agent(
     from agent_lab.reply_policy import resolve_reply_policy
     from agent_lab.structured_envelope_adapter import should_request_structured_envelope
 
+    from agent_lab.ideation import ideation_stage
+
     reply_policy = resolve_reply_policy(
         parallel_round=parallel_round,
         review_mode=review_mode_active,
         consensus_mode=consensus_mode,
         turn_profile=turn_profile,
         efficiency_mode=efficiency_mode,
+        ideation_stage=ideation_stage(run_meta),
     )
     request_structured = should_request_structured_envelope(reply_policy)
 
@@ -570,9 +573,17 @@ def _call_one_agent(
         if use_inbox_mcp:
             perms["_inbox_caller_agent"] = str(aid)
             perms["_inbox_policy_lane"] = "discuss"
+        # RI-05 — an idea-lane exploration turn overrides the provider's fixed
+        # room persona; every other turn keeps passing "" so the provider uses
+        # its own prompt exactly as before.
+        system_prompt = ""
+        if ideation_stage(run_meta) == "explore":
+            from agent_lab.agents.prompts import ideation_system_prompt
+
+            system_prompt = ideation_system_prompt(str(aid))
         agent_reply = call_agent_reply(
             aid,
-            "",
+            system_prompt,
             payload,
             permissions=perms,
             on_activity=_activity,

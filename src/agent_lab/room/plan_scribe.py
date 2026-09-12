@@ -132,6 +132,12 @@ def _should_scribe_plan_after_turn(
 ) -> bool:
     if cancelled:
         return False
+    from agent_lab.ideation import allows_scribe
+
+    # RI-03 — on the idea lane the every-turn auto Scribe stays closed until the
+    # user asks for a plan (stage `plan`). Non-ideation sessions are unaffected.
+    if not allows_scribe(run_meta):
+        return False
     from agent_lab.plan.workflow import (
         is_plan_workflow_active,
         plan_workflow_allows_auto_scribe,

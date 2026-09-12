@@ -12,6 +12,19 @@ Agent Lab은 Cursor · Codex · Claude가 한 Room에서 토론하고, 작업을
 
 `plan.md`를 Human이 검토한 뒤 pipeline의 `TASK-*.md`로 옮길 수 있습니다. Agent Lab이 pipeline을 **대신 실행하지는 않습니다**.
 
+### 아이디어 구체화 Room (idea lane) — 개발 계획, 미구현
+
+막연한 개념에서 출발해 접근이 다른 구상을 만들고, 사용자가 고른 방향을 착수 가능한 계획으로 발전시키는 별도 lane을 계획 중입니다. 계획 문서는 [docs/ROOM-IDEATION-PLAN-2026-09.md](docs/ROOM-IDEATION-PLAN-2026-09.md)입니다.
+
+| | execute lane (현재 제품) | idea lane (계획) |
+|---|---|---|
+| 입력 | 실행할 작업 주제 | 아직 정리되지 않은 개념 |
+| 산출물 | `plan.md` → worktree execute → Oracle verified | 구상 후보 · 선택 · 구현 계획 Markdown |
+| 완료 | Oracle verified merge | 사용자가 외부 에이전트에서 첫 작업을 시작 |
+| 실행 권한 | Human 승인 후 worktree execute | **Room 내부 실행 없음** (내보내기만) |
+
+idea lane은 아직 **구현되지 않았습니다**. 기존 safety gate(BLOCK → execute 409 · Human gate · worktree 격리 · subprocess env allowlist)는 이 전환에서 변경되지 않습니다.
+
 ---
 
 **시스템 지도:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — 백엔드·프론트·UX 전체 분류 · [docs/README.md](docs/README.md) — 문서 인덱스

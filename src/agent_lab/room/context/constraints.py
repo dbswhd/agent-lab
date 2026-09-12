@@ -66,6 +66,16 @@ CONVERSATION_GUIDANCE = """\
 - `[CONFIRMED-BY-HUMAN: …]` — only after explicit Human approval; never promote `[PROPOSED:]` yourself.
 """
 
+IDEATION_CONVERSATION_GUIDANCE = """\
+[Conversation guidance — 구상 탐색]
+- 지금은 후보를 **각자** 만드는 단계입니다. 동료의 답을 기다리거나 맞추려 하지 마세요.
+- 사람이 읽습니다: 무엇을 만들지, 왜 그렇게 작동하는지, 무엇을 포기하는지를 구체적으로 쓰세요.
+- 모르는 사실은 지어내지 마세요. 확인되지 않은 것은 `가정:`으로 적고 계속 진행합니다.
+- 레포가 연결돼 있으면 실제로 읽고 경로를 인용하세요. 읽지 않은 경로를 사실처럼 쓰지 마세요.
+- "완료"·승인·검증 통과를 주장하지 마세요. 이 턴의 산출물은 구상이지 실행이 아닙니다.
+- 턴 모드를 말로 선언하지 말고("discuss 모드입니다") 바로 구상을 쓰세요.
+"""
+
 MULTI_AGENT_COORDINATION = """\
 [Multi-agent coordination — Cursor · Codex · Claude, one workspace]
 - You **may** read/run/edit in this turn when it helps the debate move forward (Human granted full access).

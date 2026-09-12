@@ -96,6 +96,10 @@ SESSION_META_KEYS = (
     "autonomy",
     "trust_budget",
     "risk_pin",
+    # RI-02 — idea lane state must survive the turn-end `run_meta` rebuild the
+    # same way autonomy/trust_budget do, or a selection is wiped by the next
+    # room turn. Absent key = non-ideation session, nothing preserved.
+    "ideation",
 )
 
 LAYOUT_FROZEN_GUIDANCE = """\
@@ -366,11 +370,23 @@ def build_session_guidance_block(
 ) -> str:
     """Inject into agent context based on session meta."""
     parts: list[str] = []
-    from agent_lab.platform_md import read_platform_md_for_injection
+    from agent_lab.ideation import STAGE_EXPLORE, ideation_stage
 
-    platform_md = read_platform_md_for_injection()
-    if platform_md:
-        parts.append(f"[PLATFORM.md — agent protocol]\n{platform_md}")
+    if ideation_stage(run_meta) == STAGE_EXPLORE:
+        # RI-05 — PLATFORM.md pins the speech-act envelope and Cursor/Codex/Claude
+        # roles. Both contradict the exploration instruction ("no envelope",
+        # "perspectives by seat"), so the idea lane injects its own protocol
+        # instead of stacking two conflicting ones. Existing sessions and the
+        # other stages keep PLATFORM.md unchanged.
+        from agent_lab.agents.prompts import IDEATION_PLATFORM_PROTOCOL
+
+        parts.append(f"[아이디어 Room 프로토콜]\n{IDEATION_PLATFORM_PROTOCOL}")
+    else:
+        from agent_lab.platform_md import read_platform_md_for_injection
+
+        platform_md = read_platform_md_for_injection()
+        if platform_md:
+            parts.append(f"[PLATFORM.md — agent protocol]\n{platform_md}")
     if not run_meta:
         return "\n\n".join(parts)
     template_id = run_meta.get("session_template")

@@ -359,11 +359,12 @@ def enrich_route_with_role_plan(
     *,
     hint: Any | None = None,
     policy: str = "auto",
+    run_meta: Any | None = None,
 ) -> CategoryRoute:
     """Attach role_plan preview to route after active agents are known."""
     from agent_lab.role_plan import resolve_role_plan
 
-    roles = resolve_role_plan(route=route, agents=agents, hint=hint, policy=policy)
+    roles = resolve_role_plan(route=route, agents=agents, hint=hint, policy=policy, run_meta=run_meta)
     return replace(route, role_plan=roles)
 
 

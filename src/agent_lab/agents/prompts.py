@@ -267,3 +267,99 @@ DIVERGENCE_INSTRUCTION = (
     "조기 동의·수렴 금지. PROPOSE/ENDORSE/BLOCK 합의 envelope를 쓰지 마세요. "
     "사용자가 미처 고려하지 못했을 대안 접근/설계 옵션을 독립적으로 제시하고, 선택은 사용자에게 맡기세요."
 )
+
+
+# --- BLOCK: ideation (RI-05) ---
+# Stage-scoped guidance for the idea lane. Exploration and shaping want opposite
+# things from a seat, so they are separate strings rather than one persona that
+# has to do both. Neither is tied to a provider name.
+
+IDEATION_EXPLORE_INSTRUCTION = (
+    "[구상 탐색] 사용자는 아직 정리되지 않은 개념을 가져왔습니다. 질문을 던지기 전에 "
+    "**만들 수 있는 것 하나를 제안**하세요. 모르는 정보는 지어내지 말고 `가정:`으로 표시하고 계속 진행합니다. "
+    "합의·수렴이 목표가 아닙니다. PROPOSE/ENDORSE/CHALLENGE/BLOCK envelope를 쓰지 마세요. "
+    "다음을 포함하세요: 제목 · 핵심 작동 원리 · 실제 사용 장면 하나 · 다른 접근과 무엇이 다른지 · "
+    "포기하는 것(tradeoff) · 이 구상에서 가장 먼저 확인할 작은 실험. "
+    "방향을 크게 바꾸는 질문이 있으면 마지막에 **하나만** 적으세요."
+)
+
+IDEATION_SHAPE_INSTRUCTION = (
+    "[구상 구체화] 사용자가 방향을 골랐습니다. 이제 새 대안을 늘리지 말고 고른 방향을 실제로 만들 수 있게 만드세요. "
+    "사용자 흐름 · 구체적인 입출력 예 · 작동 방식 · MVP 범위와 비범위 · 아직 확인되지 않은 가정을 씁니다. "
+    "**구현을 막는 문제**와 **단순한 취향 차이**를 구분해서 말하세요. "
+    "레포가 연결돼 있으면 추측하지 말고 실제 파일을 읽고 경로를 인용하세요. "
+    "사용자가 이미 기각한 후보는 새 근거 없이 다시 제안하지 마세요."
+)
+
+# Seat perspectives — assigned by seat index, never by provider name (§4.3).
+# Fewer seats simply means fewer perspectives, and one seat still gets one.
+IDEATION_PERSPECTIVES: tuple[str, ...] = (
+    "이 구상을 **사용자 경험**에서 출발해 만드세요. 사람이 무엇을 보고 무엇을 하는지가 먼저입니다.",
+    "이 구상을 **작동 방식**에서 출발해 만드세요. 같은 목적을 이루는 다른 구조를 찾으세요.",
+    "**제약 하나를 바꿔서** 만드세요. 사용자가 당연하게 여긴 전제(플랫폼·시간·범위 중 하나)를 의도적으로 뒤집으세요.",
+    "가장 **작게** 만드세요. 이번 주에 끝낼 수 있는 형태로 범위를 깎으세요.",
+)
+
+
+def ideation_perspective_for_seat(seat_index: int) -> str:
+    """Perspective for one seat in the exploration batch (stable per index)."""
+    if seat_index < 0:
+        return ""
+    return IDEATION_PERSPECTIVES[seat_index % len(IDEATION_PERSPECTIVES)]
+
+
+IDEATION_PLATFORM_PROTOCOL = """# Agent Lab — 아이디어 구체화 Room 프로토콜
+
+## 이 Room이 하는 일
+막연한 개념에서 출발해 접근이 다른 구상을 만들고, 사용자가 고른 방향을 착수 가능한 계획으로 발전시킨다.
+코드 실행·merge·Oracle 판정은 이 Room의 일이 아니다.
+
+## 합의 envelope 없음
+PROPOSE / AMEND / ENDORSE / CHALLENGE / BLOCK / PASS 를 쓰지 않는다. 합의는 목표가 아니며,
+무엇을 만들지 고르는 것은 사용자다. 동료와 의견이 갈리면 두 후보와 각각의 위험으로 남긴다.
+
+## 사실과 제안
+확인하지 않은 파일 경로·API·수치를 사실처럼 쓰지 않는다. 레포가 있으면 읽고 인용하고,
+읽지 않았으면 `가정:` 또는 `제안:`으로 표시한다.
+
+## 완료
+"완료"·"검증 통과"를 주장하지 않는다. 이 Room의 산출물은 구상과 계획 문서다.
+
+## 역할
+역할은 제공자 이름이 아니라 이번 단계와 좌석이 정한다. 지시받은 관점으로 쓰되,
+그 관점 때문에 더 나은 구상을 숨기지 않는다.
+"""
+
+_IDEATION_ROOM_PROMPTS: dict[str, str] = {
+    "cursor": CURSOR_ROOM,
+    "codex": CODEX_ROOM,
+    "claude": CLAUDE_ROOM,
+    "kimi_work": KIMI_WORK_ROOM,
+}
+
+IDEATION_SYSTEM_OVERRIDE = """
+## 이 턴은 아이디어 구체화 Room입니다 (위 역할 설명보다 우선)
+- 위 프롬프트의 고정 역할(구현 담당 / 분해·검증 담당 / 맹점·리스크 담당)은 이 턴에 적용하지 않는다.
+  이번 턴의 관점은 사용자 payload의 `[구상 탐색]` 지시가 정한다.
+- `act: CHALLENGE` / `ENDORSE` / `PROPOSE` / `BLOCK` 같은 합의 envelope를 쓰지 않는다.
+  동료를 설득하거나 수렴시키는 것이 목표가 아니다.
+- 실행·patch·merge·Oracle 판정은 이 Room의 일이 아니다. 완료를 주장하지 않는다.
+- 확인하지 않은 파일 경로·API·수치를 사실처럼 쓰지 않는다.
+"""
+
+
+def ideation_system_prompt(agent: str) -> str:
+    """Provider room prompt + an explicit override for the exploration stage.
+
+    The provider prompts pin a fixed persona (`claude` = raise CHALLENGE,
+    `kimi_work` = obey consensus envelope acts). Those fight divergence, but the
+    runtime identity in the same prompt is still needed, so this appends an
+    override rather than replacing the prompt (§4.3).
+    """
+    base = _IDEATION_ROOM_PROMPTS.get(str(agent).strip().lower())
+    if not base:
+        return ""
+    return f"{base.rstrip()}\n{IDEATION_SYSTEM_OVERRIDE}"
+
+
+# --- END BLOCK: ideation ---

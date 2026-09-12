@@ -23,6 +23,16 @@ from agent_lab.turn_modes import approval_starts_execute_loop
 from agent_lab.verified_loop import DEFAULT_COMPLETION_PROMISE
 
 
+IDEATION_NO_EXECUTE_REASON = "ideation_lane_no_execute"
+
+
+def _ideation_blocks_execute(run: RunStateLike | None) -> bool:
+    """The idea lane never activates execution — at any stage, by any path."""
+    from agent_lab.ideation import is_ideation_session
+
+    return is_ideation_session(run)
+
+
 def _reopen_plan_in_kernel(folder: Path, run: RunStateLike) -> None:
     """Best-effort kernel revocation for an invalidated approval.
 
@@ -46,6 +56,13 @@ def _reopen_plan_in_kernel(folder: Path, run: RunStateLike) -> None:
 
 def ensure_plan_workflow_approved(folder: Path) -> None:
     run = read_run_meta(folder)
+    # RI-04 — the idea lane has no in-Room execution (§4.2). This is the shared
+    # gate `run_dry_run` calls, so refusing here also refuses a direct execute
+    # API call. Note the `is_plan_workflow_active` early return below: without
+    # this check an ideation session — which has no plan_workflow — would pass
+    # the gate instead of being stopped by it.
+    if _ideation_blocks_execute(run):
+        raise PlanWorkflowNotApproved(None, IDEATION_NO_EXECUTE_REASON)
     if not is_plan_workflow_active(run):
         return
     workflow = get_plan_workflow(run)
@@ -130,6 +147,11 @@ def _finalize_plan_approval(
     enable_workflow: bool = False,
     skip_phase_write: bool = False,
 ) -> dict[str, Any]:
+    # RI-04 — covers `approve_plan`, and the template fast-path
+    # `approve_plan_bypass` which skips HUMAN_PENDING entirely.
+    if _ideation_blocks_execute(read_run_meta(session_folder)):
+        raise PlanWorkflowNotApproved(None, IDEATION_NO_EXECUTE_REASON)
+
     path = session_folder / "plan.md"
     md = plan_md if plan_md is not None else (path.read_text(encoding="utf-8") if path.is_file() else "")
     if not (md or "").strip():

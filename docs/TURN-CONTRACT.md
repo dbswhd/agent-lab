@@ -19,6 +19,8 @@ TurnContract는 한 턴의 품질·비용 경로를 증거로 선택한다. 안�
 
 따라서 history가 비용이 싼 경로를 선호해도 Scribe·clarify·Human 승인·BLOCK→409·worktree·Oracle을 제거할 수 없다.
 
+> **Idea lane (계획·미구현):** 아이디어 구체화 Room은 위 권한 경계를 **추가**하지 않는다 — `run.json.ideation` 하위 상태와 TurnPolicy 출력 정책만 사용하고, plan 승인·execute·Oracle 권한은 그대로 Human/Execute와 Oracle이 소유한다. 구상 선택은 plan 승인이 아니며 `plan/approve`를 재사용하지 않는다. 범위: [ROOM-IDEATION-PLAN-2026-09.md](./ROOM-IDEATION-PLAN-2026-09.md).
+
 ```mermaid
 flowchart LR
     A["topic + run state"] --> O["Observation"]

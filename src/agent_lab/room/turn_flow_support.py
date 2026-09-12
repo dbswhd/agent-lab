@@ -90,12 +90,55 @@ def emit_divergence_options(
     """Emit divergence options for human selection; never triggers execute."""
     from agent_lab.divergence import format_divergence_options, is_divergence_profile
 
+    if cancelled or not replies:
+        return
+    stored = record_ideation_options(run_meta, replies)
     profile = str((run_meta or {}).get("turn_profile") or "")
-    if cancelled or not on_event or not replies or not is_divergence_profile(profile):
+    if not on_event:
+        return
+    if stored is not None:
+        # Idea lane: emit the structured options and keep the legacy event shape
+        # so existing `divergence_options` consumers keep working (§RI-06).
+        on_event(
+            "divergence_options",
+            {
+                "options": format_divergence_options(replies),
+                "count": len(stored),
+                "idea_options": stored,
+                "revision": (run_meta or {}).get("ideation", {}).get("revision"),
+            },
+        )
+        return
+    if not is_divergence_profile(profile):
         return
     options = format_divergence_options(replies)
     if options:
         on_event("divergence_options", {"options": options, "count": len(options)})
+
+
+def record_ideation_options(
+    run_meta: RunStateLike | None,
+    replies: list[ChatMessage],
+) -> list[dict[str, Any]] | None:
+    """Store one exploration batch as structured options.
+
+    Returns ``None`` for every turn that is not idea-lane exploration, which is
+    what keeps existing sessions on the old path. In-memory only (F4) — the
+    turn-end replay persists it.
+    """
+    from agent_lab import ideation as ideation_state
+    from agent_lab.divergence import build_idea_options
+
+    if run_meta is None or ideation_state.ideation_stage(run_meta) != ideation_state.STAGE_EXPLORE:
+        return None
+    state = ideation_state.read_ideation(run_meta)
+    if state is None:
+        return None
+    options = build_idea_options(replies, batch=int(state.get("revision") or 0))
+    if not options:
+        return None
+    updated = ideation_state.mutate_ideation(run_meta, ideation_state.set_options(options))
+    return list(updated.get("options") or [])
 
 
 def session_hard_cap_enabled() -> bool:

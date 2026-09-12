@@ -76,6 +76,17 @@ def validate_run_data(run: Mapping[str, Any]) -> None:
         if not isinstance(goal_ledger, list) or not all(isinstance(entry, dict) for entry in goal_ledger):
             raise RuntimeValidationError("goal_ledger must be a list of dicts")
 
+    if "ideation" in run:
+        # Idea lane (RI-02). Absent key = existing session, unchanged behaviour.
+        # Imported lazily: `agent_lab.ideation` depends on `run.meta`, which
+        # depends on this module.
+        from agent_lab.ideation import IdeationError, validate_run_ideation
+
+        try:
+            validate_run_ideation(run)
+        except IdeationError as exc:
+            raise RuntimeValidationError(str(exc)) from exc
+
 
 class RunState(dict[str, Any]):
     """Validated run.json payload.

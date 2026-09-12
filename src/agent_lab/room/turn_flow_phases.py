@@ -112,6 +112,7 @@ def prepare_turn_routing_phase(
         contract_runtime_applied,
         turn_contract_mode,
     )
+    from agent_lab.ideation import suppresses_plan_side_effects
     from agent_lab.room.team_orchestration import resolve_turn_lead
     from agent_lab.session.clarifier import sync_clarifier_answers_from_inbox
 
@@ -187,7 +188,7 @@ def prepare_turn_routing_phase(
                 from agent_lab.room.turn_contract import contract_runtime_controls
 
                 contract_controls = contract_runtime_controls(contract_id)
-        elif should_enable_plan_workflow(synthesize=synthesize):
+        elif should_enable_plan_workflow(synthesize=synthesize) and not suppresses_plan_side_effects(run_meta):
             init_plan_workflow_on_plan_send(folder)
             plan_md, run_meta = _session_context(folder)
             _bind_session_to_run_meta(run_meta, folder)
@@ -215,16 +216,21 @@ def prepare_turn_routing_phase(
             consensus_mode=consensus_mode,
         )
 
+    # RI-03 — while exploring or shaping an idea the turn proposes under stated
+    # assumptions instead of blocking on a CLARIFY question. Direction-changing
+    # questions are asked in the reply, one at a time (§4.3).
+    ideation_exploring = suppresses_plan_side_effects(run_meta)
+
     if folder is not None:
         sync_clarifier_answers_from_inbox(folder)
-        if plan_workflow_wants_inbox_mcp(run_meta):
+        if plan_workflow_wants_inbox_mcp(run_meta) and not ideation_exploring:
             from agent_lab.plan.workflow import plan_fsm_skill_first_enabled
 
             if not plan_fsm_skill_first_enabled():
                 ensure_plan_clarify_interview(folder)
             ensure_plan_clarify_inbox_question(folder)
 
-    skip_server_clarifier = plan_workflow_skips_server_clarifier(run_meta)
+    skip_server_clarifier = ideation_exploring or plan_workflow_skips_server_clarifier(run_meta)
     clarifier_questions = prepare_clarifier_for_turn(
         folder,
         body,

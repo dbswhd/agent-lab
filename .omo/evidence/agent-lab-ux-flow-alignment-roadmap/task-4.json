@@ -1,46 +1,124 @@
 {
   "task": 4,
-  "recorded_at_utc": "2026-07-23T15:31:42Z",
-  "verification_target": {
-    "worktree": "/Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment",
-    "head": "f64fe74ef801deda0e044af4f84c2a6934c38619",
+  "title": "Decision Queue projection and single active Human action",
+  "status": "verified",
+  "commit": "17ef052ecd264d9c99ca9b60b9fe5d4ccca6ec5d",
+  "verified_at_utc": "2026-07-23T17:29:46Z",
+  "worktree": "/Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment",
+  "scope": {
+    "source_diff_command": "git diff --quiet f64fe74ef801deda0e044af4f84c2a6934c38619..17ef052ecd264d9c99ca9b60b9fe5d4ccca6ec5d -- web/src/components/ComposerEventStack.tsx web/src/components/ComposerEventStack.test.tsx web/src/components/HumanInboxPanel.tsx web/src/components/HumanInboxPanel.test.ts web/src/utils/composerStackLane.ts web/src/utils/composerStackLane.test.ts web/src/utils/missionReadModel.ts web/src/utils/missionReadModel.test.ts",
+    "source_diff_exit_code": 0,
+    "source_diff_observable": "No Task 4 production or unit-test paths differ between f64fe74e and the verified HEAD.",
     "task4_source_commit": "7abd77b1c2298285a4d01e32303d80d1ff72c012"
   },
-  "success_criteria": [
+  "verification": [
     {
-      "criterion": "Two ordered pending Human Inbox questions expose only the canonical first question as the active primary decision, with the remainder represented as queued.",
-      "scenario": "Server-render HumanInboxPanel from a read model holding question-first then question-queued.",
-      "invocation": "cd /Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/web && npx vitest run /Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/web/src/components/HumanInboxPanel.test.ts /Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/web/src/components/ComposerEventStack.test.tsx",
+      "scenario": "Task 4 targeted web unit coverage",
+      "invocation": "cd web && npx vitest run src/components/ComposerEventStack.test.tsx src/components/HumanInboxPanel.test.ts src/utils/composerStackLane.test.ts src/utils/missionReadModel.test.ts",
       "exit_code": 0,
-      "binary_observable": "Test Files 2 passed (2); Tests 6 passed (6). The rendered-panel assertion contains the first prompt and '1 queued', omits the second prompt, and finds exactly one >Submit< token.",
-      "artifact": "/Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/web/src/components/HumanInboxPanel.test.ts",
-      "judgment": "PASS"
+      "binary_observable": "4 test files passed; 29 tests passed.",
+      "provenance": "Ran in the shared worktree at verified HEAD 17ef052ecd264d9c99ca9b60b9fe5d4ccca6ec5d; no raw command artifact was persisted.",
+      "artifact": null
     },
     {
-      "criterion": "The browser lifecycle maintains exactly one active decision CTA for two ordered gates.",
-      "scenario": "Run the stale expected_version lifecycle journey that supplies the ordered-gate state.",
-      "invocation": "cd /Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/web && npx playwright test e2e/agent-lifecycle-journey.spec.ts --grep 'stale expected_version' --reporter=line",
+      "scenario": "Full web unit suite",
+      "invocation": "cd web && npm run test -- --run",
       "exit_code": 0,
-      "binary_observable": "1 passed (2.6s). The journey asserts one data-active-decision-id stack and one active Korean approval/Submit CTA.",
-      "artifact": "/Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3/browser/single-active-decision-queued.png",
-      "judgment": "PASS"
+      "binary_observable": "43 test files passed; 185 tests passed.",
+      "provenance": "Ran in the shared worktree at verified HEAD 17ef052ecd264d9c99ca9b60b9fe5d4ccca6ec5d; no raw command artifact was persisted.",
+      "artifact": null
     },
     {
-      "criterion": "The changed web application type-checks and produces a production bundle.",
-      "scenario": "Production build after the rendered active/queued test revision.",
-      "invocation": "cd /Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/web && npm run build",
+      "scenario": "Production web build",
+      "invocation": "cd web && npm run build",
       "exit_code": 0,
-      "binary_observable": "tsc and Vite completed; 347 modules transformed; build finished in 1.56s. Vite emitted only its non-failing chunk-size warning.",
-      "judgment": "PASS"
+      "binary_observable": "TypeScript and Vite production build passed; only the existing chunk-size warning was emitted.",
+      "provenance": "Ran in the shared worktree at verified HEAD 17ef052ecd264d9c99ca9b60b9fe5d4ccca6ec5d; no raw command artifact was persisted.",
+      "artifact": null
     },
     {
-      "criterion": "Task evidence is structurally valid and the worktree has no whitespace errors.",
-      "scenario": "Evidence and diff integrity check.",
-      "invocation": "jq empty .omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-4.json && git -C /Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment diff --check",
+      "scenario": "Isolated stale expected_version lifecycle case",
+      "invocation": "cd web && npx playwright test e2e/agent-lifecycle-journey.spec.ts --grep 'stale expected_version' --reporter=line",
       "exit_code": 0,
-      "binary_observable": "both commands exited successfully without output",
-      "judgment": "PASS"
+      "binary_observable": "1 test passed.",
+      "provenance": "Verifier-reported from a temporary Playwright archive at 49030edf2bb679e31e9a078b5c698d2a01288a1a; applicable to verified HEAD 17ef052ecd264d9c99ca9b60b9fe5d4ccca6ec5d because the sole intervening commit changed only web/e2e/wave-b-journey.spec.ts, outside lifecycle/config/Task 4 paths; archive/raw output is not persisted.",
+      "artifact": null
+    },
+    {
+      "scenario": "Full lifecycle browser suite",
+      "invocation": "cd web && npx playwright test e2e/agent-lifecycle-journey.spec.ts --reporter=line",
+      "exit_code": 0,
+      "binary_observable": "5 tests passed.",
+      "provenance": "Verifier-reported from a temporary Playwright archive at 49030edf2bb679e31e9a078b5c698d2a01288a1a; applicable to verified HEAD 17ef052ecd264d9c99ca9b60b9fe5d4ccca6ec5d because the sole intervening commit changed only web/e2e/wave-b-journey.spec.ts, outside lifecycle/config/Task 4 paths; archive/raw output is not persisted.",
+      "artifact": null
+    },
+    {
+      "scenario": "Whitespace integrity",
+      "invocation": "git diff --check",
+      "exit_code": 0,
+      "binary_observable": "No whitespace errors.",
+      "provenance": "Ran in the shared worktree at verified HEAD 17ef052ecd264d9c99ca9b60b9fe5d4ccca6ec5d; no raw command artifact was persisted.",
+      "artifact": null
     }
   ],
-  "scope_note": "Commit f64fe74e includes the strengthened Task 4 component test and a Task 3 lifecycle test due to a shared-index race. Task 4 source implementation is committed in 7abd77b1; no history was rewritten."
+  "manual_browser_qa": {
+    "scenario": "Two ordered pending questions show one active Decision Queue action and queue the second.",
+    "invocation": "Persisted Task 3 lifecycle context: cd web && npx playwright test e2e/agent-lifecycle-journey.spec.ts",
+    "exit_code": 0,
+    "binary_observable": "The reused browser run asserted one data-active-decision-id stack and exactly one approval/submit CTA before resolving the canonical first question; the second item was represented as queued.",
+    "raw_artifact": ".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3/raw/exact-final-command.log",
+    "screenshot_artifact": ".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3/browser/single-active-decision-queued.png",
+    "provenance_note": "Task 3 raw output and screenshot are reused context only, not fresh Task 4 evidence. Fresh Task 4 browser results are verifier-reported from the temporary Playwright archive at 49030edf2bb679e31e9a078b5c698d2a01288a1a; they apply to verified HEAD 17ef052ecd264d9c99ca9b60b9fe5d4ccca6ec5d because the sole intervening commit changed only web/e2e/wave-b-journey.spec.ts, outside lifecycle/config/Task 4 paths. No fresh raw artifact is persisted."
+  },
+  "ultraqa": [
+    {
+      "scenario": "stale_state",
+      "result": "PASS — read-model precedence over runtime and legacy state is covered by rendered component assertions.",
+      "evidence": "web/src/components/ComposerEventStack.test.tsx"
+    },
+    {
+      "scenario": "reconnect_duplication",
+      "result": "PASS — fresh verifier lifecycle checks reported one active decision/CTA after stale replay; older Task 3 raw output is context only.",
+      "evidence": ".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3/raw/exact-final-command.log"
+    },
+    {
+      "scenario": "dirty_worktree",
+      "result": "PASS — unrelated worktree dirt was preserved; Task 4 evidence repair touched no product, test, plan, or docs files.",
+      "evidence": null
+    },
+    {
+      "scenario": "misleading_success_output",
+      "result": "PASS — rendered markup assertions inspect lane, decision-id, queue hint, CTA count, and omitted second question.",
+      "evidence": "web/src/components/HumanInboxPanel.test.ts"
+    },
+    {
+      "scenario": "malformed_payload",
+      "result": "PASS — mission read-model malformed payload cases are included in the targeted and full unit gates.",
+      "evidence": "web/src/utils/missionReadModel.test.ts"
+    },
+    {
+      "scenario": "mid_operation_interrupt_cancel",
+      "result": "N/A — Task 4 is a synchronous projection; it introduces no new cancellable operation.",
+      "evidence": null
+    }
+  ],
+  "cleanup": {
+    "repair_scope": "No QA process was started by this evidence repair; no product or test files were changed.",
+    "artifact_handling": "Existing Task 3 raw/screenshot artifacts were referenced read-only and not recreated.",
+    "dirty_worktree": "Unrelated modified and untracked files were preserved."
+  },
+  "notes": [
+    "Targeted/unit/build/diff results were run in the shared worktree; only Playwright was run in the temporary archive at 49030edf2bb679e31e9a078b5c698d2a01288a1a.",
+    "The temporary Playwright archive is not persisted here; its 1/1 stale and 5/5 lifecycle results apply to verified HEAD 17ef052ecd264d9c99ca9b60b9fe5d4ccca6ec5d because the sole intervening commit changed only web/e2e/wave-b-journey.spec.ts, outside lifecycle/config/Task 4 paths.",
+    "The pure projection-helper test is weak/redundant as standalone evidence. It is supplementary only; acceptance relies on rendered HumanInboxPanel/ComposerEventStack assertions and the browser observable.",
+    "The Task 4 production and unit-test source paths are unchanged from f64fe74e through the verified HEAD."
+  ],
+  "artifact_paths": [
+    ".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3/raw/exact-final-command.log",
+    ".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3/browser/single-active-decision-queued.png",
+    "web/src/components/ComposerEventStack.test.tsx",
+    "web/src/components/HumanInboxPanel.test.ts",
+    "web/src/utils/composerStackLane.test.ts",
+    "web/src/utils/missionReadModel.test.ts"
+  ]
 }

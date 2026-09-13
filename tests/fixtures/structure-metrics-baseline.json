@@ -46,12 +46,12 @@
     "claude_": 0
   },
   "tracked_pycache_files": 0,
-  "makefile_lines": 543,
-  "makefile_targets": 112,
+  "makefile_lines": 558,
+  "makefile_targets": 115,
   "large_tsx_files": [
     {
       "path": "web/src/components/HumanInboxPanel.tsx",
-      "lines": 969
+      "lines": 986
     },
     {
       "path": "web/src/components/ChatComposer.tsx",
@@ -59,7 +59,7 @@
     },
     {
       "path": "web/src/App.tsx",
-      "lines": 829
+      "lines": 831
     },
     {
       "path": "web/src/components/WorkspaceFilesPanel.tsx",
@@ -71,7 +71,7 @@
     },
     {
       "path": "web/src/components/ComposerEventStack.tsx",
-      "lines": 576
+      "lines": 582
     }
   ],
   "hot_path_py_files": [

@@ -114,7 +114,7 @@
 
 ### Step 2 — MissionReadModel과 UI contract
 
-**현재 상태:** `src/agent_lab/mission/read_model.py` projection contract와 read-only `/api/sessions/{id}/mission/read-model` route first pass 완료; SSE cursor와 browser QA는 pending.
+**현재 상태:** `src/agent_lab/mission/read_model.py` projection contract와 read-only `/api/sessions/{id}/mission/read-model` route first pass 완료; SSE cursor와 Wave B browser UI contract acceptance는 green (4/4 with mocked API routes). Live/operational readiness는 별도 `OPEN` (`n=0`)이며, default routing/authority 변경에는 명시적 Human GO가 필요하다 — [DOGFOOD-READINESS-STATUS.md](../DOGFOOD-READINESS-STATUS.md).
 
 **산출:** `MissionReadModel` schema, compatibility projection, SSE cursor.
 

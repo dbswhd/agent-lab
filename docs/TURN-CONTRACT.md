@@ -1,7 +1,7 @@
 # TurnContract — Room 턴 선택 계약
 
 > **Status:** canonical · current behavior
-> **Last verified:** 2026-07-11
+> **Last verified:** 2026-07-24
 > **Code SSOT:** `src/agent_lab/room/turn_intent.py` · `turn_contract.py` · `turn_contract_feedback.py` · `turn_policy.py` · `turn_flow_phases.py`
 > **History:** [TURN-POLICY.md](./TURN-POLICY.md) · [WORKFLOW-DYNAMIC-REFERENCE.md](./archive/rfcs/WORKFLOW-DYNAMIC-REFERENCE.md) §8.2
 
@@ -93,6 +93,28 @@ matching outcome이 10건 미만이면 `bootstrap` 점수만 사용한다. 위�
 
 기본값은 `shadow`다. 잘못된 값도 `shadow`로 보수적으로 폴백한다.
 
+### Promotion gate
+
+`roles`와 `adaptive`는 각각 독립된 7일 evidence window를 통과해야 한다. 다음 조건을 모두 만족해도 자동 승격하지 않는다.
+
+- eligible session 10건 이상
+- window 7일 이상
+- safety-floor violation 0건
+- high-risk/critical task under-routing 0건
+- candidate/applied parity 99.5% 이상
+- shadow baseline 대비 p95 latency regression 10% 이하
+
+`roles`가 green이면 **Human GO: roles**가 필요하다. 그 다음에만 `adaptive` evidence window를 시작한다. `adaptive`가 green이어도 **Human GO: adaptive** 전에는 default를 변경하지 않는다. `AGENT_LAB_TURN_CONTRACT_MODE` 기본값은 계속 `shadow`이며, threshold 수정과 default flip은 별도 Human 결정이다.
+
+보고서는 현재 시각 기준 7일 observation window 안의 session별 최신 row만 사용한다. window 밖 stale row와 timezone 없는 timestamp·non-finite latency 같은 malformed row는 eligible 표본에서 제외한다.
+
+```bash
+PYTHONPATH=src .venv/bin/python scripts/turn_contract_promotion_report.py \
+  --ledger .agent-lab/outcomes.jsonl --stage roles --json
+PYTHONPATH=src .venv/bin/python scripts/turn_contract_promotion_report.py \
+  --ledger .agent-lab/outcomes.jsonl --stage adaptive --json
+```
+
 ## 5. Persisted contract
 
 선택 결과는 `run.json.turn_contract`와 turn snapshot에 기록한다.
@@ -120,6 +142,8 @@ matching outcome이 10건 미만이면 `bootstrap` 점수만 사용한다. 위�
 ## 6. Feedback과 regret
 
 Outcome row에는 contract context와 `route_regret_signals`를 기록한다.
+
+같은 row에는 `candidate_contract_id`, 실제 roster/round/consensus에서 분류한 `applied_contract_id`, `safety_floor_satisfied`, roster, round, consensus, latency, 누적 session cost, `shadow_applied_parity`를 함께 기록한다. `shadow`에서는 topology를 변경하지 않고 실제 legacy route를 applied 값으로 관측한다.
 
 | Signal | 의미 |
 |--------|------|

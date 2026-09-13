@@ -1,0 +1,2 @@
+Wave B browser contract: 4 passed (mocked API routes).
+This is browser-contract evidence, not credentialed live evidence.

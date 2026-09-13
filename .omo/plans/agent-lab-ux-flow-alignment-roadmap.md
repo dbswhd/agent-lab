@@ -45,7 +45,7 @@
 ## Todos
 > Implementation + Test = ONE todo. Never separate.
 <!-- APPEND TASK BATCHES BELOW THIS LINE WITH edit/apply_patch - never rewrite the headers above. -->
-- [ ] 1. Rebaseline the UX and status documentation around the current Composer Decision Queue contract
+- [x] 1. Rebaseline the UX and status documentation around the current Composer Decision Queue contract
   What to do / Must NOT do: Replace stale Work tab, Workbench, and Plan toggle instructions with topic-only Composer, Decision Queue, current workspace tabs, and the confirmed lifecycle. Include `.agent-lab/PROJECT.md` in the SSOT pass, and explain that the internal Composer `work` lane is not the removed Work navigation tab. Correct current status to “not browser-accepted” while Wave B is red; only Todo 7 may later restore a shipped/complete claim. Preserve historical references as clearly labelled archive material. Do not alter product code or mark a red browser gate as shipped.
   Parallelization: Wave 1 | Blocked by: none | Blocks: 2, 3, 4
   References (executor has NO interview context - be exhaustive): `.agent-lab/PROJECT.md:1-13`, `docs/USER-GUIDE.md:200-231,397-412`, `docs/05-room-agent-roles.md:1-29`, `docs/FLOW.md:48-68,199-215`, `docs/NOW.md:30-38`, `docs/NOW.md:79`, `docs/redesign-2026-07/11-ui-ux-surface-map.md:1-24,68-85,134`, `docs/EXTERNAL-REFS-TRACEABILITY.md`, `web/src/utils/roomComposerPrefs.ts:3-7`, `web/src/utils/workspaceTabs.ts:13-34`
@@ -53,7 +53,7 @@
   QA scenarios (name the exact tool + invocation): happy: inspect all canonical links and current-state tables; failure: intentionally search for `Work tab`, `Plan toggle`, and `Wave B 4/4` in current sections and confirm only archive/history references remain. Evidence `.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-1.md`.
   Commit: Y | `docs(ux): rebaseline Decision Queue lifecycle contract`
 
-- [ ] 2. Make browser session navigation independent of Dogfood classification and fixture naming
+- [x] 2. Make browser session navigation independent of Dogfood classification and fixture naming
   What to do / Must NOT do: Add stable session selectors or direct session-id navigation to the browser fixture, and make the Wave B setup select the intended session regardless of Sessions/Dogfood rail classification. Keep the production classification behavior unchanged unless a separate regression proves it wrong. Do not hide timeouts by increasing default test timeout.
   Parallelization: Wave 1 | Blocked by: 1 | Blocks: 5
   References (executor has NO interview context - be exhaustive): `web/e2e/wave-b-journey.spec.ts:415-425,427-523`, `web/src/utils/dogfoodSessions.ts:3-32`, session rail/list component and route used by `openSession`, `web/e2e/ui-simplification.spec.ts`
@@ -61,7 +61,7 @@
   QA scenarios (name the exact tool + invocation): happy: run Wave B with existing fixture names; failure: classify the same fixture as Dogfood and rerun, confirming the same session opens. Evidence `.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-2.md` plus Playwright trace on failure.
   Commit: Y | `test(web): stabilize session navigation for Wave B journeys`
 
-- [ ] 3. Add a browser golden journey with evidence assertions for every human gate
+- [x] 3. Add a browser golden journey with evidence assertions for every human gate
   What to do / Must NOT do: Add one connected Playwright journey from topic input through Room routing, single active Decision Queue CTA, plan approve/revise, worktree dry-run, diff/merge approval, Oracle PASS, and FAIL→repair/re-discuss→PASS; retain isolated gate tests for fast diagnosis. Define a gate ledger for each `pre_state → Human action → API → post_state → negative assertion`. Assert command POSTs and read-model/SSE convergence, including plan hash/revision, execution/diff, merge SHA/checks, Oracle evidence, repair attempt, and final audit. Active rendering must contain exactly one `decision_id`; multiple Inbox items may be queued but only the canonical backend ordering (priority, then creation/order key, then stable ID) may promote the next item. Keep Human gates explicit; mocks must not imply that production auto-approves.
   Parallelization: Wave 1 | Blocked by: 1 (truth status) | Blocks: 5, 6
   References (executor has NO interview context - be exhaustive): `web/src/components/ComposerEventStack.tsx`, `web/src/utils/composerStackLane.ts:23-101`, `web/src/components/PlanApprovalPanel.tsx`, `web/src/components/WorkToolPanel.tsx`, `web/e2e/wave-b-journey.spec.ts:427-523`, `docs/FLOW.md:149-215`, `docs/redesign-2026-07/11-ui-ux-surface-map.md:26-40`
@@ -69,7 +69,7 @@
   QA scenarios (name the exact tool + invocation): happy: complete all gates to PASS; failure: make Oracle return FAIL, verify REPAIRING/re-discuss and bounded retry, then verify PASS; stale: answer an old Decision Queue item and expect 409 without state corruption. Evidence `.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3.md`.
   Commit: Y | `test(web): cover Decision Queue to Oracle golden journey`
 
-- [ ] 4. Verify and correct lifecycle/read-model behavior exposed by the Decision Queue
+- [x] 4. Verify and correct lifecycle/read-model behavior exposed by the Decision Queue
   What to do / Must NOT do: Compare ComposerEventStack lane precedence and read-model/runtime/legacy fallback against the golden journey. Fix only concrete mismatches such as hidden CTAs, stale phase projection, or queue ordering that prevents the confirmed sequence. Preserve one active blocking decision and all existing Human gates; do not restore Work tab semantics.
   Parallelization: Wave 1 | Blocked by: 1 | Blocks: 5, 6
   References (executor has NO interview context - be exhaustive): `web/src/components/ComposerEventStack.tsx`, `web/src/utils/composerStackLane.ts:23-101`, `web/src/utils/workspaceTabs.ts:23-78`, `web/src/components/PlanApprovalPanel.tsx`, `web/src/components/WorkToolPanel.tsx`, `src/agent_lab/runtime/work_phase.py`, `docs/ROOM-TRANSCRIPT-CONTRACT.md`, `docs/MCP-FIRST-INBOX.md`
@@ -77,7 +77,7 @@
   QA scenarios (name the exact tool + invocation): happy: pending plan then execute resolves to the next single CTA; failure: pending inbox plus plan approval keeps plan as active and exposes inbox only as queued hint; reconnect: replayed durable event does not duplicate the decision. Evidence `.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-4.md`.
   Commit: Y | `fix(web): align Decision Queue projection with lifecycle contract`
 
-- [ ] 5. Instrument TurnContract shadow evidence and define the routing promotion gate
+- [x] 5. Instrument TurnContract shadow evidence and define the routing promotion gate
   What to do / Must NOT do: Preserve `shadow` as the default and supervisor implicit preset. Record candidate/applied contract, safety-floor result, roster/round/consensus, latency/cost, route regret, and shadow/applied parity per session. Add tests for history minimum, deterministic exploration, and high-risk safety floors. Proposed promotion gate is at least 10 eligible sessions and a 7-day green window per stage, safety-floor violations 0, critical-task under-routing 0, shadow/applied parity ≥99.5%, and p95 latency regression ≤10%; a Human may revise these thresholds before GO. Do not flip `AGENT_LAB_TURN_CONTRACT_MODE` globally.
   Parallelization: Wave 2 | Blocked by: 2, 3, 4 | Blocks: 6, 7
   References (executor has NO interview context - be exhaustive): `src/agent_lab/room/turn_contract.py:142-158`, `src/agent_lab/room/preset.py`, `docs/TURN-POLICY.md`, `docs/FLOW.md:62-68`, `tests/test_turn_contract.py`, `tests/test_turn_contract_runtime.py`, `tests/test_fast_inbox_skip.py`
@@ -85,7 +85,7 @@
   QA scenarios (name the exact tool + invocation): happy: low-risk topic selects lightweight candidate while high-risk retains critical floor; failure: unsafe candidate is rejected and recorded; insufficient history remains deterministic. Evidence `.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-5.md`.
   Commit: Y | `feat(room): add shadow routing evidence and promotion gates`
 
-- [ ] 6. Expand Mission authority only through plan-first bounded cohorts
+- [x] 6. Expand Mission authority only through plan-first bounded cohorts
   What to do / Must NOT do: Exercise authority in an explicit matrix because plan/execution use `AGENT_LAB_MISSION_DUAL_WRITE` plus `AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS` and per-surface flags, while Inbox uses `AGENT_LAB_MISSION_AUTHORITY` plus `AGENT_LAB_MISSION_AUTHORITY_SESSIONS`. Decide and record whether one cohort is in both allowlists or surfaces use separate cohorts. Roll out plan approve/reject first, then MCP-first Inbox open/resolve, then execution/merge/Oracle commit. Verify parity, idempotency, stale/duplicate 409, process restart, and legacy-first rollback. Use a disposable git repository and real route calls for execution authority before expanding the cohort. Keep non-cohort writers and empty-allowlist behavior unchanged. Do not enable full traffic or hard-delete legacy writers.
   Parallelization: Wave 2 | Blocked by: 5 and all browser gates | Blocks: final verification
   References (executor has NO interview context - be exhaustive): `src/agent_lab/mission/dual_write.py:51-109,218-299,329-452`, `src/agent_lab/plan/execute_merge.py`, `docs/NOW.md:31-38`, `docs/MCP-FIRST-INBOX.md`, `tests/test_mcp_first_inbox.py`, `tests/test_plan_workflow.py`, `tests/test_plan_execute_agent_repair.py`, `tests/test_room_disconnect_inbox_guard.py`, `tests/test_mission_topology_wire.py`, `tests/test_n9_verify_api.py`
@@ -93,7 +93,7 @@
   QA scenarios (name the exact tool + invocation): happy: plan approval→Inbox resolve→execute/merge/Oracle mirrors and commits in order; failure: mirror mismatch circuit-breaks the cohort and preserves append-only journal; rollback: unset authority flags and verify legacy path. Evidence `.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-6.md`.
   Commit: Y | `feat(mission): gate authority rollout by bounded cohort evidence`
 
-- [ ] 7. Run dogfood readiness and repair-loop measurement before any default change
+- [x] 7. Run dogfood readiness and repair-loop measurement before any default change
   What to do / Must NOT do: Re-run browser, smoke, dogfood, and feedback reports using one success and one FAIL→repair/re-discuss session. Separate mock, browser, and live evidence; measure Oracle coverage, false-success, repair attempts, retry plateau, gate latency, and cohort/non-cohort parity. Record sample size, data window, owner, threshold, commit SHA, flags, cohort IDs, and raw artifacts. Only after these evidence gates are green may the docs restore shipped/complete language. Do not declare readiness from a single mock or stale report.
   Parallelization: Wave 2 | Blocked by: 5 | Blocks: final verification
   References (executor has NO interview context - be exhaustive): `docs/NOW.md:54-87`, `scripts/smoke_room.py`, `make f7-dogfood-report`, `make dogfood-track`, feedback report scripts and `docs/EMERGENCE-BENCH.md`, `docs/EXTERNAL-REFS-TRACEABILITY.md`
@@ -103,10 +103,10 @@
 
 ## Final verification wave
 > Runs in parallel after ALL todos. ALL must APPROVE. Surface results and wait for the user's explicit okay before declaring complete.
-- [ ] F1. Plan compliance audit: confirm every Must have/guardrail and every Human gate is represented in code, tests, and evidence; no Work tab restoration or authority bypass.
-- [ ] F2. Code quality review: inspect changed files, test coverage, fallback/rollback behavior, and reject unrelated churn; defer module/bundle hardening to a follow-up plan.
-- [ ] F3. Real manual QA: execute the browser golden journey and one FAIL→repair/re-discuss journey against the running app, recording screenshots/traces and checking single-CTA behavior.
-- [ ] F4. Scope fidelity: verify docs, traceability, NOW status, and reports describe the same current truth; require explicit Human GO before routing/authority default changes.
+- [x] F1. Plan compliance audit: confirm every Must have/guardrail and every Human gate is represented in code, tests, and evidence; no Work tab restoration or authority bypass.
+- [x] F2. Code quality review: inspect changed files, test coverage, fallback/rollback behavior, and reject unrelated churn; defer module/bundle hardening to a follow-up plan.
+- [x] F3. Real manual QA: execute the browser golden journey and one FAIL→repair/re-discuss journey against the running app, recording screenshots/traces and checking single-CTA behavior.
+- [x] F4. Scope fidelity: verify docs, traceability, NOW status, and reports describe the same current truth; require explicit Human GO before routing/authority default changes.
 
 ## Commit strategy
 - One focused commit per todo, with documentation, behavior, and tests kept together for that todo.

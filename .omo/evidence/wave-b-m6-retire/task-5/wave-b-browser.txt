@@ -1,0 +1,11 @@
+Surface: Wave B browser UI contract (mocked API routes)
+Invocation:
+npm --prefix web run test:e2e -- web/e2e/wave-b-journey.spec.ts
+
+Result:
+Running 4 tests using 1 worker
+1 plan reject journey sends reject request and enters refine phase — PASS
+2 diff approve journey resolves pending execution — PASS
+3 Oracle repair journey re-verifies failed execution — PASS
+4 human resume journey answers inbox question — PASS
+4 passed (6.9s)

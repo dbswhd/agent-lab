@@ -1,0 +1,25 @@
+
+> agent-lab-web@0.1.0 test:e2e
+> playwright test e2e/agent-lifecycle-journey.spec.ts --headed --reporter=line
+
+[1A[2K[2m[WebServer] [22m(node:32001) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[2m[WebServer] [22m(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+Running 6 tests using 1 worker
+
+[1A[2K(node:32003) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:32003) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[1/6] e2e/agent-lifecycle-journey.spec.ts:1160:1 › connected Human-gated journey reaches PASS only with durable evidence
+[1A[2K[2/6] e2e/agent-lifecycle-journey.spec.ts:1254:1 › frontend mock contract emits gate requests only from rendered Human actions
+[1A[2K[3/6] e2e/agent-lifecycle-journey.spec.ts:1349:1 › Oracle FAIL repairs through bounded re-discuss retries before PASS
+[1A[2K[4/6] e2e/agent-lifecycle-journey.spec.ts:1450:1 › stale expected_version returns 409 without corrupting the resolved state
+[1A[2K[5/6] e2e/agent-lifecycle-journey.spec.ts:1546:1 › reload resumes the same pending operation without duplicating its decision
+[1A[2K[6/6] e2e/agent-lifecycle-journey.spec.ts:1575:1 › dirty worktree blocks dry-run and malformed decision payloads never promote success
+[1A[2K  6 passed (19.8s)

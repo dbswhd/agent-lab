@@ -1,7 +1,7 @@
 # External refs plan — traceability matrix
 
 Maps items in [`EXTERNAL-REFS-PLAN.md`](archive/rfcs/EXTERNAL-REFS-PLAN.md) to **code evidence**, **regression/smoke evidence**, or **future fixture tickets**.
-This document is the hub for **plan vs reality**. It does not explain *why* an item was adopted — see PLAN §anchor for that context. A ✅ row is scoped to its listed code/test artifact; Wave B browser acceptance is tracked separately below when green.
+This document is the hub for **plan vs reality**. It does not explain *why* an item was adopted — see PLAN §anchor for that context. A ✅ row is scoped to its listed code/test artifact; it does not imply live/operational readiness, a default routing/authority change, or a shipped/complete rollout.
 
 **Status legend:** ✅ evidence-backed code · 🔶 partial / acceptance pending · ⬜ future · ❌ dropped
 **Related:** [EXTERNAL-REFS-PLAN.md](archive/rfcs/EXTERNAL-REFS-PLAN.md) (why/what) · [MD-WRITING-PLAN.md](MD-WRITING-PLAN.md) (MD authoring guide)
@@ -13,7 +13,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 - The Composer **Decision Queue** is the current Human-action SSOT and exposes one active blocking decision at a time.
 - The internal Composer `work` lane renders execution/result evidence; it is **not** the removed Work navigation tab.
 - Visible workspace tabs are Transcript, Diff, Background, Files, Preview, Terminal; Inspector tabs are Overview and Tools (`web/src/utils/workspaceTabs.ts`).
-- **Wave B/browser acceptance: accepted (2026-07-24).** Evidence: [wave-b-browser-acceptance-2026-07-24.md](redesign-2026-07/evidence/wave-b-browser-acceptance-2026-07-24.md) — live uvicorn+Vite Playwright 4/4. Mock `wave-b-journey.spec.ts` remains CI regression only.
+- **Wave B/browser acceptance: green.** `web/e2e/wave-b-journey.spec.ts` passed 4/4 with mocked API routes, which accepts the browser UI contract. Task 7 live evidence remains `OPEN` (`n=0`) with `default_change_authorized=false`; it is not a shipped/complete operational claim and default routing/authority still requires explicit Human GO — [DOGFOOD-READINESS-STATUS.md](DOGFOOD-READINESS-STATUS.md).
 
 ---
 
@@ -116,7 +116,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 
 | ID | Source | Item | Status | Evidence | Notes |
 |----|--------|------|--------|----------|-------|
-| _(none — MC-AUT moved to Shipped 2026-07-25)_ | | | | | |
+| UX-WAVE-B | Room UX | Composer Decision Queue + current workspace tab browser acceptance | 🔶 | [11-ui-ux-surface-map.md](redesign-2026-07/11-ui-ux-surface-map.md), [DOGFOOD-READINESS-STATUS.md](DOGFOOD-READINESS-STATUS.md) | Browser UI contract is green (Wave B 4/4 with mocked API routes). The row remains partial because Task 7 live/operational readiness is `OPEN` (`n=0`); no default routing/authority change or shipped/complete operational claim is authorized. |
 
 ---
 

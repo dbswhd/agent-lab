@@ -1,0 +1,11 @@
+Command:
+python scripts/dogfood_readiness_report.py --manifest docs/evidence/dogfood-readiness/manifest.json --out-dir /tmp/agent-lab-dogfood-readiness-final5
+
+Output:
+readiness=OPEN
+json=/tmp/agent-lab-dogfood-readiness-final5/dogfood-readiness.json
+markdown=/tmp/agent-lab-dogfood-readiness-final5/dogfood-readiness.md
+
+Generated packet checks:
+{"default_change_authorized": false, "readiness": "OPEN"}
+Evidence tiers: mock PASS (n=2), browser PASS (n=4), live OPEN (n=0)

@@ -144,9 +144,13 @@ describe("stage labels", () => {
   it("uses the §4.2 vocabulary, never APPROVED/VERIFIED", () => {
     expect(stageView(state())?.label).toBe("구상 비교 중");
     expect(stageView(state({ stage: "shape" }))?.label).toBe("구상 선택");
-    expect(stageView(state({ stage: "plan", plan_status: "ready" }))?.label).toBe("계획 준비됨");
+    expect(
+      stageView(state({ stage: "plan", plan_status: "ready" }))?.label,
+    ).toBe("계획 준비됨");
     for (const stage of ["explore", "shape", "plan"] as const) {
-      const view = stageView(state({ stage, ...(stage === "plan" ? { plan_status: "ready" } : {}) }));
+      const view = stageView(
+        state({ stage, ...(stage === "plan" ? { plan_status: "ready" } : {}) }),
+      );
       expect(view?.label).not.toMatch(/APPROVED|VERIFIED/i);
       expect(view?.hint).toBeTruthy();
     }

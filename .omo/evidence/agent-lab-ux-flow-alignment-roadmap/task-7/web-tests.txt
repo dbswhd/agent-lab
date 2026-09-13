@@ -1,0 +1,13 @@
+
+> agent-lab-web@0.1.0 test
+> vitest run src
+
+
+ RUN  v4.1.9 /Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/web
+
+
+ Test Files  43 passed (43)
+      Tests  185 passed (185)
+   Start at  03:54:01
+   Duration  1.02s (transform 1.38s, setup 0ms, import 2.09s, tests 204ms, environment 2ms)
+

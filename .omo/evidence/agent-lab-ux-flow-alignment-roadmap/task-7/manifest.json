@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "owner": "Agent Lab dogfood operator",
+  "commit_sha": "01431f27a875ff0582a5d9e3f6905432eb0627c4",
+  "window": {
+    "started_at": "2026-07-23T00:00:00+00:00",
+    "ended_at": "2026-07-24T00:00:00+00:00"
+  },
+  "flags": {
+    "AGENT_LAB_MOCK_AGENTS": "(unset outside pytest)",
+    "AGENT_LAB_MISSION_AUTHORITY": "(unset)",
+    "AGENT_LAB_MISSION_DUAL_WRITE": "(unset)",
+    "AGENT_LAB_REPO_MAP": "(unset)",
+    "AGENT_LAB_COMPACT_TOOL_OUTPUT": "(unset)"
+  },
+  "cohort_ids": [],
+  "evidence": [
+    {
+      "id": "mock-regression-pair",
+      "tier": "mock",
+      "status": "PASS",
+      "sample_size": 2,
+      "raw_paths": [
+        "sessions/_regression/worktree_merge_ok/run.json",
+        "sessions/_regression/execute_verify_loop/run.json"
+      ]
+    },
+    {
+      "id": "wave-b-browser",
+      "tier": "browser",
+      "status": "PASS",
+      "sample_size": 4,
+      "raw_paths": [
+        ".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-7/wave-b-browser.txt"
+      ]
+    },
+    {
+      "id": "credentialed-live-dogfood",
+      "tier": "live",
+      "status": "OPEN",
+      "sample_size": 0,
+      "raw_paths": [
+        ".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-7/baseline-dogfood-track.txt",
+        ".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-7/baseline-feedback.json"
+      ],
+      "owner": "Agent Lab dogfood operator",
+      "next_gate": "Run credentialed supervisor success and Oracle FAIL→repair/re-discuss sessions, then attach raw session paths."
+    }
+  ],
+  "sessions": [
+    {
+      "id": "worktree_merge_ok",
+      "tier": "mock",
+      "kind": "success",
+      "run_path": "sessions/_regression/worktree_merge_ok/run.json"
+    },
+    {
+      "id": "execute_verify_loop",
+      "tier": "mock",
+      "kind": "repair",
+      "run_path": "sessions/_regression/execute_verify_loop/run.json"
+    }
+  ],
+  "gate_events": [
+    {
+      "id": "execute_verify_loop-human-approval-to-repair-pass",
+      "opened_at": "2026-06-04T00:00:05+00:00",
+      "closed_at": "2026-06-04T00:00:08+00:00"
+    }
+  ],
+  "parity": {
+    "cohort": {
+      "sample_size": 0,
+      "successes": 0
+    },
+    "noncohort": {
+      "sample_size": 0,
+      "successes": 0
+    }
+  },
+  "operational_gates": [
+    {
+      "id": "F7",
+      "status": "OPEN",
+      "owner": "Agent Lab dogfood operator",
+      "next_gate": "Collect at least 10 F7-instrumented sessions at 70% repo-map coverage and record the Human ON/OFF decision.",
+      "raw_paths": [
+        ".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-7/baseline-f7.json"
+      ]
+    },
+    {
+      "id": "N4-D3",
+      "status": "OPEN",
+      "owner": "Agent Lab dogfood operator",
+      "next_gate": "Collect at least 10 live outcome rows for every autonomy level, including L2.",
+      "raw_paths": [
+        ".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-7/baseline-feedback.json"
+      ]
+    },
+    {
+      "id": "HS-M5",
+      "status": "OPEN",
+      "owner": "Agent Lab dogfood operator",
+      "next_gate": "Preserve one addressable pattern and one live Human-approved harness_patch merge.",
+      "raw_paths": [
+        ".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-7/baseline-dogfood-track.txt"
+      ]
+    }
+  ],
+  "thresholds": {
+    "oracle_coverage_min": 1.0,
+    "false_success_max": 0,
+    "retry_cap": 2,
+    "parity_gap_max": 0.05
+  }
+}

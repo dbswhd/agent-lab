@@ -1,0 +1,23 @@
+.venv/bin/python scripts/dogfood_track.py --mode status 
+Dogfood track (live-first) — 0/6 gates closed
+
+  · [P0-5] S1 lift + explore (live close)
+      need: history.n≥3 · explore≥1
+      next: eval "$(make -s dogfood-track-env)" && make dev  # supervisor · Plan OFF for S1 · explore on
+  · [F7] repo_map/compaction 7d ON/OFF
+      need: ≥10 instrumented · coverage≥70.0% · Human ON/OFF
+      next: make dogfood-track-f7-start → use 7d → make f7-dogfood-report → make dogfood-track-f7-decision DECISION=ON|OFF
+  · [N4-D3] escalation_rate_by_level n≥10/level
+      need: each L0–L3 ≥10 tagged outcome rows
+      next: supervisor dogfood across L0–L3 ceilings; make feedback-report JSON=1
+  · [CATALOG] dogfood-v1 suite coverage
+      next: make dogfood-suite-checklist · live Room · make dogfood-progress-record ID=… SESSION=sessions/…
+  · [HS-M5] addressable pattern + Human harness_patch merge ≥1
+      need: addressable≥1 AND live Human merge of harness_patch
+      next: python scripts/propose_harness.py --mode list → propose → Inbox approve → make dogfood-track-hs-m5-merge
+  · [N1-30] dogfood-first expiry review (history.n≥30)
+      need: history.n≥30
+      next: continue supervisor dogfood; make feedback-report JSON=1
+
+ledger: total=0 eligible=0 sources={'default': 0, 'history': 0, 'explore': 0}
+Next: eval "$(make -s dogfood-track-env)" && make dev  # then re-check with make dogfood-track

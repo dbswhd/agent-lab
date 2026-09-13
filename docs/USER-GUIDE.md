@@ -2,7 +2,7 @@
 
 > **Canonical product spec (Tier 1).** Doc index: [docs/README.md](./README.md) · Evidence matrix: [EXTERNAL-REFS-TRACEABILITY.md](./EXTERNAL-REFS-TRACEABILITY.md)
 >
-> **현재 상태 (2026-07-24):** Composer는 topic-only이며 Composer 위 **Decision Queue**가 현재 Human action의 SSOT다. Wave B/browser evidence는 **accepted** ([wave-b-browser-acceptance-2026-07-24.md](./redesign-2026-07/evidence/wave-b-browser-acceptance-2026-07-24.md)). Mock e2e만으로 shipped를 주장하지 않는다.
+> **현재 상태 (2026-07-24):** Composer는 topic-only이며 Composer 위 **Decision Queue**가 현재 Human action의 SSOT다. Wave B browser UI contract는 green (4/4 with mocked API routes)이다. 이는 live/operational readiness나 shipped/complete rollout을 뜻하지 않는다: Task 7 live readiness is `OPEN` (`n=0`), `default_change_authorized=false`, and default routing/authority still requires explicit Human GO — [DOGFOOD-READINESS-STATUS.md](./DOGFOOD-READINESS-STATUS.md).
 
 > **목적:** UI/UX를 전면 재설계할 때 참고하는 **기능·로직·상태** 문서  
 > **대상:** 제품·디자인·프론트·백엔드 개발자  

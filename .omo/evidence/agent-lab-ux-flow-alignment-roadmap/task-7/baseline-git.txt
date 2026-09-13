@@ -1,0 +1,25 @@
+711e3b96d736dd2a45d8100e192be9313370e334
+?? .debug-journal.md
+?? .omo/drafts/agent-lab-ux-flow-alignment-roadmap.md
+?? .omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-1-integration.md
+?? .omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-2-classification-manual/
+?? .omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-2-final-manual/
+?? .omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-2-final/
+?? .omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-2-manual-playwright/
+?? .omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-2-post-rework-blocker.md
+?? .omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-2-stop-hook-2.json
+?? .omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-2.json
+?? .omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-2.md
+?? .omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3.json
+?? .omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3.md
+?? .omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3/
+?? .omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-4.json
+?? .omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-4.md
+?? .omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-7/
+?? .omo/evidence/task-3-code-review.md
+?? .omo/evidence/task3-golden-journey-gate-review.md
+?? .omo/evidence/task3-visual-oracle-a-r2-gate-review.md
+?? .omo/evidence/task4-final-gate-review.md
+?? .omo/evidence/task5-gate-review.md
+?? .omo/plans/agent-lab-ux-flow-alignment-roadmap.md
+?? .venv

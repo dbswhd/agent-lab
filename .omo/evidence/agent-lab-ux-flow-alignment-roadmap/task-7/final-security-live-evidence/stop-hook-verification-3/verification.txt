@@ -1,0 +1,18 @@
+COMMAND: git rev-parse HEAD
+5677b7ea881a4bfd3c55fa57c1a97f1296d42df4
+COMMAND: .venv/bin/pytest -q tests/test_dogfood_readiness_report.py tests/test_dogfood_readiness_live_evidence.py
+.........                                                                [100%]
+9 passed in 0.08s
+PYTEST_EXIT=0
+COMMAND: make dogfood-readiness-report current manifest
+.venv/bin/python scripts/dogfood_readiness_report.py \
+	  --manifest ".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-7/manifest.json" \
+	  --out-dir ".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-7/final-security-live-evidence/stop-hook-verification-3/current-packet" \
+	  
+readiness=OPEN
+json=.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-7/final-security-live-evidence/stop-hook-verification-3/current-packet/dogfood-readiness.json
+markdown=.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-7/final-security-live-evidence/stop-hook-verification-3/current-packet/dogfood-readiness.md
+CURRENT_CLI_EXIT=0
+CURRENT_READINESS=OPEN
+CURRENT_LIVE_N=0
+CURRENT_DEFAULT_CHANGE_AUTHORIZED=False

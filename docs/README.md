@@ -34,7 +34,7 @@
 | 전략 방향 (Fugu/Harness 대비 포지션 — 배경/이력) | [STRATEGIC-DIRECTION-2026.md](./STRATEGIC-DIRECTION-2026.md) |
 | 역할 오케스트레이션 설계 (P1~P8) | [ROLE-ORCHESTRATION-PLAN.md](./ROLE-ORCHESTRATION-PLAN.md) |
 | 기능·동작·API·UI 상세 | [USER-GUIDE.md](./USER-GUIDE.md) |
-| **Turn preset · Plan toggle · legacy profile map** | [TURN-MODES.md](./TURN-MODES.md) |
+| **Legacy turn preset · Plan toggle · profile map (history/reference)** | [TURN-MODES.md](./TURN-MODES.md) — 현재 계약은 [TURN-CONTRACT.md](./TURN-CONTRACT.md) |
 | TurnPolicy 구현 이력 | [TURN-POLICY.md](./TURN-POLICY.md) — 현재 계약은 [TURN-CONTRACT.md](./TURN-CONTRACT.md) |
 | 4과정·동적 적응 비교·구현 로그 | [archive/rfcs/WORKFLOW-DYNAMIC-REFERENCE.md](./archive/rfcs/WORKFLOW-DYNAMIC-REFERENCE.md) — history/reference |
 | **Structure refactor execute waves** | [STRUCTURE-REFACTOR-WAVE.md](./STRUCTURE-REFACTOR-WAVE.md) |
@@ -43,12 +43,12 @@
 | Fast preset Inbox skip (discuss vs execute) | [05-room-agent-roles.md §Fast preset](./05-room-agent-roles.md) · [FLOW.md §2.1](./FLOW.md) |
 | MCP-first Inbox · 선다형 `ask_human` · harvest deprecate | [MCP-FIRST-INBOX.md](./MCP-FIRST-INBOX.md) |
 | Plan FSM 플래그 상세 | [FLOW.md](./FLOW.md) §4 · `AGENT_LAB_PLAN_WORKFLOW` flag |
-| 프론트 컴포넌트·IA·Work 탭 | [developer-agent-console.md](./developer-agent-console.md) · ARCHITECTURE §5–6 |
+| 현재 프론트 컴포넌트·Composer Decision Queue·workspace IA | [developer-agent-console.md](./developer-agent-console.md) · ARCHITECTURE §5–6 |
 | UX productization 로드맵 | [CONSOLE-PRODUCTIZATION.md](./CONSOLE-PRODUCTIZATION.md) · [UI-IA-ROADMAP.md](./UI-IA-ROADMAP.md) |
 | Gateway · scheduler · Mission OS | [MISSION-OS-DIRECTION.md](./MISSION-OS-DIRECTION.md) · OPS-RUNBOOK §daemon |
 | Human Inbox · MCP | [HUMAN-INBOX.md](./HUMAN-INBOX.md) · [HUMAN-INBOX-CLAUDE-HANDOFF.md](./archive/legacy/HUMAN-INBOX-CLAUDE-HANDOFF.md) |
 | Runtime harness · dispatch | [RUNTIME-HARNESS-PLAN.md](./RUNTIME-HARNESS-PLAN.md) · [ROOM-DISPATCH-PROTOCOL.md](./ROOM-DISPATCH-PROTOCOL.md) |
-| GJC external pipeline entry | [GJC-ENTRY.md](./GJC-ENTRY.md) · [VERIFY-API.md](./VERIFY-API.md) · Work tab Pipeline stepper |
+| GJC external pipeline entry | [GJC-ENTRY.md](./GJC-ENTRY.md) · [VERIFY-API.md](./VERIFY-API.md) · Composer internal `work` lane pipeline stepper |
 | CI · regression · live ops · daemon dogfood | [STABILITY.md](./STABILITY.md) · [OPS-RUNBOOK.md](./OPS-RUNBOOK.md) |
 | Mission first-pass redesign · UI/UX · legacy audit · next steps | [redesign-2026-07/README.md](./redesign-2026-07/README.md) · [11 UI surface](./redesign-2026-07/11-ui-ux-surface-map.md) · [12 compatibility audit](./redesign-2026-07/12-compatibility-and-legacy-audit.md) · [13 governance/steps](./redesign-2026-07/13-document-governance-and-execution-plan.md) · [controlled cohort runbook](./redesign-2026-07/evidence/dual-write-controlled-cohort-runbook-2026-07-13.md) · [dual-read report](./redesign-2026-07/evidence/dual-read-report-2026-07-13.md) · [route cohort](./redesign-2026-07/evidence/dual-write-route-cohort-report-2026-07-13.md) · [seeded simulation](./redesign-2026-07/evidence/dual-read-seeded-report-2026-07-13.md) · [mock dogfood](./redesign-2026-07/evidence/dual-read-dogfood-report-2026-07-13.md) · [live timeout report](./redesign-2026-07/evidence/dual-read-live-report-2026-07-13.md) |
 | Repo structure metrics · package refactors | [STRUCTURE-METRICS.md](./STRUCTURE-METRICS.md) · [STRUCTURE-REFACTOR-WAVE.md](./STRUCTURE-REFACTOR-WAVE.md) · [PROVIDER-LANE](./PROVIDER-LANE-DESIGN.md) · [archive/STRUCTURE-REFACTOR-HISTORY.md](./archive/STRUCTURE-REFACTOR-HISTORY.md) (Room/Plan/Session/Mission/Agent/Quant/Wisdom/Inbox/Context/Run/Workspace/Research — consolidated, all shipped) |
@@ -106,7 +106,7 @@
 | [MISSION-LOOP-C-OMO.md](./MISSION-LOOP-C-OMO.md) | **Shipped** — Layer 6 FSM + Track B/C/D |
 | [MISSION-BOARD-ADOPTION.md](./MISSION-BOARD-ADOPTION.md) | **Shipped** — Mission Board MB-9…MB-11 (P1~P4); P5 backlog |
 | [RUNTIME-HARNESS-PLAN.md](./RUNTIME-HARNESS-PLAN.md) | **H0–H7 shipped** — runtime contract, dispatch lanes, PolicyEngine |
-| [GJC-ENTRY.md](./GJC-ENTRY.md) | **GJC external entry** — Room vs gjc, tools.yaml, Work pipeline stepper |
+| [GJC-ENTRY.md](./GJC-ENTRY.md) | **GJC external entry** — Room vs gjc, tools.yaml, Composer internal `work` lane pipeline stepper |
 | [PLUGIN-DISCOVERY.md](./PLUGIN-DISCOVERY.md) | Slash commands + plugins **shipped** |
 | [NOTIFICATION-TAXONOMY.md](./NOTIFICATION-TAXONOMY.md) | Toast / Activity notification 분류 |
 | [ROOM-DISPATCH-PROTOCOL.md](./ROOM-DISPATCH-PROTOCOL.md) | DELEGATE / parallel dispatch protocol **shipped** |
@@ -145,7 +145,7 @@
 |-----|------|
 | [CONSOLE-PRODUCTIZATION.md](./CONSOLE-PRODUCTIZATION.md) | Productization SSOT: IA P0, Hooks/Response P1, verification P2 |
 | [UI-IA-ROADMAP.md](./UI-IA-ROADMAP.md) | Deprecate list + target IA (P0~P4 대부분 ✅) |
-| [developer-agent-console.md](./developer-agent-console.md) | 현재 콘솔 UI 레퍼런스 — 3-pane 레이아웃, **Work 탭 stepper** |
+| [developer-agent-console.md](./developer-agent-console.md) | 현재 콘솔 UI 레퍼런스 — 3-pane 레이아웃, Composer internal `work` lane stepper (**Work navigation tab 없음**) |
 | [DESIGN.md](./DESIGN.md) | 프론트 비주얼 설계 원칙 (canonical: `web/DESIGN.md`) |
 
 **규칙:** UI contract 테스트 실패 시 현재 컴포넌트에 맞게 테스트를 수정 (프로토타입 네이밍으로 되돌리지 않음).

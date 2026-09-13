@@ -616,6 +616,7 @@ export default function App() {
                   <button
                     type="button"
                     role="tab"
+                    data-testid="session-scope-active"
                     aria-selected={listTab === "active"}
                     className={`rail-scope-tab${listTab === "active" ? " is-active" : ""}`}
                     onClick={() => setListTab("active")}
@@ -630,6 +631,7 @@ export default function App() {
                   <button
                     type="button"
                     role="tab"
+                    data-testid="session-scope-dogfood"
                     aria-selected={listTab === "dogfood"}
                     className={`rail-scope-tab${listTab === "dogfood" ? " is-active" : ""}`}
                     onClick={() => setListTab("dogfood")}

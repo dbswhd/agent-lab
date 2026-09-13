@@ -113,6 +113,9 @@ type Journey =
   | "oracle-repair"
   | "human-resume";
 
+const activePlanRejectSessionId = "wave-b-active-plan-reject";
+const sessionScopes = ["active", "dogfood"] as const;
+
 async function mockWaveBJourneyApi(
   page: Page,
   requests: string[],
@@ -124,7 +127,7 @@ async function mockWaveBJourneyApi(
   let reverifyCalled = false;
   const executionId = "execution-1";
 
-  await page.route(/^http:\/\/127\.0\.0\.1:4173\/api\//, async (route) => {
+  await page.route((url) => url.pathname.startsWith("/api/"), async (route) => {
     const request = route.request();
     const url = new URL(request.url());
     const key = `${request.method()} ${url.pathname}`;
@@ -206,6 +209,12 @@ async function mockWaveBJourneyApi(
     if (url.pathname === "/api/sessions") {
       const sessions = [
         {
+          id: activePlanRejectSessionId,
+          topic: "Wave B 활성 계획 거절",
+          updated_at: "2026-07-15T00:00:00Z",
+          workflow: "room.parallel",
+        },
+        {
           id: "wave-b-plan-reject",
           topic: "Wave B plan reject",
           updated_at: "2026-07-15T00:00:00Z",
@@ -243,7 +252,9 @@ async function mockWaveBJourneyApi(
       const sessionId = sessionMatch[1];
       const isHumanResume =
         sessionId === "wave-b-human-resume" && !resolved;
-      const isPlanReject = sessionId === "wave-b-plan-reject";
+      const isPlanReject =
+        sessionId === "wave-b-plan-reject" ||
+        sessionId === activePlanRejectSessionId;
       const isDiffApprove = sessionId === "wave-b-diff-approve";
       const isOracleRepair = sessionId === "wave-b-oracle-repair";
 
@@ -315,7 +326,9 @@ async function mockWaveBJourneyApi(
       /^\/api\/sessions\/(wave-b-[^/]+)\/plan-actions$/,
     );
     if (planActionsMatch) {
-      const isPlanReject = planActionsMatch[1] === "wave-b-plan-reject";
+      const isPlanReject =
+        planActionsMatch[1] === "wave-b-plan-reject" ||
+        planActionsMatch[1] === activePlanRejectSessionId;
       const hidden = isPlanReject && rejected;
       await route.fulfill({
         json: {
@@ -514,10 +527,18 @@ async function initialize(page: Page) {
   });
 }
 
-async function openSession(page: Page, name: string) {
-  // English-only fixture topics classify as Dogfood (no Hangul heuristic).
-  await page.getByRole("tab", { name: "Dogfood" }).click();
-  await page.getByRole("button", { name }).click();
+async function openSession(page: Page, sessionId: string) {
+  const session = page.getByTestId(`session-${sessionId}`);
+  for (const scope of sessionScopes) {
+    await page.getByTestId(`session-scope-${scope}`).click();
+    if ((await session.count()) === 0) continue;
+    await session.click();
+    await expect(session).toHaveAttribute("aria-current", "true");
+    return;
+  }
+  throw new Error(
+    `Session fixture was not present in a selectable rail scope: ${sessionId}`,
+  );
 }
 
 test("plan reject journey sends reject request and enters refine phase", async ({
@@ -527,7 +548,23 @@ test("plan reject journey sends reject request and enters refine phase", async (
   await initialize(page);
   await mockWaveBJourneyApi(page, requests, "plan-reject");
   await page.goto("/");
-  await openSession(page, "Wave B plan reject");
+
+  const activeSession = page.getByTestId(
+    `session-${activePlanRejectSessionId}`,
+  );
+  await expect(activeSession).toBeVisible();
+  await openSession(page, activePlanRejectSessionId);
+  await expect(page.getByTestId("session-scope-active")).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await expect(page.locator(".plan-approval-strip")).toBeVisible();
+
+  await openSession(page, "wave-b-plan-reject");
+  await expect(page.getByTestId("session-scope-dogfood")).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
 
   const review = page.locator(".plan-approval-strip");
   await expect(review).toBeVisible();
@@ -553,7 +590,7 @@ test("diff approve journey resolves pending execution", async ({ page }) => {
   await initialize(page);
   await mockWaveBJourneyApi(page, requests, "diff-approve");
   await page.goto("/");
-  await openSession(page, "Wave B diff approve");
+  await openSession(page, "wave-b-diff-approve");
 
   // A pending execution activates the composer stack's "execute_queue" lane
   // (highest priority after plan_approval, per composerStackLane.ts) — that
@@ -579,7 +616,7 @@ test("Oracle repair journey re-verifies failed execution", async ({
   await initialize(page);
   await mockWaveBJourneyApi(page, requests, "oracle-repair");
   await page.goto("/");
-  await openSession(page, "Wave B Oracle repair");
+  await openSession(page, "wave-b-oracle-repair");
 
   // Same execute_queue lane as the diff-approve journey — the compact
   // ExecuteQueueBar, not #work-execute-queue (see the diff-approve journey
@@ -602,7 +639,7 @@ test("human resume journey answers inbox question", async ({ page }) => {
   await initialize(page);
   await mockWaveBJourneyApi(page, requests, "human-resume", postBodies);
   await page.goto("/");
-  await openSession(page, "Wave B human resume");
+  await openSession(page, "wave-b-human-resume");
 
   await expect.poll(() =>
     requests.some((row) => row.includes("/mission/read-model")),

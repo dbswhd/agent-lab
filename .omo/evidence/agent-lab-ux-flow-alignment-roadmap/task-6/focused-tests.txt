@@ -1,0 +1,12 @@
+commit: 6aa861d9
+command: .venv/bin/pytest -q tests/test_mission_authority_cohort_matrix.py tests/test_mission_inbox_authority.py tests/test_mission_dual_write.py tests/test_plan_workflow.py tests/test_plan_execute_agent_repair.py tests/test_room_disconnect_inbox_guard.py tests/test_mission_topology_wire.py tests/test_n9_verify_api.py
+exit_code: 0
+observable: 127 passed in 10.17s
+
+command: .venv/bin/ruff check app/server/routers/human_inbox.py scripts/mission_authority_cohort_matrix.py scripts/mission_authority_real_route_harness.py tests/test_mission_authority_cohort_matrix.py
+exit_code: 0
+observable: All checks passed!
+
+command: git diff --check
+exit_code: 0
+observable: empty stdout

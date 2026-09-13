@@ -18,11 +18,12 @@ describe("api client barrel", () => {
   });
 
   it("sends an explicit idea-lane opt-in only for a new room run", async () => {
-    const fetchMock = vi.fn().mockImplementation(() => new Response(
-      'data: {"type":"complete","session_id":"idea-1"}\n\n', {
-        status: 200,
-        headers: { "content-type": "text/event-stream" },
-      }),
+    const fetchMock = vi.fn().mockImplementation(
+      () =>
+        new Response('data: {"type":"complete","session_id":"idea-1"}\n\n', {
+          status: 200,
+          headers: { "content-type": "text/event-stream" },
+        }),
     );
     vi.stubGlobal("fetch", fetchMock);
     vi.stubGlobal("document", {
@@ -31,12 +32,16 @@ describe("api client barrel", () => {
       removeEventListener: vi.fn(),
     });
 
-    await runRoom("강의자료 학습 도구", ["cursor"], () => undefined, { ideation: true });
+    await runRoom("강의자료 학습 도구", ["cursor"], () => undefined, {
+      ideation: true,
+    });
     const body = fetchMock.mock.calls[0]?.[1]?.body as FormData;
     expect(body.get("ideation")).toBe("true");
 
     fetchMock.mockClear();
-    await runRoom("이어가기", ["cursor"], () => undefined, { sessionId: "legacy" });
+    await runRoom("이어가기", ["cursor"], () => undefined, {
+      sessionId: "legacy",
+    });
     const resumed = fetchMock.mock.calls[0]?.[1]?.body as FormData;
     expect(resumed.get("ideation")).toBeNull();
   });

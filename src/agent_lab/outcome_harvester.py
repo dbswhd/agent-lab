@@ -211,6 +211,19 @@ def build_outcome_record(
         fsm_no_action=bool(metrics.get("fsm_no_action") or run.get("fsm_no_action")),
         subset_escalated=bool(metrics.get("subset_escalated") or run.get("subset_escalated")),
     )
+    from agent_lab.room.turn_contract_evidence import build_turn_contract_evidence
+
+    cumulative = run.get("cost_ledger", {}).get("cumulative", {}) if isinstance(run.get("cost_ledger"), dict) else {}
+    cost_usd = float(cumulative.get("usd") or 0.0) if isinstance(cumulative, dict) else 0.0
+    contract_evidence = build_turn_contract_evidence(
+        contract,
+        agents=[str(agent) for agent in metrics.get("agents") or []],
+        rounds_used=int(metrics.get("rounds_used") or 0),
+        consensus=bool(metrics.get("consensus_reached")),
+        latency_ms=int(metrics.get("latency_ms") or 0),
+        cost_usd=cost_usd,
+        route_regrets=regrets,
+    )
     return {
         "v": OUTCOME_LEDGER_SCHEMA_VERSION,
         "ts": _now_iso(),
@@ -250,7 +263,7 @@ def build_outcome_record(
         "task_kind": str(contract.get("task_kind") or ""),
         "risk": str(contract.get("risk") or ""),
         "execute_intent": bool(contract.get("execute_intent")),
-        "route_regret_signals": list(regrets),
+        **contract_evidence,
     }
 
 
@@ -384,6 +397,19 @@ def _build_execute_outcome_record(
         fsm_no_action=bool(run.get("fsm_no_action")),
         subset_escalated=bool(run.get("subset_escalated")),
     )
+    from agent_lab.room.turn_contract_evidence import build_turn_contract_evidence
+
+    cumulative = run.get("cost_ledger", {}).get("cumulative", {}) if isinstance(run.get("cost_ledger"), dict) else {}
+    cost_usd = float(cumulative.get("usd") or 0.0) if isinstance(cumulative, dict) else 0.0
+    contract_evidence = build_turn_contract_evidence(
+        contract,
+        agents=[str(agent) for agent in last_turn.get("agents") or []],
+        rounds_used=int(last_turn.get("agent_parallel_rounds") or 0),
+        consensus=bool(last_turn.get("consensus_mode")),
+        latency_ms=int(last_turn.get("latency_ms") or 0),
+        cost_usd=cost_usd,
+        route_regrets=regrets,
+    )
     # HS1-1 — execute rows are where Oracle-derived tags actually land:
     # verdicts arrive after the plan turn closed, so the turn row rarely sees
     # them (2026-07 ledger audit: 195/197 turn rows had final_verdict null).
@@ -423,7 +449,7 @@ def _build_execute_outcome_record(
         "task_kind": str(contract.get("task_kind") or ""),
         "risk": str(contract.get("risk") or ""),
         "execute_intent": bool(contract.get("execute_intent")),
-        "route_regret_signals": list(regrets),
+        **contract_evidence,
     }
     from agent_lab.autonomy_ladder import infer_effective_autonomy_level
     from agent_lab.human_inbox import pending_inbox_items

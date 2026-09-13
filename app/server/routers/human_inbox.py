@@ -130,14 +130,17 @@ def resolve_session_inbox_item(
 
             run = read_run_meta(folder)
             goal = str(run.get("goal") or run.get("topic") or folder.name)
-            mission = MissionApplication(folder, goal).resolve_inbox_item(
-                item_id,
-                status=status,
-                selected=body.selected,
-                decision=body.decision,
-                note=body.note,
-                expected_version=body.expected_version,
-            )
+            try:
+                mission = MissionApplication(folder, goal).resolve_inbox_item(
+                    item_id,
+                    status=status,
+                    selected=body.selected,
+                    decision=body.decision,
+                    note=body.note,
+                    expected_version=body.expected_version,
+                )
+            except MissionApplicationError as exc:
+                raise HTTPException(status_code=409, detail=f"stale answer: {exc}") from exc
             item = next((row for row in mission.inbox_items if row.get("id") == item_id), None)
             if item is None:
                 raise MissionApplicationError(f"inbox item is missing: {item_id}")

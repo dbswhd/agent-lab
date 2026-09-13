@@ -1243,7 +1243,14 @@ export type IdeationResponse = {
 };
 
 export type IdeationCommandBody = {
-  command: "select" | "combine" | "reject" | "reset" | "condition" | "concept" | "plan";
+  command:
+    | "select"
+    | "combine"
+    | "reject"
+    | "reset"
+    | "condition"
+    | "concept"
+    | "plan";
   option_id?: string;
   parent_ids?: string[];
   new_id?: string;

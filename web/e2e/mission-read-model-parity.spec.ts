@@ -206,7 +206,7 @@ async function installFixture(
   const selectedFixture = fixtureName;
   let answered = false;
   let disconnectPending = mode === "disconnect";
-  await page.route(/^http:\/\/127\.0\.0\.1:4173\/api\//, async (route) => {
+  await page.route(/^http:\/\/127\.0\.0\.1:\d+\/api\//, async (route) => {
     const request = route.request();
     const url = new URL(request.url());
     const key = `${request.method()} ${url.pathname}`;
@@ -482,7 +482,17 @@ async function openSession(page: Page): Promise<void> {
     localStorage.setItem("agent-lab-locale", "ko");
   });
   await page.goto("/");
-  await page.getByRole("button", { name: "Read model parity" }).click();
+  const session = page.getByTestId("session-read-model-session");
+  for (const scope of ["active", "dogfood"] as const) {
+    await page.getByTestId(`session-scope-${scope}`).click();
+    if ((await session.count()) === 0) continue;
+    await session.click();
+    await expect(session).toHaveAttribute("aria-current", "true");
+    return;
+  }
+  throw new Error(
+    "Session fixture was not present in a selectable rail scope: read-model-session",
+  );
 }
 
 test("browser API contract covers approval, question, pause, repair, reconnect, and merge/oracle states", async ({

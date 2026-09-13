@@ -48,7 +48,7 @@ async function mockPlanApprovalApi(
   const hasAction = options.hasAction ?? true;
   const blockingObjection = options.blockingObjection ?? false;
   const question = () => questionPending;
-  await page.route(/^http:\/\/127\.0\.0\.1:4173\/api\//, async (route) => {
+  await page.route(/^http:\/\/127\.0\.0\.1:\d+\/api\//, async (route) => {
     const request = route.request();
     const url = new URL(request.url());
     const key = `${request.method()} ${url.pathname}`;
@@ -261,8 +261,7 @@ async function mockPlanApprovalApi(
       return;
     }
     if (
-      url.pathname ===
-        "/api/sessions/plan-review/inbox/question-1/resolve" &&
+      url.pathname === "/api/sessions/plan-review/inbox/question-1/resolve" &&
       request.method() === "POST"
     ) {
       requests.push(key);
@@ -357,9 +356,21 @@ async function initializePlanReview(page: Page) {
   });
 }
 
-async function openPlanReview(page: Page) {
-  await page.getByRole("button", { name: "Plan approval review" }).click();
-  await expect(page.locator(".plan-approval-strip")).toBeVisible();
+async function openPlanReview(page: Page, expectPlanStrip = true) {
+  const session = page.getByTestId("session-plan-review");
+  for (const scope of ["active", "dogfood"] as const) {
+    await page.getByTestId(`session-scope-${scope}`).click();
+    if ((await session.count()) === 0) continue;
+    await session.click();
+    await expect(session).toHaveAttribute("aria-current", "true");
+    if (expectPlanStrip) {
+      await expect(page.locator(".plan-approval-strip")).toBeVisible();
+    }
+    return;
+  }
+  throw new Error(
+    "Session fixture was not present in a selectable rail scope: plan-review",
+  );
 }
 
 test("plan review is one decision surface and approval starts dry-run", async ({
@@ -430,7 +441,7 @@ test("question surface keeps options, freeform fallback, and submit state togeth
     },
   );
   await page.goto("/");
-  await page.getByRole("button", { name: "Plan approval review" }).click();
+  await openPlanReview(page, false);
 
   const question = page.locator(".human-inbox--composer");
   await page.setViewportSize({ width: 1440, height: 900 });
@@ -479,9 +490,11 @@ test("question surface keeps options, freeform fallback, and submit state togeth
   await expect(question.locator("textarea")).toHaveValue("");
 
   await question.getByRole("button", { name: "제출" }).click();
-  await expect.poll(() => resolveBodies.at(-1)).toEqual({
-    selected: ["staged"],
-  });
+  await expect
+    .poll(() => resolveBodies.at(-1))
+    .toEqual({
+      selected: ["staged"],
+    });
   await expect(question.locator("textarea")).toHaveAttribute(
     "placeholder",
     "기타 — 직접 입력…",
@@ -562,12 +575,8 @@ test("dry-run failure preserves the approval decision and explains recovery", as
   await expect(page.locator(".work-surface--alert")).toContainText(
     "Plan 승인은 유지되었습니다.",
   );
-  await page
-    .getByRole("button", { name: "dry-run 다시 시도" })
-    .click();
+  await page.getByRole("button", { name: "dry-run 다시 시도" }).click();
   await expect
-    .poll(() =>
-      requests.filter((entry) => entry.includes("/execute/dry-run")),
-    )
+    .poll(() => requests.filter((entry) => entry.includes("/execute/dry-run")))
     .toHaveLength(2);
 });

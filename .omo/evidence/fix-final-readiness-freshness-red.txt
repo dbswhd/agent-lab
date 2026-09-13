@@ -1,0 +1,14 @@
+clean_checkout=/tmp/agent-lab-readiness-red.ppEw68
+exit=1
+Traceback (most recent call last):
+  File "/private/tmp/agent-lab-readiness-red.ppEw68/scripts/dogfood_readiness_report.py", line 43, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "/private/tmp/agent-lab-readiness-red.ppEw68/scripts/dogfood_readiness_report.py", line 30, in main
+    packet = build_readiness_packet(load_manifest(args.manifest))
+                                    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/private/tmp/agent-lab-readiness-red.ppEw68/scripts/dogfood_readiness_manifest.py", line 226, in load_manifest
+    manifest = ReadinessManifest.model_validate_json(path.read_text(encoding="utf-8"))
+                                                     ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/lib/python3.13/pathlib/_local.py", line 546, in read_text
+    return PathBase.read_text(self, encoding, errors, newline)

@@ -334,7 +334,10 @@ def test_fast_bucket_collection_budget():
     # (test_artifact_gate_no_bypass.py) — AST scan proving no script writes
     # verification_artifacts / needs_artifact_review, plus allowlist staleness.
     # 2026-09-13: raised 3720 -> 3721 for the real-server ideation journey test.
-    assert count <= 3721, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-09-14: raised 3721 -> 3738 merging codex/ux-flow-alignment (Decision Queue
+    # lifecycle + shadow routing promotion gates). test-fast still runs in ~42s,
+    # inside the ~1-2 min budget this ratchet protects.
+    assert count <= 3738, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

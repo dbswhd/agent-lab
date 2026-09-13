@@ -1,0 +1,3 @@
+.venv/bin/python scripts/smoke_room.py
+OK: 38 regression baseline(s) in /Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/sessions/_regression
+OK: 3 example mission(s) in /Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/sessions/_examples

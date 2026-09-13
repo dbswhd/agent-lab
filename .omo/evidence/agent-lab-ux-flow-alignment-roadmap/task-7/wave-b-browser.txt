@@ -1,0 +1,19 @@
+[1A[2K[2m[WebServer] [22m(node:46165) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[2m[WebServer] [22m(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+Running 4 tests using 1 worker
+
+[1A[2K(node:46171) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:46171) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[1/4] e2e/wave-b-journey.spec.ts:450:1 › plan reject journey sends reject request and enters refine phase
+[1A[2K[2/4] e2e/wave-b-journey.spec.ts:494:1 › diff approve journey resolves pending execution
+[1A[2K[3/4] e2e/wave-b-journey.spec.ts:518:1 › Oracle repair journey re-verifies failed execution
+[1A[2K[4/4] e2e/wave-b-journey.spec.ts:542:1 › human resume journey answers inbox question
+[1A[2K  4 passed (4.5s)

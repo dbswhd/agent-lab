@@ -2,7 +2,7 @@
 
 > **작성:** 2026-07-08 · **갱신:** 2026-09-13 (idea lane 운영 경로·실서버 E2E 연결) · **역할:** "오늘/이번 주/다음/동결"을 한 곳에서 판정한다.
 > **이 문서가 아닌 것:** 방향·구조·턴·평가 계약의 SSOT가 아니다. 이 문서는 **상태 포인터**만 갖는다.
-> **Browser acceptance:** Wave B/browser evidence is **accepted** (2026-07-24). Live proof: [wave-b-browser-acceptance-2026-07-24.md](redesign-2026-07/evidence/wave-b-browser-acceptance-2026-07-24.md). Mock/API suites remain regression, not a substitute for that live packet.
+> **Browser acceptance:** Wave B browser contract is green (4/4 with mocked API routes). This does not establish live/operational readiness or a shipped/complete rollout: Task 7 live evidence is `OPEN` (`n=0`), `default_change_authorized=false`, and default routing/authority requires explicit Human GO — [DOGFOOD-READINESS-STATUS.md](DOGFOOD-READINESS-STATUS.md).
 > **ID 규칙:** 소스 namespace를 보존한다 (`N*`, `F*`, `HS*`, `TC-*`, `ABS-P2-*`). bare `P1/P2` 신규 사용 금지.
 > **진실 순서:** runtime 동작은 code+tests, 현재 상태는 NOW, 방향·구조·턴·평가는 아래 담당 문서가 각각 소유한다.
 
@@ -125,7 +125,7 @@ dogfood 시나리오). 둘 다 mock-only, dogfood 무관.
 
 시작: `eval "$(make -s dogfood-track-env)" && make dev`(또는 `make api`) → 라이브 세션 진행 → 중간 gate는 `make dogfood-live-gates-watch SESSION_ID=<id>`(수집 아님, Question/MCP/execute 자동 처리). 세션 후 수집은 `feedback-report` / `dogfood-progress-record` / `dogfood-track` 별도 실행.
 
-Composer preset 제거(WORKFLOW §8.2 **P2**)는 archive roadmap item이다. 현재 Composer는 이미 topic-only이며 picker를 노출하지 않는다. Wave B/browser acceptance gate는 **accepted** (2026-07-24 live packet).
+Composer preset 제거(WORKFLOW §8.2 **P2**)는 archive roadmap item이다. 현재 Composer는 이미 topic-only이며 picker를 노출하지 않는다. Wave B browser contract acceptance는 green이지만, live/operational readiness와 default routing/authority 변경은 별도 Human gate다.
 
 ### 분기 리뷰 묶음 (한 세션에서 일괄 — NORTH-STAR §3.3 분기 행)
 

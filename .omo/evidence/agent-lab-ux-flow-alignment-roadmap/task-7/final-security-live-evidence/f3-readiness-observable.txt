@@ -1,0 +1,7 @@
+F3 readiness packet observable
+commit_sha=5677b7ea881a4bfd3c55fa57c1a97f1296d42df4
+invocation=/Users/yoonjong/Projects/agent-lab/.venv/bin/python -c 'parse checked-in .omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-7/final-security-live-evidence/current-packet/dogfood-readiness.json and print readiness/live/default fields'
+result=readiness=OPEN; live_status=OPEN; live_n=0; default_change_authorized=false
+direct_report_attempt=/Users/yoonjong/Projects/agent-lab/.venv/bin/python scripts/dogfood_readiness_report.py --manifest .omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-7/manifest.json --out-dir /tmp/f3-current-packet
+direct_report_result=FAIL (manifest path is not checked in at this SHA); checked-in generated packet was inspected instead and has the required OPEN/live n=0/default false values.
+cleanup=Playwright web servers on ports 4373 and 4374 exited; lsof found no listeners.

@@ -1,0 +1,5 @@
+Command: git rev-parse HEAD
+611a57da35bf1f55214b43bac19cce33b0acd9f5
+
+Command: git status --short --untracked-files=all
+(clean; no output)

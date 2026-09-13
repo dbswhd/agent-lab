@@ -3,7 +3,7 @@
 > **Status (2026-06-07):** **Shipped** — Phase 0–5 + Track B/C/D. Evidence: `tests/test_mission_loop.py` (32+), `tests/test_context_layers.py`, `tests/test_session_plugin_runtime.py`, `tests/test_mcp_spec_export.py`, `tests/test_run_control.py`, [EXTERNAL-REFS-TRACEABILITY.md](./EXTERNAL-REFS-TRACEABILITY.md) §ML-*.  
 > **North star:** 복잡 작업을 **Discuss ↔ Execute ↔ Verify** 양방향 루프로 자동화. 단순 작업 fast path·3-agent 축소는 **범위 밖**.  
 > **레퍼런스:** [Oh My OpenAgent (omo)](https://github.com/code-yeongyu/oh-my-openagent) — Planning / Orchestration / Workers 3층, `ulw-loop`, Momus plan gate, Atlas conductor, boulder/notepad.  
-> **관련:** [EXTERNAL-REFS-PLAN.md](archive/rfcs/EXTERNAL-REFS-PLAN.md) Layer 1–5 · [EXECUTE-WORKTREE-REFORM.md](archive/rfcs/EXECUTE-WORKTREE-REFORM.md) · [GOAL-LOOP.md](archive/rfcs/GOAL-LOOP.md) · [HUMAN-INBOX.md](./HUMAN-INBOX.md) · [PLUGIN-DISCOVERY.md](./PLUGIN-DISCOVERY.md) · [WORK-TAB-IA.md](archive/legacy/WORK-TAB-IA.md)
+> **관련:** [archive/rfcs/EXTERNAL-REFS-PLAN.md](./archive/rfcs/EXTERNAL-REFS-PLAN.md) Layer 1–5 (history) · [archive/rfcs/EXECUTE-WORKTREE-REFORM.md](./archive/rfcs/EXECUTE-WORKTREE-REFORM.md) (history) · [archive/rfcs/GOAL-LOOP.md](./archive/rfcs/GOAL-LOOP.md) (history) · [HUMAN-INBOX.md](./HUMAN-INBOX.md) · [PLUGIN-DISCOVERY.md](./PLUGIN-DISCOVERY.md) · [developer-agent-console.md](./developer-agent-console.md) (current UI; Work navigation tab 없음)
 
 ---
 
@@ -209,7 +209,7 @@ FSM 첫 상태. **신규 LLM 역할 없음** — 아래 shipped 경로를 Conduc
 | 진입 | 모듈 · API |
 |------|------------|
 | Verified profile 턴 | `verified_loop`: `proposing` → `pending_approval` → Human `approve_verified_loop()` |
-| Goal only | `goal_loop` + `PATCH /api/sessions/{id}/goal` ([GOAL-LOOP.md](archive/rfcs/GOAL-LOOP.md)) |
+| Goal only | `goal_loop` + `PATCH /api/sessions/{id}/goal` ([archive/rfcs/GOAL-LOOP.md](./archive/rfcs/GOAL-LOOP.md), history) |
 | Mission loop 활성 | `mission_loop.enabled: true` — verified approve 직후 또는 env `AGENT_LAB_MISSION_LOOP=1` |
 
 **전이:** `MISSION_DEFINE` → `DISCUSS` when `verified_loop.status == "running"` (또는 goal_loop open + mission enabled).
@@ -226,7 +226,7 @@ Conductor Phase 1 구현 시 **Phase 0는 어댑터만** (`mission_loop.phase` �
 |------|------|
 | 모듈 | `src/agent_lab/mission_loop.py` (신규), `continue_room_round` / `plan_execute` 훅 |
 | 전이 | discuss 종료 조건 → scribe 트리거 → phase 갱신 |
-| UI | Work **Mission bar** — phase · next action · verify (WORK-TAB-IA 5단계와 정렬) |
+| UI | Composer internal `work` lane의 Mission bar — phase · next action · verify (5단계 work phase와 정렬) |
 | API | `GET/PATCH /api/sessions/{id}/mission-loop` (선택) |
 | AC | mock 세션에서 DISCUSS → PLAN_GATE → EXECUTE_QUEUE 전이 pytest |
 
@@ -261,7 +261,7 @@ Conductor Phase 1 구현 시 **Phase 0는 어댑터만** (`mission_loop.phase` �
 | 항목 | 내용 |
 |------|------|
 | 큐 | `## 지금 실행` → `pending_action_indices` dequeue |
-| 격리 | 기존 worktree path ([EXECUTE-WORKTREE-REFORM](archive/rfcs/EXECUTE-WORKTREE-REFORM.md)) |
+| 격리 | 기존 worktree path ([archive/rfcs/EXECUTE-WORKTREE-REFORM.md](./archive/rfcs/EXECUTE-WORKTREE-REFORM.md), history) |
 | L3 | `reverify_merged_execution()` — conductor가 FAIL 시 자동 REPAIR 트리거 |
 | CI | action.verify 기본 템플릿: `make test` / 프로젝트 `AGENT_LAB_VERIFY_CMD` / plan literal |
 | merge 전 | (선택) dry-run 후 verify command in worktree — merge 전 1차 |
@@ -338,7 +338,7 @@ Mission Loop FSM은 Track B/C/D **없이도** 동작. 아래는 갭 #2–#4를 �
 | Claude | `session_plugin_runtime.py` + `mcp_spec_export.py` → allowlist overlay `--mcp-config` |
 | Codex | `codex mcp get --json` → full `-c` transport (stdio + HTTP); inbox MCP merge |
 | Cursor | IDE-inherited inventory hint (`PluginPanel` `cursor-ide-mcp-hint`); inbox MCP via SDK |
-| UI | Settings `PluginPanel` + Work compact strip (`work-plugin-panel`) |
+| UI | Settings `PluginPanel` + Composer internal `work` lane compact strip (`work-plugin-panel`) |
 | Mission | execute/repair prompt injection; `evaluate_plan_gate` soft `mcp_warnings` |
 
 ---
@@ -347,7 +347,7 @@ Mission Loop FSM은 Track B/C/D **없이도** 동작. 아래는 갭 #2–#4를 �
 
 | 항목 | 구현 |
 |------|------|
-| Overview | `MissionOverviewSection` — Inspector + Work tab |
+| Overview | `MissionOverviewSection` — Inspector Overview |
 | Context layers | `context_layers.py`, `PATCH .../context-layers`, `mission_wisdom` / `repo_tree` toggles |
 | Per-dir memory | `repo_tree_context.py` — plan path → ancestor `AGENTS.md` chain (cap 900 chars) |
 | Slim bundle | `should_use_mission_slim_bundle` — DISCUSS / PLAN_GATE / PLAN_REJECT |
@@ -367,7 +367,7 @@ Mission Loop FSM은 Track B/C/D **없이도** 동작. 아래는 갭 #2–#4를 �
 
 ## 8. 기존 Loop 계층과의 관계
 
-[EXTERNAL-REFS-PLAN.md](archive/rfcs/EXTERNAL-REFS-PLAN.md) Layer 1–5는 **유지**. Mission Loop는 **Layer 6 (Mission Orchestration)** 로 층을 묶는다.
+[archive/rfcs/EXTERNAL-REFS-PLAN.md](./archive/rfcs/EXTERNAL-REFS-PLAN.md) Layer 1–5 history는 **유지**. Mission Loop는 **Layer 6 (Mission Orchestration)** 로 층을 묶는다.
 
 ```
 Layer 6: Mission Loop (본 RFC)
@@ -380,9 +380,9 @@ Layer 6: Mission Loop (본 RFC)
 
 ---
 
-## 9. UI 정렬 (Work tab)
+## 9. UI 정렬 (Composer internal `work` lane)
 
-[WORK-TAB-IA.md](archive/legacy/WORK-TAB-IA.md) 5단계 stepper와 Mission phase 매핑:
+[developer-agent-console.md](./developer-agent-console.md)의 현재 console layout에서, Composer internal `work` lane의 5단계 stepper와 Mission phase를 매핑한다. 이는 Work navigation tab이 아니다.
 
 | Work stepper | Mission phase |
 |--------------|---------------|
@@ -392,7 +392,7 @@ Layer 6: Mission Loop (본 RFC)
 | MergeVerify | MERGE_REVIEW, VERIFY, REPAIR |
 | Done | MISSION_DONE |
 
-`resolveWorkPhaseFromMission()` — [`web/src/components/WorkStatusBar.tsx`](../web/src/components/WorkStatusBar.tsx) (호출: `WorkPanel.tsx`).  
+`resolveWorkPhaseFromMission()` — [`web/src/utils/workStatusPhase.ts`](../web/src/utils/workStatusPhase.ts); `WorkToolPanel.tsx`가 `WorkStatusBar.tsx`로 렌더한다.
 `session.run.mission_loop.phase`를 1차 입력으로 FSM stepper 매핑 (**shipped**).
 
 ---
@@ -489,7 +489,7 @@ omo도 **plan 견고 → Atlas 실행** 순. Agent Lab: **Phase 2 Momus-lite →
 | Plugins / MCP | `session_plugin_runtime.py`, `mcp_spec_export.py` |
 | Context | `context_layers.py`, `repo_tree_context.py`, `context_bundle.py` hooks |
 | Cancel | `run_control.py`, `plan_execute.cancel_open_execution`, `cursor_agent._wait_cursor_run` |
-| UI | `MissionOverviewSection.tsx`, `WorkPanel.tsx`, `ContextOverviewPanel.tsx`, `PluginPanel.tsx` |
+| UI | `MissionOverviewSection.tsx`, `WorkToolPanel.tsx`, `ContextOverviewPanel.tsx`, `PluginPanel.tsx` |
 | Tests | `tests/test_mission_loop.py` (+ context, plugin, mcp, run_control, repo_tree) |
 
 ---

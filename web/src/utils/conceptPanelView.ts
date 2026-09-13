@@ -118,7 +118,8 @@ export function buildCandidateRows(
       rejected: rejected.includes(option.id),
       // A candidate we could not parse still has to be readable, not hidden.
       unparsedText: option.parse_error ? String(option.raw ?? "") : null,
-      qualityStatus: option.quality?.status === "ready" ? "ready" : "needs_review",
+      qualityStatus:
+        option.quality?.status === "ready" ? "ready" : "needs_review",
       qualityMessage:
         option.quality?.status === "ready"
           ? null

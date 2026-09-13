@@ -230,9 +230,11 @@ def test_composer_question_inbox_is_separate_from_generic_pending_hint():
     # (c116d8bb) — HumanInboxPanel now always renders the composer variant.
     assert "human-inbox--composer" in inbox
     assert "ComposerEventStack" in _composer_stack_surface()
-    assert "visiblePending.map" in inbox
-    # visiblePending[0] was extracted into a named `lead` variable (c116d8bb).
-    assert "lead.kind" in inbox
+    # The panel now projects one active decision instead of mapping every
+    # pending item (codex/ux-flow-alignment "render one active Inbox decision");
+    # `HumanInboxPanel.test.ts` covers the projection itself.
+    assert "projectInboxDecisionQueue" in inbox
+    assert "inboxQueue" in inbox
 
 
 def test_room_preset_picker_replaces_turn_strategy_ui():

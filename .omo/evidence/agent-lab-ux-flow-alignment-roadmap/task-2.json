@@ -1,0 +1,172 @@
+{
+  "task": "Todo 2 — Wave B stable session navigation independent of classification",
+  "recorded_at_utc": "2026-07-23T17:34:53Z",
+  "commit": "17ef052ecd264d9c99ca9b60b9fe5d4ccca6ec5d",
+  "scope": {
+    "changed_file": "web/e2e/wave-b-journey.spec.ts",
+    "commit_files": ["web/e2e/wave-b-journey.spec.ts"],
+    "implementation": "The mock API route matches URL pathname /api/ instead of the literal http://127.0.0.1:4173 origin. It follows Playwright's isolated PLAYWRIGHT_WEB_PORT base URL and has no reuseExistingServer coupling."
+  },
+  "provenance": {
+    "post_run_snapshot": {
+      "captured_at_utc": "2026-07-23T17:34:53Z",
+      "raw_path": ".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-2-final/raw/profile-flags-fixtures-snapshot.log",
+      "scope": "The original Playwright raw logs do not contain an environment dump. This snapshot was captured in the same worktree after the final runs; fixture-provided flags and fixture session IDs are independently source-extracted in the same raw artifact."
+    },
+    "environment": {
+      "AGENT_LAB_RUN_PROFILE": "<unset>",
+      "AGENT_LAB_MISSION_UI_READ_MODEL": "<unset>",
+      "AGENT_LAB_MISSION_AUTHORITY": "<unset>",
+      "AGENT_LAB_MISSION_AUTHORITY_SESSIONS": "<unset>",
+      "AGENT_LAB_MISSION_DUAL_WRITE": "<unset>",
+      "AGENT_LAB_MISSION_DUAL_WRITE_SESSIONS": "<unset>"
+    },
+    "profile": {
+      "input": "AGENT_LAB_RUN_PROFILE was unset in the captured runner environment.",
+      "repository_default": "balanced when the backend profile resolver receives an empty value.",
+      "default_source_raw_path": ".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-2-final/raw/run-profile-default-source.log",
+      "caveat": "These browser tests run VITE_SKIP_API=1 and fulfill /api/ requests in the Playwright fixture; they do not launch or assert a live backend profile resolver. The balanced default is recorded as repository provenance, not as a browser-test behavior claim."
+    },
+    "flags": {
+      "shell": "The shell value for AGENT_LAB_MISSION_UI_READ_MODEL was unset.",
+      "mocked_health_flags": [
+        {
+          "name": "AGENT_LAB_MISSION_UI_READ_MODEL",
+          "value": "1"
+        }
+      ],
+      "meaning": "The mock GET /api/health/flags response contains exactly this one flag; it is the flag input actually observed by the browser fixture."
+    },
+    "cohort": {
+      "authority_cohort": "N/A — this is a mocked browser fixture, not a live authority-cohort run.",
+      "authority_environment": "Both AGENT_LAB_MISSION_AUTHORITY and AGENT_LAB_MISSION_AUTHORITY_SESSIONS were unset in the captured runner environment.",
+      "authority_cohort_session_ids": []
+    },
+    "fixture_session_ids": [
+      "wave-b-active-plan-reject",
+      "wave-b-plan-reject",
+      "wave-b-diff-approve",
+      "wave-b-oracle-repair",
+      "wave-b-human-resume"
+    ]
+  },
+  "historical_context_not_final_proof": {
+    "baseline": {
+      "command": "cd web && npx playwright test e2e/wave-b-journey.spec.ts --workers=1 --reporter=line",
+      "exit_code": 1,
+      "result": "4 failed at openSession before stable session IDs were added; the earlier record attributed the failure to display-name selection and ASCII Dogfood classification.",
+      "source": "pre-final task-2.json record, retained as historical baseline only"
+    },
+    "failing_first": {
+      "command": "cd web && npx playwright test e2e/wave-b-journey.spec.ts --workers=1 --reporter=line --timeout=5000 -g 'plan reject journey'",
+      "exit_code": 1,
+      "result": "The historical helper switched unconditionally to Dogfood and could not find the Korean-topic Active fixture.",
+      "source": "pre-final task-2.json record, retained as historical red-first context only"
+    },
+    "retained_artifacts": [
+      {
+        "path": ".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-2-post-rework-blocker.md",
+        "meaning": "A 2026-07-23 shared-worktree 3/4 failure caused by concurrent HumanInboxPanel work; it is superseded by the fresh current-HEAD results below."
+      },
+      {
+        "path": ".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-2-final-wave-b-4191.raw.log",
+        "meaning": "Older 4/4 run retained for provenance, not used as current-HEAD proof."
+      },
+      {
+        "path": ".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-2-final-wave-b-4192.raw.log",
+        "meaning": "Older 4/4 run retained for provenance, not used as current-HEAD proof."
+      }
+    ]
+  },
+  "verification": [
+    {
+      "scenario": "Fresh isolated exact Wave B suite",
+      "command": "cd web && PLAYWRIGHT_WEB_PORT=4301 npx playwright test e2e/wave-b-journey.spec.ts --workers=1 --reporter=line",
+      "exit_code": 0,
+      "binary_observable": "4 passed",
+      "raw_log": ".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-2-final/raw/exact-wave-b-4301-rerun.log"
+    },
+    {
+      "scenario": "Fresh isolated repeat-each stability suite",
+      "command": "cd web && PLAYWRIGHT_WEB_PORT=4302 npx playwright test e2e/wave-b-journey.spec.ts --workers=1 --reporter=line --repeat-each=3",
+      "exit_code": 0,
+      "binary_observable": "12 passed",
+      "raw_log": ".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-2-final/raw/repeat-each-3-wave-b-4302.log"
+    },
+    {
+      "scenario": "Relevant classification unit suite",
+      "command": "cd web && npm run test -- --run src/utils/dogfoodSessions.test.ts",
+      "exit_code": 0,
+      "binary_observable": "43 test files and 185 tests passed",
+      "raw_log": ".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-2-final/raw/relevant-unit-dogfood-sessions-rerun.log"
+    },
+    {
+      "scenario": "Web production build",
+      "command": "cd web && npm run build",
+      "exit_code": 0,
+      "binary_observable": "tsc and Vite build completed successfully",
+      "raw_log": ".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-2-final/raw/web-build-rerun.log"
+    }
+  ],
+  "manual_browser_qa": {
+    "scenario": "Korean Active then ASCII Dogfood fixture selection in one real browser journey",
+    "command": "cd web && PLAYWRIGHT_WEB_PORT=4303 npx playwright test e2e/wave-b-journey.spec.ts --workers=1 --reporter=line --trace=on --output=../.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-2-final/manual -g 'plan reject journey'",
+    "exit_code": 0,
+    "binary_observable": "1 passed; both scopes select their exact stable session rows before the plan-approval decision surface is asserted visible.",
+    "raw_log": ".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-2-final/raw/manual-active-dogfood-4303.log",
+    "trace": {
+      "path": ".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-2-final/manual/wave-b-journey-plan-reject-1fb8b-est-and-enters-refine-phase/trace.zip",
+      "sha256": "ba179ff4aa797c10f40d6d365a5878010a62153737aed259bae0b64c85d66a36"
+    },
+    "assertion_events": {
+      "path": ".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-2-final/raw/manual-trace-navigation-assertions.log",
+      "active": "session-wave-b-active-plan-reject has aria-current=true; session-scope-active has aria-selected=true; .plan-approval-strip is visible",
+      "dogfood": "session-wave-b-plan-reject has aria-current=true; session-scope-dogfood has aria-selected=true; .plan-approval-strip is visible"
+    },
+    "screenshots": [
+      {
+        "scope": "Active",
+        "fixture": "Korean-topic wave-b-active-plan-reject",
+        "path": ".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-2-final/screenshots/active-selected-plan-approval.jpeg",
+        "sha256": "cb78d5b0e89f268c0a12afb166db760a0e8218201334b6285f40064a2a695f18",
+        "observed": "Sessions is selected, the Korean fixture row is selected, and the plan-approval surface is rendered."
+      },
+      {
+        "scope": "Dogfood",
+        "fixture": "ASCII wave-b-plan-reject",
+        "path": ".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-2-final/screenshots/dogfood-selected-plan-approval.jpeg",
+        "sha256": "1af506962d7fc2ed326322896c39d2b90bc23f34063a10020dcafd0aae2efa5e",
+        "observed": "Dogfood is selected, the ASCII fixture row is selected, and the same plan-approval surface is rendered."
+      }
+    ]
+  },
+  "adversarial": {
+    "stale_state": "The same browser test selects both a Korean-topic Active fixture and an ASCII Dogfood fixture by stable test ID; it never clicks a display label.",
+    "dirty_worktree": "Commit 17ef052ecd264d9c99ca9b60b9fe5d4ccca6ec5d contains exactly the owned spec. All pre-existing concurrent untracked files remain untouched.",
+    "flaky_tests": "A fresh one-worker isolated-port run passed 4/4 and a separate port's --repeat-each=3 run passed 12/12.",
+    "misleading_success_output": "The manual trace records both exact aria-current assertions and both first decision-surface visibility assertions; screenshots were extracted from that trace and inspected.",
+    "hardcoded_port_or_server_reuse": "The spec change removes the 4173-origin API route matcher. Fresh runs used ports 4301, 4302, and 4303; Playwright config has reuseExistingServer=false.",
+    "applicable_risk": "npm run build reports Vite's >500 kB chunk-size advisory; build exit code is 0 and no production bundle code changed."
+  },
+  "capture_incidents_excluded_from_final_proof": [
+    {
+      "path": ".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-2-final/raw/exact-wave-b-4301.log",
+      "result": "Its test output says 4 passed, but the evidence wrapper then used zsh's read-only status variable and exited 1. The corrected rerun log is final proof."
+    },
+    {
+      "result": "The first unit/build tee paths were resolved from the outer shell and did not create files. Both checks were rerun successfully into the final raw logs above."
+    },
+    {
+      "path": ".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-2-final/raw/cleanup-receipt.log",
+      "result": "Ports were absent, but the diagnostic matched its own shell command as a process. The self-excluding rerun is the cleanup proof."
+    }
+  ],
+  "cleanup": {
+    "server_receipt": {
+      "path": ".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-2-final/raw/cleanup-receipt-rerun.log",
+      "result": "Ports 4301, 4302, and 4303 had no listener and no task-owned Playwright or Vite process remained."
+    },
+    "browser_receipt": "Trace and two extracted 800x500 JPEG screenshots are retained under task-2-final; no browser process was left by the scoped commands.",
+    "temporary_files": "Did not remove .venv or .debug-journal.md because they pre-dated this finalization and ownership could not be proven."
+  }
+}

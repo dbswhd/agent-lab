@@ -1,0 +1,83 @@
+FFF                                                                      [100%]
+=================================== FAILURES ===================================
+_ test_live_pass_rejects_forged_real_oracle_without_evidence_even_when_threshold_allows_it _
+
+tmp_path = PosixPath('/private/var/folders/hf/f3v32pys6dl_nsw9cjjdzhgm0000gn/T/pytest-of-yoonjong/pytest-34/test_live_pass_rejects_forged_0')
+
+    def test_live_pass_rejects_forged_real_oracle_without_evidence_even_when_threshold_allows_it(
+        tmp_path: Path,
+    ) -> None:
+        # Given
+        payload = _forged_live_pass_payload(tmp_path)
+        path = tmp_path / "forged-manifest.json"
+        path.write_text(json.dumps(payload), encoding="utf-8")
+    
+        # When / Then
+>       with pytest.raises(ValueError, match="live PASS requires non-empty Oracle evidence"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+tests/test_dogfood_readiness_report.py:266: Failed
+____ test_packet_keeps_false_success_open_when_manifest_threshold_is_raised ____
+
+tmp_path = PosixPath('/private/var/folders/hf/f3v32pys6dl_nsw9cjjdzhgm0000gn/T/pytest-of-yoonjong/pytest-34/test_packet_keeps_false_succes0')
+
+    def test_packet_keeps_false_success_open_when_manifest_threshold_is_raised(tmp_path: Path) -> None:
+        # Given
+        manifest = ReadinessManifest.model_validate(_forged_live_pass_payload(tmp_path))
+    
+        # When
+        packet = build_readiness_packet(manifest)
+    
+        # Then
+        assert packet["metrics"]["false_success_count"] == 1
+>       assert packet["readiness"] == "OPEN"
+E       AssertionError: assert <GateStatus.PASS: 'PASS'> == 'OPEN'
+E         
+E         - OPEN
+E         + PASS
+
+tests/test_dogfood_readiness_report.py:279: AssertionError
+______ test_live_pass_requires_run_session_and_commit_provenance_binding _______
+
+tmp_path = PosixPath('/private/var/folders/hf/f3v32pys6dl_nsw9cjjdzhgm0000gn/T/pytest-of-yoonjong/pytest-34/test_live_pass_requires_run_se0')
+
+    def test_live_pass_requires_run_session_and_commit_provenance_binding(tmp_path: Path) -> None:
+        # Given
+        path = _write_manifest(tmp_path)
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        live_run = tmp_path / "live-session" / "run.json"
+        _write_live_run(
+            live_run,
+            evidence=["oracle transcript"],
+            checked_paths=["tests/test_example.py"],
+        )
+        payload["evidence"][1] = {
+            "id": "credentialed-live-dogfood",
+            "tier": "live",
+            "status": "PASS",
+            "sample_size": 1,
+            "raw_paths": [str(live_run)],
+        }
+        payload["sessions"].append(
+            {
+                "id": "live-session",
+                "tier": "live",
+                "kind": "success",
+                "run_path": str(live_run),
+            }
+        )
+        _promote_all_gates(payload, raw_path=live_run)
+        path.write_text(json.dumps(payload), encoding="utf-8")
+    
+        # When / Then
+>       with pytest.raises(ValueError, match="live PASS run provenance must bind session and commit"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+tests/test_dogfood_readiness_report.py:311: Failed
+=========================== short test summary info ============================
+FAILED tests/test_dogfood_readiness_report.py::test_live_pass_rejects_forged_real_oracle_without_evidence_even_when_threshold_allows_it
+FAILED tests/test_dogfood_readiness_report.py::test_packet_keeps_false_success_open_when_manifest_threshold_is_raised
+FAILED tests/test_dogfood_readiness_report.py::test_live_pass_requires_run_session_and_commit_provenance_binding
+3 failed in 0.06s

@@ -9,7 +9,7 @@
 
 | Need | Use | Why |
 |------|-----|-----|
-| Daily dev mission with Human gates | **Agent Lab Room** (`fast` / `supervisor` preset) | Discuss → plan.md → approve → worktree → Oracle — all in-session |
+| Daily dev mission with Human gates | **Agent Lab Room** (setting/session room preset; topic-only Composer) | Discuss → plan.md → approve → worktree → Oracle — all in-session |
 | Lightweight clarify + plan FSM | **Room + plan_workflow** | In-app clarifier + peer review (ralplan-*like*, not identical artifacts) |
 | Full GJC skill FSM (deep-interview → ralplan → ultragoal) | **External `gjc` via slash** | Preserved `.gjc/` artifacts, skill-native phases, tmux team |
 | Verify only | **Room execute + Oracle** or **`POST /v1/verify`** | In-session: `AGENT_LAB_ORACLE_LIVE=1` or mock Oracle on merge. External: [VERIFY-API.md](./VERIFY-API.md) + GJC handoff |
@@ -18,9 +18,9 @@
 
 ---
 
-## Work UI pipeline stepper (AL-009)
+## Composer internal `work` lane pipeline stepper (AL-009)
 
-**Tools → Work** shows two rows:
+Composer internal `work` lane shows two rows; it is not a Tools or Workspace navigation tab:
 
 1. **Pipeline** — Interview → Plan → Approve → Goal → Verify (GJC-aligned phases)
 2. **Execute detail** — Plan / Review / Execute / Verify / Done (existing WorkStatusBar)

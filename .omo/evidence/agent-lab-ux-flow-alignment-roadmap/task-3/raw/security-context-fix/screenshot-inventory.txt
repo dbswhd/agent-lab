@@ -1,0 +1,17 @@
+.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3/browser/default-repeat-0-Oracle-FAIL-repairs-through-bounded-re-discuss-retries-before-PASS-repair-final-pass.png
+.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3/browser/default-repeat-0-Oracle-FAIL-repairs-through-bounded-re-discuss-retries-before-PASS-repair-oracle-fail.png
+.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3/browser/default-repeat-0-connected-Human-gated-journey-reaches-PASS-only-with-durable-evidence-happy-final-pass.png
+.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3/browser/default-repeat-0-stale-expected-version-returns-409-without-corrupting-the-resolved-state-single-active-decision-queued.png
+.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3/browser/default-repeat-1-Oracle-FAIL-repairs-through-bounded-re-discuss-retries-before-PASS-repair-final-pass.png
+.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3/browser/default-repeat-1-Oracle-FAIL-repairs-through-bounded-re-discuss-retries-before-PASS-repair-oracle-fail.png
+.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3/browser/default-repeat-1-connected-Human-gated-journey-reaches-PASS-only-with-durable-evidence-happy-final-pass.png
+.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3/browser/default-repeat-1-stale-expected-version-returns-409-without-corrupting-the-resolved-state-single-active-decision-queued.png
+.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3/browser/default-repeat-2-Oracle-FAIL-repairs-through-bounded-re-discuss-retries-before-PASS-repair-final-pass.png
+.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3/browser/default-repeat-2-Oracle-FAIL-repairs-through-bounded-re-discuss-retries-before-PASS-repair-oracle-fail.png
+.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3/browser/default-repeat-2-connected-Human-gated-journey-reaches-PASS-only-with-durable-evidence-happy-final-pass.png
+.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3/browser/default-repeat-2-stale-expected-version-returns-409-without-corrupting-the-resolved-state-single-active-decision-queued.png
+.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3/browser/happy-final-pass.png
+.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3/browser/repair-final-pass.png
+.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3/browser/repair-oracle-fail.png
+.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-3/browser/single-active-decision-queued.png
+nonempty_screenshot_count=16

@@ -232,6 +232,7 @@ export function SessionList({
                     ]
                       .filter(Boolean)
                       .join(" ")}
+                    data-testid={`session-${s.id}`}
                     aria-current={selectedId === s.id ? "true" : undefined}
                     title={needsInput ? "Needs input" : undefined}
                     onClick={() => {

@@ -63,7 +63,9 @@ export function ConceptPanel({ sessionId, reloadKey }: Props) {
         const res = await fetchSessionIdeation(sessionId);
         setState(res.ideation);
         const constraints = res.ideation.brief?.constraints;
-        setConstraintsText(Array.isArray(constraints) ? constraints.join("\n") : "");
+        setConstraintsText(
+          Array.isArray(constraints) ? constraints.join("\n") : "",
+        );
         setConceptText(String(res.ideation.concept?.summary ?? ""));
         setStatus(statusAfterReload(keepStatus));
       } catch (err) {
@@ -148,7 +150,10 @@ export function ConceptPanel({ sessionId, reloadKey }: Props) {
   const onSaveConditions = () =>
     void send({
       command: "condition",
-      constraints: constraintsText.split("\n").map((item) => item.trim()).filter(Boolean),
+      constraints: constraintsText
+        .split("\n")
+        .map((item) => item.trim())
+        .filter(Boolean),
       expected_revision: revision,
       request_id: rid("condition"),
     });
@@ -401,7 +406,9 @@ export function ConceptPanel({ sessionId, reloadKey }: Props) {
               {state.plan_status === "ready" ? "계획 준비됨" : "계획 만들기"}
             </button>
             {state.plan_status === "failed" ? (
-              <p className="concept-panel__error" role="alert">계획 생성에 실패했습니다. 다시 시도하세요.</p>
+              <p className="concept-panel__error" role="alert">
+                계획 생성에 실패했습니다. 다시 시도하세요.
+              </p>
             ) : null}
           </section>
         ) : null}

@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "readiness": "OPEN",
+  "owner": "Agent Lab dogfood operator",
+  "commit_sha": "5677b7ea881a4bfd3c55fa57c1a97f1296d42df4",
+  "window": {
+    "started_at": "2026-07-23T00:00:00Z",
+    "ended_at": "2026-07-24T00:00:00Z"
+  },
+  "flags": {
+    "AGENT_LAB_MOCK_AGENTS": "(unset outside pytest)",
+    "AGENT_LAB_MISSION_AUTHORITY": "(unset)",
+    "AGENT_LAB_MISSION_DUAL_WRITE": "(unset)",
+    "AGENT_LAB_REPO_MAP": "(unset)",
+    "AGENT_LAB_COMPACT_TOOL_OUTPUT": "(unset)"
+  },
+  "cohort_ids": [],
+  "evidence_by_tier": {
+    "mock": {
+      "status": "PASS",
+      "sample_size": 2,
+      "raw_paths": [
+        "sessions/_regression/worktree_merge_ok/run.json",
+        "sessions/_regression/execute_verify_loop/run.json"
+      ]
+    },
+    "browser": {
+      "status": "PASS",
+      "sample_size": 4,
+      "raw_paths": [
+        "docs/evidence/dogfood-readiness/browser-contract.txt"
+      ]
+    },
+    "live": {
+      "status": "OPEN",
+      "sample_size": 0,
+      "raw_paths": []
+    }
+  },
+  "metrics": {
+    "sample_size": 2,
+    "oracle_coverage": 1.0,
+    "false_success_count": 1,
+    "repair_attempts": 1,
+    "repair_chain_sessions": 1,
+    "retry_plateau_sessions": 0,
+    "gate_latency_seconds": {
+      "count": 1,
+      "mean": 3.0,
+      "max": 3.0
+    },
+    "cohort_noncohort_success_gap": null
+  },
+  "operational_gates": [
+    {
+      "id": "F7",
+      "status": "OPEN",
+      "owner": "Agent Lab dogfood operator",
+      "next_gate": "Collect at least 10 F7-instrumented sessions at 70% repo-map coverage and record the Human ON/OFF decision.",
+      "raw_paths": []
+    },
+    {
+      "id": "N4-D3",
+      "status": "OPEN",
+      "owner": "Agent Lab dogfood operator",
+      "next_gate": "Collect at least 10 live outcome rows for every autonomy level, including L2.",
+      "raw_paths": []
+    },
+    {
+      "id": "HS-M5",
+      "status": "OPEN",
+      "owner": "Agent Lab dogfood operator",
+      "next_gate": "Preserve one addressable pattern and one live Human-approved harness_patch merge.",
+      "raw_paths": []
+    }
+  ],
+  "default_change_authorized": false
+}

@@ -346,7 +346,7 @@ def synthesize_session_plan(
         from agent_lab.ideation import stamp_plan_source
         from agent_lab.run.meta import patch_run_meta
 
-        def _mark_plan_ready(run: dict[str, Any]) -> dict[str, Any]:
+        def _mark_plan_ready(run):
             stamp_plan_source(run, plan_md)
             state = dict(run.get("ideation") or {})
             state["plan_status"] = "ready"
@@ -357,7 +357,7 @@ def synthesize_session_plan(
     except Exception as e:
         from agent_lab.run.meta import patch_run_meta
 
-        def _mark_plan_failed(run: dict[str, Any]) -> dict[str, Any]:
+        def _mark_plan_failed(run):
             state = dict(run.get("ideation") or {})
             if state:
                 state["plan_status"] = "failed"

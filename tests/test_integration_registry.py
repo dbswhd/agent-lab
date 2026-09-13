@@ -333,7 +333,8 @@ def test_fast_bucket_collection_budget():
     # 2026-07-30: raised 3700 -> 3720 for the artifact-gate bypass guard
     # (test_artifact_gate_no_bypass.py) — AST scan proving no script writes
     # verification_artifacts / needs_artifact_review, plus allowlist staleness.
-    assert count <= 3720, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-09-13: raised 3720 -> 3721 for the real-server ideation journey test.
+    assert count <= 3721, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

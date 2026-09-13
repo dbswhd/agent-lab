@@ -46,7 +46,7 @@ def format_divergence_options(replies: list[Any]) -> list[dict[str, str]]:
     """
     options: list[dict[str, str]] = []
     for reply in replies:
-        from agent_lab.room.ideation_quality import sanitize_ideation_text
+        from agent_lab.room.context.ideation_quality import sanitize_ideation_text
 
         approach, _removed = sanitize_ideation_text(_reply_field(reply, "content", "text", "message"))
         approach = approach.strip()
@@ -122,7 +122,7 @@ def parse_idea_option(text: str, *, option_id: str, agent: str = "") -> dict[str
     present the raw reply is preserved together with ``parse_error`` — a failed
     parse must never silently drop a candidate.
     """
-    from agent_lab.room.ideation_quality import contract_quality, sanitize_ideation_text, unverified_repo_claims
+    from agent_lab.room.context.ideation_quality import contract_quality, sanitize_ideation_text, unverified_repo_claims
 
     raw_body = (text or "").strip()
     body, removed_meta = sanitize_ideation_text(raw_body)

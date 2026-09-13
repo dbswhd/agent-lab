@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from agent_lab.divergence import parse_idea_option
-from agent_lab.room.ideation_quality import (
+from agent_lab.room.context.ideation_quality import (
     IDEATION_OUTPUT_CONTRACT,
     ideation_synthesis_block,
     option_is_synthesis_ready,

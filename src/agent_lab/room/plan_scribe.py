@@ -84,7 +84,7 @@ def synthesize_plan(
     enrichment = build_scribe_enrichment(run_meta, messages)
     if enrichment.strip():
         user = f"{user}\n\n---\n\n{enrichment.strip()}"
-    from agent_lab.room.ideation_quality import ideation_synthesis_block
+    from agent_lab.room.context.ideation_quality import ideation_synthesis_block
 
     ideation_block = ideation_synthesis_block(run_meta)
     if ideation_block.strip():

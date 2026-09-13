@@ -130,9 +130,11 @@ def ideation_synthesis_block(run_meta: Mapping[str, Any] | None) -> str:
     ]
     if selected:
         quality = selected.get("quality")
-        ready = option_is_synthesis_ready(selected)
-        lines.append("selected_option_status: ready" if ready else "selected_option_status: blocked_needs_review")
-        if ready:
+        selected_ready = option_is_synthesis_ready(selected)
+        lines.append(
+            "selected_option_status: ready" if selected_ready else "selected_option_status: blocked_needs_review"
+        )
+        if selected_ready:
             lines.append("selected_option:")
             for name in IDEATION_REQUIRED_FIELDS:
                 value = str(selected.get(name) or "").strip()

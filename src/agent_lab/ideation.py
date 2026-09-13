@@ -433,6 +433,12 @@ def _normalize_option(option: Mapping[str, Any], index: int) -> dict[str, Any]:
         normalized["raw"] = str(option.get("raw"))
     if option.get("parse_error"):
         normalized["parse_error"] = str(option.get("parse_error"))
+    quality = option.get("quality")
+    if isinstance(quality, Mapping):
+        normalized["quality"] = {str(k): _deep_copy(v) for k, v in quality.items()}
+    meta_removed = option.get("meta_removed")
+    if isinstance(meta_removed, list) and meta_removed:
+        normalized["meta_removed"] = [str(item) for item in meta_removed]
     return normalized
 
 

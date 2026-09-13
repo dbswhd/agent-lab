@@ -572,7 +572,7 @@ def uses_execute_history_routing(run: Mapping[str, Any] | None) -> bool:
 # than in the router — means the idempotency and staleness rules are the same
 # whether they are reached over HTTP or from a test.
 
-IDEATION_COMMANDS = ("select", "combine", "reject", "reset")
+IDEATION_COMMANDS = ("select", "combine", "reject", "reset", "condition", "concept", "plan")
 
 _LAST_REQUEST_KEY = "last_request_id"
 
@@ -621,6 +621,8 @@ def apply_ideation_command(
     reason: str = "",
     expected_revision: int | None = None,
     request_id: str | None = None,
+    constraints: Sequence[str] | None = None,
+    concept: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Run one user command against the ideation state.
 
@@ -650,6 +652,10 @@ def apply_ideation_command(
             raise IdeationCommandError("combine requires parent_ids")
         if not combined_id:
             combined_id = "opt-combined-" + "-".join(parents)[:48]
+    if verb == "condition" and constraints is None:
+        raise IdeationCommandError("condition requires constraints")
+    if verb == "concept" and not concept:
+        raise IdeationCommandError("concept requires non-empty concept")
 
     # 1. A retried request is a duplicate, whatever the revision says.
     if request_id and str(state.get(_LAST_REQUEST_KEY) or "") == str(request_id):
@@ -665,12 +671,21 @@ def apply_ideation_command(
         "combine": combine_options(parents, new_id=combined_id, title=title, reason=reason),
         "reject": reject_option(option, reason=reason),
         "reset": back_to_explore(reason=reason),
+        "condition": change_condition(constraints=constraints, reason=reason),
+        "concept": set_concept(concept or {}),
+        "plan": enter_plan_stage(),
     }
 
     def _with_request_id(inner: Mutator) -> Mutator:
         def _apply(current: dict[str, Any]) -> dict[str, Any]:
             result = inner(current)
             target = result if isinstance(result, dict) else current
+            if verb == "plan":
+                target["plan_status"] = "pending"
+            elif verb in ("condition", "concept", "select", "combine", "reset"):
+                if target.get("stage") == STAGE_PLAN:
+                    target["stage"] = STAGE_SHAPE
+                target["plan_status"] = "stale" if target.get("plan_source_hash") else "missing"
             target[_LAST_REQUEST_KEY] = str(request_id) if request_id else None
             return target
 

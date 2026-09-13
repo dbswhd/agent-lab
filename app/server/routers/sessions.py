@@ -192,7 +192,7 @@ def post_session_goal_check(session_id: str) -> dict[str, Any]:
 
 
 class IdeationPatchRequest(BaseModel):
-    command: Literal["select", "combine", "reject", "reset"]
+    command: Literal["select", "combine", "reject", "reset", "condition", "concept", "plan"]
     option_id: str = ""
     parent_ids: list[str] = Field(default_factory=list)
     new_id: str = ""
@@ -200,6 +200,8 @@ class IdeationPatchRequest(BaseModel):
     reason: str = ""
     expected_revision: int | None = None
     request_id: str | None = None
+    constraints: list[str] | None = None
+    concept: dict[str, str] | None = None
 
 
 def _ideation_state_or_404(folder) -> dict[str, Any]:
@@ -278,6 +280,8 @@ def patch_session_ideation(
                 reason=body.reason,
                 expected_revision=body.expected_revision,
                 request_id=body.request_id,
+                constraints=body.constraints,
+                concept=body.concept,
             )
         )
         return run

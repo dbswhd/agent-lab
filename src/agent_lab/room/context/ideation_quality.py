@@ -76,6 +76,13 @@ def unverified_repo_claims(text: str) -> list[str]:
         line = raw.strip()
         if not line or _REPO_EVIDENCE_REF.search(line):
             continue
+        # A Scribe plan legitimately proposes a file location (for example
+        # ``어디서: app/notify.py``).  A path alone is not a repository claim;
+        # only treat it as one when the surrounding sentence asserts that the
+        # file already exists or is implemented.
+        if re.search(r"(?:^|\s)(?:src|app|tests|docs|scripts)/[\w./_-]+", line):
+            if not re.search(r"(?:있|존재|구현|완료|동작|구축|확인)", line, re.I):
+                continue
         if any(pattern.search(line) for pattern in _REPO_CLAIM_PATTERNS):
             claims.append(line[:240])
     return claims
@@ -104,8 +111,40 @@ def option_is_synthesis_ready(option: Mapping[str, Any]) -> bool:
     """Only fully shaped, evidence-safe options may feed final plan synthesis."""
     quality = option.get("quality")
     if isinstance(quality, Mapping):
-        return str(quality.get("status") or "") == "ready"
-    return all(str(option.get(name) or "").strip() for name in IDEATION_REQUIRED_FIELDS)
+        if str(quality.get("status") or "") != "ready":
+            return False
+        if quality.get("missing_fields") or quality.get("unverified_repo_claims"):
+            return False
+    if not all(str(option.get(name) or "").strip() for name in IDEATION_REQUIRED_FIELDS):
+        return False
+    # Older persisted candidates may predate the explicit quality record.  Do
+    # not let that legacy shape bypass the same repository-claim boundary used
+    # by newly parsed candidates.
+    if not isinstance(quality, Mapping):
+        text = "\n".join(str(option.get(name) or "") for name in IDEATION_REQUIRED_FIELDS)
+        if unverified_repo_claims(text):
+            return False
+    return True
+
+
+def synthesis_quality(option: Mapping[str, Any] | None) -> dict[str, Any]:
+    """Return one conservative quality record for UI, export, and Scribe."""
+    if not isinstance(option, Mapping):
+        return {
+            "contract": IDEATION_OUTPUT_CONTRACT,
+            "status": "needs_review",
+            "missing_fields": list(IDEATION_REQUIRED_FIELDS),
+            "unverified_repo_claims": [],
+        }
+    quality = option.get("quality")
+    missing = [name for name in IDEATION_REQUIRED_FIELDS if not str(option.get(name) or "").strip()]
+    claims = list(quality.get("unverified_repo_claims") or []) if isinstance(quality, Mapping) else []
+    return {
+        "contract": IDEATION_OUTPUT_CONTRACT,
+        "status": "ready" if option_is_synthesis_ready(option) else "needs_review",
+        "missing_fields": missing,
+        "unverified_repo_claims": claims,
+    }
 
 
 def ideation_synthesis_block(run_meta: Mapping[str, Any] | None) -> str:
@@ -119,6 +158,22 @@ def ideation_synthesis_block(run_meta: Mapping[str, Any] | None) -> str:
     selection = state.get("selection") if isinstance(state.get("selection"), Mapping) else None
     selected_id = str((selection or {}).get("option_id") or "")
     selected = next((option for option in options if str(option.get("id") or "") == selected_id), None)
+    if selected is None and selection and selection.get("parent_ids"):
+        parents = [option for option in options if str(option.get("id") or "") in selection.get("parent_ids", [])]
+        if parents:
+            selected = {
+                "id": selected_id,
+                "title": str(selection.get("title") or " + ".join(str(o.get("title") or o.get("id")) for o in parents)),
+                **{
+                    name: "\n".join(str(o.get(name) or "").strip() for o in parents if str(o.get(name) or "").strip())
+                    for name in IDEATION_REQUIRED_FIELDS
+                    if name != "title"
+                },
+                "quality": {
+                    "status": "needs_review",
+                    "unverified_repo_claims": ["조합한 후보의 채택 요소를 사용자 확인이 필요합니다."],
+                },
+            }
     ready = [option for option in options if option_is_synthesis_ready(option)]
     lines = [
         "Idea-lane synthesis contract:",

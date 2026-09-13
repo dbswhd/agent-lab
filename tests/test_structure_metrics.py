@@ -45,14 +45,14 @@ def test_f9_hot_path_ts_caps_in_baseline() -> None:
     by_path = {row["path"]: row["lines"] for row in baseline["hot_path_ts_files"]}
     assert by_path == {
         "web/src/components/RoomChat.tsx": 9,
-        "web/src/components/RoomChatView.tsx": 333,
+        "web/src/components/RoomChatView.tsx": 336,
         "web/src/hooks/useRoomChat.ts": 12,
         "web/src/hooks/useRoomChatBootstrap.ts": 484,
-        # 2026-07-30: 741 -> 738 (prettier reflow) · 418 -> 422 (workspacePath
-        # pass-through restoring the Open in Cursor action). No new logic in the
-        # shell — both moves are mechanical.
-        "web/src/hooks/useRoomChatInteractions.ts": 738,
-        "web/src/hooks/useRoomChatPresentation.ts": 422,
+        # 2026-09-13: idea-lane opt-in and composer/presentation wiring added
+        # three small pass-through surfaces; the growth is intentional and
+        # remains pinned here to catch unrelated shell expansion.
+        "web/src/hooks/useRoomChatInteractions.ts": 747,
+        "web/src/hooks/useRoomChatPresentation.ts": 426,
     }
 
 

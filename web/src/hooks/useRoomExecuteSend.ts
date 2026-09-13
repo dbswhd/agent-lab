@@ -74,6 +74,7 @@ export type RoomExecuteSendOptions = {
   roomPreset: string | null;
   researchMode: boolean;
   workspaceId: string;
+  ideationOptIn: boolean;
   workspacePath: string | null;
   agentCapabilities: AgentCapabilitiesMap;
   bootstrapAgentThreadBindings?: AgentThreadBindings | null;
@@ -149,6 +150,7 @@ export function useRoomExecuteSend(options: RoomExecuteSendOptions): {
     roomPreset,
     researchMode,
     workspaceId,
+    ideationOptIn,
     workspacePath,
     agentCapabilities,
     bootstrapAgentThreadBindings,
@@ -310,6 +312,7 @@ export function useRoomExecuteSend(options: RoomExecuteSendOptions): {
           turnProfile: TOPIC_ONLY_COMPOSER ? undefined : effectiveProfile,
           researchMode,
           workspaceId: sessionId ? undefined : workspaceId,
+          ideation: !sessionId && ideationOptIn,
           workspacePath:
             sessionId || workspaceId !== CUSTOM_WORKSPACE_ID
               ? undefined

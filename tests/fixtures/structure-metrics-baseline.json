@@ -103,7 +103,7 @@
     },
     {
       "path": "web/src/components/RoomChatView.tsx",
-      "lines": 333
+      "lines": 336
     },
     {
       "path": "web/src/hooks/useRoomChat.ts",
@@ -115,11 +115,11 @@
     },
     {
       "path": "web/src/hooks/useRoomChatInteractions.ts",
-      "lines": 738
+      "lines": 747
     },
     {
       "path": "web/src/hooks/useRoomChatPresentation.ts",
-      "lines": 422
+      "lines": 426
     }
   ],
   "f11_run_meta_dict_signatures": 0,

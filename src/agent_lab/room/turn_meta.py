@@ -333,10 +333,38 @@ def synthesize_session_plan(
         on_event("scribe_start", {})
     try:
         plan_md = synthesize_plan(topic, messages, run_meta=_read_run_meta(folder))
+        # The Scribe is a provider too.  Apply the same evidence boundary to
+        # its final document so an unsupported repository fact cannot become a
+        # ready plan merely because it appeared after synthesis.
+        from agent_lab.room.context.ideation_quality import unverified_repo_claims
+
+        if unverified_repo_claims(plan_md):
+            raise RuntimeError("plan contains unverified repository claims")
         _emit_plan_actions_validation(plan_md, on_event)
         if on_event:
             on_event("scribe_done", {"chars": len(plan_md)})
+        from agent_lab.ideation import stamp_plan_source
+        from agent_lab.run.meta import patch_run_meta
+
+        def _mark_plan_ready(run: Any) -> Any:
+            stamp_plan_source(run, plan_md)
+            state = dict(run.get("ideation") or {})
+            state["plan_status"] = "ready"
+            run["ideation"] = state
+            return run
+
+        patch_run_meta(folder, _mark_plan_ready)
     except Exception as e:
+        from agent_lab.run.meta import patch_run_meta
+
+        def _mark_plan_failed(run: Any) -> Any:
+            state = dict(run.get("ideation") or {})
+            if state:
+                state["plan_status"] = "failed"
+                run["ideation"] = state
+            return run
+
+        patch_run_meta(folder, _mark_plan_failed)
         if on_event:
             on_event("scribe_error", {"message": str(e)})
         raise

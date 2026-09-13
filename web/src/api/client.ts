@@ -1237,12 +1237,13 @@ export type IdeationResponse = {
   revision: number;
   stage: "explore" | "shape" | "plan";
   plan_stale: boolean;
+  plan_status?: "missing" | "pending" | "ready" | "failed" | "stale";
   applied?: boolean;
   idempotent?: boolean;
 };
 
 export type IdeationCommandBody = {
-  command: "select" | "combine" | "reject" | "reset";
+  command: "select" | "combine" | "reject" | "reset" | "condition" | "concept" | "plan";
   option_id?: string;
   parent_ids?: string[];
   new_id?: string;
@@ -1250,6 +1251,8 @@ export type IdeationCommandBody = {
   reason?: string;
   expected_revision?: number | null;
   request_id?: string | null;
+  constraints?: string[];
+  concept?: Record<string, string>;
 };
 
 /** `apiJson` collapses failures to a message; the panel needs the 409 code
@@ -1913,6 +1916,8 @@ export type RunRoomOptions = {
   researchMode?: boolean;
   /** Session start workspace preset (new sessions only). */
   workspaceId?: string;
+  /** Explicitly start the idea lane for a new session. */
+  ideation?: boolean;
   /** User-picked folder when workspaceId is custom (new sessions only). */
   workspacePath?: string;
   /** Per-agent cwd/tools profile (run.json agent_capabilities). */
@@ -2060,6 +2065,7 @@ export async function runRoom(
     form.append("room_models", JSON.stringify(opts.roomModels));
   }
   form.append("workspace_id", opts?.workspaceId ?? "agent-lab");
+  if (!opts?.sessionId && opts?.ideation) form.append("ideation", "true");
   if (opts?.workspacePath?.trim()) {
     form.append("workspace_path", opts.workspacePath.trim());
   }

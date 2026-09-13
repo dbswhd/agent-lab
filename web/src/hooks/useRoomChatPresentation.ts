@@ -27,6 +27,8 @@ export function useRoomChatPresentation(ctx: Ctx) {
   const {
     isNew,
     selected,
+    ideationOptIn,
+    setIdeationOptIn,
     inboxReloadKey,
     tweaks,
     composerPlanStale,
@@ -358,6 +360,8 @@ export function useRoomChatPresentation(ctx: Ctx) {
     readiness,
     healthAgents,
     selected,
+    ideationOptIn,
+    setIdeationOptIn,
     clarifierQuestions,
     clarifierInterview,
     planWorkflowActive,

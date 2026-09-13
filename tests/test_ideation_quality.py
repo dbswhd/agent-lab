@@ -83,6 +83,18 @@ def test_unverified_repo_claim_makes_option_needs_review() -> None:
     assert not option_is_synthesis_ready(option)
 
 
+def test_legacy_option_without_quality_still_checks_repository_claims() -> None:
+    option = {
+        "title": "제안",
+        "principle": "현재 레포 src/parser.py에 완성된 파서가 구현되어 있다",
+        "usage": "검토",
+        "difference": "근거를 남긴다",
+        "tradeoff": "느리다",
+        "first_experiment": "파일 한 개를 비교한다",
+    }
+    assert not option_is_synthesis_ready(option)
+
+
 def test_synthesis_block_exposes_selected_option_and_safety_boundary() -> None:
     run = {
         "ideation": {

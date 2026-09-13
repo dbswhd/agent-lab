@@ -58,7 +58,11 @@ def _pending_orchestration_drift_inbox(run: RunStateLike) -> bool:
     return False
 
 
-def _action_indices_from_plan_md(plan_md: str) -> list[int]:
+def _action_indices_from_plan_md(plan_md: str, folder: Path | None = None) -> list[int]:
+    if folder is not None:
+        from agent_lab.plan.artifact import plan_action_indices_for
+
+        return plan_action_indices_for(folder, plan_md or "")
     from agent_lab.plan.actions import parse_plan_actions
 
     return [a.index for a in parse_plan_actions(plan_md or "") if a.executable]
@@ -90,7 +94,7 @@ def _apply_mission_execute_queue(run: dict[str, Any], folder: Path) -> tuple[dic
 
     plan_path = folder / "plan.md"
     plan_md = plan_path.read_text(encoding="utf-8") if plan_path.is_file() else ""
-    indices = _action_indices_from_plan_md(plan_md)
+    indices = _action_indices_from_plan_md(plan_md, folder)
 
     ml["phase"] = "EXECUTE_QUEUE"
     ml["pending_action_indices"] = indices

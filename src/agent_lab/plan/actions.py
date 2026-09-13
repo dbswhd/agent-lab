@@ -104,6 +104,29 @@ class PlanAction:
     def action_id(self) -> str:
         return f"plan-action-{self.kind}-{self.index}"
 
+    @classmethod
+    def from_dict(cls, row: dict[str, Any]) -> PlanAction:
+        """Rebuild from ``to_dict()`` output — lets the typed plan artifact round-trip.
+
+        Derived keys (``expected_paths`` and friends) are recomputed from the stored
+        fields rather than trusted, so a hand-edited artifact cannot smuggle in paths
+        the plan text does not actually mention.
+        """
+        kind = row.get("kind")
+        return cls(
+            index=int(row.get("index") or 0),
+            what=str(row.get("what") or ""),
+            where=str(row.get("where") or ""),
+            verify=str(row.get("verify") or ""),
+            refs=tuple(str(r) for r in (row.get("refs") or [])),
+            raw=str(row.get("raw") or ""),
+            recommended=bool(row.get("recommended")),
+            kind=kind if kind in ("now", "roadmap", "legacy") else "legacy",  # type: ignore[arg-type]
+            executable=bool(row.get("executable")),
+            summary=str(row.get("summary") or ""),
+            isolation=str(row.get("isolation") or "auto"),
+        )
+
 
 def _section_body(plan_md: str, header: re.Pattern[str]) -> str:
     text = plan_md or ""

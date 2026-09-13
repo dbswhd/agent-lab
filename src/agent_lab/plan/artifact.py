@@ -217,8 +217,21 @@ def refresh_plan_artifact(folder: Path, plan_md: str, *, source_relpath: str = "
     return artifact
 
 
-def plan_artifact_for(folder: Path, plan_md: str, *, source_relpath: str = "plan.md") -> PlanArtifact:
+def plan_artifact_for(
+    folder: Path,
+    plan_md: str,
+    *,
+    source_relpath: str = "plan.md",
+    persist: bool = True,
+) -> PlanArtifact:
     """Typed artifact for the current plan, rebuilding transparently when stale.
+
+    The artifact is strictly derived from ``plan.md`` and keyed by its content hash, so
+    a stale copy can never be served: a hash mismatch rebuilds. ``persist`` also
+    re-writes the healed copy, which matters because several plan writers bypass
+    ``write_session_plan_md`` (``room/turn_meta.py``, ``plan/advance.py``,
+    ``session/__init__.py``, the trading lane) and would otherwise leave the on-disk
+    artifact permanently behind.
 
     Backward compatible: sessions written before this artifact existed simply get one
     built on demand, so no migration is required.
@@ -228,7 +241,24 @@ def plan_artifact_for(folder: Path, plan_md: str, *, source_relpath: str = "plan
     stored = read_plan_artifact(folder)
     if stored is not None and stored.plan_hash == plan_content_hash(plan_md or ""):
         return stored
+    if persist:
+        return refresh_plan_artifact(folder, plan_md, source_relpath=source_relpath)
     return build_plan_artifact(plan_md, source_relpath=source_relpath)
+
+
+def plan_actions_for(folder: Path, plan_md: str, *, executable_only: bool = True) -> list[dict[str, Any]]:
+    """Canonical action list for a session — the execution layer's read path.
+
+    Folder-scoped callers should use this instead of re-running ``parse_plan_actions``
+    over prose, so the typed artifact is what actually drives execution.
+    """
+    artifact = plan_artifact_for(folder, plan_md)
+    return list(artifact.executable_actions if executable_only else artifact.actions)
+
+
+def plan_action_indices_for(folder: Path, plan_md: str) -> list[int]:
+    """Executable action indices for the execute queue."""
+    return [int(row["index"]) for row in plan_actions_for(folder, plan_md) if row.get("index") is not None]
 
 
 def plan_execution_blocker(folder: Path, plan_md: str) -> str | None:
@@ -296,6 +326,8 @@ __all__ = [
     "PlanDiagnostic",
     "build_plan_artifact",
     "diagnose_plan",
+    "plan_action_indices_for",
+    "plan_actions_for",
     "plan_artifact_for",
     "plan_artifact_path",
     "plan_artifact_public",

@@ -337,7 +337,12 @@ def test_fast_bucket_collection_budget():
     # 2026-09-14: raised 3721 -> 3738 merging codex/ux-flow-alignment (Decision Queue
     # lifecycle + shadow routing promotion gates). test-fast still runs in ~42s,
     # inside the ~1-2 min budget this ratchet protects.
-    assert count <= 3738, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-27: raised 3700 -> 3714 for the P1 stage-3 artifact read path
+    # (test_plan_artifact_read_path.py) — PlanAction dict round-trip, stale/corrupt
+    # artifact healing, gate parity with and without a folder, and the plan.md
+    # writer tripwire.
+    # 2026-09-14: 3738 -> 3752 merging #70 (P1 stage-3 artifact read path).
+    assert count <= 3752, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

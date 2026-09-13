@@ -38,7 +38,10 @@ _REPO_CLAIM_PATTERNS = (
     re.compile(r"(?:^|\s)/Users/[\w./~ _-]+"),
 )
 
-_EVIDENCE_MARKERS = ("ref:", "근거:", "출처:", "확인 경로:", "#l", "line ")
+_REPO_EVIDENCE_REF = re.compile(
+    r"(?:ref|근거|출처|확인 경로)\s*:\s*(?:/|[\w.-]+/).+?(?:#L\d+|:\d+)",
+    re.I,
+)
 
 
 def sanitize_ideation_text(text: str) -> tuple[str, list[str]]:
@@ -71,7 +74,7 @@ def unverified_repo_claims(text: str) -> list[str]:
     claims: list[str] = []
     for raw in str(text or "").splitlines():
         line = raw.strip()
-        if not line or any(marker in line.lower() for marker in _EVIDENCE_MARKERS):
+        if not line or _REPO_EVIDENCE_REF.search(line):
             continue
         if any(pattern.search(line) for pattern in _REPO_CLAIM_PATTERNS):
             claims.append(line[:240])

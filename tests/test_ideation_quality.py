@@ -26,6 +26,7 @@ def test_unverified_repository_claim_is_classified_until_evidence_exists() -> No
     claims = unverified_repo_claims("레포에 이미 백테스트 엔진이 구현되어 있다.")
     assert claims == ["레포에 이미 백테스트 엔진이 구현되어 있다."]
     assert unverified_repo_claims("레포에 백테스트 엔진이 있다 (ref: src/backtest.py#L10)") == []
+    assert unverified_repo_claims("레포에 백테스트 엔진이 있다 (ref: 확인 필요)")
 
 
 def test_parsed_option_keeps_raw_reply_and_marks_quality_contract() -> None:

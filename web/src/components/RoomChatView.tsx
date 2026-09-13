@@ -11,6 +11,7 @@ import { useEffect, useMemo } from "react";
 import { buildNeedsInputStatus } from "../utils/needsInputStatus";
 import { notifyNeedsInputIfBackground } from "../utils/notifyNeedsInput";
 import { buildSessionStatusChips } from "../utils/sessionStatusLine";
+import { ideaLaneSurface } from "../utils/workspaceTabs";
 
 type RoomChatViewModel = ReturnType<typeof useRoomChat>;
 
@@ -19,6 +20,23 @@ type Props = {
 };
 
 export function RoomChatView({ chat }: Props) {
+  // RI-12 — narrow the idea lane's surface to the conversation, the candidates,
+  // and the plan. Suppression is scoped to a session with no legacy work left
+  // to resolve, so an existing session keeps its decisions.
+  const surface = useMemo(
+    () =>
+      ideaLaneSurface({
+        session: chat.session,
+        hasPendingExecution: Boolean(chat.execPendingForBar),
+        inboxPendingCount: chat.inboxPendingCount,
+      }),
+    [chat.session, chat.execPendingForBar, chat.inboxPendingCount],
+  );
+  const showPlanApproval =
+    chat.showPlanApproval && !surface.suppress.planApproval;
+  const verifiedLoopPendingApproval =
+    chat.verifiedLoopPendingApproval && !surface.suppress.verifiedLoopApproval;
+
   const needsInput = useMemo(
     () =>
       buildNeedsInputStatus({
@@ -27,8 +45,8 @@ export function RoomChatView({ chat }: Props) {
         inboxPendingQuestions: chat.inboxPendingQuestions ?? 0,
         inboxPendingBuilds: chat.inboxPendingBuilds ?? 0,
         inboxPendingAutonomy: chat.inboxPendingAutonomy ?? 0,
-        showPlanApproval: chat.showPlanApproval,
-        verifiedLoopPendingApproval: chat.verifiedLoopPendingApproval,
+        showPlanApproval,
+        verifiedLoopPendingApproval,
         execPendingApproval: Boolean(
           chat.execPendingForBar?.status === "pending_approval",
         ),
@@ -42,8 +60,8 @@ export function RoomChatView({ chat }: Props) {
       chat.inboxPendingQuestions,
       chat.inboxPendingBuilds,
       chat.inboxPendingAutonomy,
-      chat.showPlanApproval,
-      chat.verifiedLoopPendingApproval,
+      showPlanApproval,
+      verifiedLoopPendingApproval,
       chat.execPendingForBar,
       chat.discussPaused,
       chat.decisionRuntime,
@@ -93,13 +111,15 @@ export function RoomChatView({ chat }: Props) {
                 }}
               />
               <SessionStatusLine chips={statusChips} />
-              <AutonomyDial
-                view={chat.autonomyView}
-                loading={chat.autonomyLoading}
-                changing={chat.autonomyChanging}
-                disabled={chat.running || chat.runBusy}
-                onLevelChange={chat.setAutonomyLevel}
-              />
+              {surface.suppress.autonomyDial ? null : (
+                <AutonomyDial
+                  view={chat.autonomyView}
+                  loading={chat.autonomyLoading}
+                  changing={chat.autonomyChanging}
+                  disabled={chat.running || chat.runBusy}
+                  onLevelChange={chat.setAutonomyLevel}
+                />
+              )}
             </>
           ) : null
         }
@@ -110,6 +130,7 @@ export function RoomChatView({ chat }: Props) {
         onToggleSidebar={chat.onToggleSidebar}
         onSelectRightPanelMode={chat.handleSelectRightPanelMode}
         onOpenSettings={chat.onOpenSettings}
+        workbenchModes={surface.workbenchModes}
       />
 
       <div className="pane-row">
@@ -123,8 +144,8 @@ export function RoomChatView({ chat }: Props) {
             inboxReloadKey={chat.inboxReloadKey}
             discussPaused={chat.discussPaused}
             decisionRuntime={chat.decisionRuntime}
-            showPlanApproval={chat.showPlanApproval}
-            verifiedLoopPendingApproval={chat.verifiedLoopPendingApproval}
+            showPlanApproval={showPlanApproval}
+            verifiedLoopPendingApproval={verifiedLoopPendingApproval}
             firstOpenBlock={chat.firstOpenBlock}
             consensusBlocked={chat.consensusBlocked}
             planWorkflow={chat.planWorkflow}

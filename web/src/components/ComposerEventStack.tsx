@@ -33,6 +33,7 @@ import {
   type ComposerStackFocus,
 } from "../utils/composerStackFocus";
 import { workFocusElementId } from "../utils/workFocusTargets";
+import { isIdeaLaneSession } from "../utils/workspaceTabs";
 import { resolveComposerStackSnapshot } from "../utils/composerStackLane";
 import { useLocale } from "../i18n/useLocale";
 import { DecisionQueueHeader } from "./DecisionQueueHeader";
@@ -267,6 +268,8 @@ export function ComposerEventStack({
     session?.run?.executions,
   ]);
 
+  const ideaLane = isIdeaLaneSession(session);
+
   const showWorkSurface =
     (planWorkflow?.enabled
       ? workflowPhase === "APPROVED" && hasPlan
@@ -286,8 +289,10 @@ export function ComposerEventStack({
         showConsensusGate,
         consensusProposal,
         showWorkSurface,
+        ideaLane,
       }),
     [
+      ideaLane,
       consensusProposal,
       execPending,
       hasPlan,

@@ -151,6 +151,7 @@ def patch_session_goal(
     body: SessionGoalPatchRequest,
 ) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
+    from agent_lab.ideation import IdeationError
     from agent_lab.plan.workflow import is_plan_workflow_active
     from agent_lab.run.meta import read_run_meta
 
@@ -161,6 +162,8 @@ def patch_session_goal(
         )
     try:
         result = set_session_goal(folder, body.text, max_checks=body.max_checks)
+    except IdeationError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return {"ok": True, **result}

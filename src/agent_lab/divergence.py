@@ -46,7 +46,10 @@ def format_divergence_options(replies: list[Any]) -> list[dict[str, str]]:
     """
     options: list[dict[str, str]] = []
     for reply in replies:
-        approach = _reply_field(reply, "content", "text", "message").strip()
+        from agent_lab.room.context.ideation_quality import sanitize_ideation_text
+
+        approach, _removed = sanitize_ideation_text(_reply_field(reply, "content", "text", "message"))
+        approach = approach.strip()
         if not approach:
             continue
         options.append(
@@ -73,11 +76,18 @@ import re
 
 _LABEL_PATTERNS: dict[str, tuple[str, ...]] = {
     "title": ("제목", "title", "이름"),
-    "principle": ("작동 원리", "핵심 원리", "원리", "작동 방식", "principle", "how it works"),
-    "usage": ("사용 장면", "사용 예", "사용 시나리오", "usage", "scenario"),
-    "difference": ("다른 점", "차이", "차별점", "difference"),
+    "principle": ("핵심 작동 원리", "작동 원리", "핵심 원리", "원리", "작동 방식", "principle", "how it works"),
+    "usage": ("실제 사용 장면", "사용 장면", "사용 예", "사용 시나리오", "usage", "scenario"),
+    "difference": ("다른 접근과 무엇이 다른지", "다른 점", "차이", "차별점", "difference"),
     "tradeoff": ("tradeoff", "트레이드오프", "포기하는 것", "대가"),
-    "first_experiment": ("첫 실험", "가장 작은 실험", "실험", "first experiment"),
+    "first_experiment": (
+        "이 구상에서 가장 먼저 확인할 작은 실험",
+        "가장 먼저 확인할 작은 실험",
+        "첫 실험",
+        "가장 작은 실험",
+        "실험",
+        "first experiment",
+    ),
 }
 
 # `- **제목:** 이름` / `## 제목` / `제목: 이름` — leading bullets, bold, and
@@ -119,11 +129,15 @@ def parse_idea_option(text: str, *, option_id: str, agent: str = "") -> dict[str
     present the raw reply is preserved together with ``parse_error`` — a failed
     parse must never silently drop a candidate.
     """
-    body = (text or "").strip()
+    from agent_lab.room.context.ideation_quality import contract_quality, sanitize_ideation_text, unverified_repo_claims
+
+    raw_body = (text or "").strip()
+    body, removed_meta = sanitize_ideation_text(raw_body)
     option: dict[str, Any] = {"id": option_id, "agent": str(agent or "")}
     if not body:
-        option["raw"] = ""
+        option["raw"] = raw_body
         option["parse_error"] = "empty_reply"
+        option["quality"] = contract_quality(option, meta_removed=removed_meta)
         return option
 
     found: dict[str, list[str]] = {}
@@ -152,7 +166,14 @@ def parse_idea_option(text: str, *, option_id: str, agent: str = "") -> dict[str
         heading = next((_HEADING.match(ln) for ln in body.splitlines() if _HEADING.match(ln)), None)
         option["title"] = heading.group("text") if heading else body.splitlines()[0].strip()[:120]
 
-    option["raw"] = body
+    option["raw"] = raw_body
+    option["quality"] = contract_quality(
+        option,
+        meta_removed=removed_meta,
+        repo_claims=unverified_repo_claims(body),
+    )
+    if removed_meta:
+        option["meta_removed"] = removed_meta
     if not any(option.get(f) for f in ("principle", "usage", "difference", "tradeoff", "first_experiment")):
         option["parse_error"] = "no_recognized_sections"
     return option

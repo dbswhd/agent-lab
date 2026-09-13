@@ -31,6 +31,7 @@ STAGE_EXPLORE = "explore"
 STAGE_SHAPE = "shape"
 STAGE_PLAN = "plan"
 VALID_STAGES = frozenset({STAGE_EXPLORE, STAGE_SHAPE, STAGE_PLAN})
+IDEATION_NO_EXECUTE_REASON = "ideation_lane_no_execute"
 
 _ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 
@@ -93,6 +94,12 @@ def read_ideation(run: Mapping[str, Any] | None) -> dict[str, Any] | None:
 
 def is_ideation_session(run: Mapping[str, Any] | None) -> bool:
     return read_ideation(run) is not None
+
+
+def ensure_ideation_no_execute(run: Mapping[str, Any] | None) -> None:
+    """Reject legacy execution entry points when a run belongs to the idea lane."""
+    if is_ideation_session(run):
+        raise IdeationError(IDEATION_NO_EXECUTE_REASON)
 
 
 def option_by_id(state: Mapping[str, Any], option_id: str) -> dict[str, Any] | None:
@@ -426,6 +433,12 @@ def _normalize_option(option: Mapping[str, Any], index: int) -> dict[str, Any]:
         normalized["raw"] = str(option.get("raw"))
     if option.get("parse_error"):
         normalized["parse_error"] = str(option.get("parse_error"))
+    quality = option.get("quality")
+    if isinstance(quality, Mapping):
+        normalized["quality"] = {str(k): _deep_copy(v) for k, v in quality.items()}
+    meta_removed = option.get("meta_removed")
+    if isinstance(meta_removed, list) and meta_removed:
+        normalized["meta_removed"] = [str(item) for item in meta_removed]
     return normalized
 
 

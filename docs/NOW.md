@@ -41,19 +41,19 @@
 
 **포지션 (Human 2026-09):** Cursor/CC/Codex **위의** verification-first mission console — Room=합의·plan, execute=외부 delegate + Oracle gate.
 
-### 지금 — idea lane: 아이디어 구체화 Room (2026-09-12 착수, 미구현)
+### 지금 — idea lane: 아이디어 구체화 Room (2026-09-13 Checkpoint A provisional pass)
 
-계획 SSOT: [ROOM-IDEATION-PLAN-2026-09.md](./ROOM-IDEATION-PLAN-2026-09.md). 이 큐의 어떤 항목도 shipped가 아니다.
+계획 SSOT: [ROOM-IDEATION-PLAN-2026-09.md](./ROOM-IDEATION-PLAN-2026-09.md). 평가 결과: [room-ideation-results.md](./evals/room-ideation-results.md). development case 3건으로 provisional pass를 기록했으며, 사용자 효용·holdout 3건·실제 외부 개발 착수는 RI-14에서 확인한다.
 
 | ID | 작업 | 상태 |
 |----|------|------|
-| **RI-00** | 방향 문서·적용 경계 정리 | 🔄 진행 |
-| **RI-01** | 실제 아이디어 기준선 6건 | ⛔ Human 입력 대기 (익명화 seed) |
-| **RI-02~06** | ideation 상태 · 부수효과 차단 · 승인 경계 · 독립 발산 · 구상 산출물 | 대기 |
-| **Checkpoint A** | 실제 아이디어 3건으로 구상 품질 첫 판정 | 대기 (mock 통과는 판정 아님) |
-| **RI-07~15** | API · UI · 계획 · 내보내기 · 효용 확인 · 철거 | Checkpoint A 이후 |
+| **RI-00** | 방향 문서·적용 경계 정리 | ✅ 2026-09-13 |
+| **RI-01** | 실제 아이디어 기준선 6건 | ⚠️ development 3건 기록 · holdout 3건은 RI-14까지 보류 |
+| **RI-02~06** | ideation 상태 · 부수효과 차단 · 승인 경계 · 독립 발산 · 구상 산출물 | ✅ 2026-09-13 (codex/ri-02-06-fixes) |
+| **Checkpoint A** | 실제 아이디어 3건으로 구상 품질 첫 판정 | ⚠️ provisional pass · 사용자 효용·holdout 미측정 |
+| **RI-07~15** | API · UI · 계획 · 내보내기 · 효용 확인 · 철거 | ➡️ 다음: RI-07 |
 
-**경계:** idea lane은 Room 내부 execute/mission/goal loop을 시작하지 않는다. `BLOCK → execute 409` · Human gate · worktree 격리 · subprocess env allowlist는 이 트랙에서 변경하지 않는다. 기존 execute lane 세션은 opt-in 없이 바뀌지 않는다. 실행 중심 신규 백로그(§「동결」 포함)는 이번 큐 동안 보류한다.
+**경계:** idea lane은 Room 내부 execute/mission/goal loop을 시작하지 않는다. Room은 방향 불확실성·위험·대안 trade-off가 클 때 호출하는 조건부 검토 단계다. `BLOCK → execute 409` · Human gate · worktree 격리 · subprocess env allowlist는 이 트랙에서 변경하지 않는다. 기존 execute lane 세션은 opt-in 없이 바뀌지 않는다. 실행 중심 신규 백로그(§「동결」 포함)는 이번 큐 동안 보류한다.
 
 ### 기록 — Mission redesign + dogfood (2026-07~08, closed)
 

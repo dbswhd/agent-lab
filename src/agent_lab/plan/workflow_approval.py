@@ -20,10 +20,8 @@ from agent_lab.plan.workflow_state import (
 from agent_lab.time_utils import utc_now_iso as _now
 from agent_lab.run.meta import patch_run_meta, read_run_meta
 from agent_lab.turn_modes import approval_starts_execute_loop
+from agent_lab.ideation import IDEATION_NO_EXECUTE_REASON
 from agent_lab.verified_loop import DEFAULT_COMPLETION_PROMISE
-
-
-IDEATION_NO_EXECUTE_REASON = "ideation_lane_no_execute"
 
 
 def _ideation_blocks_execute(run: RunStateLike | None) -> bool:

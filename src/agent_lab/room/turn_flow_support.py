@@ -97,12 +97,13 @@ def emit_divergence_options(
     if not on_event:
         return
     if stored is not None:
+        candidate_replies = _idea_candidate_replies(replies)
         # Idea lane: emit the structured options and keep the legacy event shape
         # so existing `divergence_options` consumers keep working (§RI-06).
         on_event(
             "divergence_options",
             {
-                "options": format_divergence_options(replies),
+                "options": format_divergence_options(candidate_replies),
                 "count": len(stored),
                 "idea_options": stored,
                 "revision": (run_meta or {}).get("ideation", {}).get("revision"),
@@ -134,11 +135,26 @@ def record_ideation_options(
     state = ideation_state.read_ideation(run_meta)
     if state is None:
         return None
-    options = build_idea_options(replies, batch=int(state.get("revision") or 0))
+    options = build_idea_options(_idea_candidate_replies(replies), batch=int(state.get("revision") or 0))
     if not options:
         return None
     updated = ideation_state.mutate_ideation(run_meta, ideation_state.set_options(options))
     return list(updated.get("options") or [])
+
+
+def _idea_candidate_replies(replies: list[ChatMessage]) -> list[ChatMessage]:
+    """Return selectable candidates from the first exploration batch only."""
+    candidates: list[ChatMessage] = []
+    for reply in replies:
+        role = str(getattr(reply, "role", "") or "").strip().lower()
+        if role not in {"assistant", "agent"}:
+            continue
+        if getattr(reply, "parallel_round", None) not in (None, 1):
+            continue
+        if not str(getattr(reply, "content", "") or "").strip():
+            continue
+        candidates.append(reply)
+    return candidates
 
 
 def session_hard_cap_enabled() -> bool:

@@ -84,6 +84,11 @@ def synthesize_plan(
     enrichment = build_scribe_enrichment(run_meta, messages)
     if enrichment.strip():
         user = f"{user}\n\n---\n\n{enrichment.strip()}"
+    from agent_lab.room.context.ideation_quality import ideation_synthesis_block
+
+    ideation_block = ideation_synthesis_block(run_meta)
+    if ideation_block.strip():
+        user = f"{user}\n\n---\n\n{ideation_block.strip()}"
     folder_raw = (run_meta or {}).get("_session_folder")
     if folder_raw:
         from agent_lab.plan.workflow import build_clarify_context_block

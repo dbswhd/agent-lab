@@ -239,6 +239,9 @@ def approve_verified_loop(
     oracle_session_id = f"oracle_{session_folder.name}_{uuid.uuid4().hex[:8]}"
 
     def _approve(current: dict[str, Any]) -> dict[str, Any]:
+        from agent_lab.ideation import ensure_ideation_no_execute
+
+        ensure_ideation_no_execute(current)
         current_loop = dict(current.get("verified_loop") or {})
         current_loop["loop_goal"] = approved
         current_loop["status"] = "running"

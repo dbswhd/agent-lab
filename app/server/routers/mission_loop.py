@@ -65,6 +65,13 @@ def post_mission_loop_enable(
 ) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
     from agent_lab.mission.loop import public_mission_payload
+    from agent_lab.ideation import IdeationError, ensure_ideation_no_execute
+    from agent_lab.run.meta import read_run_meta
+
+    try:
+        ensure_ideation_no_execute(read_run_meta(folder))
+    except IdeationError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
     _dispatch_or_http(
         folder,

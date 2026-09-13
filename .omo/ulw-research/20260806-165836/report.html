@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang xml:lang>
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>SYNTHESIS</title>
+  <style>
+
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+
+ul.task-list[class]{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+font-size: inherit;
+width: 0.8em;
+margin: 0 0.8em 0.2em -1.6em;
+vertical-align: middle;
+}
+.display.math{display: block; text-align: center; margin: 0.5rem auto;}
+</style>
+  <style type="text/css">@page { size: A4; margin: 16mm 14mm; }
+html { font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; color: #17202a; }
+body { max-width: 980px; margin: 0 auto; font-size: 13px; line-height: 1.58; }
+h1 { font-size: 26px; margin-top: 0; }
+h2 { font-size: 20px; border-bottom: 1px solid #d8dee4; padding-bottom: 5px; }
+h3 { font-size: 16px; }
+table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 10px; }
+th, td { border: 1px solid #d0d7de; padding: 5px 6px; vertical-align: top; overflow-wrap: anywhere; }
+th { background: #f6f8fa; }
+code { background: #f6f8fa; padding: 1px 3px; border-radius: 3px; }
+a { color: #0969da; text-decoration: none; overflow-wrap: anywhere; }
+li { margin: 3px 0; }
+tr, blockquote, pre { break-inside: avoid; }
+</style>
+</head>
+<body>
+<h1 id="agent-lab-github-오픈소스-슈퍼샘플-추가-조사">Agent Lab GitHub
+오픈소스 슈퍼샘플 추가 조사</h1>
+<p>Worker assignments: 30 (22 unique) · Waves: 3 · Excursions: 1 ·
+Sources: 47 (37 GitHub primary + 10 local, 1 web domain) · Verification
+artifacts: 2 · Elapsed: 33 min<br />
+조사일: 2026-08-06<br />
+기준선: 이전 보고서의 MCP 2026, ACP, AgentGUI, CWC long-running agents,
+Open SWE, Attractor, A2UI/MCP Apps, OpenAI Agents SDK/Deep Agents
+제외<br />
+검증 범위: 공개 GitHub 구현·테스트·README/라이선스, GitHub REST,
+<code>git ls-remote</code>, Agent Lab 현재 코드/SSOT 대조<br />
+판정 단위: 저장소 전체 채택이 아니라 <strong>흡수할 패턴, 통합 실험,
+인프라 참고, 관찰, 제외</strong></p>
+<h2 id="결론">결론</h2>
+<p>추가 조사에서 가장 가치가 큰 것은 새 orchestration framework가
+아니었다. Agent Lab은 이미 Human Inbox, worktree merge gate, crash
+recovery, append-only evidence, checkpoint restore-then-stop, 경량
+trace를 갖고 있다. 따라서 외부 저장소의 전체 runtime을 들이는 것보다
+다음 네 가지를 작은 패턴으로 흡수하는 편이 효과적이다. <a href="/Users/yoonjong/Projects/agent-lab/src/agent_lab/mission/journal.py" title="Agent Lab mission journal">L1</a><a href="/Users/yoonjong/Projects/agent-lab/src/agent_lab/plan/execute_shared.py" title="Agent Lab merge lease">L3</a><a href="/Users/yoonjong/Projects/agent-lab/src/agent_lab/trace_recorder.py" title="Agent Lab trace recorder">L5</a></p>
+<ol type="1">
+<li><strong>OpenHands SDK의 Condensation record</strong>: raw event를
+삭제하지 않고 <code>forgotten_event_ids + summary + offset</code>을
+append하여 파생 view만 압축한다. Agent Lab의 장기 Room context에 가장
+작은 실험으로 붙일 수 있다. <a href="https://github.com/OpenHands/software-agent-sdk/blob/da6f5463be9364e55db40435017549340c73bdea/tests/sdk/conversation/local/test_conversation_tree.py#L224-L290" title="OpenHands fork and replay tests">S1</a><a href="https://github.com/OpenHands/software-agent-sdk/blob/da6f5463be9364e55db40435017549340c73bdea/tests/sdk/conversation/test_state_view_cache.py#L219-L231" title="OpenHands cache rollback test">S3</a></li>
+<li><strong>Cline의 typed event/replay translator</strong>: structured
+event와 legacy stream을 분리하고, tool call ID를 보존한 history replay를
+제공한다. 단, approval controller는 idempotency·expiry가 없어 복제하면
+안 된다. <a href="https://github.com/cline/cline/blob/81cce3d70e10244cdde40dbd0eb0bb711c93006d/apps/cli/src/runtime/session-events.test.ts" title="Cline event dedupe tests">S8</a><a href="https://github.com/cline/cline/blob/81cce3d70e10244cdde40dbd0eb0bb711c93006d/apps/cli/src/acp/session-load.test.ts" title="Cline history replay tests">S10</a></li>
+<li><strong>OpenInference/OTel GenAI의 projection vocabulary</strong>:
+Agent Lab event SSOT를 바꾸지 않고 외부 tracing으로 내보내는 어휘로만
+쓴다. masking 기본값이 모두 false라 안전 기본 adapter가 선행돼야 한다.
+<a href="https://github.com/Arize-ai/openinference/blob/8053d845d90ae1ad4796c7e2c5eaf807e932f5b4/spec/semantic_conventions.md#L6-L57" title="OpenInference semantic conventions">S12</a><a href="https://github.com/open-telemetry/semantic-conventions-genai/blob/4a39b6ef1363fab57bc40e18c82abb32cc89ebcd/reference/src/semconv_genai/semconv_model.py#L164-L240" title="OTel GenAI agent and tool conventions">S14</a></li>
+<li><strong>Inspect·Harbor에서 가져온 eval contract</strong>: agent
+score와 infrastructure error를 분리하고 limit·sandbox·artifact를
+명시한다. 다만 Room Bench v1은 이 프레임워크들 위에 만들지 말고 Agent
+Lab mission journal의 native deterministic fixtures로 시작한다. <a href="https://github.com/UKGovernmentBEIS/inspect_ai/blob/a7523133367edde0ea2859a271b36a40de77f948/src/inspect_ai/log/_log.py#L395-L517" title="Inspect EvalSample event and result schema">S4</a><a href="https://github.com/harbor-framework/harbor/blob/4698544ea9d5ee95d01b05aeaa9ccbd161d5a7f6/src/harbor/verifier/verifier.py#L227-L238" title="Harbor verifier result parsing">S6</a><a href="/Users/yoonjong/Projects/agent-lab/src/agent_lab/session/score.py" title="Agent Lab session score">L6</a></li>
+</ol>
+<p><code>Warren</code>, <code>OpenSandbox</code>,
+<code>Microsoft Agent Framework</code>, <code>Magentic-UI</code>,
+<code>Chidori</code>는 좋은 참고 구현이지만 각각 authority, teardown,
+restore semantics, UI trust, exactly-once에서 Agent Lab 불변과
+충돌하거나 미검증 영역이 있어 <strong>조건부 실험 또는 watch</strong>가
+맞다. <a href="https://github.com/jayminwest/warren/blob/8eb58af4317c0fc91194edceddbb8f3c25570cf0/src/db/repos/run-inbox.ts#L71-L132" title="Warren atomic inbox claim">S16</a><a href="https://github.com/jayminwest/warren/blob/8eb58af4317c0fc91194edceddbb8f3c25570cf0/src/runs/reap/destroy.ts#L23-L100" title="Warren destroy gates and best-effort failure">S20</a><a href="https://github.com/opensandbox-group/OpenSandbox/blob/47d85df848f957f5e7b3231e435ef9333a57537c/docs/guides/credential-vault.md" title="OpenSandbox Credential Vault">S22</a><a href="https://github.com/microsoft/magentic-ui/blob/d3c9d13c39288257286a66daabf7c5b5fb72ee69/src/magentic_ui/approval.py#L1-L46" title="Magentic-UI approval model">S26</a><a href="https://github.com/ThousandBirdsInc/chidori/blob/4bd624028cda6026b7040e57d94dc9c70096f46d/crates/chidori/src/storage.rs#L25-L72" title="Chidori persisted session states">S29</a></p>
+<h2 id="선정-기준">1. 선정 기준</h2>
+<p>후보는 다음 세 gate를 모두 통과해야 active shortlist에 남겼다.</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>Gate</th>
+<th>통과 조건</th>
+<th>실패 시</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>구현</td>
+<td>README가 아니라 핵심 source/test anchor가 있음</td>
+<td>관찰 또는 제외</td>
+</tr>
+<tr>
+<td>유지보수</td>
+<td>2026-08-06 기준 비아카이브, 라이선스·HEAD 식별 가능</td>
+<td>historical/reject</td>
+</tr>
+<tr>
+<td>Agent Lab fit</td>
+<td>기존 SSOT를 대체하지 않고 새로운 검증 가능한 가치를 더함</td>
+<td>pattern-only 또는 제외</td>
+</tr>
+</tbody>
+</table>
+<p>“슈퍼샘플”은 dependency 추천과 동의어가 아니다. 이 보고서에서
+<code>pattern source</code>는 코드·테스트 아이디어만 흡수하고,
+<code>integration experiment</code>는 feature flag/adapter 뒤의 가역적
+spike, <code>watch</code>는 구현을 추적하되 도입하지 않는다는
+뜻이다.</p>
+<h2 id="한눈에-보는-판정">2. 한눈에 보는 판정</h2>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 18%" />
+<col style="width: 18%" />
+<col style="width: 18%" />
+<col style="width: 18%" />
+</colgroup>
+<thead>
+<tr>
+<th style="text-align: right;">우선</th>
+<th>후보</th>
+<th>분류</th>
+<th>흡수할 최소 단위</th>
+<th>하지 않을 것</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">1</td>
+<td><a href="https://github.com/OpenHands/software-agent-sdk/tree/da6f5463be9364e55db40435017549340c73bdea">OpenHands
+software-agent-sdk</a></td>
+<td>pattern source</td>
+<td>append-only Condensation record와 replay tests</td>
+<td>OpenHands runtime 전체 채택</td>
+</tr>
+<tr>
+<td style="text-align: right;">2</td>
+<td><a href="https://github.com/UKGovernmentBEIS/inspect_ai/tree/a7523133367edde0ea2859a271b36a40de77f948">Inspect
+AI</a> + <a href="https://github.com/harbor-framework/harbor/tree/4698544ea9d5ee95d01b05aeaa9ccbd161d5a7f6">Harbor</a></td>
+<td>composition</td>
+<td>native Room Bench fixture/schema와 Inspect export</td>
+<td>Harbor/SWE-bench를 v1 권위 상태로 사용</td>
+</tr>
+<tr>
+<td style="text-align: right;">3</td>
+<td><a href="https://github.com/cline/cline/tree/81cce3d70e10244cdde40dbd0eb0bb711c93006d">Cline</a></td>
+<td>pattern source</td>
+<td>event union, replay translator, done dedupe</td>
+<td>approval controller·fire-and-forget ACP 복제</td>
+</tr>
+<tr>
+<td style="text-align: right;">4</td>
+<td><a href="https://github.com/Arize-ai/openinference/tree/8053d845d90ae1ad4796c7e2c5eaf807e932f5b4">OpenInference</a>
++ <a href="https://github.com/open-telemetry/semantic-conventions-genai/tree/4a39b6ef1363fab57bc40e18c82abb32cc89ebcd">OTel
+GenAI</a></td>
+<td>integration experiment</td>
+<td>redacted output projection</td>
+<td>event/authorization SSOT 교체</td>
+</tr>
+<tr>
+<td style="text-align: right;">5</td>
+<td><a href="https://github.com/apache/burr/tree/a05875f09687b958bd83a5767be25d37821bee83">Apache
+Burr</a></td>
+<td>pattern source</td>
+<td>typed StateDelta, declared reads/writes</td>
+<td>workflow runtime 채택</td>
+</tr>
+<tr>
+<td style="text-align: right;">6</td>
+<td><a href="https://github.com/jayminwest/warren/tree/8eb58af4317c0fc91194edceddbb8f3c25570cf0">Warren</a></td>
+<td>conditional pattern</td>
+<td>event provenance, atomic inbox claim, salvage-before-destroy</td>
+<td>legacy origin trust·best-effort teardown 복제</td>
+</tr>
+<tr>
+<td style="text-align: right;">7</td>
+<td><a href="https://github.com/opensandbox-group/OpenSandbox/tree/47d85df848f957f5e7b3231e435ef9333a57537c">OpenSandbox</a>
++ <a href="https://github.com/SWE-agent/SWE-ReX/tree/5c995c365dfb1fd5bc56fda688be5d8538f9931f">SWE-ReX</a></td>
+<td>infrastructure experiment</td>
+<td>sandbox lifecycle/egress/credential adapter contract</td>
+<td>Docker만으로 hostile isolation 주장</td>
+</tr>
+<tr>
+<td style="text-align: right;">8</td>
+<td><a href="https://github.com/microsoft/agent-framework/tree/74a144085a5fd05921b473001528f3ae0725b76a">Microsoft
+Agent Framework</a></td>
+<td>schema/test reference</td>
+<td>request map, graph fingerprint, approval result</td>
+<td>scheduler·restore runtime 교체</td>
+</tr>
+<tr>
+<td style="text-align: right;">9</td>
+<td><a href="https://github.com/microsoft/magentic-ui/tree/d3c9d13c39288257286a66daabf7c5b5fb72ee69">Magentic-UI</a></td>
+<td>UI-only reference</td>
+<td>approve/deny/alternative + provenance 표현</td>
+<td>UI를 Human gate authority로 사용</td>
+</tr>
+<tr>
+<td style="text-align: right;">10</td>
+<td><a href="https://github.com/ThousandBirdsInc/chidori/tree/4bd624028cda6026b7040e57d94dc9c70096f46d">Chidori</a></td>
+<td>watch</td>
+<td>leased run, divergence-checked replay, paused signal</td>
+<td>exactly-once 또는 core runtime 채택 주장</td>
+</tr>
+</tbody>
+</table>
+<p>상위 순서는 “좋은 프로젝트”의 절대 순위가 아니라 Agent Lab에서
+<strong>작게 검증할 수 있는 순서</strong>다. 모든 active 후보는
+2026-08-06 GitHub metadata와 default-branch SHA를 재확인했으며, 활동성은
+production readiness의 증명이 아니다. <a href="/Users/yoonjong/Projects/agent-lab/.omo/ulw-research/20260806-165836/verify-github-metadata.md" title="GitHub API and git verification">V1</a></p>
+<h2 id="후보별-구현-근거와-흡수-경계">3. 후보별 구현 근거와 흡수
+경계</h2>
+<h3 id="openhands-sdk-raw-history를-보존하는-context-condensation">3.1
+OpenHands SDK: raw history를 보존하는 context condensation</h3>
+<p><code>Condensation</code>은 삭제 대상 event ID 집합, summary, summary
+insertion offset, LLM response ID를 기록한다. summary는 파생 view에
+동적으로 삽입되며 원본 event tree는 남는다. fork/replay 테스트는
+condensation 이후에도 raw event가 유지되고, cache rebuild 실패 시 기존
+branch/cache가 보존되는 것을 확인한다. <a href="https://github.com/OpenHands/software-agent-sdk/blob/da6f5463be9364e55db40435017549340c73bdea/tests/sdk/conversation/local/test_conversation_tree.py#L224-L290" title="OpenHands fork and replay tests">S1</a><a href="https://github.com/OpenHands/software-agent-sdk/blob/da6f5463be9364e55db40435017549340c73bdea/tests/sdk/conversation/test_state_view_cache.py#L219-L231" title="OpenHands cache rollback test">S3</a></p>
+<p>Agent Lab에는 <code>model/version</code>, prompt/input hash, policy
+version, token usage, summary hash를 추가한 확장 record가 필요하다. 성공
+기준은 “replay한 view가 deterministic하며 raw
+<code>chat.jsonl</code>/mission journal은 바뀌지 않음”, 중단 기준은
+tool-call/tool-result pair가 분리되거나 rollback이 원본을 복원하지
+못하는 경우다. 연결 seam은 mission journal과 context selection이다. <a href="/Users/yoonjong/Projects/agent-lab/src/agent_lab/session/score.py" title="Agent Lab session score">L6</a></p>
+<h3 id="inspect-ai-harbor-eval-schema는-흡수하되-native-room-bench로-시작">3.2
+Inspect AI + Harbor: eval schema는 흡수하되 native Room Bench로
+시작</h3>
+<p>Inspect의 sample state는 message/token/cost/time/working limit,
+transcript/events, sandbox, retry/error를 분리한다. Harbor는 artifact
+upload 실패가 발생해도 verifier reward를 보존하여
+<code>agent_score</code>와 <code>infra_status/error</code>를 독립 필드로
+취급한다. <a href="https://github.com/UKGovernmentBEIS/inspect_ai/blob/a7523133367edde0ea2859a271b36a40de77f948/src/inspect_ai/log/_log.py#L395-L517" title="Inspect EvalSample event and result schema">S4</a><a href="https://github.com/harbor-framework/harbor/blob/4698544ea9d5ee95d01b05aeaa9ccbd161d5a7f6/src/harbor/verifier/verifier.py#L227-L238" title="Harbor verifier result parsing">S6</a></p>
+<p>그러나 Agent Lab은 이미 sequence·schema version·idempotency를 가진
+mission journal과 Human Inbox/Oracle authority를 갖는다. v1은 다음 5개
+deterministic fixture를 native runner로 실행하는 편이 작고 정확하다. <a href="/Users/yoonjong/Projects/agent-lab/src/agent_lab/human_inbox.py" title="Agent Lab Human Inbox">L2</a></p>
+<ol type="1">
+<li>plan approve → execute → merge → Oracle PASS</li>
+<li>plan reject/revise → approve</li>
+<li>Oracle FAIL → repair → PASS</li>
+<li>Human Inbox pause → process restart/replay → consume-once
+resume</li>
+<li>torn-tail recovery + 동일 idempotency key 재시도</li>
+</ol>
+<p>Inspect는 read-only result exporter로 먼저 붙이고, Harbor/SWE-bench는
+나중의 containerized adversarial lane으로 분리한다. 외부 evaluator가 run
+state나 Human gate를 쓰게 해서는 안 된다.</p>
+<h3 id="cline-eventreplay-contract만-가져오기">3.3 Cline: event/replay
+contract만 가져오기</h3>
+<p>Cline은 structured <code>AgentEvent</code>가 도착하면 legacy chunk
+fallback을 억제하고, iteration마다 done dedupe를 초기화하며 더 완전한
+terminal event를 선택한다. persisted history를 ACP update로 변환할 때
+tool call ID와 completed/failed 상태를 보존하고 synthetic prompts를
+걸러낸다. <a href="https://github.com/cline/cline/blob/81cce3d70e10244cdde40dbd0eb0bb711c93006d/apps/cli/src/runtime/session-events.test.ts" title="Cline event dedupe tests">S8</a><a href="https://github.com/cline/cline/blob/81cce3d70e10244cdde40dbd0eb0bb711c93006d/apps/cli/src/acp/session-load.test.ts" title="Cline history replay tests">S11</a></p>
+<p>반면 approval controller는 request-level idempotency, timeout,
+cancellation이 없고 global/per-request auto-approve가 가능하다. ACP
+forwarding은 done/error/usage를 내보내지 않고 await 없이 전송한다. <a href="https://github.com/cline/cline/blob/81cce3d70e10244cdde40dbd0eb0bb711c93006d/apps/cli/src/runtime/interactive/approvals.ts" title="Cline approval controller">S10</a></p>
+<p>Agent Lab에는 <code>event_id</code>, monotonic sequence,
+<code>approval_request_id</code>, expires_at, decision idempotency key,
+explicit terminal/error/usage가 추가된 translator fixture만 적합하다.
+Human Inbox는 계속 유일한 승인 권위다. <a href="/Users/yoonjong/Projects/agent-lab/src/agent_lab/human_inbox.py" title="Agent Lab Human Inbox">L1</a></p>
+<h3 id="openinference-otel-genai-redacted-projection-전용">3.4
+OpenInference + OTel GenAI: redacted projection 전용</h3>
+<p>OpenInference는 AGENT/TOOL/GUARDRAIL/EVALUATOR span과
+parent/trace/session, human/LLM/code annotation을 제공하고, OTel GenAI는
+<code>invoke_agent</code>/<code>execute_tool</code> 명칭을 제공한다. <a href="https://github.com/open-telemetry/semantic-conventions-genai/blob/4a39b6ef1363fab57bc40e18c82abb32cc89ebcd/reference/src/semconv_genai/semconv_model.py#L164-L240" title="OTel GenAI agent and tool conventions">S13</a></p>
+<p>하지만 <code>HIDE_INPUTS</code>, <code>HIDE_OUTPUTS</code>,
+<code>HIDE_LLM_TOOLS</code> 등 masking 기본값이 모두 false다. permission
+request/decision, Human Inbox, handoff edge도 표준화하지 않는다. <a href="https://github.com/Arize-ai/openinference/blob/8053d845d90ae1ad4796c7e2c5eaf807e932f5b4/spec/configuration.md#L7-L100" title="OpenInference masking configuration">S12</a></p>
+<p>따라서 기존 <code>trace.jsonl</code>과 runtime events를 canonical로
+유지하고, 외부 projection에는 ID·hash·status·schema/policy version만
+기본 출력한다. raw prompt, tool args/result, approval text는 명시적
+opt-in이 아니면 내보내지 않는다. <a href="/Users/yoonjong/Projects/agent-lab/src/agent_lab/trace_recorder.py" title="Agent Lab trace recorder">L1</a></p>
+<h3 id="burr-typed-delta를-stale-state-회귀-경계로-사용">3.5 Burr: typed
+delta를 stale-state 회귀 경계로 사용</h3>
+<p>Burr의 <code>StateDelta</code>는 reads/writes를 선언하고
+serialize/validate/apply 단계를 분리한다. <a href="https://github.com/apache/burr/blob/a05875f09687b958bd83a5767be25d37821bee83/burr/core/state.py#L71-L120" title="Burr StateDelta">S15</a> Agent Lab에는 이미 mission event
+journal이 있으므로 Burr runtime을 들일 이유는 없다. 대신
+<code>expected_version</code>, affected keys, idempotency key를 가진
+typed delta test를 <code>run.json</code> projection parity와 stale-write
+회귀에 적용할 수 있다. <a href="/Users/yoonjong/Projects/agent-lab/src/agent_lab/mission/journal.py" title="Agent Lab mission journal">L2</a></p>
+<h3 id="warren-lifecyclerecovery-패턴은-좋지만-conditional">3.6 Warren:
+lifecycle/recovery 패턴은 좋지만 conditional</h3>
+<p>Warren은 agent가 terminal authority event를 위조하지 못하도록
+origin/carrier/payload를 검증하고, run inbox를 transaction 안에서
+sequence 할당 후 <code>unread → claimed</code>로 원자 전환한다. plan-run
+coordinator와 PR gate는 restart/resume, bounded waiting, transient
+retry를 명시한다. push 실패 시 rescue ref/bundle을 남긴 후 workspace를
+제거하는 salvage-before-destroy도 유용하다. <a href="https://github.com/jayminwest/warren/blob/8eb58af4317c0fc91194edceddbb8f3c25570cf0/src/db/repos/run-inbox.ts#L71-L132" title="Warren atomic inbox claim">S16</a><a href="https://github.com/jayminwest/warren/blob/8eb58af4317c0fc91194edceddbb8f3c25570cf0/src/plan-runs/merge-gate.ts#L54-L191" title="Warren PR merge gate">S18</a><a href="https://github.com/jayminwest/warren/blob/8eb58af4317c0fc91194edceddbb8f3c25570cf0/src/runtime/salvage.ts#L1-L99" title="Warren salvage-before-destroy">S20</a></p>
+<p>두 가지는 그대로 복제하면 안 된다. backward compatibility 때문에
+origin이 없는 legacy event를 신뢰하며, teardown 실패가 terminalization을
+막지 않아 leaked workspace가 GC까지 남을 수 있다. <a href="https://github.com/jayminwest/warren/blob/8eb58af4317c0fc91194edceddbb8f3c25570cf0/src/runs/reap/destroy.ts#L23-L100" title="Warren destroy gates and best-effort failure">S16</a> Agent Lab은
+이미 merge lease와 boot reconciliation이 있으므로 Warren 전체를 들이지
+말고 <code>unknown origin = fail closed</code>, content-addressed
+decision/event receipt, salvage status, teardown acknowledgment test만
+흡수한다. <a href="/Users/yoonjong/Projects/agent-lab/src/agent_lab/crash_recovery.py" title="Agent Lab crash recovery">L4</a></p>
+<h3 id="opensandbox-swe-rex-phase-2-sandbox-contract-참고">3.7
+OpenSandbox + SWE-ReX: phase-2 sandbox contract 참고</h3>
+<p>OpenSandbox는 Docker/Kubernetes lifecycle, egress policy, Credential
+Vault와 gVisor/Kata/Firecracker 선택지를 제공한다. Credential Vault는
+real credential을 egress sidecar에 두고 허용된 HTTPS 요청에만 header를
+주입한다. 다만 DNS-only/default-allow는 우회 가능하고 service mesh와
+충돌할 수 있다. <a href="https://github.com/opensandbox-group/OpenSandbox/blob/47d85df848f957f5e7b3231e435ef9333a57537c/SECURITY.md" title="OpenSandbox security policy">S22</a><a href="https://github.com/opensandbox-group/OpenSandbox/blob/47d85df848f957f5e7b3231e435ef9333a57537c/docs/guides/credential-vault.md" title="OpenSandbox Credential Vault">S24</a></p>
+<p>SWE-ReX는 Docker/Fargate/Modal backend를 같은 lifecycle interface로
+감싼 작은 참고 구현이지만, credential broker, append-only audit,
+snapshot governance는 제공하지 않는다. <a href="https://github.com/SWE-agent/SWE-ReX/blob/5c995c365dfb1fd5bc56fda688be5d8538f9931f/README.md" title="SWE-ReX runtime backends">S25</a></p>
+<p>첫 spike는 실제 container가 아니라 fake adapter contract여야 한다:
+<code>create</code>, immutable repo attach, default-deny network, scoped
+credential, command stream, timeout/cancel, destroy-and-verify, audit
+receipt. 현재 Agent Lab의 worktree fallback과 sandbox policy를 유지한다.
+<a href="/Users/yoonjong/Projects/agent-lab/src/agent_lab/sandbox_policy.py" title="Agent Lab sandbox policy">L8</a></p>
+<h3 id="microsoft-agent-framework-checkpoint-shape만-참고">3.8 Microsoft
+Agent Framework: checkpoint shape만 참고</h3>
+<p>Agent Framework는 checkpoint storage/id, pending request/response
+map, graph fingerprint와 concurrent-run guard를 구현한다. 그러나
+restore는 scheduler를 다시 실행하며 superstep 중간 effect는 재실행될 수
+있다. tool approval도 auto-approval rule로 우회 가능하다. <a href="https://github.com/microsoft/agent-framework/blob/74a144085a5fd05921b473001528f3ae0725b76a/python/packages/core/agent_framework/_skills.py#L2095-L2125" title="Agent Framework auto-approval rules">S26</a></p>
+<p>Agent Lab에는 request correlation과 graph/schema fingerprint field만
+가져오고, checkpoint restore-then-stop과 Human Inbox authority는 바꾸지
+않는다. <a href="/Users/yoonjong/Projects/agent-lab/src/agent_lab/checkpoint_store.py" title="Agent Lab checkpoint restore">L3</a></p>
+<h3 id="magentic-ui-decision-표현만-참고">3.9 Magentic-UI: decision
+표현만 참고</h3>
+<p>Magentic-UI의 <code>ApprovalDecision</code>은
+approve/deny/alternative를, status/source는
+user/auto-session/auto-policy provenance를 구분한다. <a href="https://github.com/microsoft/magentic-ui/blob/d3c9d13c39288257286a66daabf7c5b5fb72ee69/src/magentic_ui/approval.py#L1-L46" title="Magentic-UI approval model">S28</a> 이는 Decision Queue 카드
+표현에 유용하지만 message metadata는 authorization ledger가 아니다. UI는
+immutable request hash에 대한 intent만 보내고 server-side Human Inbox가
+actor, expiry, policy hash, decision을 기록해야 한다. <a href="/Users/yoonjong/Projects/agent-lab/src/agent_lab/human_inbox.py" title="Agent Lab Human Inbox">L3</a></p>
+<h3 id="chidori-replay-conformance-watch">3.10 Chidori: replay
+conformance watch</h3>
+<p>Chidori는 active lease가 있는 run의 export를 거부하고 snapshot
+manifest로 source drift를 감지한다. persisted state는
+Running/Cancelled/Paused/AwaitingApproval, pending sequence/signal을
+포함하며 call replay가 function/args divergence를 검사한다. <a href="https://github.com/ThousandBirdsInc/chidori/blob/4bd624028cda6026b7040e57d94dc9c70096f46d/crates/chidori/src/storage.rs#L25-L72" title="Chidori persisted session states">S29</a><a href="https://github.com/ThousandBirdsInc/chidori/blob/4bd624028cda6026b7040e57d94dc9c70096f46d/crates/chidori/src/runtime/host_core.rs#L150-L172" title="Chidori replay divergence">S31</a></p>
+<p>다만 single-host lease와 journal replay만으로 distributed
+exactly-once를 증명하지 못한다. 외부 side effect는 idempotency key가
+필요하다. 당장은 두 concurrent resume,
+crash-after-effect-before-journal, source drift, signal consume-once
+conformance test의 watch source다.</p>
+<h2 id="agent-lab-적용-우선순위">4. Agent Lab 적용 우선순위</h2>
+<table>
+<colgroup>
+<col style="width: 21%" />
+<col style="width: 15%" />
+<col style="width: 15%" />
+<col style="width: 15%" />
+<col style="width: 15%" />
+<col style="width: 15%" />
+</colgroup>
+<thead>
+<tr>
+<th style="text-align: right;">순서</th>
+<th>최소 실험</th>
+<th>비용</th>
+<th>정보 이득</th>
+<th>성공 기준</th>
+<th>중단 기준</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">1</td>
+<td>mission journal → Inspect-compatible read-only export</td>
+<td>S</td>
+<td>높음</td>
+<td>event 순서·schema·count 동일, source 무변경</td>
+<td>exporter가 state를 쓰거나 정보 손실</td>
+</tr>
+<tr>
+<td style="text-align: right;">2</td>
+<td>provenance를 확장한 Condensation record</td>
+<td>S/M</td>
+<td>높음</td>
+<td>raw event 보존, deterministic replay, context 감소</td>
+<td>tool pair 손상 또는 rollback 불가</td>
+</tr>
+<tr>
+<td style="text-align: right;">3</td>
+<td>OpenInference redacted projection</td>
+<td>M</td>
+<td>높음</td>
+<td>secret/raw args 미포함, IDs/hash/provenance 유지</td>
+<td>masking 누락 또는 schema drift silent failure</td>
+</tr>
+<tr>
+<td style="text-align: right;">4</td>
+<td>Burr-inspired typed StateDelta fixture</td>
+<td>M</td>
+<td>높음</td>
+<td>stale/out-of-order write 거부, projection parity</td>
+<td>새로운 state authority 생성</td>
+</tr>
+<tr>
+<td style="text-align: right;">5</td>
+<td>Cline-inspired provider replay fixtures</td>
+<td>M</td>
+<td>중상</td>
+<td>tool IDs·terminal/error·sequence 보존</td>
+<td>fire-and-forget 또는 approval bypass 필요</td>
+</tr>
+<tr>
+<td style="text-align: right;">6</td>
+<td>Warren origin/inbox/salvage conformance</td>
+<td>M/L</td>
+<td>높음</td>
+<td>unknown origin fail-close, consume-once, teardown receipt</td>
+<td>Human gate/merge SSOT 중복</td>
+</tr>
+<tr>
+<td style="text-align: right;">7</td>
+<td>native Dialogue Room Bench 5 fixtures</td>
+<td>M/L</td>
+<td>높음</td>
+<td>deterministic replay와 agent/infra 결과 분리</td>
+<td>외부 runtime이 authoritative state가 됨</td>
+</tr>
+<tr>
+<td style="text-align: right;">8</td>
+<td>OpenSandbox/SWE-ReX fake adapter contract</td>
+<td>L</td>
+<td>높음</td>
+<td>deny-by-default·timeout·destroy 검증</td>
+<td>실제 container가 contract보다 먼저 들어옴</td>
+</tr>
+</tbody>
+</table>
+<p>가장 먼저 구현할 세 가지는 모두 read-only/additive다. 이 순서라면
+새로운 runtime dependency 없이 현재 event가 충분한지, context
+compaction이 안전한지, telemetry가 비밀을 흘리지 않는지부터 falsify할 수
+있다.</p>
+<h2 id="historicalwatch제외-후보">5. Historical·watch·제외 후보</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>후보</th>
+<th>판정</th>
+<th>근거</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Overstory</td>
+<td>historical local-merge reference</td>
+<td>2026-05-28 archive, Warren으로 개발 이동; queue claim/reconciliation
+gap <a href="https://github.com/jayminwest/overstory/blob/ff38f3f76f084abcc34f519bcaa69580f6e53cf1/README.md#L9-L11" title="Overstory archive and Warren successor notice">S32</a></td>
+</tr>
+<tr>
+<td>AutoGen</td>
+<td>legacy only</td>
+<td>upstream가 maintenance mode와 Agent Framework migration을 명시 <a href="https://github.com/microsoft/autogen/blob/027ecf0a379bcc1d09956d46d12d44a3ad9cee14/README.md#L180-L191" title="AutoGen maintenance mode">S33</a></td>
+</tr>
+<tr>
+<td>OpenAI Swarm</td>
+<td>historical/educational</td>
+<td>upstream가 Agents SDK successor를 명시 <a href="https://github.com/openai/swarm/blob/6af0b4caf37dca4526dfd98e9fbd8ce36e7eeb22/README.md#L3-L8" title="Swarm successor notice">S34</a></td>
+</tr>
+<tr>
+<td>Daytona OSS</td>
+<td>reject dependency</td>
+<td>upstream가 2026-06 이후 OSS 비유지와 private core 이동을 명시 <a href="https://github.com/daytonaio/daytona/blob/ec4c21b2d597091ac09ecc278f3bcc172575a987/README.md#L1-L6" title="Daytona OSS maintenance notice">S35</a></td>
+</tr>
+<tr>
+<td>Google AX</td>
+<td>watch after resume implementation</td>
+<td>controller에 incomplete execution resume TODO가 남음 <a href="https://github.com/google/ax/blob/f327e23b5b842e9b700675ded9a6cdb79c505856/internal/controller/controller.go#L64-L74" title="AX resume TODO">S36</a></td>
+</tr>
+<tr>
+<td>AutoGPT platform</td>
+<td>legal review required</td>
+<td>repository 내 Polyform Shield/MIT 혼합 범위 <a href="https://github.com/Significant-Gravitas/AutoGPT/blob/ce6ab7b074a625ce591c1f41ef17276c8093087d/LICENSE#L1-L18" title="AutoGPT mixed license scope">S37</a></td>
+</tr>
+<tr>
+<td>Netflix Conductor</td>
+<td>generic historical reference</td>
+<td>agent-native contract가 아니고 조사한 HEAD가 2023-12 수준</td>
+</tr>
+<tr>
+<td>Continue</td>
+<td>narrow MCP/context reference</td>
+<td>process-global manager와 단일 authoritative runtime 부적합</td>
+</tr>
+<tr>
+<td>Aider</td>
+<td>git UX reference</td>
+<td>host repo 직접 편집, structured event/HITL authority 부재</td>
+</tr>
+<tr>
+<td>Goose</td>
+<td>permission/stream fixture reference</td>
+<td>permission은 sandbox가 아니며 Agent Lab gate를 대체하지 않음</td>
+</tr>
+</tbody>
+</table>
+<p>Overstory의 1차 “좋은 merge 구현” 평가는 archive 확인 후 철회됐다.
+active lifecycle/recovery 참고는 Warren, local atomic merge는 Agent
+Lab의 기존 lease·checkpoint·reconciliation이 계속 SSOT다. <a href="/Users/yoonjong/Projects/agent-lab/src/agent_lab/crash_recovery.py" title="Agent Lab crash recovery">L4</a></p>
+<h2 id="제한과-미검증-영역">6. 제한과 미검증 영역</h2>
+<ul>
+<li>이 문서는 기술적 OSS screen이다. SPDX metadata는 per-file license,
+NOTICE, trademark, dependency license를 대신하지 않는다.</li>
+<li>유지보수·archive·HEAD 상태는 2026-08-06 snapshot이다. unarchived와
+최근 push는 maturity나 production readiness의 증명이 아니다. <a href="/Users/yoonjong/Projects/agent-lab/.omo/ulw-research/20260806-165836/verify-github-metadata.md" title="GitHub API and git verification">V1</a></li>
+<li>SHA-pinned source와 tests를 읽었지만 해당 외부 프로젝트의 test
+suite를 실행한 것은 아니다. 실행 검증은 GitHub REST와
+<code>git ls-remote</code>로 identity/HEAD/license/archive를 교차 확인한
+범위다. <a href="/Users/yoonjong/Projects/agent-lab/.omo/ulw-research/20260806-165836/verify-github-metadata.md" title="GitHub API and git verification">V1</a></li>
+<li>Agent Lab local fit은 조사 시점 현재 worktree 기준이다. 사용자
+변경을 포함할 수 있다.</li>
+<li>Warren legacy origin trust, OpenSandbox cleanup/isolation, Chidori
+distributed exactly-once, Agent Framework effect replay, OpenInference
+privacy defaults는 해결된 사실이 아니라 명시적 잔여 위험이다.</li>
+<li>GitHub 외의 시장 채택률·성능 benchmark 순위는 이번 요청 범위에 넣지
+않았다.</li>
+</ul>
+<h2 id="조사-방법과-수렴">7. 조사 방법과 수렴</h2>
+<ul>
+<li>Wave 1: 14개 독립 축에서 runtime, harness, orchestration, sandbox,
+telemetry, eval, UI, IDE, workflow, memory, policy, worktree,
+governance, local fit 조사.</li>
+<li>Wave 2: 8개 구현 lead를 source/test 수준으로 재감사하고 19개
+repository를 GitHub REST + <code>git ls-remote</code>로 독립 확인.</li>
+<li>Excursion E1: Overstory archive 발견 → upstream successor Warren
+조사 → active shortlist 교체.</li>
+<li>Wave 3: 8개 정제 관점에서 순위, 출처, security, eval practicality,
+검증 비용, local duplication, governance, claim completeness를 반대
+검토.</li>
+<li>수렴 이유: 모든 actionable lead를
+조사·watch·historical·out-of-scope로 disposition했고, 추가 후보가
+top-level 판정이나 실험 순서를 바꾸지 않았다.</li>
+</ul>
+<p>세부 원장은 <code>claim-graph.md</code>, <code>intent-diff.md</code>,
+<code>observation-manifest.md</code>,
+<code>verification-economics.md</code>, <code>expansion-log.md</code>,
+<code>excursion-log.md</code>에 있다.</p>
+<h2 id="sources">Sources</h2>
+<ul>
+<li><strong>OpenHands software-agent-sdk @
+<code>da6f546…</code></strong>: <a href="https://github.com/OpenHands/software-agent-sdk/blob/da6f5463be9364e55db40435017549340c73bdea/openhands-sdk/openhands/sdk/event/condenser.py#L11-L96" title="OpenHands Condensation model and apply">Condensation
+model/apply</a>, <a href="https://github.com/OpenHands/software-agent-sdk/blob/da6f5463be9364e55db40435017549340c73bdea/tests/sdk/conversation/local/test_conversation_tree.py#L224-L290" title="OpenHands fork and replay tests">fork/replay tests</a>, <a href="https://github.com/OpenHands/software-agent-sdk/blob/da6f5463be9364e55db40435017549340c73bdea/tests/sdk/conversation/test_state_view_cache.py#L219-L231" title="OpenHands cache rollback test">cache rollback</a>.</li>
+<li><strong>Inspect AI @ <code>a752313…</code></strong>: <a href="https://github.com/UKGovernmentBEIS/inspect_ai/blob/a7523133367edde0ea2859a271b36a40de77f948/src/inspect_ai/log/_samples.py#L101-L185" title="Inspect ActiveSample limits and state">ActiveSample
+limits/state</a>, <a href="https://github.com/UKGovernmentBEIS/inspect_ai/blob/a7523133367edde0ea2859a271b36a40de77f948/src/inspect_ai/log/_log.py#L395-L517" title="Inspect EvalSample event and result schema">EvalSample
+events/results</a>.</li>
+<li><strong>Harbor @ <code>4698544…</code></strong>: <a href="https://github.com/harbor-framework/harbor/blob/4698544ea9d5ee95d01b05aeaa9ccbd161d5a7f6/src/harbor/upload/uploader.py#L715-L728" title="Harbor reward preserved across upload error">reward retained
+across upload error</a>, <a href="https://github.com/harbor-framework/harbor/blob/4698544ea9d5ee95d01b05aeaa9ccbd161d5a7f6/src/harbor/verifier/verifier.py#L227-L238" title="Harbor verifier result parsing">verifier result parser</a>.</li>
+<li><strong>Cline @ <code>81cce3d…</code></strong>: <a href="https://github.com/cline/cline/blob/81cce3d70e10244cdde40dbd0eb0bb711c93006d/apps/cli/src/runtime/session-events.ts" title="Cline session event bridge">session event bridge</a>, <a href="https://github.com/cline/cline/blob/81cce3d70e10244cdde40dbd0eb0bb711c93006d/apps/cli/src/runtime/session-events.test.ts" title="Cline event dedupe tests">dedupe tests</a>, <a href="https://github.com/cline/cline/blob/81cce3d70e10244cdde40dbd0eb0bb711c93006d/apps/cli/src/runtime/interactive/approvals.ts" title="Cline approval controller">approval controller</a>, <a href="https://github.com/cline/cline/blob/81cce3d70e10244cdde40dbd0eb0bb711c93006d/apps/cli/src/acp/session-load.test.ts" title="Cline history replay tests">history replay tests</a>.</li>
+<li><strong>OpenInference @ <code>8053d84…</code> / OTel GenAI @
+<code>4a39b6e…</code></strong>: <a href="https://github.com/Arize-ai/openinference/blob/8053d845d90ae1ad4796c7e2c5eaf807e932f5b4/spec/configuration.md#L7-L100" title="OpenInference masking configuration">masking configuration</a>,
+<a href="https://github.com/Arize-ai/openinference/blob/8053d845d90ae1ad4796c7e2c5eaf807e932f5b4/spec/semantic_conventions.md#L6-L57" title="OpenInference semantic conventions">semantic conventions</a>, <a href="https://github.com/open-telemetry/semantic-conventions-genai/blob/4a39b6ef1363fab57bc40e18c82abb32cc89ebcd/reference/src/semconv_genai/semconv_model.py#L164-L240" title="OTel GenAI agent and tool conventions">agent/tool model</a>.</li>
+<li><strong>Apache Burr @ <code>a05875f…</code></strong>: <a href="https://github.com/apache/burr/blob/a05875f09687b958bd83a5767be25d37821bee83/burr/core/state.py#L71-L120" title="Burr StateDelta">StateDelta</a>.</li>
+<li><strong>Warren @ <code>8eb58af…</code></strong>: <a href="https://github.com/jayminwest/warren/blob/8eb58af4317c0fc91194edceddbb8f3c25570cf0/src/core/event-envelope.ts#L1-L35" title="Warren event provenance">event provenance</a>, <a href="https://github.com/jayminwest/warren/blob/8eb58af4317c0fc91194edceddbb8f3c25570cf0/src/db/repos/run-inbox.ts#L71-L132" title="Warren atomic inbox claim">atomic inbox claim</a>, <a href="https://github.com/jayminwest/warren/blob/8eb58af4317c0fc91194edceddbb8f3c25570cf0/src/plan-runs/coordinator.ts#L130-L220" title="Warren plan-run coordinator">plan-run coordinator</a>, <a href="https://github.com/jayminwest/warren/blob/8eb58af4317c0fc91194edceddbb8f3c25570cf0/src/plan-runs/merge-gate.ts#L54-L191" title="Warren PR merge gate">PR merge gate</a>, <a href="https://github.com/jayminwest/warren/blob/8eb58af4317c0fc91194edceddbb8f3c25570cf0/src/runtime/salvage.ts#L1-L99" title="Warren salvage-before-destroy">salvage</a>, <a href="https://github.com/jayminwest/warren/blob/8eb58af4317c0fc91194edceddbb8f3c25570cf0/src/runs/reap/destroy.ts#L23-L100" title="Warren destroy gates and best-effort failure">destroy
+gates</a>.</li>
+<li><strong>OpenSandbox @ <code>47d85df…</code> / SWE-ReX @
+<code>5c995c3…</code></strong>: <a href="https://github.com/opensandbox-group/OpenSandbox/blob/47d85df848f957f5e7b3231e435ef9333a57537c/README.md" title="OpenSandbox architecture">architecture</a>, <a href="https://github.com/opensandbox-group/OpenSandbox/blob/47d85df848f957f5e7b3231e435ef9333a57537c/SECURITY.md" title="OpenSandbox security policy">security policy</a>, <a href="https://github.com/opensandbox-group/OpenSandbox/blob/47d85df848f957f5e7b3231e435ef9333a57537c/docs/guides/credential-vault.md" title="OpenSandbox Credential Vault">Credential Vault</a>, <a href="https://github.com/SWE-agent/SWE-ReX/blob/5c995c365dfb1fd5bc56fda688be5d8538f9931f/README.md" title="SWE-ReX runtime backends">runtime backends</a>.</li>
+<li><strong>Microsoft Agent Framework @ <code>74a1440…</code></strong>:
+<a href="https://github.com/microsoft/agent-framework/blob/74a144085a5fd05921b473001528f3ae0725b76a/python/packages/core/agent_framework/_workflows/_workflow.py#L625-L757" title="Agent Framework restore and run semantics">restore/run
+semantics</a>, <a href="https://github.com/microsoft/agent-framework/blob/74a144085a5fd05921b473001528f3ae0725b76a/python/packages/core/agent_framework/_skills.py#L2095-L2125" title="Agent Framework auto-approval rules">auto-approval
+rules</a>.</li>
+<li><strong>Magentic-UI @ <code>d3c9d13…</code></strong>: <a href="https://github.com/microsoft/magentic-ui/blob/d3c9d13c39288257286a66daabf7c5b5fb72ee69/src/magentic_ui/approval.py#L1-L46" title="Magentic-UI approval model">approval decision model</a>.</li>
+<li><strong>Chidori @ <code>4bd6240…</code></strong>: <a href="https://github.com/ThousandBirdsInc/chidori/blob/4bd624028cda6026b7040e57d94dc9c70096f46d/crates/chidori/src/export.rs#L45-L73" title="Chidori export fencing">export fencing</a>, <a href="https://github.com/ThousandBirdsInc/chidori/blob/4bd624028cda6026b7040e57d94dc9c70096f46d/crates/chidori/src/storage.rs#L25-L72" title="Chidori persisted session states">persisted states</a>, <a href="https://github.com/ThousandBirdsInc/chidori/blob/4bd624028cda6026b7040e57d94dc9c70096f46d/crates/chidori/src/runtime/host_core.rs#L150-L172" title="Chidori replay divergence">replay divergence</a>.</li>
+<li><strong>Historical/reject primary notices</strong>: <a href="https://github.com/jayminwest/overstory/blob/ff38f3f76f084abcc34f519bcaa69580f6e53cf1/README.md#L9-L11" title="Overstory archive and Warren successor notice">Overstory archive
+and Warren successor</a>, <a href="https://github.com/microsoft/autogen/blob/027ecf0a379bcc1d09956d46d12d44a3ad9cee14/README.md#L180-L191" title="AutoGen maintenance mode">AutoGen maintenance</a>, <a href="https://github.com/openai/swarm/blob/6af0b4caf37dca4526dfd98e9fbd8ce36e7eeb22/README.md#L3-L8" title="Swarm successor notice">Swarm successor</a>, <a href="https://github.com/daytonaio/daytona/blob/ec4c21b2d597091ac09ecc278f3bcc172575a987/README.md#L1-L6" title="Daytona OSS maintenance notice">Daytona OSS status</a>, <a href="https://github.com/google/ax/blob/f327e23b5b842e9b700675ded9a6cdb79c505856/internal/controller/controller.go#L64-L74" title="AX resume TODO">AX resume TODO</a>, <a href="https://github.com/Significant-Gravitas/AutoGPT/blob/ce6ab7b074a625ce591c1f41ef17276c8093087d/LICENSE#L1-L18" title="AutoGPT mixed license scope">AutoGPT license scope</a>.</li>
+<li><strong>Agent Lab local evidence</strong>: <a href="/Users/yoonjong/Projects/agent-lab/src/agent_lab/runtime/events.py" title="Agent Lab runtime events">runtime events</a>, <a href="/Users/yoonjong/Projects/agent-lab/src/agent_lab/mission/journal.py" title="Agent Lab mission journal">mission journal</a>, <a href="/Users/yoonjong/Projects/agent-lab/src/agent_lab/human_inbox.py" title="Agent Lab Human Inbox">Human Inbox</a>, <a href="/Users/yoonjong/Projects/agent-lab/src/agent_lab/plan/execute_shared.py" title="Agent Lab merge lease">merge lease</a>, <a href="/Users/yoonjong/Projects/agent-lab/src/agent_lab/trace_recorder.py" title="Agent Lab trace recorder">trace recorder</a>, <a href="/Users/yoonjong/Projects/agent-lab/src/agent_lab/session/score.py" title="Agent Lab session score">session score</a>, <a href="/Users/yoonjong/Projects/agent-lab/src/agent_lab/crash_recovery.py" title="Agent Lab crash recovery">crash recovery</a>, <a href="/Users/yoonjong/Projects/agent-lab/src/agent_lab/sandbox_policy.py" title="Agent Lab sandbox policy">sandbox policy</a>, <a href="/Users/yoonjong/Projects/agent-lab/src/agent_lab/checkpoint_store.py" title="Agent Lab checkpoint restore">checkpoint restore</a>.</li>
+<li><strong>Root verification</strong>: <a href="/Users/yoonjong/Projects/agent-lab/.omo/ulw-research/20260806-165836/verify-github-metadata.md" title="GitHub API and git verification">19-repository metadata/HEAD
+matrix and Warren follow-up</a>.</li>
+</ul>
+</body>
+</html>

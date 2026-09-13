@@ -9,6 +9,7 @@ import {
   buildSelectCommand,
   combinedOptionId,
   combinedSelectionRow,
+  exportView,
   keyboardIntent,
   rejectedOptionIds,
   selectedOptionId,
@@ -265,6 +266,36 @@ describe("commands", () => {
     expect(reset.command).toBe("reset");
     expect(reset.expected_revision).toBe(4);
     expect(reset.option_id).toBeUndefined();
+  });
+});
+
+describe("export", () => {
+  const base = {
+    revision: 7,
+    filename: "sess-rev7.md",
+    markdown: "# 구상\n",
+    plan_stale: false,
+    open_blocks: 0,
+  };
+
+  it("passes the document and its revision through untouched", () => {
+    const view = exportView(base);
+    expect(view.revision).toBe(7);
+    expect(view.filename).toBe("sess-rev7.md");
+    expect(view.markdown).toBe("# 구상\n");
+    expect(view.warnings).toEqual([]);
+  });
+
+  it("warns before the user copies, not after they paste", () => {
+    expect(exportView({ ...base, plan_stale: true }).warnings).toEqual([
+      "계획이 최신 구상보다 오래됐습니다.",
+    ]);
+    expect(exportView({ ...base, open_blocks: 2 }).warnings).toEqual([
+      "미결 BLOCK 2건이 문서에 포함됩니다.",
+    ]);
+    expect(
+      exportView({ ...base, plan_stale: true, open_blocks: 1 }).warnings,
+    ).toHaveLength(2);
   });
 });
 

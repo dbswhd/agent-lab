@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   IdeationRequestError,
   fetchSessionIdeation,
+  fetchSessionIdeationExport,
   patchSessionIdeation,
   type IdeationCommandBody,
 } from "../api/client";
@@ -13,12 +14,14 @@ import {
   buildResetCommand,
   buildSelectCommand,
   combinedSelectionRow,
+  exportView,
   keyboardIntent,
   shouldReloadAfter,
   stageView,
   statusAfterReload,
   statusFromError,
   type ConceptPanelStatus,
+  type IdeationExportView,
   type IdeationState,
 } from "../utils/conceptPanelView";
 
@@ -40,6 +43,8 @@ export function ConceptPanel({ sessionId, reloadKey }: Props) {
   const [focusIndex, setFocusIndex] = useState(0);
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [pending, setPending] = useState(false);
+  const [exported, setExported] = useState<IdeationExportView | null>(null);
+  const [exportNote, setExportNote] = useState("");
   const listRef = useRef<HTMLDivElement | null>(null);
 
   const load = useCallback(
@@ -132,6 +137,47 @@ export function ConceptPanel({ sessionId, reloadKey }: Props) {
         ? prev.filter((id) => id !== optionId)
         : [...prev, optionId],
     );
+
+  const runExport = useCallback(async () => {
+    if (!sessionId) return null;
+    const res = await fetchSessionIdeationExport(sessionId);
+    const view = exportView(res);
+    setExported(view);
+    return view;
+  }, [sessionId]);
+
+  const onCopy = async () => {
+    setExportNote("");
+    try {
+      const view = await runExport();
+      if (!view) return;
+      await navigator.clipboard.writeText(view.markdown);
+      setExportNote(`복사했습니다 (rev ${view.revision})`);
+    } catch {
+      // Clipboard access fails on an insecure origin or without permission;
+      // the document is still on screen to select by hand.
+      setExportNote("클립보드를 쓸 수 없습니다. 아래 문서를 직접 복사하세요.");
+    }
+  };
+
+  const onDownload = async () => {
+    setExportNote("");
+    try {
+      const view = await runExport();
+      if (!view) return;
+      const url = URL.createObjectURL(
+        new Blob([view.markdown], { type: "text/markdown;charset=utf-8" }),
+      );
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = view.filename;
+      link.click();
+      URL.revokeObjectURL(url);
+      setExportNote(`${view.filename} 내려받음`);
+    } catch (err) {
+      setExportNote(String((err as Error)?.message ?? "내보내기 실패"));
+    }
+  };
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     const intent = keyboardIntent({
@@ -281,8 +327,40 @@ export function ConceptPanel({ sessionId, reloadKey }: Props) {
         <button type="button" disabled={pending} onClick={onReset}>
           모두 아님 · 다시 탐색
         </button>
+        <div className="concept-panel__export">
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => void onCopy()}
+          >
+            계획 복사
+          </button>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => void onDownload()}
+          >
+            Markdown 내려받기
+          </button>
+        </div>
+        {exported?.warnings.length ? (
+          <p className="concept-panel__notice" role="status">
+            {exported.warnings.join(" ")}
+          </p>
+        ) : null}
+        {exportNote ? (
+          <p className="concept-panel__muted" role="status">
+            {exportNote}
+          </p>
+        ) : null}
+        {exported ? (
+          <details className="concept-panel__exported">
+            <summary>내보낼 문서 보기 (rev {exported.revision})</summary>
+            <textarea readOnly value={exported.markdown} rows={12} />
+          </details>
+        ) : null}
         <p className="concept-panel__muted">
-          방향 수정은 대화로도 됩니다. 선택은 실행 승인이 아닙니다.
+          방향 수정은 대화로도 됩니다. 선택도 내보내기도 실행 승인이 아닙니다.
         </p>
       </footer>
     </aside>

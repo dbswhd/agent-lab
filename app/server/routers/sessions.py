@@ -307,6 +307,42 @@ def patch_session_ideation(
     )
 
 
+@router.get("/sessions/{session_id}/ideation/export")
+def export_session_ideation(session_id: str) -> dict[str, Any]:
+    """Markdown for the user to copy or download (RI-11).
+
+    A read: no file is written, no subprocess starts, and no approval state
+    changes. It deliberately does not touch `plan.md`, so exporting cannot
+    overwrite a legacy execute session's plan.
+    """
+    folder = session_folder_or_404(session_id)
+    from agent_lab.ideation import plan_is_stale
+    from agent_lab.ideation_export import EXPORT_SCHEMA, export_filename, export_markdown
+    from agent_lab.plan.paths import read_session_plan_md
+    from agent_lab.room.objections import open_objections
+    from agent_lab.run.meta import read_run_meta
+
+    run = read_run_meta(folder)
+    state = _ideation_state_or_404(folder)
+    topic_path = folder / "topic.txt"
+    markdown = export_markdown(
+        run,
+        topic=topic_path.read_text(encoding="utf-8").strip() if topic_path.is_file() else "",
+        plan_md=read_session_plan_md(folder, run),
+        objections=open_objections(run),
+    )
+    return {
+        "ok": True,
+        "schema": EXPORT_SCHEMA,
+        "revision": state.get("revision"),
+        "stage": state.get("stage"),
+        "plan_stale": plan_is_stale(state),
+        "open_blocks": len(open_objections(run)),
+        "filename": export_filename(session_id, int(state.get("revision") or 0)),
+        "markdown": markdown,
+    }
+
+
 @router.delete("/sessions/{session_id}")
 def delete_session(session_id: str) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)

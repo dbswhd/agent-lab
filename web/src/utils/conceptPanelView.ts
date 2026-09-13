@@ -201,6 +201,38 @@ export function shouldReloadAfter(status: ConceptPanelStatus): boolean {
   return status.kind === "stale";
 }
 
+export type IdeationExportView = {
+  revision: number;
+  filename: string;
+  markdown: string;
+  /** Reasons the user should read the document before handing it over. */
+  warnings: string[];
+};
+
+export function exportView(data: {
+  revision: number;
+  filename: string;
+  markdown: string;
+  plan_stale: boolean;
+  open_blocks: number;
+}): IdeationExportView {
+  const warnings: string[] = [];
+  // Both of these are in the document too — surfaced here so the user sees
+  // them before copying, not after pasting.
+  if (data.plan_stale) {
+    warnings.push("계획이 최신 구상보다 오래됐습니다.");
+  }
+  if (data.open_blocks > 0) {
+    warnings.push(`미결 BLOCK ${data.open_blocks}건이 문서에 포함됩니다.`);
+  }
+  return {
+    revision: data.revision,
+    filename: data.filename,
+    markdown: data.markdown,
+    warnings,
+  };
+}
+
 export type SelectCommand = {
   command: "select" | "combine" | "reject" | "reset";
   option_id?: string;

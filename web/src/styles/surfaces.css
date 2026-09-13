@@ -2439,3 +2439,26 @@
   padding-top: var(--space-8);
   border-top: 1px solid var(--border-hair);
 }
+
+.concept-panel__export {
+  display: flex;
+  gap: var(--space-6);
+}
+
+.concept-panel__exported textarea {
+  width: 100%;
+  margin-top: var(--space-6);
+  padding: var(--space-8);
+  border: 1px solid var(--border-hair);
+  border-radius: var(--radius-xs);
+  background: var(--surface-sunken);
+  font-family: var(--font-mono, monospace);
+  font-size: var(--text-caption);
+  resize: vertical;
+}
+
+.concept-panel__exported summary {
+  color: var(--label-secondary);
+  font-size: var(--text-caption);
+  cursor: pointer;
+}

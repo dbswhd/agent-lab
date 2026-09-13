@@ -1313,6 +1313,24 @@ export function patchSessionIdeation(id: string, body: IdeationCommandBody) {
   });
 }
 
+export type IdeationExport = {
+  ok: boolean;
+  schema: string;
+  revision: number;
+  stage: "explore" | "shape" | "plan";
+  plan_stale: boolean;
+  open_blocks: number;
+  filename: string;
+  markdown: string;
+};
+
+/** Read-only: the server writes nothing and starts nothing for this (RI-11). */
+export function fetchSessionIdeationExport(id: string) {
+  return json<IdeationExport>(
+    `/api/sessions/${encodeURIComponent(id)}/ideation/export`,
+  );
+}
+
 export function setSessionResponseContract(
   id: string,
   preset: ResponseContractPreset,

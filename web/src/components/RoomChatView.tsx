@@ -1,5 +1,6 @@
 import { AutonomyDial } from "./AutonomyDial";
 import { CommandPalette } from "./CommandPalette";
+import { ConceptPanel } from "./ConceptPanel";
 import { NeedsInputBadge } from "./NeedsInputBadge";
 import { RoomChatInspector } from "./RoomChatInspector";
 import { RoomChatMainPane } from "./RoomChatMainPane";
@@ -278,6 +279,13 @@ export function RoomChatView({ chat }: Props) {
             }}
           />
         </div>
+
+        {/* RI-08 — renders nothing unless the session has ideation state, so
+            every existing session keeps the surface it had. */}
+        <ConceptPanel
+          sessionId={chat.sessionId}
+          reloadKey={chat.transcript.visibleMessages.length}
+        />
       </div>
 
       <RoomChatInspector

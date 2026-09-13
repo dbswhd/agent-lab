@@ -103,7 +103,7 @@
     },
     {
       "path": "web/src/components/RoomChatView.tsx",
-      "lines": 304
+      "lines": 312
     },
     {
       "path": "web/src/hooks/useRoomChat.ts",

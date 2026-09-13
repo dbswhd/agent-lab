@@ -3,6 +3,7 @@ import {
   isLoopReadinessDetail,
   type RoomRunErrorDetail,
 } from "../utils/roomRunErrors";
+import { parseApiErrorDetail } from "../utils/apiError";
 import { apiJson as json, apiUrl } from "./http";
 import type { WisdomIndexStatus } from "./workspaceClient";
 
@@ -1225,6 +1226,90 @@ export function checkSessionGoal(id: string) {
     goal_loop?: GoalLoopRecord;
   }>(`/api/sessions/${encodeURIComponent(id)}/goal/check`, {
     method: "POST",
+  });
+}
+
+// --- idea lane (RI-08) ---------------------------------------------------
+
+export type IdeationResponse = {
+  ok: boolean;
+  ideation: import("../utils/conceptPanelView").IdeationState;
+  revision: number;
+  stage: "explore" | "shape" | "plan";
+  plan_stale: boolean;
+  applied?: boolean;
+  idempotent?: boolean;
+};
+
+export type IdeationCommandBody = {
+  command: "select" | "combine" | "reject" | "reset";
+  option_id?: string;
+  parent_ids?: string[];
+  new_id?: string;
+  title?: string;
+  reason?: string;
+  expected_revision?: number | null;
+  request_id?: string | null;
+};
+
+/** `apiJson` collapses failures to a message; the panel needs the 409 code
+ *  to tell a stale revision apart from a busy session (RI-08). */
+export class IdeationRequestError extends Error {
+  readonly status: number;
+  readonly code: string;
+  readonly currentRevision: number | null;
+
+  constructor(
+    message: string,
+    status: number,
+    code: string,
+    currentRevision: number | null,
+  ) {
+    super(message);
+    this.name = "IdeationRequestError";
+    this.status = status;
+    this.code = code;
+    this.currentRevision = currentRevision;
+  }
+}
+
+async function ideationRequest(
+  path: string,
+  init?: RequestInit,
+): Promise<IdeationResponse> {
+  const res = await fetch(apiUrl(path), init);
+  if (res.ok) return (await res.json()) as IdeationResponse;
+  const text = await res.text();
+  let code = "";
+  let currentRevision: number | null = null;
+  try {
+    const detail = (JSON.parse(text) as { detail?: unknown }).detail;
+    if (detail && typeof detail === "object") {
+      const d = detail as { code?: string; current_revision?: number };
+      code = String(d.code ?? "");
+      if (typeof d.current_revision === "number")
+        currentRevision = d.current_revision;
+    }
+  } catch {
+    /* plain text body */
+  }
+  throw new IdeationRequestError(
+    parseApiErrorDetail(text) || res.statusText,
+    res.status,
+    code,
+    currentRevision,
+  );
+}
+
+export function fetchSessionIdeation(id: string) {
+  return ideationRequest(`/api/sessions/${encodeURIComponent(id)}/ideation`);
+}
+
+export function patchSessionIdeation(id: string, body: IdeationCommandBody) {
+  return ideationRequest(`/api/sessions/${encodeURIComponent(id)}/ideation`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
   });
 }
 

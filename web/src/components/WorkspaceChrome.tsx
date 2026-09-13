@@ -17,6 +17,8 @@ type Props = {
   readonly onToggleSidebar: () => void;
   readonly onSelectRightPanelMode: (mode: RightPanelMode) => void;
   readonly onOpenSettings?: () => void;
+  /** RI-12 — narrowed on the idea lane; omit for every other session. */
+  readonly workbenchModes?: readonly RightPanelMode[];
 };
 
 function isTauriApp(): boolean {
@@ -35,6 +37,7 @@ export function WorkspaceChrome({
   onToggleSidebar,
   onSelectRightPanelMode,
   onOpenSettings: _onOpenSettings,
+  workbenchModes,
 }: Props) {
   const tauri = isTauriApp();
 
@@ -121,6 +124,7 @@ export function WorkspaceChrome({
             open={rightPanelOpen}
             locale={locale}
             onSelect={onSelectRightPanelMode}
+            modes={workbenchModes}
           />
         </div>
       </div>

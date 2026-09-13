@@ -275,6 +275,53 @@ def set_brief(**fields: Any) -> Mutator:
     return _apply
 
 
+def change_condition(
+    *,
+    constraints: Sequence[str] | None = None,
+    assumptions: Sequence[str] | None = None,
+    open_questions: Sequence[str] | None = None,
+    reason: str = "",
+) -> Mutator:
+    """Record a condition the user changed mid-conversation (RI-09).
+
+    ``set_brief`` overwrites quietly. This keeps the change on the decision
+    record too, so shaping can say *what changed and when* instead of hoping
+    the new constraint is noticed somewhere in the transcript.
+    """
+
+    def _apply(state: dict[str, Any]) -> dict[str, Any]:
+        brief = dict(state.get("brief") or {})
+        changed: dict[str, dict[str, list[str]]] = {}
+        for key, value in (
+            ("constraints", constraints),
+            ("assumptions", assumptions),
+            ("open_questions", open_questions),
+        ):
+            if value is None:
+                continue
+            before = _str_list(brief.get(key))
+            after = _str_list(value)
+            if before != after:
+                # A dropped condition matters as much as a new one: "실은 웹이
+                # 아니라 iPhone" is a removal, and a seat that only sees the
+                # addition will keep designing for the web.
+                changed[key] = {
+                    "added": [item for item in after if item not in before],
+                    "removed": [item for item in before if item not in after],
+                }
+            brief[key] = after
+        if not changed:
+            return state
+        state["brief"] = brief
+        state["decisions"] = _append_decision(
+            state,
+            {"kind": "condition", "changed": changed, "reason": str(reason or ""), "source": "user"},
+        )
+        return state
+
+    return _apply
+
+
 def set_options(options: Sequence[Mapping[str, Any]]) -> Mutator:
     """Replace the candidate set. Option ids are stable identifiers, not indices."""
 
@@ -515,3 +562,256 @@ def allows_scribe(run: Mapping[str, Any] | None) -> bool:
 def uses_execute_history_routing(run: Mapping[str, Any] | None) -> bool:
     """Execution success is not an idea-quality signal (§3.1)."""
     return ideation_stage(run) is None
+
+
+# --------------------------------------------------------------------------
+# command dispatch (RI-07)
+# --------------------------------------------------------------------------
+#
+# The API surface is four user commands. Keeping the dispatch here — rather
+# than in the router — means the idempotency and staleness rules are the same
+# whether they are reached over HTTP or from a test.
+
+IDEATION_COMMANDS = ("select", "combine", "reject", "reset")
+
+_LAST_REQUEST_KEY = "last_request_id"
+
+
+class IdeationCommandError(IdeationError):
+    """The command itself is malformed (→ HTTP 422)."""
+
+
+def _already_satisfied(
+    state: Mapping[str, Any],
+    *,
+    command: str,
+    option_id: str,
+    parent_ids: Sequence[str],
+    new_id: str,
+) -> bool:
+    """True when re-applying the command would change nothing.
+
+    A resend of a decision the user already made is a duplicate, not a
+    conflict: it must not bump the revision, append a second decision, or
+    fail the staleness check.
+    """
+    selection = state.get("selection")
+    selection = selection if isinstance(selection, Mapping) else None
+    if command == "select":
+        return bool(selection) and selection.get("option_id") == option_id
+    if command == "combine":
+        if not selection or selection.get("option_id") != new_id:
+            return False
+        return list(selection.get("parent_ids") or []) == list(parent_ids)
+    if command == "reject":
+        return option_id in rejected_option_ids(state)
+    if command == "reset":
+        return state.get("stage") == STAGE_EXPLORE and selection is None
+    return False
+
+
+def apply_ideation_command(
+    run_meta: RunStateLike,
+    *,
+    command: str,
+    option_id: str = "",
+    parent_ids: Sequence[str] | None = None,
+    new_id: str = "",
+    title: str = "",
+    reason: str = "",
+    expected_revision: int | None = None,
+    request_id: str | None = None,
+) -> dict[str, Any]:
+    """Run one user command against the ideation state.
+
+    Returns ``{"state", "applied", "idempotent"}``. Raises
+    ``IdeationStaleError`` (→409) for a genuinely conflicting request and
+    ``IdeationCommandError`` (→422) for a malformed one.
+
+    None of these commands approve execution — see ``ensure_ideation_no_execute``.
+    """
+    verb = str(command or "").strip().lower()
+    if verb not in IDEATION_COMMANDS:
+        raise IdeationCommandError(f"unknown command: {command!r}")
+
+    state = read_ideation(run_meta)
+    if state is None:
+        raise IdeationError("session has no ideation state")
+    state = validate_ideation(state)
+
+    parents = [str(p).strip().lower() for p in (parent_ids or []) if str(p).strip()]
+    option = str(option_id or "").strip().lower()
+    combined_id = str(new_id or "").strip().lower()
+
+    if verb in ("select", "reject") and not option:
+        raise IdeationCommandError(f"{verb} requires option_id")
+    if verb == "combine":
+        if not parents:
+            raise IdeationCommandError("combine requires parent_ids")
+        if not combined_id:
+            combined_id = "opt-combined-" + "-".join(parents)[:48]
+
+    # 1. A retried request is a duplicate, whatever the revision says.
+    if request_id and str(state.get(_LAST_REQUEST_KEY) or "") == str(request_id):
+        return {"state": state, "applied": False, "idempotent": True}
+
+    # 2. So is a command whose effect is already recorded.
+    if _already_satisfied(state, command=verb, option_id=option, parent_ids=parents, new_id=combined_id):
+        return {"state": state, "applied": False, "idempotent": True}
+
+    # 3. Only a request that would actually change something can be stale.
+    mutators: dict[str, Mutator] = {
+        "select": select_option(option, reason=reason),
+        "combine": combine_options(parents, new_id=combined_id, title=title, reason=reason),
+        "reject": reject_option(option, reason=reason),
+        "reset": back_to_explore(reason=reason),
+    }
+
+    def _with_request_id(inner: Mutator) -> Mutator:
+        def _apply(current: dict[str, Any]) -> dict[str, Any]:
+            result = inner(current)
+            target = result if isinstance(result, dict) else current
+            target[_LAST_REQUEST_KEY] = str(request_id) if request_id else None
+            return target
+
+        return _apply
+
+    updated = mutate_ideation(
+        run_meta,
+        _with_request_id(mutators[verb]),
+        expected_revision=expected_revision,
+    )
+    return {"state": updated, "applied": True, "idempotent": False}
+
+
+# --------------------------------------------------------------------------
+# shaping context (RI-09)
+# --------------------------------------------------------------------------
+
+
+def rejections_with_reasons(state: Mapping[str, Any]) -> list[dict[str, str]]:
+    """Rejected candidates and why, newest reason wins.
+
+    A rejected candidate may only come back with *new* grounds, so the reason
+    has to travel with it into every shaping turn.
+    """
+    out: dict[str, dict[str, str]] = {}
+    for decision in state.get("decisions") or []:
+        if not isinstance(decision, Mapping) or decision.get("kind") != "reject":
+            continue
+        option_id = str(decision.get("option_id") or "")
+        if not option_id:
+            continue
+        option = option_by_id(state, option_id) or {}
+        out[option_id] = {
+            "id": option_id,
+            "title": str(option.get("title") or option_id),
+            "reason": str(decision.get("reason") or ""),
+        }
+    return list(out.values())
+
+
+def condition_changes(state: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """Conditions the user changed, in the order they changed them."""
+    out: list[dict[str, Any]] = []
+    for decision in state.get("decisions") or []:
+        if not isinstance(decision, Mapping) or decision.get("kind") != "condition":
+            continue
+        changed = decision.get("changed")
+        out.append(
+            {
+                "changed": dict(changed) if isinstance(changed, Mapping) else {},
+                "reason": str(decision.get("reason") or ""),
+                "revision": int(decision.get("revision") or 0),
+            }
+        )
+    return out
+
+
+def shaping_context(run: Mapping[str, Any] | None) -> dict[str, Any] | None:
+    """Everything a shaping turn must be told explicitly, not left to inference.
+
+    Returns ``None`` outside the ``shape`` stage, so nothing changes for the
+    other stages or for a session with no ideation state.
+    """
+    state = read_ideation(run)
+    if state is None or state.get("stage") != STAGE_SHAPE:
+        return None
+    selection = state.get("selection") if isinstance(state.get("selection"), Mapping) else None
+    brief = state.get("brief") if isinstance(state.get("brief"), Mapping) else {}
+    chosen = selected_option(state)
+    parents = [str(p) for p in ((selection or {}).get("parent_ids") or [])]
+    return {
+        "revision": int(state.get("revision") or 0),
+        "selection": {
+            "option_id": str((selection or {}).get("option_id") or ""),
+            "title": str((chosen or {}).get("title") or (selection or {}).get("title") or ""),
+            "reason": str((selection or {}).get("reason") or ""),
+            "parent_ids": parents,
+        }
+        if selection
+        else None,
+        "selected_option": chosen,
+        "parent_options": [opt for pid in parents if (opt := option_by_id(state, pid))],
+        "rejected": rejections_with_reasons(state),
+        "constraints": _str_list(brief.get("constraints")),
+        "assumptions": _str_list(brief.get("assumptions")),
+        "open_questions": _str_list(brief.get("open_questions")),
+        "condition_changes": condition_changes(state),
+        "concept": state.get("concept"),
+    }
+
+
+# --------------------------------------------------------------------------
+# plan input (RI-10)
+# --------------------------------------------------------------------------
+
+
+def plan_input(run: Mapping[str, Any] | None) -> dict[str, Any] | None:
+    """What the Scribe is told directly, instead of inferring it from the thread.
+
+    Complements ``room.context.ideation_quality.ideation_synthesis_block``,
+    which carries the *selected option's fields* under the output contract.
+    This carries the *decision record* — why this direction, what was turned
+    down and why, what the user changed, and what is still unresolved — so a
+    plan cannot quietly re-open a rejected candidate or drop a changed
+    condition.
+
+    ``None`` for a session with no ideation state.
+    """
+    state = read_ideation(run)
+    if state is None:
+        return None
+    brief = state.get("brief") if isinstance(state.get("brief"), Mapping) else {}
+    selection = state.get("selection") if isinstance(state.get("selection"), Mapping) else None
+    return {
+        "revision": int(state.get("revision") or 0),
+        "stage": str(state.get("stage") or ""),
+        # No selection = the plan is conditional, and must say so (§RI-10).
+        "conditional": selection is None,
+        "selection_reason": str((selection or {}).get("reason") or ""),
+        "original_concept": str(brief.get("original_concept") or ""),
+        "desired_change": str(brief.get("desired_change") or ""),
+        "constraints": _str_list(brief.get("constraints")),
+        "assumptions": _str_list(brief.get("assumptions")),
+        "open_questions": _str_list(brief.get("open_questions")),
+        "rejected": rejections_with_reasons(state),
+        "condition_changes": condition_changes(state),
+        "concept": state.get("concept"),
+        "plan_source_revision": state.get("plan_source_revision"),
+        "plan_stale": plan_is_stale(state),
+    }
+
+
+def stamp_plan_source(run_meta: RunStateLike, plan_md: str) -> dict[str, Any] | None:
+    """Link a freshly written plan to the ideation revision it reflected.
+
+    Called right after a successful synthesis. Without this, ``plan_is_stale``
+    can never become true and a plan silently outlives the concept it was
+    written from. In-memory (F4) — the turn-end replay persists it.
+    """
+    if read_ideation(run_meta) is None:
+        return None
+    from agent_lab.plan.pending import plan_content_hash
+
+    return mutate_ideation(run_meta, record_plan_source(source_hash=plan_content_hash(plan_md)))

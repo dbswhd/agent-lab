@@ -18,6 +18,8 @@ export type ComposerStackLaneInput = {
   showConsensusGate: boolean;
   consensusProposal: unknown;
   showWorkSurface: boolean;
+  /** RI-12 — idea-lane session; defaults to false for every existing session. */
+  ideaLane?: boolean;
 };
 
 /** Lower index = higher priority.
@@ -53,6 +55,11 @@ function laneReady(
     case "consensus":
       return input.showConsensusGate && Boolean(input.consensusProposal);
     case "work":
+      // RI-12 — the work lane is the execute/result surface. On the idea lane a
+      // written plan is an export, not something to run, so having a plan must
+      // not open it. A real pending execution still does, so an existing
+      // session that somehow carries one can still be resolved.
+      if (input.ideaLane && !input.execPending) return false;
       return input.showWorkSurface && !input.planApprovalEnabled;
     default:
       return false;

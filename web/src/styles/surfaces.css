@@ -2282,3 +2282,183 @@
   margin-left: auto;
   font-size: var(--text-caption);
 }
+
+/* --- Concept panel (RI-08, idea lane) ----------------------------------
+   A narrow companion to the transcript. It is not a workbench tab: the idea
+   lane's whole surface is the conversation plus these candidates. */
+.concept-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+  /* `.pane-main` is `flex: 1` with `min-width: 0`, so an inflexible panel here
+     shrinks the transcript to nothing. Basis 0 means the main pane's scaled
+     shrink factor is 0 — give this panel `shrink: 1` and it absorbs the
+     overflow instead of the transcript. */
+  flex: 0 1 320px;
+  min-width: 0;
+  padding: var(--space-14);
+  overflow-y: auto;
+  background: var(--surface-card);
+  border-left: 1px solid var(--border-hair);
+}
+
+/* Below this the transcript, this panel, and an open inspector cannot all be
+   legible at once; the transcript wins and candidates stay reachable in it. */
+@media (max-width: 1180px) {
+  .concept-panel {
+    display: none;
+  }
+}
+
+.concept-panel__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+.concept-panel__stage {
+  font-weight: var(--weight-bold);
+}
+
+.concept-panel__rev,
+.concept-panel__muted {
+  color: var(--label-tertiary);
+  font-size: var(--text-caption);
+}
+
+.concept-panel__hint {
+  margin: 0;
+  color: var(--label-secondary);
+  font-size: var(--text-caption);
+}
+
+.concept-panel__notice {
+  margin: 0;
+  padding: var(--space-8);
+  border-radius: var(--radius-sm);
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-size: var(--text-caption);
+}
+
+.concept-panel__error {
+  margin: 0;
+  padding: var(--space-8);
+  border-radius: var(--radius-sm);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: var(--text-caption);
+}
+
+.concept-panel__combined {
+  margin: 0;
+  color: var(--label-secondary);
+  font-size: var(--text-caption);
+}
+
+.concept-panel__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.concept-candidate {
+  padding: var(--space-10);
+  border: 1px solid var(--border-hair);
+  border-radius: var(--radius-md);
+  background: var(--surface-pane);
+}
+
+.concept-candidate:focus-visible {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: 1px;
+}
+
+.concept-candidate.is-selected {
+  border-color: var(--accent);
+  background: var(--accent-softer);
+}
+
+.concept-candidate.is-comparing {
+  border-color: var(--border-strong);
+}
+
+/* A rejected candidate is dimmed, never removed — the user can still read
+   what they turned down, and why it is on the record. */
+.concept-candidate.is-rejected {
+  opacity: 0.55;
+}
+
+.concept-candidate__title {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-body);
+}
+
+.concept-candidate__agent {
+  color: var(--label-tertiary);
+  font-size: var(--text-micro);
+}
+
+.concept-candidate__fields {
+  margin: var(--space-6) 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  font-size: var(--text-caption);
+}
+
+.concept-candidate__fields dt {
+  color: var(--label-tertiary);
+}
+
+.concept-candidate__fields dd {
+  margin: 0;
+  color: var(--label-secondary);
+}
+
+.concept-candidate__raw {
+  margin: var(--space-6) 0 0;
+  padding: var(--space-8);
+  border-radius: var(--radius-xs);
+  background: var(--surface-sunken);
+  font-size: var(--text-caption);
+  white-space: pre-wrap;
+}
+
+.concept-candidate__actions {
+  display: flex;
+  gap: var(--space-6);
+  margin-top: var(--space-8);
+}
+
+.concept-panel__foot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding-top: var(--space-8);
+  border-top: 1px solid var(--border-hair);
+}
+
+.concept-panel__export {
+  display: flex;
+  gap: var(--space-6);
+}
+
+.concept-panel__exported textarea {
+  width: 100%;
+  margin-top: var(--space-6);
+  padding: var(--space-8);
+  border: 1px solid var(--border-hair);
+  border-radius: var(--radius-xs);
+  background: var(--surface-sunken);
+  font-family: var(--font-mono, monospace);
+  font-size: var(--text-caption);
+  resize: vertical;
+}
+
+.concept-panel__exported summary {
+  color: var(--label-secondary);
+  font-size: var(--text-caption);
+  cursor: pointer;
+}

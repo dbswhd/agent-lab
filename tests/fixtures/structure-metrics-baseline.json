@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "agent_lab_root_py_files": 130,
+  "agent_lab_root_py_files": 131,
   "agent_lab_subpackages": [
     "agent",
     "agents",
@@ -71,7 +71,7 @@
     },
     {
       "path": "web/src/components/ComposerEventStack.tsx",
-      "lines": 571
+      "lines": 576
     }
   ],
   "hot_path_py_files": [
@@ -103,7 +103,7 @@
     },
     {
       "path": "web/src/components/RoomChatView.tsx",
-      "lines": 304
+      "lines": 333
     },
     {
       "path": "web/src/hooks/useRoomChat.ts",

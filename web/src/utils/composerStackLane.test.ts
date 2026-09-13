@@ -17,6 +17,37 @@ const base = {
   showWorkSurface: true,
 };
 
+describe("composerStackLane — idea lane (RI-12)", () => {
+  it("does not open the work lane just because a plan exists", () => {
+    // On the idea lane a written plan is an export, not something to run.
+    const input = { ...base, ideaLane: true };
+    expect(pendingComposerStackLanes(input)).toEqual([]);
+    expect(resolveActiveComposerStackLane(input)).toBeNull();
+  });
+
+  it("still opens it for a real pending execution", () => {
+    const input = { ...base, ideaLane: true, execPending: true };
+    expect(pendingComposerStackLanes(input)).toContain("work");
+  });
+
+  it("leaves an execute-lane session alone", () => {
+    expect(pendingComposerStackLanes(base)).toEqual(["work"]);
+    expect(pendingComposerStackLanes({ ...base, ideaLane: false })).toEqual([
+      "work",
+    ]);
+  });
+
+  it("keeps the other lanes reachable on the idea lane", () => {
+    expect(
+      pendingComposerStackLanes({
+        ...base,
+        ideaLane: true,
+        inboxPendingCount: 1,
+      }),
+    ).toEqual(["inbox"]);
+  });
+});
+
 describe("composerStackLane", () => {
   it("prioritizes inbox over work surface", () => {
     const input = { ...base, inboxPendingCount: 1, showWorkSurface: true };

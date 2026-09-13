@@ -16,6 +16,8 @@ type Props = {
   readonly open: boolean;
   readonly locale: Locale;
   readonly onSelect: (mode: RightPanelMode) => void;
+  /** RI-12 — narrowed on the idea lane; defaults to every mode. */
+  readonly modes?: readonly RightPanelMode[];
 };
 
 function modeIcon(mode: RightPanelMode) {
@@ -61,14 +63,20 @@ function modeIcon(mode: RightPanelMode) {
 /** Persistent segmented tab bar for switching the workbench panel's mode —
  *  replaces the former dropdown menu so every mode is visible and reachable
  *  in one click (Apricot Glass, web/DESIGN.md). */
-export function WorkbenchModeTabs({ active, open, locale, onSelect }: Props) {
+export function WorkbenchModeTabs({
+  active,
+  open,
+  locale,
+  onSelect,
+  modes = MODES,
+}: Props) {
   return (
     <div
       className="workbench-mode-tabs"
       role="tablist"
       aria-label="Workbench panel"
     >
-      {MODES.map((mode) => {
+      {modes.map((mode) => {
         const label = workbenchModeLabel(mode, locale);
         const isActive = open && active === mode;
         return (

@@ -49,6 +49,107 @@ export type TabAutoContext = {
   hasBlocker: boolean;
 };
 
+/** RI-12 — idea-lane surface.
+ *
+ * Read straight off the session's `run.json`: a session without `ideation` is
+ * an execute-lane session and nothing below changes for it.
+ */
+export function isIdeaLaneSession(
+  session: { run?: Record<string, unknown> | null } | null | undefined,
+): boolean {
+  const ideation = session?.run?.ideation;
+  return Boolean(ideation && typeof ideation === "object");
+}
+
+/** Workbench modes offered for a session.
+ *
+ * The idea lane's work is the conversation, the candidates, and the plan —
+ * Diff / Terminal / Background / Preview are execute-lane tools and would
+ * imply this Room runs code. `overview` stays so the session is inspectable,
+ * and `files` stays only when a repo is actually bound.
+ */
+export function visibleWorkbenchModes(args: {
+  ideaLane: boolean;
+  hasWorkspaceBinding?: boolean;
+  all: readonly RightPanelMode[];
+}): RightPanelMode[] {
+  const { ideaLane, hasWorkspaceBinding, all } = args;
+  if (!ideaLane) return [...all];
+  return all.filter(
+    (mode) =>
+      mode === "overview" || (mode === "files" && Boolean(hasWorkspaceBinding)),
+  );
+}
+
+/** Execute-lane decision surfaces the idea lane must not show.
+ *
+ * Suppression is per-surface and only for a *new* Room: an existing session
+ * carrying a pending execution or an open Inbox item keeps every surface it
+ * needs to resolve it (§RI-12).
+ */
+export function suppressExecuteSurfaces(args: {
+  ideaLane: boolean;
+  hasPendingExecution?: boolean;
+  inboxPendingCount?: number;
+}): {
+  autonomyDial: boolean;
+  planApproval: boolean;
+  verifiedLoopApproval: boolean;
+  executeBar: boolean;
+} {
+  const unresolvedLegacyWork =
+    Boolean(args.hasPendingExecution) || (args.inboxPendingCount ?? 0) > 0;
+  const hide = args.ideaLane && !unresolvedLegacyWork;
+  return {
+    autonomyDial: args.ideaLane,
+    planApproval: hide,
+    verifiedLoopApproval: hide,
+    executeBar: hide,
+  };
+}
+
+const ALL_WORKBENCH_MODES: readonly RightPanelMode[] = [
+  "preview",
+  "diff",
+  "terminal",
+  "files",
+  "background",
+  "overview",
+];
+
+export type IdeaLaneSurface = {
+  ideaLane: boolean;
+  suppress: ReturnType<typeof suppressExecuteSurfaces>;
+  workbenchModes: RightPanelMode[];
+};
+
+/** One call for the whole idea-lane surface decision.
+ *
+ * Lives here rather than inline in `RoomChatView` so the shell stays thin —
+ * that file is under the F9 LOC ratchet precisely to stop logic collecting in
+ * it — and so this is testable without a DOM.
+ */
+export function ideaLaneSurface(args: {
+  session: { run?: Record<string, unknown> | null } | null | undefined;
+  hasPendingExecution: boolean;
+  inboxPendingCount: number;
+}): IdeaLaneSurface {
+  const ideaLane = isIdeaLaneSession(args.session);
+  return {
+    ideaLane,
+    suppress: suppressExecuteSurfaces({
+      ideaLane,
+      hasPendingExecution: args.hasPendingExecution,
+      inboxPendingCount: args.inboxPendingCount,
+    }),
+    workbenchModes: visibleWorkbenchModes({
+      ideaLane,
+      hasWorkspaceBinding: Boolean(args.session?.run?.workspace_binding),
+      all: ALL_WORKBENCH_MODES,
+    }),
+  };
+}
+
 export function normalizeWorkspaceTab(
   tab: WorkspaceTab | LegacyWorkspaceTab,
 ): WorkspaceTab {

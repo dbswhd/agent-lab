@@ -251,8 +251,44 @@ Playbook content should also appear in `artifacts/playbook.md` under 「오늘 �
 """
 
 
+IDEATION_SCRIBE_ADDENDUM = """
+[아이디어 Room — 내보내는 계획]
+이 계획은 Room 안에서 실행되지 않는다. 사용자가 **외부 에이전트에서 첫 작업을 시작**할 수 있게 쓴다.
+승인·merge·Oracle 판정 문구를 넣지 말고, 자동 실행 권한을 부여하는 문장도 쓰지 않는다.
+
+위의 필수 섹션에 더해 다음을 포함한다:
+## 만들려는 것
+- 만들려는 경험 한 문단과 **사용자가 이 방향을 고른 이유**.
+## 사용자 시나리오
+- 실제 사용 장면과 **구체적인 입출력 예**(실제 값으로; 자리표시자 금지).
+## MVP 범위 / 비범위
+- 이번에 만드는 것과 **일부러 만들지 않는 것**.
+## 위험 가정과 최소 실험
+- 틀리면 계획이 무너지는 가정부터. 각 가정에 **가장 작은 확인 방법** 한 줄.
+## 첫 작업 지시문
+- 외부 에이전트에 그대로 붙여넣을 수 있는 프롬프트. 범위·완료 조건·확인 방법을 포함하고,
+  실행·merge 승인 권한은 포함하지 않는다.
+
+근거 표기 — 섞지 말 것:
+- `사실:` 실제로 읽은 파일·문서에서 확인한 것. 경로를 함께 쓴다.
+- `제안:` 아직 존재하지 않는, 이 계획이 만들자고 하는 것.
+- `미확인:` 맞아야 진행되는데 확인하지 못한 것.
+읽지 않은 파일 경로·API 이름·기간·수치를 사실처럼 쓰지 않는다. 모르면 `제안:` 또는 `미확인:`이다.
+
+입력에 `선택된 구상 없음`이 있으면 제목 아래 첫 줄에 **"조건부 계획 — 구상 미선택"**을 적고,
+어떤 구상을 전제로 한 것인지 명시한다.
+불확실성이 크면 첫 산출물이 조사·실험 계획이어도 된다. 완성된 인상을 위해 지어내지 않는다.
+"""
+
+
 def room_scribe_prompt(run_meta: dict | None) -> str:
     """Scribe system prompt; trading-mission template gets extension-plan guidance."""
+    from agent_lab.ideation import is_ideation_session
+
+    if is_ideation_session(run_meta):
+        # RI-10 — the idea lane exports a plan for an external agent; it never
+        # runs one here. Every other session keeps the prompt it had.
+        return ROOM_SCRIBE + IDEATION_SCRIBE_ADDENDUM
     if run_meta and str(run_meta.get("session_template") or "") == "trading-mission":
         return ROOM_SCRIBE + TRADING_MISSION_SCRIBE_ADDENDUM
     from agent_lab.plan.paths import is_trading_mission_run
@@ -287,10 +323,16 @@ IDEATION_EXPLORE_INSTRUCTION = (
 
 IDEATION_SHAPE_INSTRUCTION = (
     "[구상 구체화] 사용자가 방향을 골랐습니다. 이제 새 대안을 늘리지 말고 고른 방향을 실제로 만들 수 있게 만드세요. "
-    "사용자 흐름 · 구체적인 입출력 예 · 작동 방식 · MVP 범위와 비범위 · 아직 확인되지 않은 가정을 씁니다. "
+    "아래 순서로 씁니다: 사용자 흐름 · 구체적인 입출력 예(실제 값으로) · 작동 방식과 주요 구조 · "
+    "MVP 범위와 비범위 · 아직 확인되지 않은 가정. "
     "**구현을 막는 문제**와 **단순한 취향 차이**를 구분해서 말하세요. "
-    "레포가 연결돼 있으면 추측하지 말고 실제 파일을 읽고 경로를 인용하세요. "
-    "사용자가 이미 기각한 후보는 새 근거 없이 다시 제안하지 마세요."
+    "사용자가 이미 기각한 후보는 새 근거 없이 다시 제안하지 마세요. "
+    "사용자가 바꾼 조건이 입력에 있으면 이전 답변보다 그 조건을 우선합니다.\n"
+    "각 줄의 근거를 다음 세 가지로 표시하세요 — 섞지 마세요:\n"
+    "  `사실:` 직접 읽은 파일·문서에서 확인한 것. 경로나 출처를 함께 씁니다.\n"
+    "  `제안:` 당신이 설계한 것. 아직 아무 데도 존재하지 않습니다.\n"
+    "  `미확인:` 맞아야 진행되지만 확인하지 못한 것. 어떻게 확인할지 한 줄로 덧붙입니다.\n"
+    "레포가 연결돼 있으면 추측하지 말고 실제로 읽으세요. 읽지 않은 경로·API·수치는 `사실:`이 아닙니다."
 )
 
 # Seat perspectives — assigned by seat index, never by provider name (§4.3).

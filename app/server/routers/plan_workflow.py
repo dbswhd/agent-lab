@@ -48,7 +48,7 @@ def post_plan_approve(
     body: PlanApproveRequest,
 ) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
-    from agent_lab.plan.workflow import approve_plan
+    from agent_lab.plan.workflow import PlanWorkflowNotApproved, approve_plan
 
     try:
         result = approve_plan(
@@ -57,6 +57,13 @@ def post_plan_approve(
             completion_promise=body.completion_promise,
             criteria=body.criteria,
         )
+    except PlanWorkflowNotApproved as exc:
+        # RI-04 refuses this for the idea lane; without this the refusal escapes
+        # as a 500. The gate holds either way — this only makes it legible.
+        raise HTTPException(
+            status_code=409,
+            detail={"message": str(exc), "code": str(exc), "phase": exc.phase},
+        ) from exc
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     return {"ok": True, "session_id": session_id, **result}

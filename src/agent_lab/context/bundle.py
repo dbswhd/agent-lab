@@ -729,6 +729,13 @@ def build_context_bundle(
             guidance_parts.insert(0, ideation_perspective_for_seat(seat))
             guidance_parts.insert(0, IDEATION_EXPLORE_INSTRUCTION)
         elif stage == STAGE_SHAPE:
+            # RI-09 — the user's choice, their reasons, the candidates they
+            # rejected, and any condition they changed go in explicitly.
+            from agent_lab.room.messages import build_ideation_shaping_block
+
+            shaping_block = build_ideation_shaping_block(run_meta)
+            if shaping_block.strip():
+                guidance_parts.insert(0, shaping_block)
             guidance_parts.insert(0, IDEATION_SHAPE_INSTRUCTION)
     from agent_lab.room.dispatch_intents import build_dispatch_intent_block
 

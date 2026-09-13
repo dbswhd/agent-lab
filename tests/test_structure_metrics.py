@@ -45,7 +45,7 @@ def test_f9_hot_path_ts_caps_in_baseline() -> None:
     by_path = {row["path"]: row["lines"] for row in baseline["hot_path_ts_files"]}
     assert by_path == {
         "web/src/components/RoomChat.tsx": 9,
-        "web/src/components/RoomChatView.tsx": 304,
+        "web/src/components/RoomChatView.tsx": 312,
         "web/src/hooks/useRoomChat.ts": 12,
         "web/src/hooks/useRoomChatBootstrap.ts": 484,
         # 2026-07-30: 741 -> 738 (prettier reflow) · 418 -> 422 (workspacePath

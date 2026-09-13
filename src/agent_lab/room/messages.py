@@ -187,6 +187,78 @@ def _round_agent_order(
     return agents
 
 
+def build_ideation_shaping_block(run_meta: RunStateLike | None) -> str:
+    """Render the shaping inputs into the agent payload (RI-09).
+
+    Empty outside the ``shape`` stage. The point of writing this out rather
+    than letting a seat re-read the transcript is that the user's choice, the
+    reasons they gave, and the conditions they changed are decisions — not
+    things to re-derive from prose and possibly get wrong.
+    """
+    from agent_lab.ideation import shaping_context
+
+    ctx = shaping_context(run_meta)
+    if ctx is None:
+        return ""
+
+    lines: list[str] = ["[구상 구체화 입력 — 사용자의 결정]"]
+    selection = ctx.get("selection")
+    if selection:
+        title = selection["title"] or selection["option_id"]
+        lines.append(f"- 고른 방향: {title} ({selection['option_id']})")
+        if selection["parent_ids"]:
+            lines.append(f"  합친 후보: {', '.join(selection['parent_ids'])}")
+        if selection["reason"]:
+            lines.append(f"  사용자 이유: {selection['reason']}")
+    else:
+        lines.append("- 고른 방향: 아직 없음. 구체화 대상을 임의로 정하지 마세요.")
+
+    option = ctx.get("selected_option") or {}
+    for key, label in (
+        ("principle", "작동 원리"),
+        ("usage", "사용 장면"),
+        ("difference", "다른 점"),
+        ("tradeoff", "포기하는 것"),
+        ("first_experiment", "첫 실험"),
+    ):
+        value = str(option.get(key) or "").strip()
+        if value:
+            lines.append(f"  {label}: {value}")
+
+    rejected = ctx.get("rejected") or []
+    if rejected:
+        lines.append("- 사용자가 기각한 후보 (새 근거 없이 다시 제안하지 마세요):")
+        for item in rejected:
+            reason = item["reason"] or "(이유 미기록)"
+            lines.append(f"  · {item['title']} ({item['id']}) — {reason}")
+
+    changes = ctx.get("condition_changes") or []
+    if changes:
+        lines.append("- 사용자가 **바꾼 조건** (이전 답변보다 우선합니다):")
+        for change in changes:
+            for field, delta in (change.get("changed") or {}).items():
+                for item in delta.get("added") or []:
+                    lines.append(f"  · {field} 추가: {item}")
+                for item in delta.get("removed") or []:
+                    lines.append(f"  · {field} 해제: {item} — 더 이상 적용되지 않습니다")
+            if change.get("reason"):
+                lines.append(f"    이유: {change['reason']}")
+
+    for key, label in (
+        ("constraints", "제약"),
+        ("assumptions", "가정"),
+        ("open_questions", "미결 질문"),
+    ):
+        values = ctx.get(key) or []
+        if values:
+            lines.append(f"- {label}: {'; '.join(values)}")
+
+    lines.append(
+        "- 이 입력은 대화 요약이 아니라 기록된 결정입니다. 여기 없는 선택을 추측하지 마세요."
+    )
+    return "\n".join(lines)
+
+
 def _agent_user_payload(
     topic: str,
     messages: list[ChatMessage],

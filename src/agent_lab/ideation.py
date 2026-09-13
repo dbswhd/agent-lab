@@ -275,6 +275,53 @@ def set_brief(**fields: Any) -> Mutator:
     return _apply
 
 
+def change_condition(
+    *,
+    constraints: Sequence[str] | None = None,
+    assumptions: Sequence[str] | None = None,
+    open_questions: Sequence[str] | None = None,
+    reason: str = "",
+) -> Mutator:
+    """Record a condition the user changed mid-conversation (RI-09).
+
+    ``set_brief`` overwrites quietly. This keeps the change on the decision
+    record too, so shaping can say *what changed and when* instead of hoping
+    the new constraint is noticed somewhere in the transcript.
+    """
+
+    def _apply(state: dict[str, Any]) -> dict[str, Any]:
+        brief = dict(state.get("brief") or {})
+        changed: dict[str, dict[str, list[str]]] = {}
+        for key, value in (
+            ("constraints", constraints),
+            ("assumptions", assumptions),
+            ("open_questions", open_questions),
+        ):
+            if value is None:
+                continue
+            before = _str_list(brief.get(key))
+            after = _str_list(value)
+            if before != after:
+                # A dropped condition matters as much as a new one: "실은 웹이
+                # 아니라 iPhone" is a removal, and a seat that only sees the
+                # addition will keep designing for the web.
+                changed[key] = {
+                    "added": [item for item in after if item not in before],
+                    "removed": [item for item in before if item not in after],
+                }
+            brief[key] = after
+        if not changed:
+            return state
+        state["brief"] = brief
+        state["decisions"] = _append_decision(
+            state,
+            {"kind": "condition", "changed": changed, "reason": str(reason or ""), "source": "user"},
+        )
+        return state
+
+    return _apply
+
+
 def set_options(options: Sequence[Mapping[str, Any]]) -> Mutator:
     """Replace the candidate set. Option ids are stable identifiers, not indices."""
 
@@ -635,3 +682,81 @@ def apply_ideation_command(
         expected_revision=expected_revision,
     )
     return {"state": updated, "applied": True, "idempotent": False}
+
+
+# --------------------------------------------------------------------------
+# shaping context (RI-09)
+# --------------------------------------------------------------------------
+
+
+def rejections_with_reasons(state: Mapping[str, Any]) -> list[dict[str, str]]:
+    """Rejected candidates and why, newest reason wins.
+
+    A rejected candidate may only come back with *new* grounds, so the reason
+    has to travel with it into every shaping turn.
+    """
+    out: dict[str, dict[str, str]] = {}
+    for decision in state.get("decisions") or []:
+        if not isinstance(decision, Mapping) or decision.get("kind") != "reject":
+            continue
+        option_id = str(decision.get("option_id") or "")
+        if not option_id:
+            continue
+        option = option_by_id(state, option_id) or {}
+        out[option_id] = {
+            "id": option_id,
+            "title": str(option.get("title") or option_id),
+            "reason": str(decision.get("reason") or ""),
+        }
+    return list(out.values())
+
+
+def condition_changes(state: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """Conditions the user changed, in the order they changed them."""
+    out: list[dict[str, Any]] = []
+    for decision in state.get("decisions") or []:
+        if not isinstance(decision, Mapping) or decision.get("kind") != "condition":
+            continue
+        changed = decision.get("changed")
+        out.append(
+            {
+                "changed": dict(changed) if isinstance(changed, Mapping) else {},
+                "reason": str(decision.get("reason") or ""),
+                "revision": int(decision.get("revision") or 0),
+            }
+        )
+    return out
+
+
+def shaping_context(run: Mapping[str, Any] | None) -> dict[str, Any] | None:
+    """Everything a shaping turn must be told explicitly, not left to inference.
+
+    Returns ``None`` outside the ``shape`` stage, so nothing changes for the
+    other stages or for a session with no ideation state.
+    """
+    state = read_ideation(run)
+    if state is None or state.get("stage") != STAGE_SHAPE:
+        return None
+    selection = state.get("selection") if isinstance(state.get("selection"), Mapping) else None
+    brief = state.get("brief") if isinstance(state.get("brief"), Mapping) else {}
+    chosen = selected_option(state)
+    parents = [str(p) for p in ((selection or {}).get("parent_ids") or [])]
+    return {
+        "revision": int(state.get("revision") or 0),
+        "selection": {
+            "option_id": str((selection or {}).get("option_id") or ""),
+            "title": str((chosen or {}).get("title") or (selection or {}).get("title") or ""),
+            "reason": str((selection or {}).get("reason") or ""),
+            "parent_ids": parents,
+        }
+        if selection
+        else None,
+        "selected_option": chosen,
+        "parent_options": [opt for pid in parents if (opt := option_by_id(state, pid))],
+        "rejected": rejections_with_reasons(state),
+        "constraints": _str_list(brief.get("constraints")),
+        "assumptions": _str_list(brief.get("assumptions")),
+        "open_questions": _str_list(brief.get("open_questions")),
+        "condition_changes": condition_changes(state),
+        "concept": state.get("concept"),
+    }

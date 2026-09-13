@@ -84,6 +84,35 @@
 
 ---
 
+## 4.5 회귀와 live 증거의 구분 (RI-13)
+
+deterministic 회귀와 사용자 live 평가는 **서로를 대신하지 않는다**. mock이 통과했다는 것은
+경로가 깨지지 않았다는 뜻이지, 구상이 쓸 만하다는 뜻이 아니다.
+
+| 종류 | 무엇을 고정하나 | 어디서 도나 |
+|---|---|---|
+| `tests/test_ideation_*.py` | 상태·정책·승인 경계·내보내기 계약 | `make test-fast` (CI) |
+| `web/e2e/ideation-journey.spec.ts` | 브라우저 경로: 후보 비교 → 선택 → 새로고침 복원 → stale 거절 → 내보내기 경고 → 기존 세션 미영향 | `npm --prefix web run test:e2e -- ideation-journey.spec.ts` (CI, `/api` route mock) |
+| `tests/test_ideation_recovery.py` | resume 무손실 · 미완료를 준비됨으로 표기하지 않음 · 전체 경로 execute 0 | `make test-fast` (CI) |
+| **live evidence packet** | 구상의 실제 유용성 | **opt-in 수동 실행** — CI 아님 |
+
+CI는 기존 mock-only 원칙을 유지한다. live 모델 호출과 실제 아이디어 평가는 §3 절차로
+별도 실행하고, 결과는 `room-ideation-results.md`에만 기록한다. mock 결과 파일과 섞지 않는다.
+
+### E2E가 기록하는 시나리오
+
+1. 후보가 비교 가능하게 보이고(파싱 실패 후보 포함), 선택이 **새로고침 후 복원**된다.
+2. 기각한 후보는 목록에서 사라지지 않고 흐려진 채 남는다.
+3. 다른 곳에서 구상이 바뀐 뒤의 선택은 **409로 거절**되고, 최신 후보와 경고가 표시된다.
+4. 내보내기는 **복사 전에** stale·미결 BLOCK 경고와 revision을 보여준다.
+5. 전체 경로에서 execute·plan/approve·dry-run·merge·verify 요청이 **0건**이고,
+   실행 레인·plan approval strip이 화면에 없다.
+6. 기존 세션에는 구상 패널이 없고 workbench 도구 6개가 그대로다.
+
+미측정으로 남은 것: provider 한 명 실패와 턴 취소의 **브라우저** 표시. 파이썬 쪽
+(`test_ideation_recovery.py`)에서 상태 보존은 고정했으나, 그 상태가 화면에 어떻게 보이는지는
+live 세션에서 확인해야 한다.
+
 ## 5. 운영 기준 (제안)
 
 RI-14에서 다음을 **모두** 충족하면 신규 일반 Room 생성만 idea lane 기본값으로 전환한다:

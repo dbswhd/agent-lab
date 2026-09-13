@@ -515,3 +515,123 @@ def allows_scribe(run: Mapping[str, Any] | None) -> bool:
 def uses_execute_history_routing(run: Mapping[str, Any] | None) -> bool:
     """Execution success is not an idea-quality signal (§3.1)."""
     return ideation_stage(run) is None
+
+
+# --------------------------------------------------------------------------
+# command dispatch (RI-07)
+# --------------------------------------------------------------------------
+#
+# The API surface is four user commands. Keeping the dispatch here — rather
+# than in the router — means the idempotency and staleness rules are the same
+# whether they are reached over HTTP or from a test.
+
+IDEATION_COMMANDS = ("select", "combine", "reject", "reset")
+
+_LAST_REQUEST_KEY = "last_request_id"
+
+
+class IdeationCommandError(IdeationError):
+    """The command itself is malformed (→ HTTP 422)."""
+
+
+def _already_satisfied(
+    state: Mapping[str, Any],
+    *,
+    command: str,
+    option_id: str,
+    parent_ids: Sequence[str],
+    new_id: str,
+) -> bool:
+    """True when re-applying the command would change nothing.
+
+    A resend of a decision the user already made is a duplicate, not a
+    conflict: it must not bump the revision, append a second decision, or
+    fail the staleness check.
+    """
+    selection = state.get("selection")
+    selection = selection if isinstance(selection, Mapping) else None
+    if command == "select":
+        return bool(selection) and selection.get("option_id") == option_id
+    if command == "combine":
+        if not selection or selection.get("option_id") != new_id:
+            return False
+        return list(selection.get("parent_ids") or []) == list(parent_ids)
+    if command == "reject":
+        return option_id in rejected_option_ids(state)
+    if command == "reset":
+        return state.get("stage") == STAGE_EXPLORE and selection is None
+    return False
+
+
+def apply_ideation_command(
+    run_meta: RunStateLike,
+    *,
+    command: str,
+    option_id: str = "",
+    parent_ids: Sequence[str] | None = None,
+    new_id: str = "",
+    title: str = "",
+    reason: str = "",
+    expected_revision: int | None = None,
+    request_id: str | None = None,
+) -> dict[str, Any]:
+    """Run one user command against the ideation state.
+
+    Returns ``{"state", "applied", "idempotent"}``. Raises
+    ``IdeationStaleError`` (→409) for a genuinely conflicting request and
+    ``IdeationCommandError`` (→422) for a malformed one.
+
+    None of these commands approve execution — see ``ensure_ideation_no_execute``.
+    """
+    verb = str(command or "").strip().lower()
+    if verb not in IDEATION_COMMANDS:
+        raise IdeationCommandError(f"unknown command: {command!r}")
+
+    state = read_ideation(run_meta)
+    if state is None:
+        raise IdeationError("session has no ideation state")
+    state = validate_ideation(state)
+
+    parents = [str(p).strip().lower() for p in (parent_ids or []) if str(p).strip()]
+    option = str(option_id or "").strip().lower()
+    combined_id = str(new_id or "").strip().lower()
+
+    if verb in ("select", "reject") and not option:
+        raise IdeationCommandError(f"{verb} requires option_id")
+    if verb == "combine":
+        if not parents:
+            raise IdeationCommandError("combine requires parent_ids")
+        if not combined_id:
+            combined_id = "opt-combined-" + "-".join(parents)[:48]
+
+    # 1. A retried request is a duplicate, whatever the revision says.
+    if request_id and str(state.get(_LAST_REQUEST_KEY) or "") == str(request_id):
+        return {"state": state, "applied": False, "idempotent": True}
+
+    # 2. So is a command whose effect is already recorded.
+    if _already_satisfied(state, command=verb, option_id=option, parent_ids=parents, new_id=combined_id):
+        return {"state": state, "applied": False, "idempotent": True}
+
+    # 3. Only a request that would actually change something can be stale.
+    mutators: dict[str, Mutator] = {
+        "select": select_option(option, reason=reason),
+        "combine": combine_options(parents, new_id=combined_id, title=title, reason=reason),
+        "reject": reject_option(option, reason=reason),
+        "reset": back_to_explore(reason=reason),
+    }
+
+    def _with_request_id(inner: Mutator) -> Mutator:
+        def _apply(current: dict[str, Any]) -> dict[str, Any]:
+            result = inner(current)
+            target = result if isinstance(result, dict) else current
+            target[_LAST_REQUEST_KEY] = str(request_id) if request_id else None
+            return target
+
+        return _apply
+
+    updated = mutate_ideation(
+        run_meta,
+        _with_request_id(mutators[verb]),
+        expected_revision=expected_revision,
+    )
+    return {"state": updated, "applied": True, "idempotent": False}

@@ -640,6 +640,7 @@ async def create_room_run(
     workspace_id: str = Form("agent-lab"),
     workspace_path: str | None = Form(None),
     session_template: str = Form("general"),
+    ideation: bool = Form(False),
     agent_capabilities: str = Form("{}"),
     agent_thread_bindings: str = Form("{}"),
     room_models: str = Form(""),
@@ -658,6 +659,11 @@ async def create_room_run(
             request_id=request_id,
             permissions=permissions,
         )
+
+    # `Form(False)` arrives as a FieldInfo (truthy!) when this endpoint is
+    # called directly as a function rather than over HTTP, which several tests
+    # do. Compare identity so only a real `True` opts in.
+    wants_ideation = ideation is True
 
     topic = topic.strip()
     mode_norm = (mode or "discuss").strip().lower()
@@ -803,6 +809,19 @@ async def create_room_run(
         folder = active_sessions_dir() / session_id
         if not folder.is_dir():
             raise HTTPException(status_code=404, detail="session not found")
+        if wants_ideation:
+            # RI-07 — opt-in creates a session, it never converts one. Turning an
+            # existing execute-lane session into an idea lane mid-flight would be
+            # exactly the implicit migration §4.1 rules out, so say so instead of
+            # ignoring the flag.
+            from agent_lab.ideation import is_ideation_session
+            from agent_lab.run.meta import read_run_meta
+
+            if not is_ideation_session(read_run_meta(folder)):
+                raise HTTPException(
+                    status_code=400,
+                    detail="ideation opt-in applies to new sessions only; existing sessions are not migrated",
+                )
         if _session_hard_cap_exhausted(folder):
             raise HTTPException(
                 status_code=409,
@@ -825,6 +844,15 @@ async def create_room_run(
             )
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
+        if wants_ideation:
+            # RI-07 — explicit opt-in only, and only for a brand-new session.
+            # Nothing infers this: an existing session without `run.json.ideation`
+            # keeps the execute lane it was created with.
+            from agent_lab.ideation import new_ideation
+            from agent_lab.run.meta import patch_run_meta
+
+            seed = new_ideation(original_concept=topic)
+            patch_run_meta(folder, lambda meta: {**meta, "ideation": seed})
 
     if room_models and folder is not None:
         try:

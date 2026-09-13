@@ -4,7 +4,7 @@ import shutil
 from typing import Any, Literal
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from agent_lab.attachments import list_attachment_names
 from agent_lab.goal_loop import check_session_goal, goal_loop_enabled, set_session_goal
@@ -181,6 +181,130 @@ def post_session_goal_check(session_id: str) -> dict[str, Any]:
     }:
         raise HTTPException(status_code=409, detail=result["reason"])
     return {"ok": True, **result}
+
+
+# --- idea lane (RI-07) ---------------------------------------------------
+#
+# Selecting, combining, or rejecting a candidate is the user deciding what to
+# build. None of it approves execution: `plan/approve`, the template fast-path,
+# and a direct execute call all stay refused for this lane (RI-04), and these
+# endpoints never call them.
+
+
+class IdeationPatchRequest(BaseModel):
+    command: Literal["select", "combine", "reject", "reset"]
+    option_id: str = ""
+    parent_ids: list[str] = Field(default_factory=list)
+    new_id: str = ""
+    title: str = ""
+    reason: str = ""
+    expected_revision: int | None = None
+    request_id: str | None = None
+
+
+def _ideation_state_or_404(folder) -> dict[str, Any]:
+    from agent_lab.ideation import read_ideation
+    from agent_lab.run.meta import read_run_meta
+
+    state = read_ideation(read_run_meta(folder))
+    if state is None:
+        raise HTTPException(status_code=404, detail="session has no ideation state")
+    return state
+
+
+def _ideation_payload(state: dict[str, Any], **extra: Any) -> dict[str, Any]:
+    from agent_lab.ideation import plan_is_stale
+
+    return {
+        "ok": True,
+        "ideation": state,
+        "revision": state.get("revision"),
+        "stage": state.get("stage"),
+        "plan_stale": plan_is_stale(state),
+        **extra,
+    }
+
+
+@router.get("/sessions/{session_id}/ideation")
+def get_session_ideation(session_id: str) -> dict[str, Any]:
+    """Read idea state. Deliberately does not run the plan pipeline.
+
+    `GET /api/sessions/{id}` calls `ensure_session_plan_pipeline`; this one must
+    not, so reading or refreshing an idea session writes nothing at all.
+    """
+    folder = session_folder_or_404(session_id)
+    return _ideation_payload(_ideation_state_or_404(folder))
+
+
+@router.patch("/sessions/{session_id}/ideation")
+def patch_session_ideation(
+    session_id: str,
+    body: IdeationPatchRequest,
+) -> dict[str, Any]:
+    folder = session_folder_or_404(session_id)
+    from agent_lab.ideation import (
+        IdeationCommandError,
+        IdeationError,
+        IdeationStaleError,
+        apply_ideation_command,
+        read_ideation,
+    )
+    from agent_lab.run.meta import patch_run_meta
+    from agent_lab.run.control import run_lock_status
+
+    _ideation_state_or_404(folder)
+
+    # A room turn holds the authoritative run_meta in memory and replays it at
+    # turn end, so a write landing now would be silently overwritten. Refuse
+    # instead of losing the newer state.
+    lock = run_lock_status()
+    if lock.get("locked") and str(lock.get("session_id") or "") == session_id:
+        raise HTTPException(
+            status_code=409,
+            detail={"message": "session is running a room turn; retry after it finishes", "code": "busy"},
+        )
+
+    outcome: dict[str, Any] = {}
+
+    def _apply(run: dict[str, Any]) -> dict[str, Any]:
+        outcome.update(
+            apply_ideation_command(
+                run,
+                command=body.command,
+                option_id=body.option_id,
+                parent_ids=body.parent_ids,
+                new_id=body.new_id,
+                title=body.title,
+                reason=body.reason,
+                expected_revision=body.expected_revision,
+                request_id=body.request_id,
+            )
+        )
+        return run
+
+    try:
+        updated = patch_run_meta(folder, _apply)
+    except IdeationStaleError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": str(exc),
+                "code": "stale_revision",
+                "expected_revision": exc.expected,
+                "current_revision": exc.actual,
+            },
+        ) from exc
+    except IdeationCommandError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except IdeationError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    state = read_ideation(updated) or outcome["state"]
+    return _ideation_payload(
+        state,
+        applied=bool(outcome.get("applied")),
+        idempotent=bool(outcome.get("idempotent")),
+    )
 
 
 @router.delete("/sessions/{session_id}")

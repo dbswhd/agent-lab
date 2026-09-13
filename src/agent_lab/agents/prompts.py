@@ -251,8 +251,44 @@ Playbook content should also appear in `artifacts/playbook.md` under 「오늘 �
 """
 
 
+IDEATION_SCRIBE_ADDENDUM = """
+[아이디어 Room — 내보내는 계획]
+이 계획은 Room 안에서 실행되지 않는다. 사용자가 **외부 에이전트에서 첫 작업을 시작**할 수 있게 쓴다.
+승인·merge·Oracle 판정 문구를 넣지 말고, 자동 실행 권한을 부여하는 문장도 쓰지 않는다.
+
+위의 필수 섹션에 더해 다음을 포함한다:
+## 만들려는 것
+- 만들려는 경험 한 문단과 **사용자가 이 방향을 고른 이유**.
+## 사용자 시나리오
+- 실제 사용 장면과 **구체적인 입출력 예**(실제 값으로; 자리표시자 금지).
+## MVP 범위 / 비범위
+- 이번에 만드는 것과 **일부러 만들지 않는 것**.
+## 위험 가정과 최소 실험
+- 틀리면 계획이 무너지는 가정부터. 각 가정에 **가장 작은 확인 방법** 한 줄.
+## 첫 작업 지시문
+- 외부 에이전트에 그대로 붙여넣을 수 있는 프롬프트. 범위·완료 조건·확인 방법을 포함하고,
+  실행·merge 승인 권한은 포함하지 않는다.
+
+근거 표기 — 섞지 말 것:
+- `사실:` 실제로 읽은 파일·문서에서 확인한 것. 경로를 함께 쓴다.
+- `제안:` 아직 존재하지 않는, 이 계획이 만들자고 하는 것.
+- `미확인:` 맞아야 진행되는데 확인하지 못한 것.
+읽지 않은 파일 경로·API 이름·기간·수치를 사실처럼 쓰지 않는다. 모르면 `제안:` 또는 `미확인:`이다.
+
+입력에 `선택된 구상 없음`이 있으면 제목 아래 첫 줄에 **"조건부 계획 — 구상 미선택"**을 적고,
+어떤 구상을 전제로 한 것인지 명시한다.
+불확실성이 크면 첫 산출물이 조사·실험 계획이어도 된다. 완성된 인상을 위해 지어내지 않는다.
+"""
+
+
 def room_scribe_prompt(run_meta: dict | None) -> str:
     """Scribe system prompt; trading-mission template gets extension-plan guidance."""
+    from agent_lab.ideation import is_ideation_session
+
+    if is_ideation_session(run_meta):
+        # RI-10 — the idea lane exports a plan for an external agent; it never
+        # runs one here. Every other session keeps the prompt it had.
+        return ROOM_SCRIBE + IDEATION_SCRIBE_ADDENDUM
     if run_meta and str(run_meta.get("session_template") or "") == "trading-mission":
         return ROOM_SCRIBE + TRADING_MISSION_SCRIBE_ADDENDUM
     from agent_lab.plan.paths import is_trading_mission_run

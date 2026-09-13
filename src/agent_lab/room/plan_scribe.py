@@ -5,6 +5,7 @@ from __future__ import annotations
 from agent_lab.room._typing import agent_label
 import os
 from pathlib import Path
+from collections.abc import Mapping
 from typing import Any, Callable, cast
 
 from agent_lab.run.state import RunStateLike
@@ -89,6 +90,12 @@ def synthesize_plan(
     ideation_block = ideation_synthesis_block(run_meta)
     if ideation_block.strip():
         user = f"{user}\n\n---\n\n{ideation_block.strip()}"
+    # RI-10 — the synthesis contract above carries the selected option's fields;
+    # this carries the decision record behind it, so the plan cannot re-open a
+    # rejected candidate or drop a condition the user changed.
+    decisions_block = build_ideation_plan_input_block(run_meta)
+    if decisions_block.strip():
+        user = f"{user}\n\n---\n\n{decisions_block.strip()}"
     folder_raw = (run_meta or {}).get("_session_folder")
     if folder_raw:
         from agent_lab.plan.workflow import build_clarify_context_block
@@ -156,6 +163,59 @@ def _should_scribe_plan_after_turn(
             user_plan_send=user_plan_send,
         )
     return synthesize or plan_workflow_allows_auto_scribe(run_meta)
+
+
+def build_ideation_plan_input_block(run_meta: RunStateLike | None) -> str:
+    """Render the idea lane's decision record as direct Scribe input (RI-10)."""
+    from agent_lab.ideation import plan_input
+
+    data = plan_input(run_meta)
+    if data is None:
+        return ""
+
+    lines = ["[구상 → 계획 입력 — 기록된 결정]"]
+    if data["conditional"]:
+        lines.append(
+            "- **선택된 구상 없음** — 이 계획은 조건부입니다. 어떤 구상을 전제로 했는지 계획 첫 줄에 명시하세요."
+        )
+    elif data["selection_reason"]:
+        lines.append(f"- 사용자가 이 방향을 고른 이유: {data['selection_reason']}")
+    if data["original_concept"]:
+        lines.append(f"- 원래 개념: {data['original_concept']}")
+    if data["desired_change"]:
+        lines.append(f"- 원하는 변화: {data['desired_change']}")
+
+    if data["rejected"]:
+        lines.append("- 사용자가 기각한 후보 (계획에 되살리지 마세요):")
+        for item in data["rejected"]:
+            lines.append(f"  · {item['title']} ({item['id']}) — {item['reason'] or '(이유 미기록)'}")
+
+    for change in data["condition_changes"]:
+        for field, delta in (change.get("changed") or {}).items():
+            for item in delta.get("added") or []:
+                lines.append(f"- 바뀐 조건 · {field} 추가: {item}")
+            for item in delta.get("removed") or []:
+                lines.append(f"- 바뀐 조건 · {field} 해제: {item} — 더 이상 적용되지 않습니다")
+
+    for key, label in (
+        ("constraints", "제약"),
+        ("assumptions", "가정 (사실 아님)"),
+        ("open_questions", "미결 질문"),
+    ):
+        values = data.get(key) or []
+        if values:
+            lines.append(f"- {label}: {'; '.join(values)}")
+
+    concept = data.get("concept")
+    if isinstance(concept, Mapping) and concept:
+        lines.append("- 구체화된 구상:")
+        for key, value in concept.items():
+            text = str(value).strip()
+            if text:
+                lines.append(f"  · {key}: {text}")
+
+    lines.append(f"- 구상 revision: {data['revision']} (계획에 이 값을 근거로 기록합니다)")
+    return "\n".join(lines)
 
 
 def _plan_trigger_for_turn(*, synthesize: bool, scribe_applied: bool) -> str | None:
@@ -397,6 +457,13 @@ def _apply_scribe_after_turn(
             on_event=on_event,
         )
         _emit_plan_actions_validation(plan_md, on_event)
+        # RI-10 — link the plan to the ideation revision it reflected. Without
+        # this `plan_is_stale` can never become true and a plan silently
+        # outlives the concept it was written from.
+        if run_meta is not None:
+            from agent_lab.ideation import stamp_plan_source
+
+            stamp_plan_source(run_meta, cast(str, plan_md))
         if on_event:
             on_event("scribe_done", {"chars": len(plan_md)})
         return cast(str, plan_md)

@@ -760,3 +760,58 @@ def shaping_context(run: Mapping[str, Any] | None) -> dict[str, Any] | None:
         "condition_changes": condition_changes(state),
         "concept": state.get("concept"),
     }
+
+
+# --------------------------------------------------------------------------
+# plan input (RI-10)
+# --------------------------------------------------------------------------
+
+
+def plan_input(run: Mapping[str, Any] | None) -> dict[str, Any] | None:
+    """What the Scribe is told directly, instead of inferring it from the thread.
+
+    Complements ``room.context.ideation_quality.ideation_synthesis_block``,
+    which carries the *selected option's fields* under the output contract.
+    This carries the *decision record* — why this direction, what was turned
+    down and why, what the user changed, and what is still unresolved — so a
+    plan cannot quietly re-open a rejected candidate or drop a changed
+    condition.
+
+    ``None`` for a session with no ideation state.
+    """
+    state = read_ideation(run)
+    if state is None:
+        return None
+    brief = state.get("brief") if isinstance(state.get("brief"), Mapping) else {}
+    selection = state.get("selection") if isinstance(state.get("selection"), Mapping) else None
+    return {
+        "revision": int(state.get("revision") or 0),
+        "stage": str(state.get("stage") or ""),
+        # No selection = the plan is conditional, and must say so (§RI-10).
+        "conditional": selection is None,
+        "selection_reason": str((selection or {}).get("reason") or ""),
+        "original_concept": str(brief.get("original_concept") or ""),
+        "desired_change": str(brief.get("desired_change") or ""),
+        "constraints": _str_list(brief.get("constraints")),
+        "assumptions": _str_list(brief.get("assumptions")),
+        "open_questions": _str_list(brief.get("open_questions")),
+        "rejected": rejections_with_reasons(state),
+        "condition_changes": condition_changes(state),
+        "concept": state.get("concept"),
+        "plan_source_revision": state.get("plan_source_revision"),
+        "plan_stale": plan_is_stale(state),
+    }
+
+
+def stamp_plan_source(run_meta: RunStateLike, plan_md: str) -> dict[str, Any] | None:
+    """Link a freshly written plan to the ideation revision it reflected.
+
+    Called right after a successful synthesis. Without this, ``plan_is_stale``
+    can never become true and a plan silently outlives the concept it was
+    written from. In-memory (F4) — the turn-end replay persists it.
+    """
+    if read_ideation(run_meta) is None:
+        return None
+    from agent_lab.plan.pending import plan_content_hash
+
+    return mutate_ideation(run_meta, record_plan_source(source_hash=plan_content_hash(plan_md)))

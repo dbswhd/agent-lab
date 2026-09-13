@@ -50,6 +50,22 @@ def test_parsed_option_keeps_raw_reply_and_marks_quality_contract() -> None:
     assert option_is_synthesis_ready(option)
 
 
+def test_prompt_labels_parse_as_ready_contract() -> None:
+    option = parse_idea_option(
+        "제목: 학업 인박스\n"
+        "핵심 작동 원리: 마감과 출석을 한곳에 모은다.\n"
+        "실제 사용 장면 하나: 수업 전 확인한다.\n"
+        "다른 접근과 무엇이 다른지: 알림만 보내지 않고 우선순위를 만든다.\n"
+        "포기하는 것(tradeoff): 초기 설정 시간이 든다.\n"
+        "이 구상에서 가장 먼저 확인할 작은 실험: 한 과목의 일주일 자료로 검증한다.\n",
+        option_id="opt-0-codex",
+        agent="codex",
+    )
+
+    assert option["quality"]["status"] == "ready"
+    assert option_is_synthesis_ready(option)
+
+
 def test_unverified_repo_claim_makes_option_needs_review() -> None:
     option = parse_idea_option(
         "- **제목:** 제안\n"

@@ -76,11 +76,18 @@ import re
 
 _LABEL_PATTERNS: dict[str, tuple[str, ...]] = {
     "title": ("제목", "title", "이름"),
-    "principle": ("작동 원리", "핵심 원리", "원리", "작동 방식", "principle", "how it works"),
-    "usage": ("사용 장면", "사용 예", "사용 시나리오", "usage", "scenario"),
-    "difference": ("다른 점", "차이", "차별점", "difference"),
+    "principle": ("핵심 작동 원리", "작동 원리", "핵심 원리", "원리", "작동 방식", "principle", "how it works"),
+    "usage": ("실제 사용 장면", "사용 장면", "사용 예", "사용 시나리오", "usage", "scenario"),
+    "difference": ("다른 접근과 무엇이 다른지", "다른 점", "차이", "차별점", "difference"),
     "tradeoff": ("tradeoff", "트레이드오프", "포기하는 것", "대가"),
-    "first_experiment": ("첫 실험", "가장 작은 실험", "실험", "first experiment"),
+    "first_experiment": (
+        "이 구상에서 가장 먼저 확인할 작은 실험",
+        "가장 먼저 확인할 작은 실험",
+        "첫 실험",
+        "가장 작은 실험",
+        "실험",
+        "first experiment",
+    ),
 }
 
 # `- **제목:** 이름` / `## 제목` / `제목: 이름` — leading bullets, bold, and

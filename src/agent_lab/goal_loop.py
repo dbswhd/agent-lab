@@ -36,6 +36,9 @@ def set_session_goal(
     now = _now()
 
     def _set(run: dict[str, Any]) -> dict[str, Any]:
+        from agent_lab.ideation import ensure_ideation_no_execute
+
+        ensure_ideation_no_execute(run)
         previous = run.get("session_goal") or {}
         same_goal = str(previous.get("text") or "").strip() == text
         loop = dict(run.get("goal_loop") or {}) if same_goal else {}

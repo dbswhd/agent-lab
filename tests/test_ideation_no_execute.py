@@ -189,6 +189,116 @@ def test_existing_session_still_uses_the_template_fast_path(tmp_path):
     assert read_run_meta(folder)["plan_workflow"]["phase"] == "APPROVED"
 
 
+def test_verified_loop_approval_is_refused_on_idea_lane(tmp_path, no_subprocess):
+    from agent_lab.verified_loop import approve_verified_loop
+    from agent_lab.run.meta import patch_run_meta
+    from agent_lab.ideation import IdeationError
+
+    folder = _session(tmp_path, ideation_stage=ideation.STAGE_EXPLORE, plan_phase=None)
+
+    def _pending(run):
+        run["verified_loop"] = {
+            "status": "pending_approval",
+            "proposed": {"goal": "목표", "criteria": "기준", "completion_promise": "DONE"},
+        }
+        return run
+
+    patch_run_meta(folder, _pending)
+    before = read_run_meta(folder)
+    with pytest.raises(IdeationError, match="ideation_lane_no_execute"):
+        approve_verified_loop(folder)
+    assert read_run_meta(folder) == before
+    assert no_subprocess == []
+
+
+def test_direct_mission_enable_is_refused_on_idea_lane(tmp_path, no_subprocess):
+    from agent_lab.mission.loop import enable_mission_loop
+    from agent_lab.ideation import IdeationError
+
+    folder = _session(tmp_path, ideation_stage=ideation.STAGE_EXPLORE, plan_phase=None)
+    before = read_run_meta(folder)
+    with pytest.raises(IdeationError, match="ideation_lane_no_execute"):
+        enable_mission_loop(folder, start_autonomous=True)
+    assert read_run_meta(folder) == before
+    assert no_subprocess == []
+
+
+def test_goal_patch_endpoint_is_refused_on_idea_lane(tmp_path, monkeypatch):
+    pytest.importorskip("fastapi")
+    from fastapi.testclient import TestClient
+
+    import agent_lab.session as session_mod
+    import app.server.deps as deps_mod
+    from app.server.main import app
+
+    monkeypatch.setattr(session_mod, "SESSIONS_DIR", tmp_path)
+    monkeypatch.setattr(deps_mod, "SESSIONS_DIR", tmp_path)
+    folder = _session(tmp_path, ideation_stage=ideation.STAGE_EXPLORE, plan_phase=None)
+
+    response = TestClient(app).patch(
+        f"/api/sessions/{folder.name}/goal",
+        json={"text": "목표"},
+    )
+
+    assert response.status_code == 409
+    assert read_run_meta(folder).get("goal_loop") is None
+
+
+def test_verified_loop_approval_endpoint_is_refused_on_idea_lane(tmp_path, monkeypatch):
+    pytest.importorskip("fastapi")
+    from fastapi.testclient import TestClient
+
+    import agent_lab.session as session_mod
+    import app.server.deps as deps_mod
+    from agent_lab.run.meta import patch_run_meta
+    from app.server.main import app
+
+    monkeypatch.setattr(session_mod, "SESSIONS_DIR", tmp_path)
+    monkeypatch.setattr(deps_mod, "SESSIONS_DIR", tmp_path)
+    folder = _session(tmp_path, ideation_stage=ideation.STAGE_EXPLORE, plan_phase=None)
+    patch_run_meta(
+        folder,
+        lambda run: {
+            **run,
+            "verified_loop": {
+                "status": "pending_approval",
+                "proposed": {"goal": "목표", "criteria": "기준", "completion_promise": "DONE"},
+            },
+        },
+    )
+
+    response = TestClient(app).post(
+        f"/api/sessions/{folder.name}/verified-loop/approve",
+        json={},
+    )
+
+    assert response.status_code == 409
+    after = read_run_meta(folder)
+    assert after["verified_loop"]["status"] == "pending_approval"
+    assert after.get("mission_loop") is None
+
+
+def test_mission_enable_endpoint_is_refused_on_idea_lane(tmp_path, monkeypatch):
+    pytest.importorskip("fastapi")
+    from fastapi.testclient import TestClient
+
+    import agent_lab.session as session_mod
+    import app.server.deps as deps_mod
+    from app.server.main import app
+
+    monkeypatch.setattr(session_mod, "SESSIONS_DIR", tmp_path)
+    monkeypatch.setattr(deps_mod, "SESSIONS_DIR", tmp_path)
+    folder = _session(tmp_path, ideation_stage=ideation.STAGE_EXPLORE, plan_phase=None)
+
+    response = TestClient(app).post(
+        f"/api/sessions/{folder.name}/mission-loop/enable",
+        json={"start_autonomous": True},
+    )
+
+    assert response.status_code == 409
+    assert read_run_meta(folder).get("mission_loop") is None
+
+
 def test_existing_session_approval_still_starts_a_loop():
     assert approval_starts_execute_loop({"topic": "t", "plan_intent": "loop"}) is True
     assert approval_starts_execute_loop(None) is True

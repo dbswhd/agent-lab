@@ -341,6 +341,9 @@ def enable_mission_loop(
     """Phase 0: enable after verified_loop approve or explicit API."""
 
     def _enable(run: dict[str, Any]) -> dict[str, Any]:
+        from agent_lab.ideation import ensure_ideation_no_execute
+
+        ensure_ideation_no_execute(run)
         ml = get_mission_loop(run)
         ml["enabled"] = True
         ml["iteration"] = int(ml.get("iteration") or 0)

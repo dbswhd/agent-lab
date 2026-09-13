@@ -37,6 +37,7 @@ def post_verified_loop_approve(
 ) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
     from agent_lab.plan.workflow import approve_plan, get_plan_workflow, is_plan_workflow_active
+    from agent_lab.ideation import IdeationError
     from agent_lab.verified_loop import approve_verified_loop
 
     from agent_lab.run.meta import read_run_meta
@@ -67,7 +68,7 @@ def post_verified_loop_approve(
             completion_promise=body.completion_promise,
             criteria=body.criteria,
         )
-    except ValueError as exc:
+    except (ValueError, IdeationError) as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     return {"ok": True, "session_id": session_id, **result}
 

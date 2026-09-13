@@ -16,6 +16,12 @@ export type IdeationOption = {
   first_experiment?: string;
   raw?: string;
   parse_error?: string;
+  quality?: {
+    contract?: string;
+    status?: "ready" | "needs_review" | string;
+    missing_fields?: string[];
+    unverified_repo_claims?: string[];
+  };
 };
 
 export type IdeationSelection = {
@@ -43,6 +49,8 @@ export type IdeationState = {
   options?: IdeationOption[];
   selection?: IdeationSelection | null;
   decisions?: IdeationDecision[];
+  plan_status?: "missing" | "pending" | "ready" | "failed" | "stale";
+  concept?: Record<string, unknown> | null;
 };
 
 export type ConceptPanelStatus =
@@ -63,6 +71,8 @@ export type CandidateRow = {
   rejected: boolean;
   /** Present when the model's reply could not be parsed into sections. */
   unparsedText: string | null;
+  qualityStatus: "ready" | "needs_review";
+  qualityMessage: string | null;
 };
 
 const FIELD_LABELS: Array<[keyof IdeationOption, string]> = [
@@ -108,8 +118,21 @@ export function buildCandidateRows(
       rejected: rejected.includes(option.id),
       // A candidate we could not parse still has to be readable, not hidden.
       unparsedText: option.parse_error ? String(option.raw ?? "") : null,
+      qualityStatus: option.quality?.status === "ready" ? "ready" : "needs_review",
+      qualityMessage:
+        option.quality?.status === "ready"
+          ? null
+          : "검토 필요: 필드 또는 근거가 부족합니다.",
     };
   });
+}
+
+export function canRequestPlan(state: IdeationState | null): boolean {
+  if (!state?.selection || state.plan_status === "ready") return false;
+  const selected = (state.options ?? []).find(
+    (option) => option.id === state.selection?.option_id,
+  );
+  return selected?.quality?.status === "ready";
 }
 
 /** The selection shown when it is a combination with no stored option row. */
@@ -155,6 +178,20 @@ const STAGE_VIEWS: Record<IdeationState["stage"], StageView> = {
 
 export function stageView(state: IdeationState | null): StageView | null {
   if (!state) return null;
+  if (state.stage === "plan" && state.plan_status !== "ready") {
+    if (state.plan_status === "failed") {
+      return {
+        stage: "plan",
+        label: "계획 생성 실패",
+        hint: "계획을 다시 요청하기 전에 선택한 구상과 근거를 확인하세요.",
+      };
+    }
+    return {
+      stage: "plan",
+      label: "계획 준비 중",
+      hint: "계획이 아직 저장되지 않았습니다. 완료 전에는 실행 가능한 계획으로 다루지 마세요.",
+    };
+  }
   return STAGE_VIEWS[state.stage] ?? null;
 }
 

@@ -121,6 +121,7 @@ def test_document_says_so_when_no_plan_exists_yet():
     md = export_markdown(_run(), plan_md="")
     assert "아직 계획이 작성되지 않았습니다" in md
     assert "계획 미작성" in md
+    assert "계획 상태: missing" in md
 
 
 def test_document_keeps_rejections_and_their_reasons():
@@ -202,6 +203,15 @@ def test_no_selection_exports_a_conditional_document():
 
 def test_a_selected_document_is_not_marked_conditional():
     assert "조건부 계획" not in export_markdown(_run(), plan_md=PLAN_MD)
+
+
+def test_combined_selection_is_preserved_as_review_required():
+    run = _run(select=False)
+    ideation.mutate_ideation(run, ideation.select_option("opt-0-cursor"))
+    ideation.mutate_ideation(run, ideation.combine_options(["opt-0-cursor", "opt-0-claude"], new_id="opt-combined"))
+    md = export_markdown(run, plan_md=PLAN_MD)
+    assert "검토 필요" in md
+    assert "조합 후보: opt-0-cursor + opt-0-claude" in md
 
 
 def test_export_refuses_a_session_with_no_ideation_state():

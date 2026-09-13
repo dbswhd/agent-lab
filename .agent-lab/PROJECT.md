@@ -12,7 +12,7 @@ AI 개발 작업을 계획·승인·격리 실행·검증하는 Human-in-the-loo
 - **2026-09-01 A1–A4 ✅:** `main` CI green · `balanced` profile · quickstart `fork_time_minutes=1`.
 - **Phase 1:** C0–C4 shipped — [DELEGATE-SPIKE.md](../docs/DELEGATE-SPIKE.md). 다음: **C5** live dry-run.
 - **브랜치:** `main` (origin 대비 unpushed 8 commits — push는 Human 결정).
-- **idea lane (계획, 미구현):** 아이디어 구체화 Room — [ROOM-IDEATION-PLAN-2026-09.md](../docs/ROOM-IDEATION-PLAN-2026-09.md). 기존 execute lane·safety gate는 불변.
+- **idea lane (조건부 사용, 구현됨):** 아이디어 구체화 Room — [ROOM-IDEATION-PLAN-2026-09.md](../docs/ROOM-IDEATION-PLAN-2026-09.md). 신규 생성은 명시적 opt-in이며 후보→선택→조건·구체화→계획 요청을 저장한다. 기존 execute lane·safety gate는 불변.
 
 ## Room (2026-07)
 - **Composer:** topic-only — preset·Plan picker는 숨김; dogfood 기본 `supervisor`

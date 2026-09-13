@@ -2426,6 +2426,12 @@
   white-space: pre-wrap;
 }
 
+.concept-candidate__quality {
+  margin: var(--space-6) 0 0;
+  color: var(--warn);
+  font-size: var(--text-caption);
+}
+
 .concept-candidate__actions {
   display: flex;
   gap: var(--space-6);
@@ -2438,6 +2444,41 @@
   gap: var(--space-6);
   padding-top: var(--space-8);
   border-top: 1px solid var(--border-hair);
+}
+
+.concept-panel__editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding-bottom: var(--space-8);
+  border-bottom: 1px solid var(--border-hair);
+}
+
+.concept-panel__editor label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  color: var(--label-secondary);
+  font-size: var(--text-caption);
+}
+
+.concept-panel__editor textarea {
+  width: 100%;
+  padding: var(--space-8);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-xs);
+  background: var(--surface-sunken);
+  color: var(--label-primary);
+  font: inherit;
+  resize: vertical;
+}
+
+.composer-ideation-opt-in {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  color: var(--label-secondary);
+  font-size: var(--text-caption);
 }
 
 .concept-panel__export {

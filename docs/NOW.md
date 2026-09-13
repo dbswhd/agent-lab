@@ -1,6 +1,6 @@
 # NOW — 지금 무엇을 해야 하는가 (종합 상태 표면)
 
-> **작성:** 2026-07-08 · **갱신:** 2026-09-01 (재개 Phase 0 완료 → Phase 1 delegate) · **역할:** "오늘/이번 주/다음/동결"을 한 곳에서 판정한다.
+> **작성:** 2026-07-08 · **갱신:** 2026-09-13 (idea lane 운영 경로·실서버 E2E 연결) · **역할:** "오늘/이번 주/다음/동결"을 한 곳에서 판정한다.
 > **이 문서가 아닌 것:** 방향·구조·턴·평가 계약의 SSOT가 아니다. 이 문서는 **상태 포인터**만 갖는다.
 > **Browser acceptance:** Wave B/browser evidence is **accepted** (2026-07-24). Live proof: [wave-b-browser-acceptance-2026-07-24.md](redesign-2026-07/evidence/wave-b-browser-acceptance-2026-07-24.md). Mock/API suites remain regression, not a substitute for that live packet.
 > **ID 규칙:** 소스 namespace를 보존한다 (`N*`, `F*`, `HS*`, `TC-*`, `ABS-P2-*`). bare `P1/P2` 신규 사용 금지.
@@ -51,7 +51,9 @@
 | **RI-01** | 실제 아이디어 기준선 6건 | ⚠️ development 3건 기록 · holdout 3건은 RI-14까지 보류 |
 | **RI-02~06** | ideation 상태 · 부수효과 차단 · 승인 경계 · 독립 발산 · 구상 산출물 | ✅ 2026-09-13 (codex/ri-02-06-fixes) |
 | **Checkpoint A** | 실제 아이디어 3건으로 구상 품질 첫 판정 | ⚠️ provisional pass · 사용자 효용·holdout 미측정 |
-| **RI-07~15** | API · UI · 계획 · 내보내기 · 효용 확인 · 철거 | ➡️ 다음: RI-07 |
+| **RI-07~13** | API · UI · 계획 · 내보내기 · 품질 계약 · 브라우저 회귀 | ✅ 2026-09-13 · mock provider 실서버 E2E 포함 |
+| **RI-14** | holdout 3건 + native 비교 · 실제 외부 착수 | ➡️ 다음: 실제 사용자 평가 |
+| **RI-15** | 효용 확인 후 미사용 배선 철거 | ⏸ RI-14 전 동결 |
 
 **경계:** idea lane은 Room 내부 execute/mission/goal loop을 시작하지 않는다. Room은 방향 불확실성·위험·대안 trade-off가 클 때 호출하는 조건부 검토 단계다. `BLOCK → execute 409` · Human gate · worktree 격리 · subprocess env allowlist는 이 트랙에서 변경하지 않는다. 기존 execute lane 세션은 opt-in 없이 바뀌지 않는다. 실행 중심 신규 백로그(§「동결」 포함)는 이번 큐 동안 보류한다.
 

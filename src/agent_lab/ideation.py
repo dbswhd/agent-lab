@@ -114,7 +114,28 @@ def selected_option(state: Mapping[str, Any]) -> dict[str, Any] | None:
     selection = state.get("selection")
     if not isinstance(selection, Mapping):
         return None
-    return option_by_id(state, str(selection.get("option_id") or ""))
+    selected_id = str(selection.get("option_id") or "")
+    stored = option_by_id(state, selected_id)
+    if stored is not None:
+        return stored
+    parent_ids = [str(item) for item in (selection.get("parent_ids") or [])]
+    parents = [option for item in parent_ids if (option := option_by_id(state, item))]
+    if not parents:
+        return None
+    fields = {"id": selected_id, "agent": "combined"}
+    fields["title"] = str(
+        selection.get("title") or " + ".join(str(item.get("title") or item.get("id")) for item in parents)
+    )
+    for name in ("principle", "usage", "difference", "tradeoff", "first_experiment"):
+        values = [str(item.get(name) or "").strip() for item in parents]
+        fields[name] = "\n".join(value for value in values if value)
+    fields["quality"] = {
+        "contract": "ideation.v1",
+        "status": "needs_review",
+        "missing_fields": [],
+        "unverified_repo_claims": ["조합한 후보의 채택 요소를 사용자 확인이 필요합니다."],
+    }
+    return fields
 
 
 def rejected_option_ids(state: Mapping[str, Any]) -> list[str]:
@@ -656,6 +677,14 @@ def apply_ideation_command(
         raise IdeationCommandError("condition requires constraints")
     if verb == "concept" and not concept:
         raise IdeationCommandError("concept requires non-empty concept")
+    if verb == "plan" and expected_revision is not None and int(expected_revision) != int(state["revision"]):
+        raise IdeationStaleError(int(expected_revision), int(state["revision"]))
+    if verb == "plan":
+        selected = selected_option(state)
+        from agent_lab.room.context.ideation_quality import option_is_synthesis_ready
+
+        if selected is None or not option_is_synthesis_ready(selected):
+            raise IdeationCommandError("selected option needs review before planning")
 
     # 1. A retried request is a duplicate, whatever the revision says.
     if request_id and str(state.get(_LAST_REQUEST_KEY) or "") == str(request_id):

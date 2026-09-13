@@ -48,6 +48,12 @@ type Bootstrap = ReturnType<typeof useRoomChatBootstrap>;
 
 export function useRoomChatInteractions(bootstrap: Bootstrap) {
   const { props } = bootstrap;
+  const [ideationOptIn, setIdeationOptIn] = useState(false);
+  useEffect(() => {
+    // The opt-in belongs to the new-session composer; never carry it into a
+    // later session after the first turn binds a session id.
+    setIdeationOptIn(false);
+  }, [bootstrap.props.sessionId]);
   const {
     sessionId,
     session,
@@ -477,6 +483,7 @@ export function useRoomChatInteractions(bootstrap: Bootstrap) {
     roomPreset,
     researchMode,
     workspaceId,
+    ideationOptIn,
     workspacePath,
     agentCapabilities,
     bootstrapAgentThreadBindings,
@@ -725,6 +732,8 @@ export function useRoomChatInteractions(bootstrap: Bootstrap) {
     handleAuthRunComplete,
     runSlashCommand,
     executeSend,
+    ideationOptIn,
+    setIdeationOptIn,
     handleVerifiedApprove,
     handleVerifiedReject,
     handleSynthesizeNow,

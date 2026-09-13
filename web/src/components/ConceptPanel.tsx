@@ -4,6 +4,7 @@ import {
   fetchSessionIdeation,
   fetchSessionIdeationExport,
   patchSessionIdeation,
+  runSynthesizeOnly,
   type IdeationCommandBody,
 } from "../api/client";
 import {
@@ -13,6 +14,7 @@ import {
   buildRejectCommand,
   buildResetCommand,
   buildSelectCommand,
+  canRequestPlan,
   combinedSelectionRow,
   exportView,
   keyboardIntent,
@@ -45,6 +47,8 @@ export function ConceptPanel({ sessionId, reloadKey }: Props) {
   const [pending, setPending] = useState(false);
   const [exported, setExported] = useState<IdeationExportView | null>(null);
   const [exportNote, setExportNote] = useState("");
+  const [constraintsText, setConstraintsText] = useState("");
+  const [conceptText, setConceptText] = useState("");
   const listRef = useRef<HTMLDivElement | null>(null);
 
   const load = useCallback(
@@ -58,6 +62,9 @@ export function ConceptPanel({ sessionId, reloadKey }: Props) {
       try {
         const res = await fetchSessionIdeation(sessionId);
         setState(res.ideation);
+        const constraints = res.ideation.brief?.constraints;
+        setConstraintsText(Array.isArray(constraints) ? constraints.join("\n") : "");
+        setConceptText(String(res.ideation.concept?.summary ?? ""));
         setStatus(statusAfterReload(keepStatus));
       } catch (err) {
         setState(null);
@@ -137,6 +144,46 @@ export function ConceptPanel({ sessionId, reloadKey }: Props) {
         ? prev.filter((id) => id !== optionId)
         : [...prev, optionId],
     );
+
+  const onSaveConditions = () =>
+    void send({
+      command: "condition",
+      constraints: constraintsText.split("\n").map((item) => item.trim()).filter(Boolean),
+      expected_revision: revision,
+      request_id: rid("condition"),
+    });
+
+  const onSaveConcept = () =>
+    void send({
+      command: "concept",
+      concept: { summary: conceptText.trim() },
+      expected_revision: revision,
+      request_id: rid("concept"),
+    });
+
+  const onMakePlan = async () => {
+    if (!sessionId || pending) return;
+    setPending(true);
+    try {
+      const next = await patchSessionIdeation(sessionId, {
+        command: "plan",
+        expected_revision: revision,
+        request_id: rid("plan"),
+      });
+      setState(next.ideation);
+      setStatus({ kind: "loading" });
+      await runSynthesizeOnly(sessionId, () => undefined, {
+        requestId: `${sessionId}:${next.revision}:synthesize`,
+      });
+      await load();
+      setStatus({ kind: "idle" });
+    } catch (err) {
+      setStatus(statusFromError(err as IdeationRequestError));
+      await load();
+    } finally {
+      setPending(false);
+    }
+  };
 
   const runExport = useCallback(async () => {
     if (!sessionId) return null;
@@ -289,6 +336,11 @@ export function ConceptPanel({ sessionId, reloadKey }: Props) {
                 ))}
               </dl>
             )}
+            {row.qualityMessage ? (
+              <p className="concept-candidate__quality" role="status">
+                {row.qualityMessage}
+              </p>
+            ) : null}
             <div className="concept-candidate__actions">
               <button
                 type="button"
@@ -317,6 +369,42 @@ export function ConceptPanel({ sessionId, reloadKey }: Props) {
       </div>
 
       <footer className="concept-panel__foot">
+        {state.stage !== "explore" ? (
+          <section className="concept-panel__editor" aria-label="구상 구체화">
+            <label>
+              현재 조건
+              <textarea
+                value={constraintsText}
+                onChange={(event) => setConstraintsText(event.target.value)}
+                rows={3}
+              />
+            </label>
+            <button type="button" disabled={pending} onClick={onSaveConditions}>
+              조건 저장
+            </button>
+            <label>
+              구체화된 구상
+              <textarea
+                value={conceptText}
+                onChange={(event) => setConceptText(event.target.value)}
+                rows={4}
+              />
+            </label>
+            <button type="button" disabled={pending} onClick={onSaveConcept}>
+              구체화 저장
+            </button>
+            <button
+              type="button"
+              disabled={pending || !canRequestPlan(state)}
+              onClick={() => void onMakePlan()}
+            >
+              {state.plan_status === "ready" ? "계획 준비됨" : "계획 만들기"}
+            </button>
+            {state.plan_status === "failed" ? (
+              <p className="concept-panel__error" role="alert">계획 생성에 실패했습니다. 다시 시도하세요.</p>
+            ) : null}
+          </section>
+        ) : null}
         <button
           type="button"
           disabled={pending || compareIds.length < 2}

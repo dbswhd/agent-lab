@@ -1,6 +1,6 @@
 # Room Ideation — 효용 평가 프로토콜 (RI-01)
 
-> **작성:** 2026-09-12 · **상태:** 프로토콜 확정, **결과 미측정**
+> **작성:** 2026-09-12 · **상태:** 프로토콜 확정, development 3건으로 Checkpoint A provisional pass 기록
 > **소유 범위:** 아이디어 구체화 Room(idea lane)의 사례 수집 방법·비교 절차·판정표.
 > **소유하지 않음:** 제품 범위와 구현 순서는 [ROOM-IDEATION-PLAN-2026-09.md](../ROOM-IDEATION-PLAN-2026-09.md)가 소유한다. 기존 episode/grader 계약([EVAL-CONTRACT.md](../EVAL-CONTRACT.md))은 이 문서로 대체되지 않는다.
 > **결과 파일:** `docs/evals/room-ideation-results.md` (RI-14에서 생성, 아직 없음).
@@ -51,7 +51,7 @@
 
 ### 현재 상태
 
-**사례 0건 — 미수집.** `evals/ideation_cases.jsonl`은 현재 비어 있다. 수집은 사용자만 할 수 있으며(§1 익명화), 그전까지 RI-01은 닫히지 않는다. 이 상태에서 Checkpoint A와 RI-14 기준 충족을 주장하지 않는다.
+**development 사례 3건 기록됨.** `evals/ideation_cases.jsonl`의 RI-CASE-01~03은 Checkpoint A에 사용했다. holdout 사례 3건은 RI-14까지 열지 않는다. 결과와 점수는 [room-ideation-results.md](./room-ideation-results.md)에 기록하며, 실제 사용자 효용과 기본값 전환을 증명하지 않는다.
 
 ---
 

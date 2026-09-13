@@ -36,6 +36,9 @@ type Props = {
   onSteer?: () => void;
   steerBusy?: boolean;
   sessionId: string | null;
+  isNewSession: boolean;
+  ideationOptIn: boolean;
+  onIdeationOptInChange: (value: boolean) => void;
   eventStack: ComposerEventStackProps | null;
   sendReceipt: string | null;
   sendReceiptRaw: string | undefined;
@@ -85,6 +88,9 @@ export function RoomChatComposerShell({
   onSteer,
   steerBusy = false,
   sessionId,
+  isNewSession,
+  ideationOptIn,
+  onIdeationOptInChange,
   eventStack,
   sendReceipt,
   sendReceiptRaw,
@@ -179,6 +185,17 @@ export function RoomChatComposerShell({
           <ComposerStrip tone="ghost" compact description={sendReceipt} />
         ) : null}
 
+        {isNewSession ? (
+          <label className="composer-ideation-opt-in">
+            <input
+              type="checkbox"
+              checked={ideationOptIn}
+              onChange={(event) => onIdeationOptInChange(event.target.checked)}
+            />
+            아이디어 구상
+          </label>
+        ) : null}
+
         <ChatComposer
           className={composerClassName}
           value={text}
@@ -204,6 +221,7 @@ export function RoomChatComposerShell({
           costHint={costHint}
           locale={locale}
           sessionId={sessionId}
+          isNewSession={isNewSession}
           activeModels={sortAgentIds(selected)
             .map((id) => agents.find((agent) => agent.id === id))
             .filter((agent): agent is AgentOption => Boolean(agent))}

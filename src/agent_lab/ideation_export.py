@@ -65,6 +65,9 @@ def export_markdown(
         raise ideation.IdeationError("session has no ideation state")
     state = ideation.read_ideation(run_meta) or {}
     selected = ideation.selected_option(state) or {}
+    from agent_lab.room.context.ideation_quality import option_is_synthesis_ready, synthesis_quality
+
+    selected_ready = option_is_synthesis_ready(selected)
     open_blocks = list(objections or [])
 
     title = str(topic or data.get("original_concept") or "구상").strip()
@@ -81,6 +84,28 @@ def export_markdown(
 
     lines += _stale_warning(data)
     lines += _block_warning(open_blocks)
+    plan_status = str(state.get("plan_status") or "missing")
+    if plan_status != "ready":
+        lines += [
+            f"> **계획 상태: {plan_status}.** 이 문서는 완료된 계획으로 표시하지 않습니다.",
+            "",
+        ]
+    if selected and not selected_ready:
+        quality = synthesis_quality(selected)
+        lines += [
+            "> **검토 필요 — 선택한 구상은 아직 계획 사실로 사용할 수 없습니다.**",
+            "미완성 필드나 미확인 레포 주장을 확인한 뒤 다시 계획을 요청하세요.",
+            f"검토 상태: {quality['status']}",
+            "",
+        ]
+        parent_ids = (state.get("selection") or {}).get("parent_ids") if isinstance(state.get("selection"), Mapping) else []
+        if parent_ids:
+            lines.append(
+                "- 조합 후보: "
+                + " + ".join(str(item) for item in parent_ids)
+                + " (각 채택 요소를 확인한 뒤 계획에 반영하세요)"
+            )
+            lines.append("")
 
     if data["conditional"]:
         lines += [
@@ -96,7 +121,7 @@ def export_markdown(
         lines.append(f"원래 개념: {data['original_concept']}")
     if data.get("desired_change"):
         lines.append(f"원하는 변화: {data['desired_change']}")
-    if selected:
+    if selected and selected_ready:
         lines.append("")
         lines.append(f"**고른 방향 — {selected.get('title') or selected.get('id')}**")
         for key, label in (

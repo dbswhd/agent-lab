@@ -126,12 +126,20 @@ def ideation_synthesis_block(run_meta: Mapping[str, Any] | None) -> str:
         f"synthesis_ready_option_ids: {', '.join(str(o.get('id')) for o in ready) or '(none)'}",
     ]
     if selected:
-        lines.append("selected_option:")
-        for name in IDEATION_REQUIRED_FIELDS:
-            value = str(selected.get(name) or "").strip()
-            if value:
-                lines.append(f"- {name}: {value}")
         quality = selected.get("quality")
-        if isinstance(quality, Mapping) and quality.get("unverified_repo_claims"):
-            lines.append(f"- review_required_repo_claims: {quality.get('unverified_repo_claims')}")
+        ready = option_is_synthesis_ready(selected)
+        lines.append("selected_option_status: ready" if ready else "selected_option_status: blocked_needs_review")
+        if ready:
+            lines.append("selected_option:")
+            for name in IDEATION_REQUIRED_FIELDS:
+                value = str(selected.get(name) or "").strip()
+                if value:
+                    lines.append(f"- {name}: {value}")
+        elif isinstance(quality, Mapping):
+            missing = quality.get("missing_fields") or []
+            claims = quality.get("unverified_repo_claims") or []
+            if missing:
+                lines.append(f"- missing_fields: {missing}")
+            if claims:
+                lines.append(f"- review_required_repo_claims: {claims}")
     return "\n".join(lines)

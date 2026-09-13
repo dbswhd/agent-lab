@@ -14,9 +14,7 @@ from agent_lab.ideation_quality import (
 
 def test_sanitize_removes_process_narration_but_keeps_candidate_content() -> None:
     cleaned, removed = sanitize_ideation_text(
-        "레포를 먼저 확인하겠습니다.\n"
-        "## 제목: 학업 인박스\n"
-        "핵심 원리: 마감과 출석을 한곳에 모은다.\n"
+        "레포를 먼저 확인하겠습니다.\n## 제목: 학업 인박스\n핵심 원리: 마감과 출석을 한곳에 모은다.\n"
     )
 
     assert "레포를 먼저" not in cleaned
@@ -90,3 +88,31 @@ def test_synthesis_block_exposes_selected_option_and_safety_boundary() -> None:
     assert "selected_option_id: opt-0-codex" in block
     assert "근거형 노트" in block
     assert "unverified repository claim" in block
+
+
+def test_synthesis_block_does_not_promote_blocked_option_fields() -> None:
+    run = {
+        "ideation": {
+            "options": [
+                {
+                    "id": "opt-0-cursor",
+                    "title": "레포에 이미 파서가 있다",
+                    "principle": "레포에 이미 파서가 구현되어 있다.",
+                    "usage": "검토",
+                    "difference": "근거를 남긴다.",
+                    "tradeoff": "느리다.",
+                    "first_experiment": "파일 한 개를 비교한다.",
+                    "quality": {
+                        "status": "needs_review",
+                        "missing_fields": [],
+                        "unverified_repo_claims": ["레포에 이미 파서가 구현되어 있다."],
+                    },
+                }
+            ],
+            "selection": {"option_id": "opt-0-cursor"},
+        }
+    }
+    block = ideation_synthesis_block(run)
+    assert "selected_option_status: blocked_needs_review" in block
+    assert "selected_option:\n- title:" not in block
+    assert "review_required_repo_claims" in block

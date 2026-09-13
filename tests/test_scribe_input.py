@@ -72,3 +72,32 @@ def test_synthesize_plan_fallback_without_agent_replies(mock_call):
     synthesize_plan("topic", msgs, run_meta={})
     user_payload = mock_call.call_args[0][2]
     assert "fallback" in user_payload.lower() or "Numbered conversation" in user_payload
+
+
+@patch("agent_lab.room.call_agent", return_value="# plan")
+def test_synthesize_plan_receives_selected_ideation_contract(mock_call):
+    msgs = [ChatMessage(role="user", agent=None, content="make a plan")]
+    run_meta = {
+        "ideation": {
+            "options": [
+                {
+                    "id": "opt-0-codex",
+                    "title": "근거형 노트",
+                    "principle": "원문 위치를 보존한다.",
+                    "usage": "시험 전 복습",
+                    "difference": "근거를 남긴다.",
+                    "tradeoff": "검토 시간이 든다.",
+                    "first_experiment": "PDF 한 개로 비교한다.",
+                    "quality": {"status": "ready"},
+                }
+            ],
+            "selection": {"option_id": "opt-0-codex"},
+        }
+    }
+
+    synthesize_plan("학습자료 도구", msgs, run_meta=run_meta)
+
+    user_payload = mock_call.call_args[0][2]
+    assert "Idea-lane synthesis contract" in user_payload
+    assert "selected_option_id: opt-0-codex" in user_payload
+    assert "근거형 노트" in user_payload

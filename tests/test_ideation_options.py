@@ -7,7 +7,6 @@ import pytest
 from agent_lab import ideation
 from agent_lab.divergence import (
     MAX_DIVERGENCE_OPTIONS,
-    build_idea_options,
     format_divergence_options,
     option_id_for,
     parse_idea_option,
@@ -201,3 +200,95 @@ def test_a_cancelled_turn_stores_nothing():
 
     assert seen == []
     assert ideation.read_ideation(run)["revision"] == 0
+
+
+def test_room_turn_persists_idea_options_after_turn_end(tmp_path, monkeypatch):
+    """The event and durable run.json state must agree after a real Room turn."""
+    from agent_lab.room import parallel_rounds
+    from agent_lab import room
+    from agent_lab.run.meta import read_run_meta, write_run_meta
+
+    monkeypatch.setenv("AGENT_LAB_OUTCOME_LEDGER", "0")
+    monkeypatch.setenv("AGENT_LAB_FEEDBACK_ADVISOR", "0")
+    folder = tmp_path / "room-persist"
+    folder.mkdir()
+    (folder / "topic.txt").write_text("막연한 개념\n", encoding="utf-8")
+    write_run_meta(folder, dict(_run()))
+
+    def fake_invoke(agent, **kwargs):
+        return ChatMessage(
+            role="assistant",
+            agent=str(agent),
+            content=f"제목: {agent}안\n핵심 원리: {agent}의 작동 원리",
+            parallel_round=kwargs.get("parallel_round"),
+        )
+
+    monkeypatch.setattr(parallel_rounds, "_invoke_agent_for_round", fake_invoke)
+    monkeypatch.setattr(parallel_rounds, "_teammate_idle_peer_message", lambda *a, **k: None)
+    events: list[tuple[str, dict]] = []
+
+    room.continue_room_round(
+        folder,
+        "아이디어를 구체화해줘",
+        agents=["cursor", "codex"],
+        parallel_rounds=1,
+        on_event=lambda name, payload: events.append((name, payload)),
+    )
+
+    persisted = ideation.read_ideation(read_run_meta(folder))
+    assert persisted is not None
+    assert persisted["revision"] == 1
+    assert sorted(option["id"] for option in persisted["options"]) == ["opt-0-codex", "opt-0-cursor"]
+    option_event = next(payload for name, payload in events if name == "divergence_options")
+    assert option_event["revision"] == persisted["revision"]
+
+
+def test_two_round_exploration_keeps_only_first_batch_as_candidates(tmp_path, monkeypatch):
+    """Follow-up comparison rounds must not create duplicate candidate IDs."""
+    from agent_lab.room import parallel_rounds
+    from agent_lab import room
+    from agent_lab.run.meta import read_run_meta, write_run_meta
+
+    monkeypatch.setenv("AGENT_LAB_OUTCOME_LEDGER", "0")
+    monkeypatch.setenv("AGENT_LAB_FEEDBACK_ADVISOR", "0")
+    folder = tmp_path / "room-two-rounds"
+    folder.mkdir()
+    (folder / "topic.txt").write_text("막연한 개념\n", encoding="utf-8")
+    write_run_meta(folder, dict(_run()))
+
+    def fake_invoke(agent, **kwargs):
+        round_no = kwargs.get("parallel_round")
+        return ChatMessage(
+            role="assistant",
+            agent=str(agent),
+            content=f"제목: {agent}안 R{round_no}\n핵심 원리: 비교",
+            parallel_round=round_no,
+        )
+
+    monkeypatch.setattr(parallel_rounds, "_invoke_agent_for_round", fake_invoke)
+    monkeypatch.setattr(parallel_rounds, "_teammate_idle_peer_message", lambda *a, **k: None)
+
+    room.continue_room_round(
+        folder,
+        "아이디어를 비교해줘",
+        agents=["cursor", "codex"],
+        parallel_rounds=2,
+    )
+
+    persisted = ideation.read_ideation(read_run_meta(folder))
+    assert persisted is not None
+    assert sorted(option["id"] for option in persisted["options"]) == ["opt-0-codex", "opt-0-cursor"]
+
+
+def test_provider_failure_is_visible_but_not_a_selectable_option():
+    run = _run()
+    stored = record_ideation_options(
+        run,
+        [
+            ChatMessage(role="system", agent="codex", content="[codex error] provider is down"),
+            ChatMessage(role="assistant", agent="cursor", content="제목: 실제 후보\n핵심 원리: 실제 제안"),
+        ],
+    )
+
+    assert stored is not None
+    assert [option["agent"] for option in stored] == ["cursor"]

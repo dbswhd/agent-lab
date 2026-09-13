@@ -31,6 +31,7 @@ STAGE_EXPLORE = "explore"
 STAGE_SHAPE = "shape"
 STAGE_PLAN = "plan"
 VALID_STAGES = frozenset({STAGE_EXPLORE, STAGE_SHAPE, STAGE_PLAN})
+IDEATION_NO_EXECUTE_REASON = "ideation_lane_no_execute"
 
 _ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 
@@ -93,6 +94,12 @@ def read_ideation(run: Mapping[str, Any] | None) -> dict[str, Any] | None:
 
 def is_ideation_session(run: Mapping[str, Any] | None) -> bool:
     return read_ideation(run) is not None
+
+
+def ensure_ideation_no_execute(run: Mapping[str, Any] | None) -> None:
+    """Reject legacy execution entry points when a run belongs to the idea lane."""
+    if is_ideation_session(run):
+        raise IdeationError(IDEATION_NO_EXECUTE_REASON)
 
 
 def option_by_id(state: Mapping[str, Any], option_id: str) -> dict[str, Any] | None:

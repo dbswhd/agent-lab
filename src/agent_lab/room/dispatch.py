@@ -664,6 +664,11 @@ def try_dispatch_turn(
 
 def dispatch_run_meta_patch(run_meta: RunStateLike) -> dict[str, Any] | None:
     patch: dict[str, Any] = {}
+    ideation = run_meta.get("ideation")
+    if isinstance(ideation, dict):
+        # Idea options are produced in-memory during the turn and must be carried
+        # through the canonical turn-end replay writer.
+        patch["ideation"] = dict(ideation)
     if run_meta.get("last_delegate"):
         patch["last_delegate"] = run_meta.get("last_delegate")
     if run_meta.get("dispatch_ledger"):

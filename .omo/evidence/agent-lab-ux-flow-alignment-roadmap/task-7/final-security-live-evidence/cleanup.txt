@@ -1,0 +1,11 @@
+QA cleanup verification
+
+Exact checkout SHA:
+9a323834bf169533406e4fe0a36a56e2684336dd
+
+Port checks after Playwright shutdown:
+- 4317: no TCP listener
+- 4318: no TCP listener
+
+Temporary `web/node_modules` symlink to the shared dependency cache was removed.
+No tracked files were modified; evidence is under the ignored `.omo/evidence` tree.

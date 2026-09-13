@@ -1,0 +1,32 @@
+.venv/bin/python scripts/f7_dogfood_report.py \
+	  --sessions sessions \
+	  --days 7 \
+	  --write \
+	  --out-dir sessions/_reports \
+	  --json
+{
+  "sessions": 0,
+  "f7_instrumented_sessions": 0,
+  "missing_f7_instrumentation_sessions": 0,
+  "repo_map_sessions": 0,
+  "repo_map_coverage_pct": 0.0,
+  "repo_map_coverage_all_context_pct": 0.0,
+  "compact_sessions": 0,
+  "median_budget_pct": null,
+  "gates": {
+    "min_sessions": false,
+    "f7_instrumented_sessions": false,
+    "repo_map_coverage_70": false,
+    "budget_median_under_90": false
+  },
+  "ready_for_decision": false,
+  "flags_now": {
+    "AGENT_LAB_REPO_MAP": "(unset)",
+    "AGENT_LAB_COMPACT_TOOL_OUTPUT": "(unset)"
+  },
+  "session_ids": [],
+  "artifact_paths": {
+    "json": "sessions/_reports/f7-dogfood-2026-07-23.json",
+    "markdown": "sessions/_reports/f7-dogfood-2026-07-23.md"
+  }
+}

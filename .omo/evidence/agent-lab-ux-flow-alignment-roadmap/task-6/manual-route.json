@@ -1,0 +1,31 @@
+{
+  "commit": "6aa861d9",
+  "command": ".venv/bin/python scripts/mission_authority_real_route_harness.py --root /tmp/agent-lab-task6-route-harness-0724b --port 18767",
+  "exit_code": 0,
+  "pass": true,
+  "activation_performed": false,
+  "human_go_required_before_activation": true,
+  "plan_approve": 200,
+  "inbox_open_resolve": [200, 200],
+  "restart_pids": [48909, 48974],
+  "restart_read_model": 200,
+  "parity_divergence": 0,
+  "duplicate_stale": 409,
+  "duplicate_event_delta": 0,
+  "malformed": 422,
+  "execute_merge_oracle": [200, "pass"],
+  "reverify": 200,
+  "dirty_worktree_blocked": 400,
+  "misleading_http_success": [200, "fail", "VERIFYING"],
+  "rollback_legacy_first": [
+    200,
+    {
+      "enabled": true,
+      "operation": "plan_approve",
+      "mirrored": false,
+      "reason": "cohort_allowlist_empty"
+    }
+  ],
+  "git_head": "55c6df78e4cc43ae522bf34baabd57ec07cc8a5a",
+  "server_log": "/tmp/agent-lab-task6-route-harness-0724b/server.log"
+}

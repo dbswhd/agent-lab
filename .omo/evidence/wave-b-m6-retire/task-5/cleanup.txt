@@ -1,0 +1,8 @@
+Commands:
+pgrep -af 'vite|playwright'
+lsof -nP -iTCP:4173 -sTCP:LISTEN
+lsof -nP -iTCP:5173 -sTCP:LISTEN
+git status --short --untracked-files=all
+
+Result:
+No Vite/Playwright process remained; ports 4173 and 5173 had no listener; tracked worktree remained clean.

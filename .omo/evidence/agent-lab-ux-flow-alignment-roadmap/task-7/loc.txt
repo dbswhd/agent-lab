@@ -1,0 +1,4 @@
+scripts/dogfood_readiness_manifest.py 127
+scripts/dogfood_readiness_packet.py 180
+scripts/dogfood_readiness_report.py 28
+tests/test_dogfood_readiness_report.py 148

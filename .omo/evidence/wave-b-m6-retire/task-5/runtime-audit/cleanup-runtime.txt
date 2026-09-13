@@ -1,0 +1,6 @@
+git_sha=611a57da35bf1f55214b43bac19cce33b0acd9f5
+temp_node_modules=absent
+temp_readiness_dir=absent
+vite_playwright_processes=none (the prior pgrep output matched its own transient command; follow-up `ps` found no such PIDs)
+port_4173=free
+port_5173=free

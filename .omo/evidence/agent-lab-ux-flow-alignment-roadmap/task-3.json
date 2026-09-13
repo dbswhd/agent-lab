@@ -1,0 +1,45 @@
+{
+  "task": 3,
+  "title": "Decision Queue to Oracle golden journey",
+  "status": "confirmed",
+  "recorded_at_utc": "2026-07-23T18:09:03Z",
+  "final_commit_sha": "f60e3b35e8645b0f3611cf115f2195925ce1650d",
+  "worktree": "/Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment",
+  "scope": "Browser/render/request/read-model/SSE fixture contract only. It does not claim production backend authorization, real authority, durability, restart, rollback, or dogfood proof; Task 6 owns those checks.",
+  "environment": {
+    "profile": "repository default balanced; no global default changed",
+    "flags": "VITE_SKIP_API=1 is scoped to the Playwright webServer child; no authority or routing default changed",
+    "fixture_sessions": ["lifecycle-happy", "lifecycle-repair", "stale-question-1", "queued-question-2"]
+  },
+  "verification": [
+    {"command": "PLAYWRIGHT_WEB_PORT=<isolated> npx playwright test e2e/agent-lifecycle-journey.spec.ts --workers=1 --reporter=line", "result": "6/6 passed", "artifact": "task-3/raw/code-lane-repair/lifecycle.log"},
+    {"command": "same lifecycle suite --repeat-each=3", "result": "18/18 passed", "artifact": "task-3/raw/code-lane-repair/lifecycle-repeat-3.log"},
+    {"command": "nondefault parity + UI simplification + plan approval E2E", "result": "17/17 passed", "artifact": "task-3/raw/code-lane-repair/affected-nondefault.log"},
+    {"command": "PLAYWRIGHT_WEB_PORT=<isolated> npx playwright test", "result": "27/27 passed", "artifact": "task-3/raw/code-lane-repair/all-e2e.log"},
+    {"command": "npm test; npm run build; prettier; git diff --check", "result": "185 unit tests, build, formatting, and diff hygiene passed", "artifact": "task-3/raw/code-lane-repair/"}
+  ],
+  "human_gate_contract": "Before rendered Human actions there are zero plan/approve and execute/resolve POSTs. Each rendered click emits exactly one normal product request; no auto-approve, auto-merge, or trust-budget field/path is emitted. This is frontend/mock evidence, not backend authorization evidence.",
+  "adversarial": {
+    "stale_state": "duplicate expected version returns 409 without corrupting resolved v8",
+    "dirty_worktree_and_malformed": "dry-run remains blocked and no audit/Oracle success is promoted",
+    "reload": "pending operation resumes without replaying a POST",
+    "misleading_success": "Oracle FAIL remains REPAIRING until bounded retry PASS",
+    "flaky": "three repeats passed 18/18",
+    "command_injection": "invalid or shell-like PLAYWRIGHT_WEB_PORT values fail before webServer command execution",
+    "dirty_worktree": "concurrent unrelated artifacts were preserved"
+  },
+  "manual_browser_qa": {
+    "result": "PASS",
+    "observable": "happy and repaired final surfaces show Oracle pass with no active Execute CTA; FAIL remains REPAIRING; stale queue shows one expanded decision and one Submit CTA",
+    "artifacts": ["task-3/browser/happy-final-pass.png", "task-3/browser/repair-oracle-fail.png", "task-3/browser/repair-final-pass.png", "task-3/browser/single-active-decision-queued.png", "task-3/traces/happy-journey-trace.zip", "task-3/traces/repair-journey-trace.zip", "task-3/traces/stale-version-trace.zip"]
+  },
+  "independent_lanes": {
+    "goal": "PASS at f60e3b35e8645b0f3611cf115f2195925ce1650d",
+    "code": "PASS at f60e3b35e8645b0f3611cf115f2195925ce1650d; LOW watch: 1544-LOC fixture is not backend proof",
+    "qa": "PASS at f60e3b35e8645b0f3611cf115f2195925ce1650d; ephemeral QA resources removed",
+    "security": "PASS at f60e3b35e8645b0f3611cf115f2195925ce1650d within frontend-only scope",
+    "context": "PASS at f60e3b35e8645b0f3611cf115f2195925ce1650d; no production authority/default changes"
+  },
+  "supersedes": "Earlier ae5677/baa01872 reports that recorded a missing worktree Python environment, a five-test suite, or fixture-backed backend-security claims are superseded by the isolated-port final evidence above.",
+  "cleanup": "Executor and QA temporary archives were removed; isolated ports had no retained Node/Vite listeners."
+}

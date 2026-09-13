@@ -1,0 +1,8 @@
+F3 manual QA lifecycle run
+commit_sha=5677b7ea881a4bfd3c55fa57c1a97f1296d42df4
+surface=real Chromium via Playwright webServer (fresh context per test, --workers=1)
+invocation=PLAYWRIGHT_WEB_PORT=4373 npx playwright test e2e/agent-lifecycle-journey.spec.ts --grep 'connected Human-gated journey|frontend mock contract|Oracle FAIL repairs|stale expected_version' --workers=1 --reporter=line
+result=4 passed (12.0s)
+scenarios=connected Human-gated journey reaches PASS only with durable evidence; frontend mock contract emits gate requests only from rendered Human actions; Oracle FAIL repairs through bounded re-discuss retries before PASS; stale expected_version returns 409 without corrupting the resolved state
+screenshots=../task-3/browser/default-repeat-0-connected-Human-gated-journey-reaches-PASS-only-with-durable-evidence-happy-final-pass.png; ../task-3/browser/default-repeat-0-Oracle-FAIL-repairs-through-bounded-re-discuss-retries-before-PASS-repair-oracle-fail.png; ../task-3/browser/default-repeat-0-Oracle-FAIL-repairs-through-bounded-re-discuss-retries-before-PASS-repair-final-pass.png; ../task-3/browser/default-repeat-0-stale-expected-version-returns-409-without-corrupting-the-resolved-state-single-active-decision-queued.png
+observed=repair screenshot visibly shows Oracle fail, REPAIRING context, bounded Oracle 재검증 action and one active decision; final screenshot visibly shows Oracle 통과/PASS, merged checks and no active decision queue.

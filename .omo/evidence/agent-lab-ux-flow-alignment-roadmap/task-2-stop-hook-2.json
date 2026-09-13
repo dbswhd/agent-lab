@@ -1,0 +1,29 @@
+{
+  "verification_kind": "subagent-stop second independent verification",
+  "recorded_at_utc": "2026-07-23T15:11:37Z",
+  "commit": "4bbcb8c45959f8b0dfbda45342298fa3fb36b50d",
+  "commands": [
+    {
+      "command": "cd web && npx playwright test e2e/wave-b-journey.spec.ts --workers=1 --reporter=line",
+      "exit_code": 0,
+      "result": "4 passed (10.2s)",
+      "binary_observable": "All four journeys reached their expected first region after stable session-ID selection; each journey's test asserts aria-current=true for the target session row before its region/request assertion."
+    },
+    {
+      "command": "git show --check --stat 4bbcb8c",
+      "exit_code": 0,
+      "result": "Commit contains exactly web/e2e/wave-b-journey.spec.ts, web/src/App.tsx, and web/src/components/SessionList.tsx."
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "result": "No whitespace errors."
+    },
+    {
+      "command": "jq empty .omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-2.json",
+      "exit_code": 0,
+      "result": "Primary task evidence is valid JSON."
+    }
+  ],
+  "judgment": "The independently rerun browser command is green at 4/4 on the committed stable-ID implementation. No failure was observed, so no repair was required."
+}

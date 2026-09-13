@@ -1,0 +1,7 @@
+F3 manual QA Wave B run
+commit_sha=5677b7ea881a4bfd3c55fa57c1a97f1296d42df4
+surface=real Chromium via Playwright webServer (fresh context per test, --workers=1)
+invocation=PLAYWRIGHT_WEB_PORT=4374 npx playwright test e2e/wave-b-journey.spec.ts --workers=1 --reporter=line
+result=4 passed (5.8s)
+scenarios=plan reject journey sends reject request and enters refine phase; diff approve journey resolves pending execution; Oracle repair journey re-verifies failed execution; human resume journey answers inbox question
+observable=all four Wave B journeys completed their rendered Human actions and expected API route assertions with no test failures.

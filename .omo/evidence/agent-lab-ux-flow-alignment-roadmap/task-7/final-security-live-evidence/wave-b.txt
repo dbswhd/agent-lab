@@ -1,0 +1,24 @@
+[1A[2K[2m[WebServer] [22m(node:14889) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[2m[WebServer] [22m(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+Running 9 tests using 1 worker
+
+[1A[2K(node:14893) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:14893) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[1/9] e2e/mission-read-model-parity.spec.ts:498:1 › browser API contract covers approval, question, pause, repair, reconnect, and merge/oracle states
+[1A[2K[2/9] e2e/mission-read-model-parity.spec.ts:540:1 › migrated question preserves options and answer resumes the workflow
+[1A[2K[3/9] e2e/mission-read-model-parity.spec.ts:567:3 › legacy read-model path falls back without losing question options
+[1A[2K[4/9] e2e/mission-read-model-parity.spec.ts:567:3 › error read-model path falls back without losing question options
+[1A[2K[5/9] e2e/mission-read-model-parity.spec.ts:567:3 › disconnect read-model path falls back without losing question options
+[1A[2K[6/9] e2e/mission-read-model-parity.spec.ts:583:1 › stale migrated join does not expose a legacy resolve row
+[1A[2K[7/9] e2e/mission-read-model-parity.spec.ts:593:3 › terminal inbox rows do not expose resolve controls or counts
+[1A[2K[8/9] e2e/mission-read-model-parity.spec.ts:593:3 › missing inbox rows do not expose resolve controls or counts
+[1A[2K[9/9] e2e/mission-read-model-parity.spec.ts:604:1 › pause and circuit state uses the canonical read-model label
+[1A[2K  9 passed (9.1s)

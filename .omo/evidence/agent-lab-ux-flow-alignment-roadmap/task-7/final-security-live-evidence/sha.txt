@@ -1,0 +1,6 @@
+HEAD 25eeead92ee85c8853368c670d2f72136e8ea703
+EXPECTED 25eeead92ee85c8853368c670d2f72136e8ea703
+HEAD_MATCH=true
+25eeead9 docs: align console composer contract
+ docs/developer-agent-console.md | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)

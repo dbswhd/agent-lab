@@ -1,0 +1,26 @@
+commit=9a323834bf169533406e4fe0a36a56e2684336dd
+clean_checkout=/tmp/agent-lab-readiness-clean.p9x8vb
+--- cli ---
+readiness=OPEN
+live_n=0
+default_change_authorized=false
+commit_sha=5677b7ea881a4bfd3c55fa57c1a97f1296d42df4
+--- markdown ---
+# Dogfood readiness packet
+
+Status: **OPEN**
+Owner: Agent Lab dogfood operator
+Commit: `5677b7ea881a4bfd3c55fa57c1a97f1296d42df4`
+
+## Evidence tiers
+- mock: PASS (n=2)
+  - raw: `sessions/_regression/worktree_merge_ok/run.json`
+  - raw: `sessions/_regression/execute_verify_loop/run.json`
+- browser: PASS (n=4)
+  - raw: `docs/evidence/dogfood-readiness/browser-contract.txt`
+- live: OPEN (n=0)
+
+## Flags and cohorts
+- `AGENT_LAB_MOCK_AGENTS=(unset outside pytest)`
+- `AGENT_LAB_MISSION_AUTHORITY=(unset)`
+- `AGENT_LAB_MISSION_DUAL_WRITE=(unset)`

@@ -1,0 +1,7 @@
+.venv/bin/python scripts/dogfood_readiness_report.py \
+	  --manifest ".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-7/manifest.json" \
+	  --out-dir ".omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-7/final-security-live-evidence/stop-hook-verification-2/current-packet" \
+	  
+readiness=OPEN
+json=.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-7/final-security-live-evidence/stop-hook-verification-2/current-packet/dogfood-readiness.json
+markdown=.omo/evidence/agent-lab-ux-flow-alignment-roadmap/task-7/final-security-live-evidence/stop-hook-verification-2/current-packet/dogfood-readiness.md

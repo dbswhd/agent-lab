@@ -1,0 +1,9 @@
+.venv/bin/python scripts/dogfood_readiness_report.py \
+	  --manifest "docs/evidence/dogfood-readiness/manifest.json" \
+	  --out-dir "/tmp/agent-lab-readiness-green.YhxTsL" \
+	  
+readiness=OPEN
+json=/tmp/agent-lab-readiness-green.YhxTsL/dogfood-readiness.json
+markdown=/tmp/agent-lab-readiness-green.YhxTsL/dogfood-readiness.md
+out_dir=/tmp/agent-lab-readiness-green.YhxTsL
+{'readiness': 'OPEN', 'live_sample_size': 0, 'default_change_authorized': False, 'commit_sha': '5677b7ea881a4bfd3c55fa57c1a97f1296d42df4'}

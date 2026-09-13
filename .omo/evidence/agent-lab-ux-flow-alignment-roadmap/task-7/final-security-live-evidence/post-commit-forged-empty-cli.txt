@@ -1,0 +1,18 @@
+.venv/bin/python scripts/dogfood_readiness_report.py \
+	  --manifest "/var/folders/hf/f3v32pys6dl_nsw9cjjdzhgm0000gn/T/tmp.PSKO4nJZP3/manifest.json" \
+	  --out-dir "/var/folders/hf/f3v32pys6dl_nsw9cjjdzhgm0000gn/T/tmp.PSKO4nJZP3/out" \
+	  
+Traceback (most recent call last):
+  File "/Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/scripts/dogfood_readiness_report.py", line 43, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "/Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/scripts/dogfood_readiness_report.py", line 30, in main
+    packet = build_readiness_packet(load_manifest(args.manifest))
+                                    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/scripts/dogfood_readiness_manifest.py", line 235, in load_manifest
+    _validate_live_pass_evidence(manifest)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "/Users/yoonjong/Projects/agent-lab/.claude/worktrees/codex-ux-flow-alignment/scripts/dogfood_readiness_manifest.py", line 212, in _validate_live_pass_evidence
+    raise LiveEvidenceValidationError("live PASS requires non-empty Oracle evidence and checked_paths")
+dogfood_readiness_manifest.LiveEvidenceValidationError: live PASS requires non-empty Oracle evidence and checked_paths
+make: *** [dogfood-readiness-report] Error 1

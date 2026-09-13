@@ -1,0 +1,4 @@
+readiness=OPEN
+json=/tmp/agent-lab-f3-readiness.MI1XNc/dogfood-readiness.json
+markdown=/tmp/agent-lab-f3-readiness.MI1XNc/dogfood-readiness.md
+OUT=/tmp/agent-lab-f3-readiness.MI1XNc

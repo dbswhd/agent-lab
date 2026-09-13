@@ -1,0 +1,23 @@
+
+> agent-lab-web@0.1.0 build
+> tsc && vite build
+
+vite v6.4.2 building for production...
+transforming...
+✓ 347 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                1.42 kB │ gzip:   0.73 kB
+dist/assets/index-BDDnNK-p.css               335.54 kB │ gzip:  47.67 kB
+dist/assets/index-8Uz2M7lG.js                  0.16 kB │ gzip:   0.16 kB
+dist/assets/index-CYgsiSGn.js                  2.30 kB │ gzip:   0.85 kB
+dist/assets/webview-4DNZhCsM.js                3.30 kB │ gzip:   1.12 kB
+dist/assets/window-IaaVjZ1i.js                15.44 kB │ gzip:   3.93 kB
+dist/assets/FilesMonacoEditor-W6YAUHYL.js     16.39 kB │ gzip:   5.81 kB
+dist/assets/index-1JkmERKO.js              1,040.63 kB │ gzip: 296.27 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 1.22s

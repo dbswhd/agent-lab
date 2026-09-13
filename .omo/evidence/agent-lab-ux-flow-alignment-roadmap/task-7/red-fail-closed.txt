@@ -1,0 +1,76 @@
+..FF.                                                                    [100%]
+=================================== FAILURES ===================================
+_ test_live_pass_rejects_zero_sample_and_browser_only_proof[0-live PASS sample_size must be positive] _
+
+tmp_path = PosixPath('/private/var/folders/hf/f3v32pys6dl_nsw9cjjdzhgm0000gn/T/pytest-of-yoonjong/pytest-27/test_live_pass_rejects_zero_sa0')
+sample_size = 0, error = 'live PASS sample_size must be positive'
+
+    @pytest.mark.parametrize(
+        ("sample_size", "error"),
+        [
+            (0, "live PASS sample_size must be positive"),
+            (1, "live PASS requires a non-mock session run"),
+        ],
+    )
+    def test_live_pass_rejects_zero_sample_and_browser_only_proof(
+        tmp_path: Path,
+        sample_size: int,
+        error: str,
+    ) -> None:
+        # Given
+        path = _write_manifest(tmp_path)
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        payload["evidence"][1] = {
+            "id": "live-dogfood",
+            "tier": "live",
+            "status": "PASS",
+            "sample_size": sample_size,
+            "raw_paths": [payload["evidence"][0]["raw_paths"][0]],
+        }
+        path.write_text(json.dumps(payload), encoding="utf-8")
+    
+        # When / Then
+>       with pytest.raises(ValueError, match=error):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+tests/test_dogfood_readiness_report.py:188: Failed
+_ test_live_pass_rejects_zero_sample_and_browser_only_proof[1-live PASS requires a non-mock session run] _
+
+tmp_path = PosixPath('/private/var/folders/hf/f3v32pys6dl_nsw9cjjdzhgm0000gn/T/pytest-of-yoonjong/pytest-27/test_live_pass_rejects_zero_sa1')
+sample_size = 1, error = 'live PASS requires a non-mock session run'
+
+    @pytest.mark.parametrize(
+        ("sample_size", "error"),
+        [
+            (0, "live PASS sample_size must be positive"),
+            (1, "live PASS requires a non-mock session run"),
+        ],
+    )
+    def test_live_pass_rejects_zero_sample_and_browser_only_proof(
+        tmp_path: Path,
+        sample_size: int,
+        error: str,
+    ) -> None:
+        # Given
+        path = _write_manifest(tmp_path)
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        payload["evidence"][1] = {
+            "id": "live-dogfood",
+            "tier": "live",
+            "status": "PASS",
+            "sample_size": sample_size,
+            "raw_paths": [payload["evidence"][0]["raw_paths"][0]],
+        }
+        path.write_text(json.dumps(payload), encoding="utf-8")
+    
+        # When / Then
+>       with pytest.raises(ValueError, match=error):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+tests/test_dogfood_readiness_report.py:188: Failed
+=========================== short test summary info ============================
+FAILED tests/test_dogfood_readiness_report.py::test_live_pass_rejects_zero_sample_and_browser_only_proof[0-live PASS sample_size must be positive]
+FAILED tests/test_dogfood_readiness_report.py::test_live_pass_rejects_zero_sample_and_browser_only_proof[1-live PASS requires a non-mock session run]
+2 failed, 3 passed in 0.07s

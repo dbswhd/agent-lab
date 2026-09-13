@@ -1,0 +1,8 @@
+499f19b8 chore(ops): record dogfood readiness and repair evidence
+ Makefile                               |   9 +-
+ docs/DOGFOOD-READINESS-PACKET.md       |  27 +++++
+ scripts/dogfood_readiness_manifest.py  | 169 +++++++++++++++++++++++++++++
+ scripts/dogfood_readiness_packet.py    | 192 +++++++++++++++++++++++++++++++++
+ scripts/dogfood_readiness_report.py    |  43 ++++++++
+ tests/test_dogfood_readiness_report.py | 175 ++++++++++++++++++++++++++++++
+ 6 files changed, 614 insertions(+), 1 deletion(-)
